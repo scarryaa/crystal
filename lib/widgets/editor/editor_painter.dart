@@ -91,6 +91,31 @@ class EditorPainter extends CustomPainter {
         Paint()..color = Colors.blue);
   }
 
+  void _drawWhitespaceIndicatorsForSelectionWhitespace(
+      Canvas canvas, int startColumn, int endColumn, int lineNumber) {
+    for (int i = startColumn; i < endColumn; i++) {
+      if (editorState.lines[lineNumber][i] == ' ') {
+        _drawWhitespaceIndicator(
+            canvas,
+            (i + 0.5) * EditorConstants.charWidth,
+            lineNumber * EditorConstants.lineHeight +
+                EditorConstants.lineHeight / 2);
+      }
+    }
+  }
+
+  void _drawWhitespaceIndicator(
+    Canvas canvas,
+    double left,
+    double top,
+  ) {
+    canvas.drawCircle(
+      Offset(left, top + EditorConstants.whitespaceIndicatorRadius / 2),
+      EditorConstants.whitespaceIndicatorRadius,
+      EditorConstants.whitespaceIndicatorColor,
+    );
+  }
+
   void _drawSelection(
       Canvas canvas, int firstVisibleLine, int lastVisibleLine) {
     Selection selection = editorState.selection!;
@@ -146,6 +171,13 @@ class EditorPainter extends CustomPainter {
         _textPainter.layout();
         double width = _textPainter.width;
 
+        _drawWhitespaceIndicatorsForSelectionWhitespace(
+          canvas,
+          editorState.selection!.startColumn,
+          editorState.selection!.endColumn,
+          selectionStartLine,
+        );
+
         canvas.drawRect(
             Rect.fromLTWH(
                 left,
@@ -174,6 +206,12 @@ class EditorPainter extends CustomPainter {
           measureLineWidth(editorState.lines[selectionStartLine]) -
               startLineLeft;
 
+      _drawWhitespaceIndicatorsForSelectionWhitespace(
+          canvas,
+          selectionStartColumn,
+          editorState.lines[selectionStartLine].length,
+          selectionStartLine);
+
       _drawSelectionForLine(canvas, selectionStartLine, startLineLeft,
           startLineWidth, selectionPaint);
 
@@ -182,6 +220,9 @@ class EditorPainter extends CustomPainter {
         // Check if within visible line bounds
         if (i >= firstVisibleLine && i <= lastVisibleLine) {
           // Whole line is selected
+          _drawWhitespaceIndicatorsForSelectionWhitespace(
+              canvas, 0, editorState.lines[i].length, i);
+
           double width = measureLineWidth(editorState.lines[i]);
           _drawSelectionForLine(canvas, i, 0, width, selectionPaint);
         }
@@ -200,6 +241,10 @@ class EditorPainter extends CustomPainter {
       );
       _textPainter.layout();
       double endLineWidth = _textPainter.width;
+
+      _drawWhitespaceIndicatorsForSelectionWhitespace(
+          canvas, 0, selectionEndColumn, selectionEndLine);
+
       _drawSelectionForLine(
           canvas, selectionEndLine, 0, endLineWidth, selectionPaint);
     }
