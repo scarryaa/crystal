@@ -12,21 +12,51 @@ class EditorScreen extends StatefulWidget {
 }
 
 class _EditorScreenState extends State<EditorScreen> {
+  final ScrollController _gutterScrollController = ScrollController();
+  final ScrollController _editorScrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _editorScrollController.addListener(() {
+      _gutterScrollController.jumpTo(_editorScrollController.offset);
+    });
+    _gutterScrollController.addListener(() {
+      _editorScrollController.jumpTo(_gutterScrollController.offset);
+    });
+  }
+
+  @override
+  void dispose() {
+    _gutterScrollController.dispose();
+    _editorScrollController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => EditorState(),
-      child: Row(
-        children: [
-          const Gutter(),
-          Expanded(
-            child: Consumer<EditorState>(
-              builder: (context, state, _) => Editor(
-                state: state,
+      child: Consumer<EditorState>(
+        builder: (context, state, _) {
+          final gutterWidth = state.getGutterWidth();
+
+          return Row(
+            children: [
+              Gutter(
+                editorState: state,
+                verticalScrollController: _gutterScrollController,
               ),
-            ),
-          )
-        ],
+              Expanded(
+                child: Editor(
+                  gutterWidth: gutterWidth,
+                  state: state,
+                  verticalScrollController: _editorScrollController,
+                ),
+              )
+            ],
+          );
+        },
       ),
     );
   }

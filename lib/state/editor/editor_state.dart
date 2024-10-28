@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:crystal/models/cursor.dart';
 import 'package:crystal/state/editor/editor_scroll_state.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +9,10 @@ class EditorState extends ChangeNotifier {
   List<String> lines = [''];
   List<Cursor> cursors = [Cursor(0, 0)];
   EditorScrollState scrollState = EditorScrollState();
+
+  double getGutterWidth() {
+    return math.max((lines.length.toString().length * 10.0) + 20.0, 48.0);
+  }
 
   void addCursor(int line, int column) {
     cursors.add(Cursor(line, column));

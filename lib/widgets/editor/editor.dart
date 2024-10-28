@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+
+import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/widgets/editor/editor_painter.dart';
 import 'package:flutter/material.dart';
@@ -5,8 +8,15 @@ import 'package:flutter/services.dart';
 
 class Editor extends StatefulWidget {
   final EditorState state;
+  final ScrollController? verticalScrollController;
+  final double gutterWidth;
 
-  const Editor({super.key, required this.state});
+  const Editor({
+    super.key,
+    required this.state,
+    required this.gutterWidth,
+    this.verticalScrollController,
+  });
 
   @override
   State<StatefulWidget> createState() => _EditorState();
@@ -14,16 +24,42 @@ class Editor extends StatefulWidget {
 
 class _EditorState extends State<Editor> {
   final FocusNode _focusNode = FocusNode();
+  final ScrollController _horizontalScrollController = ScrollController();
+
+  double _maxLineWidth() {
+    return widget.state.lines.fold<double>(0, (maxWidth, line) {
+      final lineWidth = EditorPainter.measureLineWidth(line);
+      return math.max(maxWidth, lineWidth);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final width = math.max(
+      mediaQuery.size.width - widget.gutterWidth,
+      _maxLineWidth() + EditorConstants.horizontalPadding,
+    );
+    final height = math.max(
+      mediaQuery.size.height,
+      EditorConstants.lineHeight * widget.state.lines.length +
+          EditorConstants.verticalPadding,
+    );
+
     return Focus(
       focusNode: _focusNode,
       onKeyEvent: _handleKeyEvent,
       autofocus: true,
-      child: CustomPaint(
-        painter: EditorPainter(editorState: widget.state),
-        size: const Size(double.infinity, double.infinity),
+      child: SingleChildScrollView(
+        controller: widget.verticalScrollController,
+        child: SingleChildScrollView(
+          controller: _horizontalScrollController,
+          scrollDirection: Axis.horizontal,
+          child: CustomPaint(
+            painter: EditorPainter(editorState: widget.state),
+            size: Size(width, height),
+          ),
+        ),
       ),
     );
   }

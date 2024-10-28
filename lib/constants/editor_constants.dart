@@ -1,4 +1,7 @@
 class EditorConstants {
+  static const double horizontalPadding = 100;
+  static const int verticalPaddingLines = 5;
+  static double verticalPadding = lineHeight * verticalPaddingLines;
   static const double lineHeightRatio = 1.5;
   static double fontSize = 14;
   static double lineHeight = fontSize * lineHeightRatio;

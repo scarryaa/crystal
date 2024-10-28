@@ -15,6 +15,23 @@ class EditorPainter extends CustomPainter {
         ),
         super(repaint: editorState);
 
+  static double measureLineWidth(String line) {
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: line,
+        style: TextStyle(
+          fontFamily: EditorConstants.fontFamily,
+          fontSize: EditorConstants.fontSize,
+          fontWeight: FontWeight.normal,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+
+    textPainter.layout();
+    return textPainter.width;
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     // Draw background
@@ -46,6 +63,7 @@ class EditorPainter extends CustomPainter {
           text: lines[i],
           style: TextStyle(
             fontSize: EditorConstants.fontSize,
+            fontFamily: EditorConstants.fontFamily,
             color: Colors.black,
           ),
         );
@@ -68,6 +86,7 @@ class EditorPainter extends CustomPainter {
           text: lines[cursor.line].substring(0, cursor.column),
           style: TextStyle(
             fontSize: EditorConstants.fontSize,
+            fontFamily: EditorConstants.fontFamily,
             color: Colors.black,
           ),
         );

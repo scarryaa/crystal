@@ -17,10 +17,12 @@ class GutterPainter extends CustomPainter {
   })  : _defaultStyle = TextStyle(
           color: textColor ?? Colors.grey[600],
           fontSize: EditorConstants.fontSize,
+          fontFamily: EditorConstants.fontFamily,
         ),
         _highlightStyle = TextStyle(
           color: highlightColor ?? Colors.blue,
           fontSize: EditorConstants.fontSize,
+          fontFamily: EditorConstants.fontFamily,
         );
 
   @override
