@@ -61,17 +61,29 @@ class _EditorState extends State<Editor> {
       focusNode: _focusNode,
       onKeyEvent: _handleKeyEvent,
       autofocus: true,
-      child: SingleChildScrollView(
+      child: Scrollbar(
         controller: widget.verticalScrollController,
-        child: SingleChildScrollView(
+        thickness: 10,
+        radius: const Radius.circular(0),
+        notificationPredicate: (notification) => notification.depth == 1,
+        child: Scrollbar(
           controller: widget.horizontalScrollController,
-          scrollDirection: Axis.horizontal,
-          child: CustomPaint(
-            painter: EditorPainter(
-              editorState: widget.state,
-              viewportHeight: MediaQuery.of(context).size.height,
+          thickness: 10,
+          radius: const Radius.circular(0),
+          notificationPredicate: (notification) => notification.depth == 1,
+          child: SingleChildScrollView(
+            controller: widget.verticalScrollController,
+            child: SingleChildScrollView(
+              controller: widget.horizontalScrollController,
+              scrollDirection: Axis.horizontal,
+              child: CustomPaint(
+                painter: EditorPainter(
+                  editorState: widget.state,
+                  viewportHeight: MediaQuery.of(context).size.height,
+                ),
+                size: Size(width, height),
+              ),
             ),
-            size: Size(width, height),
           ),
         ),
       ),
