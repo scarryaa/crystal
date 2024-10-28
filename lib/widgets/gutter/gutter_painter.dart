@@ -51,8 +51,12 @@ class GutterPainter extends CustomPainter {
 
     for (var i = firstVisibleLine; i < lastVisibleLine; i++) {
       final lineNumber = (i + 1).toString();
-      final style =
-          editorState.cursor.line == i ? _highlightStyle : _defaultStyle;
+      final isLineInSelection = editorState.selection != null &&
+          i >= editorState.selection!.startLine &&
+          i <= editorState.selection!.endLine;
+      final style = editorState.cursor.line == i || isLineInSelection
+          ? _highlightStyle
+          : _defaultStyle;
 
       textPainter.text = TextSpan(
         text: lineNumber,
