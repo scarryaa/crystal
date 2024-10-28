@@ -3,16 +3,19 @@ import 'dart:math';
 import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/state/editor/editor_state.dart';
+import 'package:crystal/state/editor/editor_syntax_highlighter.dart';
 import 'package:flutter/material.dart';
 
 class EditorPainter extends CustomPainter {
   final EditorState editorState;
   final TextPainter _textPainter;
   final double viewportHeight;
+  final EditorSyntaxHighlighter editorSyntaxHighlighter;
 
   EditorPainter({
     required this.editorState,
     required this.viewportHeight,
+    required this.editorSyntaxHighlighter,
   })  : _textPainter = TextPainter(
           textDirection: TextDirection.ltr,
           textAlign: TextAlign.left,
@@ -291,47 +294,29 @@ class EditorPainter extends CustomPainter {
 
   void _drawText(Canvas canvas, Size size, int firstVisibleLine,
       int lastVisibleLine, List<String> lines) {
-    // Draw visible text lines
     for (int i = firstVisibleLine; i < lastVisibleLine; i++) {
       if (i >= 0 && i < lines.length) {
         // Draw indent lines
         String line = lines[i];
-        int leadingSpaces;
-        if (line.isEmpty) {
-          // For empty lines, look back to find the first non-empty line's indentation
-          int j = i - 1;
-          while (j >= 0 && lines[j].isEmpty) {
-            j--;
-          }
-          leadingSpaces = j >= 0 ? _countLeadingSpaces(lines[j]) : 0;
-        } else {
-          leadingSpaces = _countLeadingSpaces(line);
-        }
+        int leadingSpaces = _countLeadingSpaces(line);
 
         for (int space = 0; space < leadingSpaces; space += 4) {
           if (line.isNotEmpty && !line.startsWith(' ')) continue;
-
           double xPosition = space * EditorConstants.charWidth;
           _drawIndentLines(canvas, xPosition, i);
         }
 
-        // Draw the text
-        _textPainter.text = TextSpan(
-          text: lines[i],
-          style: TextStyle(
-            fontSize: EditorConstants.fontSize,
-            fontFamily: EditorConstants.fontFamily,
-            color: Colors.black,
-          ),
-        );
+        // Highlight the current line's syntax
+        editorSyntaxHighlighter.highlight(line);
 
+        // Create text painter with highlighted spans
+        _textPainter.text = editorSyntaxHighlighter.buildTextSpan(line);
         _textPainter.layout();
 
         double yPosition = (i * EditorConstants.lineHeight) +
             (EditorConstants.lineHeight - _textPainter.height) / 2;
-        double xPosition = 0;
 
-        _textPainter.paint(canvas, Offset(xPosition, yPosition));
+        _textPainter.paint(canvas, Offset(0, yPosition));
       }
     }
   }

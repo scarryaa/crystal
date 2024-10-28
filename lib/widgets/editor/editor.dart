@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/state/editor/editor_state.dart';
+import 'package:crystal/state/editor/editor_syntax_highlighter.dart';
 import 'package:crystal/widgets/editor/editor_painter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -28,10 +29,14 @@ class _EditorState extends State<Editor> {
   final FocusNode _focusNode = FocusNode();
   double _cachedMaxLineWidth = 0;
   Timer? _caretTimer;
+  late EditorSyntaxHighlighter editorSyntaxHighlighter;
 
   @override
   void initState() {
     super.initState();
+
+    editorSyntaxHighlighter = EditorSyntaxHighlighter();
+
     _updateCachedMaxLineWidth();
     _startCaretBlinking();
   }
@@ -118,6 +123,7 @@ class _EditorState extends State<Editor> {
                       scrollDirection: Axis.horizontal,
                       child: CustomPaint(
                         painter: EditorPainter(
+                          editorSyntaxHighlighter: editorSyntaxHighlighter,
                           editorState: widget.state,
                           viewportHeight: MediaQuery.of(context).size.height,
                         ),
