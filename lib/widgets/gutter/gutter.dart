@@ -61,17 +61,23 @@ class _GutterState extends State<Gutter> {
   }
 
   void _handleGutterTap(TapDownDetails details) {
-    // Select the line
-    double adjustedY =
-        details.localPosition.dy + editorState.scrollState.verticalOffset;
-    editorState.selectLine(false, adjustedY ~/ EditorConstants.lineHeight);
+    _handleGutterSelection(details.localPosition.dy, false);
   }
 
   void _handleGutterDragStart(DragStartDetails details) {
-    // Select the line
-    double adjustedY =
-        details.localPosition.dy + editorState.scrollState.verticalOffset;
-    editorState.selectLine(false, adjustedY ~/ EditorConstants.lineHeight);
+    _handleGutterSelection(details.localPosition.dy, false);
+  }
+
+  void _handleGutterSelection(double localY, bool isMultiSelect) {
+    double adjustedY = localY + editorState.scrollState.verticalOffset;
+    int targetLine = adjustedY ~/ EditorConstants.lineHeight;
+
+    // If out of range, select the last line
+    if (targetLine > editorState.lines.length) {
+      editorState.selectLine(isMultiSelect, editorState.lines.length - 1);
+    } else {
+      editorState.selectLine(isMultiSelect, targetLine);
+    }
   }
 
   void _handleGutterDrag(DragUpdateDetails details) {

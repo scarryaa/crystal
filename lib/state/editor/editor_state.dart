@@ -329,7 +329,7 @@ class EditorState extends ChangeNotifier {
     if (!extend) {
       // Select single line
       cursor.line = lineNumber;
-      cursor.column = 0;
+      cursor.column = lines[lineNumber].length;
       anchorLine = lineNumber;
       anchorColumn = 0;
       selection = Selection(
