@@ -62,31 +62,32 @@ class _EditorState extends State<Editor> {
       onKeyEvent: _handleKeyEvent,
       autofocus: true,
       child: Scrollbar(
-        controller: widget.verticalScrollController,
-        thickness: 10,
-        radius: const Radius.circular(0),
-        notificationPredicate: (notification) => notification.depth == 1,
-        child: Scrollbar(
-          controller: widget.horizontalScrollController,
+          controller: widget.verticalScrollController,
           thickness: 10,
           radius: const Radius.circular(0),
-          notificationPredicate: (notification) => notification.depth == 1,
-          child: SingleChildScrollView(
-            controller: widget.verticalScrollController,
-            child: SingleChildScrollView(
-              controller: widget.horizontalScrollController,
-              scrollDirection: Axis.horizontal,
-              child: CustomPaint(
-                painter: EditorPainter(
-                  editorState: widget.state,
-                  viewportHeight: MediaQuery.of(context).size.height,
+          child: Scrollbar(
+            controller: widget.horizontalScrollController,
+            thickness: 10,
+            radius: const Radius.circular(0),
+            notificationPredicate: (notification) => notification.depth == 1,
+            child: ScrollConfiguration(
+              behavior: const ScrollBehavior().copyWith(scrollbars: false),
+              child: SingleChildScrollView(
+                controller: widget.verticalScrollController,
+                child: SingleChildScrollView(
+                  controller: widget.horizontalScrollController,
+                  scrollDirection: Axis.horizontal,
+                  child: CustomPaint(
+                    painter: EditorPainter(
+                      editorState: widget.state,
+                      viewportHeight: MediaQuery.of(context).size.height,
+                    ),
+                    size: Size(width, height),
+                  ),
                 ),
-                size: Size(width, height),
               ),
             ),
-          ),
-        ),
-      ),
+          )),
     );
   }
 
