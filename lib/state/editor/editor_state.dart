@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:crystal/constants/editor_constants.dart';
@@ -319,6 +320,47 @@ class EditorState extends ChangeNotifier {
     cursor.line++;
     cursor.column = 0;
     version++;
+    notifyListeners();
+  }
+
+  void selectLine(bool extend, int lineNumber) {
+    if (lineNumber < 0 || lineNumber >= lines.length) return;
+
+    if (!extend) {
+      // Select single line
+      cursor.line = lineNumber;
+      cursor.column = 0;
+      anchorLine = lineNumber;
+      anchorColumn = 0;
+      selection = Selection(
+          startLine: lineNumber,
+          endLine: lineNumber,
+          startColumn: 0,
+          endColumn: lines[lineNumber].length);
+    } else {
+      // Extend selection to include target line
+      if (selection == null) {
+        startSelection();
+      }
+
+      cursor.line = lineNumber;
+      cursor.column = lines[lineNumber].length;
+
+      if (lineNumber < anchorLine!) {
+        selection = Selection(
+            startLine: lineNumber,
+            endLine: anchorLine!,
+            startColumn: 0,
+            endColumn: lines[anchorLine!].length);
+      } else {
+        selection = Selection(
+            startLine: anchorLine!,
+            endLine: lineNumber,
+            startColumn: 0,
+            endColumn: lines[lineNumber].length);
+      }
+    }
+
     notifyListeners();
   }
 

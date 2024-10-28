@@ -247,6 +247,7 @@ class EditorPainter extends CustomPainter {
   @override
   bool shouldRepaint(EditorPainter oldDelegate) {
     return editorState.version != oldDelegate.editorState.version ||
+        editorState.selection != oldDelegate.editorState.selection ||
         editorState.scrollState.horizontalOffset !=
             oldDelegate.editorState.scrollState.horizontalOffset ||
         editorState.scrollState.verticalOffset !=

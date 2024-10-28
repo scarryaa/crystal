@@ -34,25 +34,50 @@ class _GutterState extends State<Gutter> {
       builder: (context, editorState, child) {
         return ScrollConfiguration(
             behavior: const ScrollBehavior().copyWith(scrollbars: false),
-            child: SingleChildScrollView(
-              controller: widget.verticalScrollController,
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: SizedBox(
-                  child: CustomPaint(
-                      painter: GutterPainter(
-                        editorState: editorState,
-                        verticalOffset:
-                            widget.verticalScrollController.hasClients
-                                ? widget.verticalScrollController.offset
-                                : 0,
-                        viewportHeight: MediaQuery.of(context).size.height,
-                      ),
-                      size: Size(gutterWidth, height)),
-                ),
-              ),
-            ));
+            child: GestureDetector(
+                onTapDown: _handleGutterTap,
+                onPanStart: _handleGutterDragStart,
+                onPanUpdate: _handleGutterDrag,
+                child: SingleChildScrollView(
+                  controller: widget.verticalScrollController,
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: SizedBox(
+                      child: CustomPaint(
+                          painter: GutterPainter(
+                            editorState: editorState,
+                            verticalOffset:
+                                widget.verticalScrollController.hasClients
+                                    ? widget.verticalScrollController.offset
+                                    : 0,
+                            viewportHeight: MediaQuery.of(context).size.height,
+                          ),
+                          size: Size(gutterWidth, height)),
+                    ),
+                  ),
+                )));
       },
     );
+  }
+
+  void _handleGutterTap(TapDownDetails details) {
+    // Select the line
+    double adjustedY =
+        details.localPosition.dy + editorState.scrollState.verticalOffset;
+    editorState.selectLine(false, adjustedY ~/ EditorConstants.lineHeight);
+  }
+
+  void _handleGutterDragStart(DragStartDetails details) {
+    // Select the line
+    double adjustedY =
+        details.localPosition.dy + editorState.scrollState.verticalOffset;
+    editorState.selectLine(false, adjustedY ~/ EditorConstants.lineHeight);
+  }
+
+  void _handleGutterDrag(DragUpdateDetails details) {
+    // Select multiple lines
+    double adjustedY =
+        details.localPosition.dy + editorState.scrollState.verticalOffset;
+    editorState.selectLine(true, adjustedY ~/ EditorConstants.lineHeight);
   }
 }
