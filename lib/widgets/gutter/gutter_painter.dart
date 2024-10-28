@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/models/cursor.dart';
 import 'package:flutter/material.dart';
@@ -5,6 +7,8 @@ import 'package:flutter/material.dart';
 class GutterPainter extends CustomPainter {
   final int lineCount;
   final Cursor cursor;
+  final double verticalOffset;
+  final double viewportHeight;
 
   final TextStyle _defaultStyle;
   final TextStyle _highlightStyle;
@@ -12,6 +16,8 @@ class GutterPainter extends CustomPainter {
   GutterPainter({
     required this.lineCount,
     required this.cursor,
+    required this.verticalOffset,
+    required this.viewportHeight,
     Color? textColor,
     Color? highlightColor,
   })  : _defaultStyle = TextStyle(
@@ -34,7 +40,17 @@ class GutterPainter extends CustomPainter {
       textDirection: TextDirection.ltr,
     );
 
-    for (var i = 0; i < lineCount; i++) {
+    // Calculate visible lines
+    int firstVisibleLine =
+        max(0, (verticalOffset / EditorConstants.lineHeight).floor() - 5);
+    int lastVisibleLine = min(
+        lineCount,
+        ((verticalOffset + viewportHeight) / EditorConstants.lineHeight)
+                .ceil() +
+            5);
+    lastVisibleLine = lastVisibleLine.clamp(0, lineCount);
+
+    for (var i = firstVisibleLine; i < lastVisibleLine; i++) {
       final lineNumber = (i + 1).toString();
       final style = cursor.line == i ? _highlightStyle : _defaultStyle;
 

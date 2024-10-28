@@ -4,6 +4,7 @@ import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/state/editor/editor_scroll_state.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class EditorState extends ChangeNotifier {
   int version = 1;
@@ -13,6 +14,9 @@ class EditorState extends ChangeNotifier {
   Selection? selection;
   int? anchorLine;
   int? anchorColumn;
+  VoidCallback resetGutterScroll;
+
+  EditorState({required this.resetGutterScroll});
 
   double getGutterWidth() {
     return math.max((lines.length.toString().length * 10.0) + 20.0, 48.0);
@@ -134,6 +138,13 @@ class EditorState extends ChangeNotifier {
 
     clearSelection();
     version++;
+
+    if (lines.isEmpty || (lines.length == 1 && lines[0].isEmpty)) {
+      scrollState.updateVerticalScrollOffset(0);
+      scrollState.updateHorizontalScrollOffset(0);
+      resetGutterScroll();
+    }
+
     notifyListeners();
   }
 
@@ -170,6 +181,57 @@ class EditorState extends ChangeNotifier {
       lines[cursor.line] += lines[cursor.line + 1];
       lines.removeAt(cursor.line + 1);
     }
+    version++;
+    notifyListeners();
+  }
+
+  void cut() {
+    copy();
+    deleteSelection();
+    notifyListeners();
+  }
+
+  void copy() {
+    Clipboard.setData(ClipboardData(text: getSelectedText()));
+  }
+
+  Future<void> paste() async {
+    ClipboardData? data = await Clipboard.getData(Clipboard.kTextPlain);
+    if (data == null || data.text == null) return;
+
+    if (selection != null) {
+      deleteSelection();
+    }
+
+    List<String> pastedLines = data.text!.split('\n');
+
+    if (pastedLines.length == 1) {
+      // Single line paste
+      lines[cursor.line] = lines[cursor.line].substring(0, cursor.column) +
+          pastedLines[0] +
+          lines[cursor.line].substring(cursor.column);
+      cursor.column += pastedLines[0].length;
+    } else {
+      // Multi-line paste
+      String remainingText = lines[cursor.line].substring(cursor.column);
+
+      // First line
+      lines[cursor.line] =
+          lines[cursor.line].substring(0, cursor.column) + pastedLines[0];
+
+      // Middle lines
+      for (int i = 1; i < pastedLines.length - 1; i++) {
+        lines.insert(cursor.line + i, pastedLines[i]);
+      }
+
+      // Last line
+      lines.insert(cursor.line + pastedLines.length - 1,
+          pastedLines.last + remainingText);
+
+      cursor.line += pastedLines.length - 1;
+      cursor.column = pastedLines.last.length;
+    }
+
     version++;
     notifyListeners();
   }
@@ -283,9 +345,11 @@ class EditorState extends ChangeNotifier {
 
   void updateVerticalScrollOffset(double offset) {
     scrollState.updateVerticalScrollOffset(offset);
+    notifyListeners();
   }
 
   void updateHorizontalScrollOffset(double offset) {
     scrollState.updateHorizontalScrollOffset(offset);
+    notifyListeners();
   }
 }

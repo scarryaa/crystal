@@ -25,6 +25,17 @@ class Editor extends StatefulWidget {
 
 class _EditorState extends State<Editor> {
   final FocusNode _focusNode = FocusNode();
+  double _cachedMaxLineWidth = 0;
+
+  @override
+  void initState() {
+    _updateCachedMaxLineWidth();
+    super.initState();
+  }
+
+  void _updateCachedMaxLineWidth() {
+    _cachedMaxLineWidth = _maxLineWidth();
+  }
 
   double _maxLineWidth() {
     return widget.state.lines.fold<double>(0, (maxWidth, line) {
@@ -38,7 +49,7 @@ class _EditorState extends State<Editor> {
     final mediaQuery = MediaQuery.of(context);
     final width = math.max(
       mediaQuery.size.width - widget.gutterWidth,
-      _maxLineWidth() + EditorConstants.horizontalPadding,
+      _cachedMaxLineWidth + EditorConstants.horizontalPadding,
     );
     final height = math.max(
       mediaQuery.size.height,
@@ -56,7 +67,10 @@ class _EditorState extends State<Editor> {
           controller: widget.horizontalScrollController,
           scrollDirection: Axis.horizontal,
           child: CustomPaint(
-            painter: EditorPainter(editorState: widget.state),
+            painter: EditorPainter(
+              editorState: widget.state,
+              viewportHeight: MediaQuery.of(context).size.height,
+            ),
             size: Size(width, height),
           ),
         ),
@@ -73,6 +87,23 @@ class _EditorState extends State<Editor> {
 
       // Ctrl shortcuts
       switch (event.logicalKey) {
+        case LogicalKeyboardKey.keyC:
+          if (isControlPressed) {
+            widget.state.copy();
+            return KeyEventResult.handled;
+          }
+        case LogicalKeyboardKey.keyX:
+          if (isControlPressed) {
+            widget.state.cut();
+            _updateCachedMaxLineWidth();
+            return KeyEventResult.handled;
+          }
+        case LogicalKeyboardKey.keyV:
+          if (isControlPressed) {
+            widget.state.paste();
+            _updateCachedMaxLineWidth();
+            return KeyEventResult.handled;
+          }
         case LogicalKeyboardKey.keyA:
           if (isControlPressed) {
             widget.state.selectAll();
@@ -96,20 +127,25 @@ class _EditorState extends State<Editor> {
 
         case LogicalKeyboardKey.enter:
           widget.state.insertNewLine();
+          _updateCachedMaxLineWidth();
           return KeyEventResult.handled;
         case LogicalKeyboardKey.backspace:
           widget.state.backspace();
+          _updateCachedMaxLineWidth();
           return KeyEventResult.handled;
         case LogicalKeyboardKey.delete:
           widget.state.delete();
+          _updateCachedMaxLineWidth();
           return KeyEventResult.handled;
         default:
           if (event.character != null) {
             widget.state.insertChar(event.character!);
+            _updateCachedMaxLineWidth();
             return KeyEventResult.handled;
           }
       }
     }
+
     return KeyEventResult.ignored;
   }
 }

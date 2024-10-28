@@ -1,7 +1,6 @@
 import 'dart:math';
 
 import 'package:crystal/constants/editor_constants.dart';
-import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:flutter/material.dart';
@@ -9,9 +8,12 @@ import 'package:flutter/material.dart';
 class EditorPainter extends CustomPainter {
   final EditorState editorState;
   final TextPainter _textPainter;
+  final double viewportHeight;
 
-  EditorPainter({required this.editorState})
-      : _textPainter = TextPainter(
+  EditorPainter({
+    required this.editorState,
+    required this.viewportHeight,
+  })  : _textPainter = TextPainter(
           textDirection: TextDirection.ltr,
           textAlign: TextAlign.left,
         ),
@@ -33,7 +35,7 @@ class EditorPainter extends CustomPainter {
             5);
     int lastVisibleLine = min(
         editorState.lines.length,
-        ((editorState.scrollState.verticalOffset + size.height) /
+        ((editorState.scrollState.verticalOffset + viewportHeight) /
                     EditorConstants.lineHeight)
                 .ceil() +
             5);
@@ -50,15 +52,6 @@ class EditorPainter extends CustomPainter {
 
     // Draw caret
     _drawCaret(canvas);
-  }
-
-  @override
-  bool shouldRepaint(EditorPainter oldDelegate) {
-    return editorState.version != oldDelegate.editorState.version ||
-        editorState.scrollState.horizontalOffset !=
-            oldDelegate.editorState.scrollState.horizontalOffset ||
-        editorState.scrollState.verticalOffset !=
-            oldDelegate.editorState.scrollState.verticalOffset;
   }
 
   void _drawCaret(Canvas canvas) {
@@ -249,5 +242,14 @@ class EditorPainter extends CustomPainter {
 
     textPainter.layout();
     return textPainter.width;
+  }
+
+  @override
+  bool shouldRepaint(EditorPainter oldDelegate) {
+    return editorState.version != oldDelegate.editorState.version ||
+        editorState.scrollState.horizontalOffset !=
+            oldDelegate.editorState.scrollState.horizontalOffset ||
+        editorState.scrollState.verticalOffset !=
+            oldDelegate.editorState.scrollState.verticalOffset;
   }
 }

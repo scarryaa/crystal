@@ -43,6 +43,11 @@ class _GutterState extends State<Gutter> {
                       painter: GutterPainter(
                         lineCount: editorState.lines.length,
                         cursor: editorState.cursor,
+                        verticalOffset:
+                            widget.verticalScrollController.hasClients
+                                ? widget.verticalScrollController.offset
+                                : 0,
+                        viewportHeight: MediaQuery.of(context).size.height,
                       ),
                       size: Size(gutterWidth, height)),
                 ),

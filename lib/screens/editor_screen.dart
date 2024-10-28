@@ -20,7 +20,7 @@ class _EditorScreenState extends State<EditorScreen> {
   @override
   void initState() {
     super.initState();
-    _editorState = EditorState();
+    _editorState = EditorState(resetGutterScroll: _resetGutterScroll);
     _editorVerticalScrollController.addListener(_handleEditorScroll);
     _gutterScrollController.addListener(_handleGutterScroll);
   }
@@ -45,6 +45,10 @@ class _EditorScreenState extends State<EditorScreen> {
       _editorVerticalScrollController.jumpTo(_gutterScrollController.offset);
       _editorState.updateVerticalScrollOffset(_gutterScrollController.offset);
     }
+  }
+
+  void _resetGutterScroll() {
+    _gutterScrollController.jumpTo(0);
   }
 
   @override
