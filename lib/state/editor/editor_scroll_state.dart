@@ -6,4 +6,12 @@ class EditorScrollState {
 
   bool get atEdge =>
       verticalOffset <= minScrollExtent || verticalOffset >= maxScrollExtent;
+
+  void updateVerticalScrollOffset(double offset) {
+    verticalOffset = offset;
+  }
+
+  void updateHorizontalScrollOffset(double offset) {
+    horizontalOffset = offset;
+  }
 }

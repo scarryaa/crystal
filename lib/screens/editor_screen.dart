@@ -13,30 +13,54 @@ class EditorScreen extends StatefulWidget {
 
 class _EditorScreenState extends State<EditorScreen> {
   final ScrollController _gutterScrollController = ScrollController();
-  final ScrollController _editorScrollController = ScrollController();
+  final ScrollController _editorVerticalScrollController = ScrollController();
+  final ScrollController _editorHorizontalScrollController = ScrollController();
+  late EditorState _editorState;
 
   @override
   void initState() {
     super.initState();
-    _editorScrollController.addListener(() {
-      _gutterScrollController.jumpTo(_editorScrollController.offset);
-    });
-    _gutterScrollController.addListener(() {
-      _editorScrollController.jumpTo(_gutterScrollController.offset);
-    });
+    _editorState = EditorState();
+    _editorVerticalScrollController.addListener(_handleEditorScroll);
+    _gutterScrollController.addListener(_handleGutterScroll);
+  }
+
+  void _handleEditorScroll() {
+    // Vertical offset
+    if (_gutterScrollController.offset !=
+        _editorVerticalScrollController.offset) {
+      _gutterScrollController.jumpTo(_editorVerticalScrollController.offset);
+      _editorState
+          .updateVerticalScrollOffset(_editorVerticalScrollController.offset);
+    }
+
+    // Horizontal offset
+    _editorState
+        .updateHorizontalScrollOffset(_editorHorizontalScrollController.offset);
+  }
+
+  void _handleGutterScroll() {
+    if (_editorVerticalScrollController.offset !=
+        _gutterScrollController.offset) {
+      _editorVerticalScrollController.jumpTo(_gutterScrollController.offset);
+      _editorState.updateVerticalScrollOffset(_gutterScrollController.offset);
+    }
   }
 
   @override
   void dispose() {
+    _gutterScrollController.removeListener(_handleEditorScroll);
+    _gutterScrollController.removeListener(_handleGutterScroll);
     _gutterScrollController.dispose();
-    _editorScrollController.dispose();
+    _editorVerticalScrollController.dispose();
+    _editorHorizontalScrollController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => EditorState(),
+    return ChangeNotifierProvider.value(
+      value: _editorState,
       child: Consumer<EditorState>(
         builder: (context, state, _) {
           final gutterWidth = state.getGutterWidth();
@@ -49,9 +73,10 @@ class _EditorScreenState extends State<EditorScreen> {
               ),
               Expanded(
                 child: Editor(
-                  gutterWidth: gutterWidth,
                   state: state,
-                  verticalScrollController: _editorScrollController,
+                  gutterWidth: gutterWidth,
+                  verticalScrollController: _editorVerticalScrollController,
+                  horizontalScrollController: _editorHorizontalScrollController,
                 ),
               )
             ],

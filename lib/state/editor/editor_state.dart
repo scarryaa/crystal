@@ -124,4 +124,12 @@ class EditorState extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  void updateVerticalScrollOffset(double offset) {
+    scrollState.updateVerticalScrollOffset(offset);
+  }
+
+  void updateHorizontalScrollOffset(double offset) {
+    scrollState.updateHorizontalScrollOffset(offset);
+  }
 }

@@ -71,7 +71,6 @@ class EditorPainter extends CustomPainter {
         _textPainter.layout();
 
         double yPosition = (i * EditorConstants.lineHeight) -
-            editorState.scrollState.verticalOffset +
             (EditorConstants.lineHeight - _textPainter.height) / 2;
         double xPosition = 0;
 
@@ -93,8 +92,7 @@ class EditorPainter extends CustomPainter {
         _textPainter.layout();
 
         double xPosition = _textPainter.width;
-        double yPosition = (cursor.line * EditorConstants.lineHeight) -
-            editorState.scrollState.verticalOffset;
+        double yPosition = (cursor.line * EditorConstants.lineHeight);
 
         canvas.drawRect(
           Rect.fromLTWH(
@@ -112,6 +110,9 @@ class EditorPainter extends CustomPainter {
   @override
   bool shouldRepaint(EditorPainter oldDelegate) {
     return editorState.version != oldDelegate.editorState.version ||
-        editorState.scrollState != oldDelegate.editorState.scrollState;
+        editorState.scrollState.horizontalOffset !=
+            oldDelegate.editorState.scrollState.horizontalOffset ||
+        editorState.scrollState.verticalOffset !=
+            oldDelegate.editorState.scrollState.verticalOffset;
   }
 }

@@ -8,15 +8,16 @@ import 'package:flutter/services.dart';
 
 class Editor extends StatefulWidget {
   final EditorState state;
-  final ScrollController? verticalScrollController;
+  final ScrollController verticalScrollController;
+  final ScrollController horizontalScrollController;
   final double gutterWidth;
 
-  const Editor({
-    super.key,
-    required this.state,
-    required this.gutterWidth,
-    this.verticalScrollController,
-  });
+  const Editor(
+      {super.key,
+      required this.state,
+      required this.gutterWidth,
+      required this.verticalScrollController,
+      required this.horizontalScrollController});
 
   @override
   State<StatefulWidget> createState() => _EditorState();
@@ -24,7 +25,6 @@ class Editor extends StatefulWidget {
 
 class _EditorState extends State<Editor> {
   final FocusNode _focusNode = FocusNode();
-  final ScrollController _horizontalScrollController = ScrollController();
 
   double _maxLineWidth() {
     return widget.state.lines.fold<double>(0, (maxWidth, line) {
@@ -53,7 +53,7 @@ class _EditorState extends State<Editor> {
       child: SingleChildScrollView(
         controller: widget.verticalScrollController,
         child: SingleChildScrollView(
-          controller: _horizontalScrollController,
+          controller: widget.horizontalScrollController,
           scrollDirection: Axis.horizontal,
           child: CustomPaint(
             painter: EditorPainter(editorState: widget.state),
