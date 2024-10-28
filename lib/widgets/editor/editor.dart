@@ -214,6 +214,14 @@ class _EditorState extends State<Editor> {
           widget.state.delete();
           _updateCachedMaxLineWidth();
           return KeyEventResult.handled;
+        case LogicalKeyboardKey.tab:
+          if (isShiftPressed) {
+            widget.state.backTab();
+          } else {
+            widget.state.insertTab();
+            _updateCachedMaxLineWidth();
+          }
+          return KeyEventResult.handled;
         default:
           if (event.character != null &&
               event.character!.length == 1 &&

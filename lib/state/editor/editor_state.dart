@@ -162,9 +162,20 @@ class EditorState extends ChangeNotifier {
     }
 
     if (cursor.column > 0) {
-      lines[cursor.line] = lines[cursor.line].substring(0, cursor.column - 1) +
-          lines[cursor.line].substring(cursor.column);
-      cursor.column--;
+      // Check if we're deleting spaces at the start of a line
+      String currentLine = lines[cursor.line];
+      String beforeCursor = currentLine.substring(0, cursor.column);
+      if (beforeCursor.endsWith('    ') && beforeCursor.trim().isEmpty) {
+        // Delete entire tab (4 spaces)
+        lines[cursor.line] = currentLine.substring(0, cursor.column - 4) +
+            currentLine.substring(cursor.column);
+        cursor.column -= 4;
+      } else {
+        // Normal single character deletion
+        lines[cursor.line] = currentLine.substring(0, cursor.column - 1) +
+            currentLine.substring(cursor.column);
+        cursor.column--;
+      }
     } else if (cursor.line > 0) {
       cursor.column = lines[cursor.line - 1].length;
       lines[cursor.line - 1] += lines[cursor.line];
@@ -182,8 +193,18 @@ class EditorState extends ChangeNotifier {
     }
 
     if (cursor.column < lines[cursor.line].length) {
-      lines[cursor.line] = lines[cursor.line].substring(0, cursor.column) +
-          lines[cursor.line].substring(cursor.column + 1);
+      String currentLine = lines[cursor.line];
+      String afterCursor = currentLine.substring(cursor.column);
+      if (afterCursor.startsWith('    ') &&
+          afterCursor.substring(4).trim().isEmpty) {
+        // Delete entire tab (4 spaces)
+        lines[cursor.line] = currentLine.substring(0, cursor.column) +
+            currentLine.substring(cursor.column + 4);
+      } else {
+        // Normal single character deletion
+        lines[cursor.line] = currentLine.substring(0, cursor.column) +
+            currentLine.substring(cursor.column + 1);
+      }
     } else if (cursor.line < lines.length - 1) {
       lines[cursor.line] += lines[cursor.line + 1];
       lines.removeAt(cursor.line + 1);
@@ -237,6 +258,75 @@ class EditorState extends ChangeNotifier {
 
       cursor.line += pastedLines.length - 1;
       cursor.column = pastedLines.last.length;
+    }
+
+    version++;
+    notifyListeners();
+  }
+
+  void insertTab() {
+    if (selection != null) {
+      Selection _selection = selection!;
+
+      // Add tab to each line in selection
+      for (int i = _selection.startLine; i <= _selection.endLine; i++) {
+        lines[i] = '    ${lines[i]}';
+
+        // Adjust selection and cursor columns
+        if (i == _selection.startLine) {
+          _selection = Selection(
+              startLine: _selection.startLine,
+              endLine: _selection.endLine,
+              startColumn: _selection.startColumn + 4,
+              endColumn: _selection.endColumn + 4);
+        }
+        if (i == cursor.line) {
+          cursor.column += 4;
+        }
+      }
+
+      selection = _selection;
+    } else {
+      // Insert tab at cursor position
+      insertChar('    ');
+      cursor.column += 3;
+    }
+
+    version++;
+    notifyListeners();
+  }
+
+  void backTab() {
+    if (selection != null) {
+      Selection _selection = selection!;
+
+      // Remove tab from each line in selection
+      for (int i = _selection.startLine; i <= _selection.endLine; i++) {
+        if (lines[i].startsWith('    ')) {
+          lines[i] = lines[i].substring(4);
+
+          // Adjust selection and cursor columns
+          if (i == _selection.startLine) {
+            _selection = Selection(
+                startLine: _selection.startLine,
+                endLine: _selection.endLine,
+                startColumn: math.max(0, _selection.startColumn - 4),
+                endColumn: math.max(0, _selection.endColumn - 4));
+          }
+          if (i == cursor.line) {
+            cursor.column = math.max(0, cursor.column - 4);
+          }
+        }
+      }
+
+      selection = _selection;
+    } else {
+      // Remove tab at cursor position if line starts with spaces
+      String currentLine = lines[cursor.line];
+      if (currentLine.startsWith('    ')) {
+        lines[cursor.line] = currentLine.substring(4);
+        cursor.column = math.max(0, cursor.column - 4);
+      }
     }
 
     version++;
@@ -319,11 +409,26 @@ class EditorState extends ChangeNotifier {
       deleteSelection();
     }
 
-    String remainingText = lines[cursor.line].substring(cursor.column);
-    lines[cursor.line] = lines[cursor.line].substring(0, cursor.column);
-    lines.insert(cursor.line + 1, remainingText);
+    String currentLine = lines[cursor.line];
+    String remainingText = currentLine.substring(cursor.column);
+    String beforeCursor = currentLine.substring(0, cursor.column);
+
+    // Calculate indentation of current line
+    String indentation = '';
+    for (int i = 0; i < currentLine.length; i++) {
+      if (currentLine[i] == ' ') {
+        indentation += ' ';
+      } else {
+        break;
+      }
+    }
+
+    // Keep indentation for new line
+    lines[cursor.line] = beforeCursor;
+    lines.insert(cursor.line + 1, indentation + remainingText);
+
     cursor.line++;
-    cursor.column = 0;
+    cursor.column = indentation.length;
     version++;
     notifyListeners();
   }
