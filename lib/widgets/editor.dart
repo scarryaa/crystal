@@ -17,22 +17,36 @@ class _EditorState extends State<Editor> {
 
   @override
   Widget build(BuildContext context) {
-    return _buildEditor(context);
-  }
-
-  Widget _buildEditor(BuildContext context) {
     return Focus(
-        focusNode: _focusNode,
-        onKeyEvent: _handleKeyEvent,
-        autofocus: true,
-        child: CustomPaint(
-          painter: EditorPainter(text: widget.state.text.join('\n')),
-        ));
+      focusNode: _focusNode,
+      onKeyEvent: _handleKeyEvent,
+      autofocus: true,
+      child: CustomPaint(
+        painter: EditorPainter(editorState: widget.state),
+        size: const Size(double.infinity, double.infinity),
+      ),
+    );
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is KeyDownEvent || event is KeyRepeatEvent) {}
-
+    if (event is KeyDownEvent || event is KeyRepeatEvent) {
+      switch (event.logicalKey) {
+        case LogicalKeyboardKey.enter:
+          // Handle enter key
+          return KeyEventResult.handled;
+        case LogicalKeyboardKey.backspace:
+          // Handle backspace
+          return KeyEventResult.handled;
+        case LogicalKeyboardKey.delete:
+          // Handle delete
+          return KeyEventResult.handled;
+        default:
+          if (event.character != null) {
+            widget.state.insertChar(event.character!);
+            return KeyEventResult.handled;
+          }
+      }
+    }
     return KeyEventResult.ignored;
   }
 }
