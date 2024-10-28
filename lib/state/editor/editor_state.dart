@@ -563,4 +563,24 @@ class EditorState extends ChangeNotifier {
     scrollState.updateHorizontalScrollOffset(offset);
     notifyListeners();
   }
+
+  void openFile(String content) {
+    // Split content into lines and update the editor state
+    lines = content.split('\n');
+    if (lines.isEmpty) {
+      lines = [''];
+    }
+
+    // Reset cursor and selection
+    cursor = Cursor(0, 0);
+    clearSelection();
+
+    // Reset scroll positions
+    scrollState.updateVerticalScrollOffset(0);
+    scrollState.updateHorizontalScrollOffset(0);
+    resetGutterScroll();
+
+    version++;
+    notifyListeners();
+  }
 }

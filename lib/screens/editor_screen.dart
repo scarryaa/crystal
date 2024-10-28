@@ -1,5 +1,6 @@
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/widgets/editor/editor.dart';
+import 'package:crystal/widgets/file_explorer/file_explorer.dart';
 import 'package:crystal/widgets/gutter/gutter.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -16,6 +17,10 @@ class _EditorScreenState extends State<EditorScreen> {
   final ScrollController _editorVerticalScrollController = ScrollController();
   final ScrollController _editorHorizontalScrollController = ScrollController();
   late EditorState _editorState;
+
+  void tapCallback(String path) {
+    _editorState.openFile(path);
+  }
 
   @override
   void initState() {
@@ -71,6 +76,10 @@ class _EditorScreenState extends State<EditorScreen> {
 
           return Row(
             children: [
+              FileExplorer(
+                rootDir: '',
+                tapCallback: tapCallback,
+              ),
               Gutter(
                 editorState: state,
                 verticalScrollController: _gutterScrollController,
