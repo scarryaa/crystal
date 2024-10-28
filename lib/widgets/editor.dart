@@ -31,14 +31,24 @@ class _EditorState extends State<Editor> {
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (event is KeyDownEvent || event is KeyRepeatEvent) {
       switch (event.logicalKey) {
+        // Arrow keys
+        case LogicalKeyboardKey.arrowDown:
+          widget.state.moveCursorDown();
+        case LogicalKeyboardKey.arrowUp:
+          widget.state.moveCursorUp();
+        case LogicalKeyboardKey.arrowLeft:
+          widget.state.moveCursorLeft();
+        case LogicalKeyboardKey.arrowRight:
+          widget.state.moveCursorRight();
+
         case LogicalKeyboardKey.enter:
-          // Handle enter key
+          widget.state.insertNewLine();
           return KeyEventResult.handled;
         case LogicalKeyboardKey.backspace:
-          // Handle backspace
+          widget.state.backspace();
           return KeyEventResult.handled;
         case LogicalKeyboardKey.delete:
-          // Handle delete
+          widget.state.delete();
           return KeyEventResult.handled;
         default:
           if (event.character != null) {

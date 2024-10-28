@@ -58,6 +58,34 @@ class EditorPainter extends CustomPainter {
         _textPainter.paint(canvas, Offset(0, yPosition));
       }
     }
+
+    // Draw carets
+    for (var cursor in editorState.cursors) {
+      if (cursor.line >= firstVisibleLine && cursor.line < lastVisibleLine) {
+        _textPainter.text = TextSpan(
+          text: lines[cursor.line].substring(0, cursor.column),
+          style: TextStyle(
+            fontSize: EditorConstants.fontSize,
+            color: Colors.black,
+          ),
+        );
+        _textPainter.layout();
+
+        double xPosition = _textPainter.width;
+        double yPosition = (cursor.line * EditorConstants.lineHeight) -
+            editorState.scrollState.verticalOffset;
+
+        canvas.drawRect(
+          Rect.fromLTWH(
+            xPosition,
+            yPosition,
+            2,
+            EditorConstants.lineHeight,
+          ),
+          Paint()..color = Colors.blue,
+        );
+      }
+    }
   }
 
   @override
