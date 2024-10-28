@@ -97,18 +97,25 @@ class _EditorState extends State<Editor> {
   }
 
   void _handleTap(TapDownDetails details) {
-    widget.state.handleTap(details.globalPosition.dy, details.localPosition.dx,
-        EditorPainter.measureLineWidth);
+    final localY =
+        details.localPosition.dy + widget.verticalScrollController.offset;
+    final localX =
+        details.localPosition.dx + widget.horizontalScrollController.offset;
+    widget.state.handleTap(localY, localX, EditorPainter.measureLineWidth);
   }
 
   void _handleDragStart(DragStartDetails details) {
-    widget.state.handleDragStart(details.globalPosition.dy,
-        details.localPosition.dx, EditorPainter.measureLineWidth);
+    widget.state.handleDragStart(
+        details.localPosition.dy + widget.verticalScrollController.offset,
+        details.localPosition.dx + widget.horizontalScrollController.offset,
+        EditorPainter.measureLineWidth);
   }
 
   void _handleDragUpdate(DragUpdateDetails details) {
-    widget.state.handleDragUpdate(details.globalPosition.dy,
-        details.localPosition.dx, EditorPainter.measureLineWidth);
+    widget.state.handleDragUpdate(
+        details.localPosition.dy + widget.verticalScrollController.offset,
+        details.localPosition.dx + widget.horizontalScrollController.offset,
+        EditorPainter.measureLineWidth);
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {

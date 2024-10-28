@@ -256,7 +256,7 @@ class EditorState extends ChangeNotifier {
       targetLine = lines.length - 1;
     }
 
-    double x = dx + scrollState.horizontalOffset;
+    double x = dx;
     String lineText = lines[targetLine];
     int targetColumn = 0;
     double currentWidth = 0;
