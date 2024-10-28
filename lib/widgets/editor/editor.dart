@@ -61,34 +61,54 @@ class _EditorState extends State<Editor> {
       focusNode: _focusNode,
       onKeyEvent: _handleKeyEvent,
       autofocus: true,
-      child: Scrollbar(
-          controller: widget.verticalScrollController,
-          thickness: 10,
-          radius: const Radius.circular(0),
+      child: GestureDetector(
+          onTapDown: _handleTap,
+          onPanStart: _handleDragStart,
+          onPanUpdate: _handleDragUpdate,
           child: Scrollbar(
-            controller: widget.horizontalScrollController,
-            thickness: 10,
-            radius: const Radius.circular(0),
-            notificationPredicate: (notification) => notification.depth == 1,
-            child: ScrollConfiguration(
-              behavior: const ScrollBehavior().copyWith(scrollbars: false),
-              child: SingleChildScrollView(
-                controller: widget.verticalScrollController,
-                child: SingleChildScrollView(
-                  controller: widget.horizontalScrollController,
-                  scrollDirection: Axis.horizontal,
-                  child: CustomPaint(
-                    painter: EditorPainter(
-                      editorState: widget.state,
-                      viewportHeight: MediaQuery.of(context).size.height,
+              controller: widget.verticalScrollController,
+              thickness: 10,
+              radius: const Radius.circular(0),
+              child: Scrollbar(
+                controller: widget.horizontalScrollController,
+                thickness: 10,
+                radius: const Radius.circular(0),
+                notificationPredicate: (notification) =>
+                    notification.depth == 1,
+                child: ScrollConfiguration(
+                  behavior: const ScrollBehavior().copyWith(scrollbars: false),
+                  child: SingleChildScrollView(
+                    controller: widget.verticalScrollController,
+                    child: SingleChildScrollView(
+                      controller: widget.horizontalScrollController,
+                      scrollDirection: Axis.horizontal,
+                      child: CustomPaint(
+                        painter: EditorPainter(
+                          editorState: widget.state,
+                          viewportHeight: MediaQuery.of(context).size.height,
+                        ),
+                        size: Size(width, height),
+                      ),
                     ),
-                    size: Size(width, height),
                   ),
                 ),
-              ),
-            ),
-          )),
+              ))),
     );
+  }
+
+  void _handleTap(TapDownDetails details) {
+    widget.state.handleTap(details.globalPosition.dy, details.localPosition.dx,
+        EditorPainter.measureLineWidth);
+  }
+
+  void _handleDragStart(DragStartDetails details) {
+    widget.state.handleDragStart(details.globalPosition.dy,
+        details.localPosition.dx, EditorPainter.measureLineWidth);
+  }
+
+  void _handleDragUpdate(DragUpdateDetails details) {
+    widget.state.handleDragUpdate(details.globalPosition.dy,
+        details.localPosition.dx, EditorPainter.measureLineWidth);
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {

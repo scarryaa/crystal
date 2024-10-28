@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/state/editor/editor_scroll_state.dart';
@@ -246,6 +247,62 @@ class EditorState extends ChangeNotifier {
         lines[cursor.line].substring(cursor.column);
     cursor.column++;
     version++;
+    notifyListeners();
+  }
+
+  void handleTap(double dy, double dx, Function(String line) measureLineWidth) {
+    int targetLine = dy ~/ EditorConstants.lineHeight;
+    if (targetLine >= lines.length) {
+      targetLine = lines.length - 1;
+    }
+
+    double x = dx + scrollState.horizontalOffset;
+    String lineText = lines[targetLine];
+    int targetColumn = 0;
+    double currentWidth = 0;
+
+    for (int i = 0; i < lineText.length; i++) {
+      double charWidth = measureLineWidth(lineText[i]);
+      if (currentWidth + (charWidth / 2) > x) break;
+      currentWidth += charWidth;
+      targetColumn = i + 1;
+    }
+
+    cursor.line = targetLine;
+    cursor.column = targetColumn;
+    clearSelection();
+    notifyListeners();
+  }
+
+  void handleDragStart(
+      double dy, double dx, Function(String line) measureLineWidth) {
+    handleTap(dy, dx, measureLineWidth);
+    startSelection();
+    notifyListeners();
+  }
+
+  void handleDragUpdate(
+      double dy, double dx, Function(String line) measureLineWidth) {
+    int targetLine = dy ~/ EditorConstants.lineHeight;
+    if (targetLine >= lines.length) {
+      targetLine = lines.length - 1;
+    }
+
+    double x = dx + scrollState.horizontalOffset;
+    String lineText = lines[targetLine];
+    int targetColumn = 0;
+    double currentWidth = 0;
+
+    for (int i = 0; i < lineText.length; i++) {
+      double charWidth = measureLineWidth(lineText[i]);
+      if (currentWidth + (charWidth / 2) > x) break;
+      currentWidth += charWidth;
+      targetColumn = i + 1;
+    }
+
+    cursor.line = targetLine;
+    cursor.column = targetColumn;
+    updateSelection();
     notifyListeners();
   }
 
