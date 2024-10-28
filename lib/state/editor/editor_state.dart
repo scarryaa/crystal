@@ -286,6 +286,8 @@ class EditorState extends ChangeNotifier {
     int targetLine = dy ~/ EditorConstants.lineHeight;
     if (targetLine >= lines.length) {
       targetLine = lines.length - 1;
+    } else if (targetLine < 0) {
+      targetLine = 0;
     }
 
     double x = dx + scrollState.horizontalOffset;
