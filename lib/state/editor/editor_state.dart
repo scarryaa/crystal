@@ -1,5 +1,5 @@
 import 'package:crystal/models/cursor.dart';
-import 'package:crystal/state/editor_scroll_state.dart';
+import 'package:crystal/state/editor/editor_scroll_state.dart';
 import 'package:flutter/material.dart';
 
 class EditorState extends ChangeNotifier {

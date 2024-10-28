@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:crystal/constants/editor_constants.dart';
-import 'package:crystal/state/editor_state.dart';
+import 'package:crystal/state/editor/editor_state.dart';
 import 'package:flutter/material.dart';
 
 class EditorPainter extends CustomPainter {
@@ -50,12 +50,14 @@ class EditorPainter extends CustomPainter {
           ),
         );
 
-        _textPainter.layout(maxWidth: size.width);
+        _textPainter.layout();
 
         double yPosition = (i * EditorConstants.lineHeight) -
-            editorState.scrollState.verticalOffset;
+            editorState.scrollState.verticalOffset +
+            (EditorConstants.lineHeight - _textPainter.height) / 2;
+        double xPosition = 0;
 
-        _textPainter.paint(canvas, Offset(0, yPosition));
+        _textPainter.paint(canvas, Offset(xPosition, yPosition));
       }
     }
 

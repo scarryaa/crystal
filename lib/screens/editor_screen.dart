@@ -1,6 +1,8 @@
-import 'package:crystal/state/editor_state.dart';
-import 'package:crystal/widgets/editor.dart';
+import 'package:crystal/state/editor/editor_state.dart';
+import 'package:crystal/widgets/editor/editor.dart';
+import 'package:crystal/widgets/gutter/gutter.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class EditorScreen extends StatefulWidget {
   const EditorScreen({super.key});
@@ -10,10 +12,22 @@ class EditorScreen extends StatefulWidget {
 }
 
 class _EditorScreenState extends State<EditorScreen> {
-  final EditorState _editorState = EditorState();
-
   @override
   Widget build(BuildContext context) {
-    return Editor(state: _editorState);
+    return ChangeNotifierProvider(
+      create: (_) => EditorState(),
+      child: Row(
+        children: [
+          const Gutter(),
+          Expanded(
+            child: Consumer<EditorState>(
+              builder: (context, state, _) => Editor(
+                state: state,
+              ),
+            ),
+          )
+        ],
+      ),
+    );
   }
 }

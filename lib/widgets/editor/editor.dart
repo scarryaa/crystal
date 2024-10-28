@@ -1,5 +1,5 @@
-import 'package:crystal/state/editor_state.dart';
-import 'package:crystal/widgets/editor_painter.dart';
+import 'package:crystal/state/editor/editor_state.dart';
+import 'package:crystal/widgets/editor/editor_painter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
