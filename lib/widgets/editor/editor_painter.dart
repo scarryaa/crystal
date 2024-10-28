@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/models/cursor.dart';
+import 'package:crystal/models/selection.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:flutter/material.dart';
 
@@ -15,23 +16,6 @@ class EditorPainter extends CustomPainter {
           textAlign: TextAlign.left,
         ),
         super(repaint: editorState);
-
-  static double measureLineWidth(String line) {
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: line,
-        style: TextStyle(
-          fontFamily: EditorConstants.fontFamily,
-          fontSize: EditorConstants.fontSize,
-          fontWeight: FontWeight.normal,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    );
-
-    textPainter.layout();
-    return textPainter.width;
-  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -68,35 +52,39 @@ class EditorPainter extends CustomPainter {
     _drawCaret(canvas);
   }
 
-  void _drawText(Canvas canvas, Size size, int firstVisibleLine,
-      int lastVisibleLine, List<String> lines) {
-    // Draw visible text lines
-    for (int i = firstVisibleLine; i < lastVisibleLine; i++) {
-      if (i >= 0 && i < lines.length) {
-        _textPainter.text = TextSpan(
-          text: lines[i],
-          style: TextStyle(
-            fontSize: EditorConstants.fontSize,
-            fontFamily: EditorConstants.fontFamily,
-            color: Colors.black,
-          ),
-        );
+  @override
+  bool shouldRepaint(EditorPainter oldDelegate) {
+    return editorState.version != oldDelegate.editorState.version ||
+        editorState.scrollState.horizontalOffset !=
+            oldDelegate.editorState.scrollState.horizontalOffset ||
+        editorState.scrollState.verticalOffset !=
+            oldDelegate.editorState.scrollState.verticalOffset;
+  }
 
-        _textPainter.layout();
+  void _drawCaret(Canvas canvas) {
+    String textUpToCaret = editorState.lines[editorState.cursor.line]
+        .substring(0, editorState.cursor.column);
+    _textPainter.text = TextSpan(
+      text: textUpToCaret,
+      style: TextStyle(
+        fontSize: EditorConstants.fontSize,
+        fontFamily: EditorConstants.fontFamily,
+        color: Colors.black,
+      ),
+    );
+    _textPainter.layout();
 
-        double yPosition = (i * EditorConstants.lineHeight) +
-            (EditorConstants.lineHeight - _textPainter.height) / 2;
-        double xPosition = 0;
+    double caretLeft = _textPainter.width;
+    double caretTop = EditorConstants.lineHeight * editorState.cursor.line;
 
-        _textPainter.paint(canvas, Offset(xPosition, yPosition));
-      }
-    }
+    canvas.drawRect(
+        Rect.fromLTWH(caretLeft, caretTop, 2.0, EditorConstants.lineHeight),
+        Paint()..color = Colors.blue);
   }
 
   void _drawSelection(
       Canvas canvas, int firstVisibleLine, int lastVisibleLine) {
-    Cursor selection = editorState.selection!;
-    Cursor cursor = editorState.cursor;
+    Selection selection = editorState.selection!;
     Paint selectionPaint = Paint()..color = Colors.blue.withOpacity(0.2);
     int selectionStartLine,
         selectionEndLine,
@@ -104,17 +92,18 @@ class EditorPainter extends CustomPainter {
         selectionEndColumn;
 
     // Normalize selection
-    if (selection.line > cursor.line ||
-        selection.line == cursor.line && selection.column > cursor.column) {
-      selectionStartLine = cursor.line;
-      selectionEndLine = selection.line;
-      selectionStartColumn = cursor.column;
-      selectionEndColumn = selection.column;
+    if (selection.startLine > selection.endLine ||
+        selection.startLine == selection.endLine &&
+            selection.startColumn > selection.endColumn) {
+      selectionStartLine = selection.endLine;
+      selectionEndLine = selection.startLine;
+      selectionStartColumn = selection.endColumn;
+      selectionEndColumn = selection.startColumn;
     } else {
-      selectionStartLine = selection.line;
-      selectionEndLine = cursor.line;
-      selectionStartColumn = selection.column;
-      selectionEndColumn = cursor.column;
+      selectionStartLine = selection.startLine;
+      selectionEndLine = selection.endLine;
+      selectionStartColumn = selection.startColumn;
+      selectionEndColumn = selection.endColumn;
     }
 
     if (selectionStartLine == selectionEndLine) {
@@ -220,33 +209,45 @@ class EditorPainter extends CustomPainter {
         paint);
   }
 
-  void _drawCaret(Canvas canvas) {
-    String textUpToCaret = editorState.lines[editorState.cursor.line]
-        .substring(0, editorState.cursor.column);
-    _textPainter.text = TextSpan(
-      text: textUpToCaret,
-      style: TextStyle(
-        fontSize: EditorConstants.fontSize,
-        fontFamily: EditorConstants.fontFamily,
-        color: Colors.black,
-      ),
-    );
-    _textPainter.layout();
+  void _drawText(Canvas canvas, Size size, int firstVisibleLine,
+      int lastVisibleLine, List<String> lines) {
+    // Draw visible text lines
+    for (int i = firstVisibleLine; i < lastVisibleLine; i++) {
+      if (i >= 0 && i < lines.length) {
+        _textPainter.text = TextSpan(
+          text: lines[i],
+          style: TextStyle(
+            fontSize: EditorConstants.fontSize,
+            fontFamily: EditorConstants.fontFamily,
+            color: Colors.black,
+          ),
+        );
 
-    double caretLeft = _textPainter.width;
-    double caretTop = EditorConstants.lineHeight * editorState.cursor.line;
+        _textPainter.layout();
 
-    canvas.drawRect(
-        Rect.fromLTWH(caretLeft, caretTop, 2.0, EditorConstants.lineHeight),
-        Paint()..color = Colors.blue);
+        double yPosition = (i * EditorConstants.lineHeight) +
+            (EditorConstants.lineHeight - _textPainter.height) / 2;
+        double xPosition = 0;
+
+        _textPainter.paint(canvas, Offset(xPosition, yPosition));
+      }
+    }
   }
 
-  @override
-  bool shouldRepaint(EditorPainter oldDelegate) {
-    return editorState.version != oldDelegate.editorState.version ||
-        editorState.scrollState.horizontalOffset !=
-            oldDelegate.editorState.scrollState.horizontalOffset ||
-        editorState.scrollState.verticalOffset !=
-            oldDelegate.editorState.scrollState.verticalOffset;
+  static double measureLineWidth(String line) {
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: line,
+        style: TextStyle(
+          fontFamily: EditorConstants.fontFamily,
+          fontSize: EditorConstants.fontSize,
+          fontWeight: FontWeight.normal,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+
+    textPainter.layout();
+    return textPainter.width;
   }
 }

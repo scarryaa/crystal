@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:crystal/models/cursor.dart';
+import 'package:crystal/models/selection.dart';
 import 'package:crystal/state/editor/editor_scroll_state.dart';
 import 'package:flutter/material.dart';
 
@@ -9,95 +10,126 @@ class EditorState extends ChangeNotifier {
   List<String> lines = [''];
   Cursor cursor = Cursor(0, 0);
   EditorScrollState scrollState = EditorScrollState();
-  Cursor? selection;
+  Selection? selection;
+  int? anchorLine;
+  int? anchorColumn;
 
   double getGutterWidth() {
     return math.max((lines.length.toString().length * 10.0) + 20.0, 48.0);
   }
 
   void startSelection() {
-    selection = Cursor(cursor.line, cursor.column);
-    notifyListeners();
+    // Store the anchor point when starting selection
+    anchorLine = cursor.line;
+    anchorColumn = cursor.column;
+
+    selection = Selection(
+        startLine: cursor.line,
+        endLine: cursor.line,
+        startColumn: cursor.column,
+        endColumn: cursor.column);
   }
 
   void updateSelection() {
-    if (selection != null) {
-      selection!.line = cursor.line;
-      selection!.column = cursor.column;
-      notifyListeners();
+    if (selection == null || anchorLine == null || anchorColumn == null) return;
+
+    // Compare cursor position with anchor to determine direction
+    if (cursor.line < anchorLine! ||
+        (cursor.line == anchorLine! && cursor.column < anchorColumn!)) {
+      // Selecting backwards
+      selection = Selection(
+          startLine: cursor.line,
+          endLine: anchorLine!,
+          startColumn: cursor.column,
+          endColumn: anchorColumn!);
+    } else {
+      // Selecting forwards
+      selection = Selection(
+          startLine: anchorLine!,
+          endLine: cursor.line,
+          startColumn: anchorColumn!,
+          endColumn: cursor.column);
     }
   }
 
   void clearSelection() {
     selection = null;
+    anchorLine = null;
+    anchorColumn = null;
     notifyListeners();
   }
 
   void selectAll() {
-    selection = Cursor(lines.length - 1, lines.last.length);
+    anchorLine = lines.length - 1;
+    anchorColumn = lines.last.length;
     cursor.line = 0;
     cursor.column = 0;
+    selection = Selection(
+        startLine: 0,
+        endLine: lines.length - 1,
+        startColumn: 0,
+        endColumn: lines.last.length);
     notifyListeners();
   }
 
   String getSelectedText() {
     if (selection == null) return '';
+    Selection _selection = selection!;
 
-    Cursor start = cursor;
-    Cursor end = selection!;
-
-    if (start.line > end.line ||
-        (start.line == end.line && start.column > end.column)) {
-      var temp = start;
-      start = end;
-      end = temp;
+    if (_selection.startLine == _selection.endLine) {
+      // Single line selection
+      return lines[_selection.startLine]
+          .substring(_selection.startColumn, _selection.endColumn);
     }
 
-    if (start.line == end.line) {
-      return lines[start.line].substring(start.column, end.column);
-    }
-
+    // Multi-line selection
     StringBuffer result = StringBuffer();
-    result.write(lines[start.line].substring(start.column));
+
+    // First line
+    result.write(lines[_selection.startLine].substring(_selection.startColumn));
     result.write('\n');
 
-    for (int i = start.line + 1; i < end.line; i++) {
+    // Middle lines
+    for (int i = _selection.startLine + 1; i < _selection.endLine; i++) {
       result.write(lines[i]);
       result.write('\n');
     }
 
-    result.write(lines[end.line].substring(0, end.column));
+    // Last line
+    result.write(lines[_selection.endLine].substring(0, _selection.endColumn));
+
     return result.toString();
   }
 
   void deleteSelection() {
     if (selection == null) return;
+    Selection _selection = selection!;
 
-    Cursor start = cursor;
-    Cursor end = selection!;
-
-    if (start.line > end.line ||
-        (start.line == end.line && start.column > end.column)) {
-      var temp = start;
-      start = end;
-      end = temp;
-    }
-
-    if (start.line == end.line) {
-      lines[start.line] = lines[start.line].substring(0, start.column) +
-          lines[start.line].substring(end.column);
-      cursor.column = start.column;
+    if (_selection.startLine == _selection.endLine) {
+      // Single line deletion
+      lines[_selection.startLine] =
+          lines[_selection.startLine].substring(0, _selection.startColumn) +
+              lines[_selection.startLine].substring(_selection.endColumn);
+      cursor.line = _selection.startLine;
+      cursor.column = _selection.startColumn;
     } else {
-      String startText = lines[start.line].substring(0, start.column);
-      String endText = lines[end.line].substring(end.column);
-      lines[start.line] = startText + endText;
+      // Multi-line deletion
+      String startText =
+          lines[_selection.startLine].substring(0, _selection.startColumn);
+      String endText =
+          lines[_selection.endLine].substring(_selection.endColumn);
 
-      for (int i = 0; i < end.line - start.line; i++) {
-        lines.removeAt(start.line + 1);
+      // Combine first and last lines
+      lines[_selection.startLine] = startText + endText;
+
+      // Remove lines in between
+      for (int i = 0; i < _selection.endLine - _selection.startLine; i++) {
+        lines.removeAt(_selection.startLine + 1);
       }
 
-      cursor.line = start.line;
-      cursor.column = start.column;
+      // Update cursor position
+      cursor.line = _selection.startLine;
+      cursor.column = _selection.startColumn;
     }
 
     clearSelection();
@@ -171,21 +203,28 @@ class EditorState extends ChangeNotifier {
 
   void moveCursorDown(bool isShiftPressed) {
     if (cursor.line < lines.length - 1) {
-      cursor.line++;
-      cursor.column = cursor.column.clamp(0, lines[cursor.line].length);
       if (selection == null && isShiftPressed) {
         startSelection();
-      } else if (isShiftPressed) {
-        updateSelection();
       }
+
+      cursor.line++;
+      cursor.column = cursor.column.clamp(0, lines[cursor.line].length);
     }
-    if (!isShiftPressed) {
+
+    if (isShiftPressed) {
+      updateSelection();
+    } else {
       clearSelection();
     }
+
     notifyListeners();
   }
 
   void moveCursorLeft(bool isShiftPressed) {
+    if (selection == null && isShiftPressed) {
+      startSelection();
+    }
+
     if (cursor.column > 0) {
       cursor.column--;
     } else if (cursor.line > 0) {
@@ -193,49 +232,52 @@ class EditorState extends ChangeNotifier {
       cursor.column = lines[cursor.line].length;
     }
 
-    if (selection == null && isShiftPressed) {
-      startSelection();
-    } else if (isShiftPressed) {
+    if (isShiftPressed) {
       updateSelection();
-    }
-
-    if (!isShiftPressed) {
+    } else {
       clearSelection();
     }
+
     notifyListeners();
   }
 
   void moveCursorRight(bool isShiftPressed) {
+    if (selection == null && isShiftPressed) {
+      startSelection();
+    }
+
     if (cursor.column < lines[cursor.line].length) {
       cursor.column++;
     } else if (cursor.line < lines.length - 1) {
       cursor.line++;
       cursor.column = 0;
     }
-    if (selection == null && isShiftPressed) {
-      startSelection();
-    } else if (isShiftPressed) {
+
+    if (isShiftPressed) {
       updateSelection();
-    }
-    if (!isShiftPressed) {
+    } else {
       clearSelection();
     }
+
     notifyListeners();
   }
 
   void moveCursorUp(bool isShiftPressed) {
     if (cursor.line > 0) {
-      cursor.line--;
-      cursor.column = cursor.column.clamp(0, lines[cursor.line].length);
       if (selection == null && isShiftPressed) {
         startSelection();
-      } else if (isShiftPressed) {
-        updateSelection();
       }
+
+      cursor.line--;
+      cursor.column = cursor.column.clamp(0, lines[cursor.line].length);
     }
-    if (!isShiftPressed) {
+
+    if (isShiftPressed) {
+      updateSelection();
+    } else {
       clearSelection();
     }
+
     notifyListeners();
   }
 
