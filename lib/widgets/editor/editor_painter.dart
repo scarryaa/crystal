@@ -70,7 +70,7 @@ class EditorPainter extends CustomPainter {
 
         _textPainter.layout();
 
-        double yPosition = (i * EditorConstants.lineHeight) -
+        double yPosition = (i * EditorConstants.lineHeight) +
             (EditorConstants.lineHeight - _textPainter.height) / 2;
         double xPosition = 0;
 
