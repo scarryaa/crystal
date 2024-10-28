@@ -59,6 +59,16 @@ class EditorPainter extends CustomPainter {
     _drawCaret(canvas);
   }
 
+  void _drawIndentLines(Canvas canvas, double left, int lineNumber) {
+    canvas.drawLine(
+        Offset(left, lineNumber * EditorConstants.lineHeight),
+        Offset(
+            left,
+            lineNumber * EditorConstants.lineHeight +
+                EditorConstants.lineHeight),
+        EditorConstants.indentLineColor);
+  }
+
   void _highlightCurrentLine(Canvas canvas, Size size, int lineNumber) {
     canvas.drawRect(
         Rect.fromLTWH(
@@ -263,11 +273,45 @@ class EditorPainter extends CustomPainter {
         paint);
   }
 
+  int _countLeadingSpaces(String line) {
+    int count = 0;
+    for (int j = 0; j < line.length; j++) {
+      if (line[j] == ' ') {
+        count++;
+      } else {
+        break;
+      }
+    }
+    return count;
+  }
+
   void _drawText(Canvas canvas, Size size, int firstVisibleLine,
       int lastVisibleLine, List<String> lines) {
     // Draw visible text lines
     for (int i = firstVisibleLine; i < lastVisibleLine; i++) {
       if (i >= 0 && i < lines.length) {
+        // Draw indent lines
+        String line = lines[i];
+        int leadingSpaces;
+        if (line.isEmpty) {
+          // For empty lines, look back to find the first non-empty line's indentation
+          int j = i - 1;
+          while (j >= 0 && lines[j].isEmpty) {
+            j--;
+          }
+          leadingSpaces = j >= 0 ? _countLeadingSpaces(lines[j]) : 0;
+        } else {
+          leadingSpaces = _countLeadingSpaces(line);
+        }
+
+        for (int space = 0; space < leadingSpaces; space += 4) {
+          if (line.isNotEmpty && !line.startsWith(' ')) continue;
+
+          double xPosition = space * EditorConstants.charWidth;
+          _drawIndentLines(canvas, xPosition, i);
+        }
+
+        // Draw the text
         _textPainter.text = TextSpan(
           text: lines[i],
           style: TextStyle(
