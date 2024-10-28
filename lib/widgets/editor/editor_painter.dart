@@ -45,6 +45,11 @@ class EditorPainter extends CustomPainter {
     // Draw text
     _drawText(canvas, size, firstVisibleLine, lastVisibleLine, lines);
 
+    // Highlight current line (if no selection)
+    if (editorState.selection?.hasSelection != true) {
+      _highlightCurrentLine(canvas, size, editorState.cursor.line);
+    }
+
     // Draw selection
     if (editorState.selection != null) {
       _drawSelection(canvas, firstVisibleLine, lastVisibleLine);
@@ -52,6 +57,17 @@ class EditorPainter extends CustomPainter {
 
     // Draw caret
     _drawCaret(canvas);
+  }
+
+  void _highlightCurrentLine(Canvas canvas, Size size, int lineNumber) {
+    canvas.drawRect(
+        Rect.fromLTWH(
+          0,
+          lineNumber * EditorConstants.lineHeight,
+          size.width,
+          EditorConstants.lineHeight,
+        ),
+        EditorConstants.currentLineHighlight);
   }
 
   void _drawCaret(Canvas canvas) {

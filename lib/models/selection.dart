@@ -9,4 +9,8 @@ class Selection {
       required this.endLine,
       required this.startColumn,
       required this.endColumn});
+
+  bool get hasSelection =>
+      (startLine == endLine && startColumn != endColumn) ||
+      startLine != endLine;
 }

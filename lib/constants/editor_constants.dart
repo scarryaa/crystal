@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 class EditorConstants {
   static const double horizontalPadding = 100;
   static const int verticalPaddingLines = 5;
@@ -6,4 +8,6 @@ class EditorConstants {
   static double fontSize = 14;
   static double lineHeight = fontSize * lineHeightRatio;
   static String fontFamily = "ZedMono Nerd Font";
+  static Paint currentLineHighlight = Paint()
+    ..color = Colors.blue.withOpacity(0.2);
 }

@@ -32,12 +32,8 @@ class GutterPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height),
-        Paint()..color = Colors.white);
-
-    final textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
-    );
+    // Draw background
+    _drawBackground(canvas, size);
 
     // Calculate visible lines
     int firstVisibleLine =
@@ -48,6 +44,25 @@ class GutterPainter extends CustomPainter {
                 .ceil() +
             5);
     lastVisibleLine = lastVisibleLine.clamp(0, editorState.lines.length);
+
+    _drawText(canvas, size, firstVisibleLine, lastVisibleLine);
+
+    // Highlight current line (if no selection)
+    if (editorState.selection?.hasSelection != true) {
+      _highlightCurrentLine(canvas, size, editorState.cursor.line);
+    }
+  }
+
+  void _drawBackground(Canvas canvas, Size size) {
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height),
+        Paint()..color = Colors.white);
+  }
+
+  void _drawText(
+      Canvas canvas, Size size, int firstVisibleLine, int lastVisibleLine) {
+    final textPainter = TextPainter(
+      textDirection: TextDirection.ltr,
+    );
 
     for (var i = firstVisibleLine; i < lastVisibleLine; i++) {
       final lineNumber = (i + 1).toString();
@@ -74,6 +89,17 @@ class GutterPainter extends CustomPainter {
         Offset(xOffset, yOffset),
       );
     }
+  }
+
+  void _highlightCurrentLine(Canvas canvas, Size size, int lineNumber) {
+    canvas.drawRect(
+        Rect.fromLTWH(
+          0,
+          lineNumber * EditorConstants.lineHeight,
+          size.width,
+          EditorConstants.lineHeight,
+        ),
+        EditorConstants.currentLineHighlight);
   }
 
   @override
