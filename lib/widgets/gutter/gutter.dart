@@ -41,8 +41,7 @@ class _GutterState extends State<Gutter> {
                 child: SizedBox(
                   child: CustomPaint(
                       painter: GutterPainter(
-                        lineCount: editorState.lines.length,
-                        cursor: editorState.cursor,
+                        editorState: editorState,
                         verticalOffset:
                             widget.verticalScrollController.hasClients
                                 ? widget.verticalScrollController.offset

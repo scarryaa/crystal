@@ -1,12 +1,11 @@
 import 'dart:math';
 
 import 'package:crystal/constants/editor_constants.dart';
-import 'package:crystal/models/cursor.dart';
+import 'package:crystal/state/editor/editor_state.dart';
 import 'package:flutter/material.dart';
 
 class GutterPainter extends CustomPainter {
-  final int lineCount;
-  final Cursor cursor;
+  final EditorState editorState;
   final double verticalOffset;
   final double viewportHeight;
 
@@ -14,8 +13,7 @@ class GutterPainter extends CustomPainter {
   final TextStyle _highlightStyle;
 
   GutterPainter({
-    required this.lineCount,
-    required this.cursor,
+    required this.editorState,
     required this.verticalOffset,
     required this.viewportHeight,
     Color? textColor,
@@ -29,7 +27,8 @@ class GutterPainter extends CustomPainter {
           color: highlightColor ?? Colors.blue,
           fontSize: EditorConstants.fontSize,
           fontFamily: EditorConstants.fontFamily,
-        );
+        ),
+        super(repaint: editorState);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -44,15 +43,16 @@ class GutterPainter extends CustomPainter {
     int firstVisibleLine =
         max(0, (verticalOffset / EditorConstants.lineHeight).floor() - 5);
     int lastVisibleLine = min(
-        lineCount,
+        editorState.lines.length,
         ((verticalOffset + viewportHeight) / EditorConstants.lineHeight)
                 .ceil() +
             5);
-    lastVisibleLine = lastVisibleLine.clamp(0, lineCount);
+    lastVisibleLine = lastVisibleLine.clamp(0, editorState.lines.length);
 
     for (var i = firstVisibleLine; i < lastVisibleLine; i++) {
       final lineNumber = (i + 1).toString();
-      final style = cursor.line == i ? _highlightStyle : _defaultStyle;
+      final style =
+          editorState.cursor.line == i ? _highlightStyle : _defaultStyle;
 
       textPainter.text = TextSpan(
         text: lineNumber,
@@ -74,6 +74,7 @@ class GutterPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(GutterPainter oldDelegate) {
-    return lineCount != oldDelegate.lineCount || cursor != oldDelegate.cursor;
+    return editorState.lines.length != oldDelegate.editorState.lines.length ||
+        editorState.cursor != oldDelegate.editorState.cursor;
   }
 }
