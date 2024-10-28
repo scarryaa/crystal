@@ -66,16 +66,33 @@ class _EditorState extends State<Editor> {
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (event is KeyDownEvent || event is KeyRepeatEvent) {
+      final bool isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
+      final bool isControlPressed =
+          HardwareKeyboard.instance.isControlPressed ||
+              HardwareKeyboard.instance.isMetaPressed;
+
+      // Ctrl shortcuts
       switch (event.logicalKey) {
-        // Arrow keys
+        case LogicalKeyboardKey.keyA:
+          if (isControlPressed) {
+            widget.state.selectAll();
+            return KeyEventResult.handled;
+          }
+      }
+
+      switch (event.logicalKey) {
         case LogicalKeyboardKey.arrowDown:
-          widget.state.moveCursorDown();
+          widget.state.moveCursorDown(isShiftPressed);
+          return KeyEventResult.handled;
         case LogicalKeyboardKey.arrowUp:
-          widget.state.moveCursorUp();
+          widget.state.moveCursorUp(isShiftPressed);
+          return KeyEventResult.handled;
         case LogicalKeyboardKey.arrowLeft:
-          widget.state.moveCursorLeft();
+          widget.state.moveCursorLeft(isShiftPressed);
+          return KeyEventResult.handled;
         case LogicalKeyboardKey.arrowRight:
-          widget.state.moveCursorRight();
+          widget.state.moveCursorRight(isShiftPressed);
+          return KeyEventResult.handled;
 
         case LogicalKeyboardKey.enter:
           widget.state.insertNewLine();

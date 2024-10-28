@@ -42,7 +42,7 @@ class _GutterState extends State<Gutter> {
                   child: CustomPaint(
                       painter: GutterPainter(
                         lineCount: editorState.lines.length,
-                        cursors: editorState.cursors,
+                        cursor: editorState.cursor,
                       ),
                       size: Size(gutterWidth, height)),
                 ),

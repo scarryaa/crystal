@@ -7,47 +7,44 @@ import 'package:flutter/material.dart';
 class EditorState extends ChangeNotifier {
   int version = 1;
   List<String> lines = [''];
-  List<Cursor> cursors = [Cursor(0, 0)];
+  Cursor cursor = Cursor(0, 0);
   EditorScrollState scrollState = EditorScrollState();
-  Map<Cursor, Cursor> selections = {};
+  Cursor? selection;
 
   double getGutterWidth() {
     return math.max((lines.length.toString().length * 10.0) + 20.0, 48.0);
   }
 
-  void addCursor(int line, int column) {
-    cursors.add(Cursor(line, column));
+  void startSelection() {
+    selection = Cursor(cursor.line, cursor.column);
     notifyListeners();
   }
 
-  void startSelection(Cursor cursor) {
-    selections[cursor] = Cursor(cursor.line, cursor.column);
-    notifyListeners();
-  }
-
-  void updateSelection(Cursor cursor) {
-    if (selections.containsKey(cursor)) {
-      selections[cursor]!.line = cursor.line;
-      selections[cursor]!.column = cursor.column;
+  void updateSelection() {
+    if (selection != null) {
+      selection!.line = cursor.line;
+      selection!.column = cursor.column;
       notifyListeners();
     }
   }
 
-  void clearSelection(Cursor cursor) {
-    selections.remove(cursor);
+  void clearSelection() {
+    selection = null;
     notifyListeners();
   }
 
-  void clearAllSelections() {
-    selections.clear();
+  void selectAll() {
+    selection = Cursor(lines.length - 1, lines.last.length);
+    cursor.line = 0;
+    cursor.column = 0;
     notifyListeners();
   }
 
-  String getSelectedText(Cursor cursor) {
-    if (!selections.containsKey(cursor)) return '';
+  String getSelectedText() {
+    if (selection == null) return '';
 
     Cursor start = cursor;
-    Cursor end = selections[cursor]!;
+    Cursor end = selection!;
 
     if (start.line > end.line ||
         (start.line == end.line && start.column > end.column)) {
@@ -73,11 +70,11 @@ class EditorState extends ChangeNotifier {
     return result.toString();
   }
 
-  void deleteSelection(Cursor cursor) {
-    if (!selections.containsKey(cursor)) return;
+  void deleteSelection() {
+    if (selection == null) return;
 
     Cursor start = cursor;
-    Cursor end = selections[cursor]!;
+    Cursor end = selection!;
 
     if (start.line > end.line ||
         (start.line == end.line && start.column > end.column)) {
@@ -103,135 +100,141 @@ class EditorState extends ChangeNotifier {
       cursor.column = start.column;
     }
 
-    clearSelection(cursor);
+    clearSelection();
     version++;
     notifyListeners();
   }
 
   void backspace() {
-    for (var cursor in cursors) {
-      if (selections.containsKey(cursor)) {
-        deleteSelection(cursor);
-        continue;
-      }
+    if (selection != null) {
+      deleteSelection();
+      return;
+    }
 
-      if (cursor.column > 0) {
-        lines[cursor.line] =
-            lines[cursor.line].substring(0, cursor.column - 1) +
-                lines[cursor.line].substring(cursor.column);
-        cursor.column--;
-      } else if (cursor.line > 0) {
-        cursor.column = lines[cursor.line - 1].length;
-        lines[cursor.line - 1] += lines[cursor.line];
-        lines.removeAt(cursor.line);
-        cursor.line--;
-      }
+    if (cursor.column > 0) {
+      lines[cursor.line] = lines[cursor.line].substring(0, cursor.column - 1) +
+          lines[cursor.line].substring(cursor.column);
+      cursor.column--;
+    } else if (cursor.line > 0) {
+      cursor.column = lines[cursor.line - 1].length;
+      lines[cursor.line - 1] += lines[cursor.line];
+      lines.removeAt(cursor.line);
+      cursor.line--;
     }
     version++;
     notifyListeners();
   }
 
   void delete() {
-    for (var cursor in cursors) {
-      if (selections.containsKey(cursor)) {
-        deleteSelection(cursor);
-        continue;
-      }
+    if (selection != null) {
+      deleteSelection();
+      return;
+    }
 
-      if (cursor.column < lines[cursor.line].length) {
-        lines[cursor.line] = lines[cursor.line].substring(0, cursor.column) +
-            lines[cursor.line].substring(cursor.column + 1);
-      } else if (cursor.line < lines.length - 1) {
-        lines[cursor.line] += lines[cursor.line + 1];
-        lines.removeAt(cursor.line + 1);
-      }
+    if (cursor.column < lines[cursor.line].length) {
+      lines[cursor.line] = lines[cursor.line].substring(0, cursor.column) +
+          lines[cursor.line].substring(cursor.column + 1);
+    } else if (cursor.line < lines.length - 1) {
+      lines[cursor.line] += lines[cursor.line + 1];
+      lines.removeAt(cursor.line + 1);
     }
     version++;
     notifyListeners();
   }
 
   void insertChar(String c) {
-    for (var cursor in cursors) {
-      if (selections.containsKey(cursor)) {
-        deleteSelection(cursor);
-      }
-
-      lines[cursor.line] = lines[cursor.line].substring(0, cursor.column) +
-          c +
-          lines[cursor.line].substring(cursor.column);
-      cursor.column++;
+    if (selection != null) {
+      deleteSelection();
     }
+
+    lines[cursor.line] = lines[cursor.line].substring(0, cursor.column) +
+        c +
+        lines[cursor.line].substring(cursor.column);
+    cursor.column++;
     version++;
     notifyListeners();
   }
 
   void insertNewLine() {
-    for (var cursor in cursors) {
-      if (selections.containsKey(cursor)) {
-        deleteSelection(cursor);
-      }
-
-      String remainingText = lines[cursor.line].substring(cursor.column);
-      lines[cursor.line] = lines[cursor.line].substring(0, cursor.column);
-      lines.insert(cursor.line + 1, remainingText);
-      cursor.line++;
-      cursor.column = 0;
+    if (selection != null) {
+      deleteSelection();
     }
+
+    String remainingText = lines[cursor.line].substring(cursor.column);
+    lines[cursor.line] = lines[cursor.line].substring(0, cursor.column);
+    lines.insert(cursor.line + 1, remainingText);
+    cursor.line++;
+    cursor.column = 0;
     version++;
     notifyListeners();
   }
 
-  void moveCursorDown() {
-    for (var cursor in cursors) {
-      if (cursor.line < lines.length - 1) {
-        cursor.line++;
-        cursor.column = cursor.column.clamp(0, lines[cursor.line].length);
+  void moveCursorDown(bool isShiftPressed) {
+    if (cursor.line < lines.length - 1) {
+      cursor.line++;
+      cursor.column = cursor.column.clamp(0, lines[cursor.line].length);
+      if (selection == null && isShiftPressed) {
+        startSelection();
+      } else if (isShiftPressed) {
+        updateSelection();
       }
+    }
+    if (!isShiftPressed) {
+      clearSelection();
     }
     notifyListeners();
   }
 
-  void moveCursorLeft() {
-    for (var cursor in cursors) {
-      if (cursor.column > 0) {
-        cursor.column--;
-      } else if (cursor.line > 0) {
-        cursor.line--;
-        cursor.column = lines[cursor.line].length;
-      }
+  void moveCursorLeft(bool isShiftPressed) {
+    if (cursor.column > 0) {
+      cursor.column--;
+    } else if (cursor.line > 0) {
+      cursor.line--;
+      cursor.column = lines[cursor.line].length;
+    }
+    if (selection == null && isShiftPressed) {
+      startSelection();
+    } else if (isShiftPressed) {
+      updateSelection();
+    }
+    if (!isShiftPressed) {
+      clearSelection();
     }
     notifyListeners();
   }
 
-  void moveCursorRight() {
-    for (var cursor in cursors) {
-      if (cursor.column < lines[cursor.line].length) {
-        cursor.column++;
-      } else if (cursor.line < lines.length - 1) {
-        cursor.line++;
-        cursor.column = 0;
-      }
+  void moveCursorRight(bool isShiftPressed) {
+    if (cursor.column < lines[cursor.line].length) {
+      cursor.column++;
+    } else if (cursor.line < lines.length - 1) {
+      cursor.line++;
+      cursor.column = 0;
+    }
+    if (selection == null && isShiftPressed) {
+      startSelection();
+    } else if (isShiftPressed) {
+      updateSelection();
+    }
+    if (!isShiftPressed) {
+      clearSelection();
     }
     notifyListeners();
   }
 
-  void moveCursorUp() {
-    for (var cursor in cursors) {
-      if (cursor.line > 0) {
-        cursor.line--;
-        cursor.column = cursor.column.clamp(0, lines[cursor.line].length);
+  void moveCursorUp(bool isShiftPressed) {
+    if (cursor.line > 0) {
+      cursor.line--;
+      cursor.column = cursor.column.clamp(0, lines[cursor.line].length);
+      if (selection == null && isShiftPressed) {
+        startSelection();
+      } else if (isShiftPressed) {
+        updateSelection();
       }
     }
-    notifyListeners();
-  }
-
-  void removeCursor(int index) {
-    if (cursors.length > 1) {
-      var cursor = cursors[index];
-      selections.remove(cursor);
-      cursors.removeAt(index);
-      notifyListeners();
+    if (!isShiftPressed) {
+      clearSelection();
     }
+    notifyListeners();
   }
 
   void updateVerticalScrollOffset(double offset) {

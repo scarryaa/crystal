@@ -4,14 +4,14 @@ import 'package:flutter/material.dart';
 
 class GutterPainter extends CustomPainter {
   final int lineCount;
-  final List<Cursor> cursors;
+  final Cursor cursor;
 
   final TextStyle _defaultStyle;
   final TextStyle _highlightStyle;
 
   GutterPainter({
     required this.lineCount,
-    required this.cursors,
+    required this.cursor,
     Color? textColor,
     Color? highlightColor,
   })  : _defaultStyle = TextStyle(
@@ -34,11 +34,9 @@ class GutterPainter extends CustomPainter {
       textDirection: TextDirection.ltr,
     );
 
-    final cursorLines = cursors.map((c) => c.line).toSet();
-
     for (var i = 0; i < lineCount; i++) {
       final lineNumber = (i + 1).toString();
-      final style = cursorLines.contains(i) ? _highlightStyle : _defaultStyle;
+      final style = cursor.line == i ? _highlightStyle : _defaultStyle;
 
       textPainter.text = TextSpan(
         text: lineNumber,
@@ -60,6 +58,6 @@ class GutterPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(GutterPainter oldDelegate) {
-    return lineCount != oldDelegate.lineCount || cursors != oldDelegate.cursors;
+    return lineCount != oldDelegate.lineCount || cursor != oldDelegate.cursor;
   }
 }
