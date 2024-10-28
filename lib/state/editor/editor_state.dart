@@ -16,11 +16,17 @@ class EditorState extends ChangeNotifier {
   int? anchorLine;
   int? anchorColumn;
   VoidCallback resetGutterScroll;
+  bool showCaret = true;
 
   EditorState({required this.resetGutterScroll});
 
   double getGutterWidth() {
     return math.max((lines.length.toString().length * 10.0) + 40.0, 48.0);
+  }
+
+  void toggleCaret() {
+    showCaret = !showCaret;
+    notifyListeners();
   }
 
   void startSelection() {

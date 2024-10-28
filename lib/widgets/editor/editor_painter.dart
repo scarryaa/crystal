@@ -60,10 +60,12 @@ class EditorPainter extends CustomPainter {
   }
 
   void _drawIndentLines(Canvas canvas, double left, int lineNumber) {
+    const double lineOffset = 1;
+
     canvas.drawLine(
-        Offset(left, lineNumber * EditorConstants.lineHeight),
+        Offset(left + lineOffset, lineNumber * EditorConstants.lineHeight),
         Offset(
-            left,
+            left + lineOffset,
             lineNumber * EditorConstants.lineHeight +
                 EditorConstants.lineHeight),
         EditorConstants.indentLineColor);
@@ -81,24 +83,26 @@ class EditorPainter extends CustomPainter {
   }
 
   void _drawCaret(Canvas canvas) {
-    String textUpToCaret = editorState.lines[editorState.cursor.line]
-        .substring(0, editorState.cursor.column);
-    _textPainter.text = TextSpan(
-      text: textUpToCaret,
-      style: TextStyle(
-        fontSize: EditorConstants.fontSize,
-        fontFamily: EditorConstants.fontFamily,
-        color: Colors.black,
-      ),
-    );
-    _textPainter.layout();
+    if (editorState.showCaret) {
+      String textUpToCaret = editorState.lines[editorState.cursor.line]
+          .substring(0, editorState.cursor.column);
+      _textPainter.text = TextSpan(
+        text: textUpToCaret,
+        style: TextStyle(
+          fontSize: EditorConstants.fontSize,
+          fontFamily: EditorConstants.fontFamily,
+          color: Colors.black,
+        ),
+      );
+      _textPainter.layout();
 
-    double caretLeft = _textPainter.width;
-    double caretTop = EditorConstants.lineHeight * editorState.cursor.line;
+      double caretLeft = _textPainter.width;
+      double caretTop = EditorConstants.lineHeight * editorState.cursor.line;
 
-    canvas.drawRect(
-        Rect.fromLTWH(caretLeft, caretTop, 2.0, EditorConstants.lineHeight),
-        Paint()..color = Colors.blue);
+      canvas.drawRect(
+          Rect.fromLTWH(caretLeft, caretTop, 2.0, EditorConstants.lineHeight),
+          Paint()..color = Colors.blue);
+    }
   }
 
   void _drawWhitespaceIndicatorsForSelectionWhitespace(
@@ -356,6 +360,7 @@ class EditorPainter extends CustomPainter {
         editorState.scrollState.horizontalOffset !=
             oldDelegate.editorState.scrollState.horizontalOffset ||
         editorState.scrollState.verticalOffset !=
-            oldDelegate.editorState.scrollState.verticalOffset;
+            oldDelegate.editorState.scrollState.verticalOffset ||
+        editorState.showCaret != oldDelegate.editorState.showCaret;
   }
 }

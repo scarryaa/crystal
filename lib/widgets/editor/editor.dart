@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:crystal/constants/editor_constants.dart';
@@ -26,11 +27,44 @@ class Editor extends StatefulWidget {
 class _EditorState extends State<Editor> {
   final FocusNode _focusNode = FocusNode();
   double _cachedMaxLineWidth = 0;
+  Timer? _caretTimer;
 
   @override
   void initState() {
-    _updateCachedMaxLineWidth();
     super.initState();
+    _updateCachedMaxLineWidth();
+    _startCaretBlinking();
+  }
+
+  @override
+  void dispose() {
+    _stopCaretBlinking();
+    super.dispose();
+  }
+
+  void _startCaretBlinking() {
+    _caretTimer?.cancel();
+    _caretTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
+      if (mounted) {
+        setState(() {
+          widget.state.toggleCaret();
+        });
+      }
+    });
+  }
+
+  void _stopCaretBlinking() {
+    _caretTimer?.cancel();
+    _caretTimer = null;
+  }
+
+  void _resetCaretBlink() {
+    if (mounted) {
+      setState(() {
+        widget.state.showCaret = true;
+      });
+      _startCaretBlinking();
+    }
   }
 
   void _updateCachedMaxLineWidth() {
@@ -102,6 +136,7 @@ class _EditorState extends State<Editor> {
     final localX =
         details.localPosition.dx + widget.horizontalScrollController.offset;
     widget.state.handleTap(localY, localX, EditorPainter.measureLineWidth);
+    _resetCaretBlink();
   }
 
   void _handleDragStart(DragStartDetails details) {
@@ -119,6 +154,8 @@ class _EditorState extends State<Editor> {
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    _resetCaretBlink();
+
     if (event is KeyDownEvent || event is KeyRepeatEvent) {
       final bool isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
       final bool isControlPressed =
@@ -178,7 +215,9 @@ class _EditorState extends State<Editor> {
           _updateCachedMaxLineWidth();
           return KeyEventResult.handled;
         default:
-          if (event.character != null) {
+          if (event.character != null &&
+              event.character!.length == 1 &&
+              event.logicalKey != LogicalKeyboardKey.escape) {
             widget.state.insertChar(event.character!);
             _updateCachedMaxLineWidth();
             return KeyEventResult.handled;
