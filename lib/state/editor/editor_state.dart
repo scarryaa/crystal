@@ -19,7 +19,7 @@ class EditorState extends ChangeNotifier {
   EditorState({required this.resetGutterScroll});
 
   double getGutterWidth() {
-    return math.max((lines.length.toString().length * 10.0) + 20.0, 48.0);
+    return math.max((lines.length.toString().length * 10.0) + 40.0, 48.0);
   }
 
   void startSelection() {
