@@ -20,70 +20,113 @@ class EditorSyntaxHighlighter {
 
   void highlight(String text) {
     highlightedText.clear();
-    // Handle multi-line comments first
-    _highlightPattern(text, language.commentMulti, commentColor);
+
+    final List<(int, int)> commentRegions = [];
+
+    // Handle multi-line comments
+    for (final match in language.commentMulti.allMatches(text)) {
+      highlightedText.add(HighlightedText(
+        text: match.group(0)!,
+        color: commentColor,
+        start: match.start,
+        end: match.end,
+      ));
+      commentRegions.add((match.start, match.end));
+    }
+
     // Handle single-line comments
-    _highlightPattern(text, language.commentSingle, commentColor);
-    // Handle string literals
-    _highlightPattern(text, language.stringLiteral, stringColor);
-    // Handle number literals
-    _highlightPattern(text, language.numberLiteral, numberColor);
-    // Handle keywords
+    for (final match in language.commentSingle.allMatches(text)) {
+      highlightedText.add(HighlightedText(
+        text: match.group(0)!,
+        color: commentColor,
+        start: match.start,
+        end: match.end,
+      ));
+      commentRegions.add((match.start, match.end));
+    }
+
+    bool isInComment(int position) {
+      return commentRegions
+          .any((region) => position >= region.$1 && position < region.$2);
+    }
+
+    // Handle string literals (but not in comments)
+    _highlightPattern(text, language.stringLiteral, stringColor,
+        skipIf: isInComment);
+
+    // Handle number literals (but not in comments)
+    _highlightPattern(text, language.numberLiteral, numberColor,
+        skipIf: isInComment);
+
+    // Handle keywords (but not in comments)
     for (final keyword in language.keywords) {
-      _highlightWord(text, keyword, keywordColor);
+      _highlightWord(text, keyword, keywordColor, skipIf: isInComment);
     }
-    // Handle types
+
+    // Handle types (but not in comments)
     for (final type in language.types) {
-      _highlightWord(text, type, typeColor);
+      _highlightWord(text, type, typeColor, skipIf: isInComment);
     }
-    // Handle symbols
+
+    // Handle symbols (but not in comments)
     for (final symbol in language.symbols) {
-      _highlightSymbol(text, symbol, symbolColor);
+      _highlightSymbol(text, symbol, symbolColor, skipIf: isInComment);
     }
+
     // Sort highlights by start position
     highlightedText.sort((a, b) => a.start.compareTo(b.start));
   }
 
-  void _highlightPattern(String text, RegExp pattern, Color color) {
+  void _highlightPattern(String text, RegExp pattern, Color color,
+      {bool Function(int)? skipIf}) {
     final matches = pattern.allMatches(text);
     for (final match in matches) {
-      highlightedText.add(HighlightedText(
-        text: match.group(0)!,
-        color: color,
-        start: match.start,
-        end: match.end,
-      ));
-    }
-  }
-
-  void _highlightWord(String text, String word, Color color) {
-    final pattern = RegExp('\\b$word\\b');
-    final matches = pattern.allMatches(text);
-    for (final match in matches) {
-      // Check if this region is already highlighted
-      if (!_isRegionHighlighted(match.start, match.end)) {
-        highlightedText.add(HighlightedText(
-          text: word,
-          color: color,
-          start: match.start,
-          end: match.end,
-        ));
+      if (skipIf == null || !skipIf(match.start)) {
+        if (!_isRegionHighlighted(match.start, match.end)) {
+          highlightedText.add(HighlightedText(
+            text: match.group(0)!,
+            color: color,
+            start: match.start,
+            end: match.end,
+          ));
+        }
       }
     }
   }
 
-  void _highlightSymbol(String text, String symbol, Color color) {
+  void _highlightWord(String text, String word, Color color,
+      {bool Function(int)? skipIf}) {
+    final pattern = RegExp('\\b$word\\b');
+    final matches = pattern.allMatches(text);
+    for (final match in matches) {
+      if (skipIf == null || !skipIf(match.start)) {
+        if (!_isRegionHighlighted(match.start, match.end)) {
+          highlightedText.add(HighlightedText(
+            text: word,
+            color: color,
+            start: match.start,
+            end: match.end,
+          ));
+        }
+      }
+    }
+  }
+
+  void _highlightSymbol(String text, String symbol, Color color,
+      {bool Function(int)? skipIf}) {
     int index = 0;
     while (true) {
       index = text.indexOf(symbol, index);
       if (index == -1) break;
-      if (!_isRegionHighlighted(index, index + symbol.length)) {
-        highlightedText.add(HighlightedText(
-          text: symbol,
-          color: color,
-          start: index,
-          end: index + symbol.length,
-        ));
+      if (skipIf == null || !skipIf(index)) {
+        if (!_isRegionHighlighted(index, index + symbol.length)) {
+          highlightedText.add(HighlightedText(
+            text: symbol,
+            color: color,
+            start: index,
+            end: index + symbol.length,
+          ));
+        }
       }
       index += symbol.length;
     }
