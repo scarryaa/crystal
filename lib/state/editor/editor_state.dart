@@ -192,11 +192,13 @@ class EditorState extends ChangeNotifier {
       cursor.line--;
       cursor.column = lines[cursor.line].length;
     }
+
     if (selection == null && isShiftPressed) {
       startSelection();
     } else if (isShiftPressed) {
       updateSelection();
     }
+
     if (!isShiftPressed) {
       clearSelection();
     }

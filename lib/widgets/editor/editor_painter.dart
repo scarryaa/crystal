@@ -53,10 +53,23 @@ class EditorPainter extends CustomPainter {
                     EditorConstants.lineHeight)
                 .ceil() +
             5);
-
     List<String> lines = editorState.lines;
     lastVisibleLine = lastVisibleLine.clamp(0, lines.length);
 
+    // Draw text
+    _drawText(canvas, size, firstVisibleLine, lastVisibleLine, lines);
+
+    // Draw selection
+    if (editorState.selection != null) {
+      _drawSelection(canvas, firstVisibleLine, lastVisibleLine);
+    }
+
+    // Draw caret
+    _drawCaret(canvas);
+  }
+
+  void _drawText(Canvas canvas, Size size, int firstVisibleLine,
+      int lastVisibleLine, List<String> lines) {
     // Draw visible text lines
     for (int i = firstVisibleLine; i < lastVisibleLine; i++) {
       if (i >= 0 && i < lines.length) {
@@ -78,33 +91,36 @@ class EditorPainter extends CustomPainter {
         _textPainter.paint(canvas, Offset(xPosition, yPosition));
       }
     }
+  }
 
-    // Draw selection
-    if (editorState.selection != null) {
-      Cursor selection = editorState.selection!;
-      Cursor cursor = editorState.cursor;
-      Paint selectionPaint = Paint()..color = Colors.blue.withOpacity(0.2);
-      int selectionStartLine,
-          selectionEndLine,
-          selectionStartColumn,
-          selectionEndColumn;
+  void _drawSelection(
+      Canvas canvas, int firstVisibleLine, int lastVisibleLine) {
+    Cursor selection = editorState.selection!;
+    Cursor cursor = editorState.cursor;
+    Paint selectionPaint = Paint()..color = Colors.blue.withOpacity(0.2);
+    int selectionStartLine,
+        selectionEndLine,
+        selectionStartColumn,
+        selectionEndColumn;
 
-      // Normalize selection
-      if (selection.line > cursor.line ||
-          selection.line == cursor.line && selection.column > cursor.column) {
-        selectionStartLine = cursor.line;
-        selectionEndLine = selection.line;
-        selectionStartColumn = cursor.column;
-        selectionEndColumn = selection.column;
-      } else {
-        selectionStartLine = selection.line;
-        selectionEndLine = cursor.line;
-        selectionStartColumn = selection.column;
-        selectionEndColumn = cursor.column;
-      }
+    // Normalize selection
+    if (selection.line > cursor.line ||
+        selection.line == cursor.line && selection.column > cursor.column) {
+      selectionStartLine = cursor.line;
+      selectionEndLine = selection.line;
+      selectionStartColumn = cursor.column;
+      selectionEndColumn = selection.column;
+    } else {
+      selectionStartLine = selection.line;
+      selectionEndLine = cursor.line;
+      selectionStartColumn = selection.column;
+      selectionEndColumn = cursor.column;
+    }
 
-      if (selectionStartLine == selectionEndLine) {
-        // Single line
+    if (selectionStartLine == selectionEndLine) {
+      // Single line
+      if (selectionStartLine >= firstVisibleLine &&
+          selectionStartLine <= lastVisibleLine) {
         String textUpToSelection = editorState.lines[selectionStartLine]
             .substring(0, selectionStartColumn);
         String textSlice = editorState.lines[selectionStartLine]
@@ -139,55 +155,72 @@ class EditorPainter extends CustomPainter {
                 width,
                 EditorConstants.lineHeight),
             Paint()..color = Colors.blue.withOpacity(0.2));
-      } else {
-        // Multi line selection
+      }
+    } else {
+      // Multi line selection
 
-        // Start line
-        String startLineLeftSlice = editorState.lines[selectionStartLine]
-            .substring(0, selectionStartColumn);
-        _textPainter.text = TextSpan(
-          text: startLineLeftSlice,
-          style: TextStyle(
-            fontSize: EditorConstants.fontSize,
-            fontFamily: EditorConstants.fontFamily,
-            color: Colors.black,
-          ),
-        );
-        _textPainter.layout();
-        double startLineLeft = _textPainter.width;
-        double startLineWidth =
-            measureLineWidth(editorState.lines[selectionStartLine]) -
-                startLineLeft;
+      // Start line
+      String startLineLeftSlice = editorState.lines[selectionStartLine]
+          .substring(0, selectionStartColumn);
+      _textPainter.text = TextSpan(
+        text: startLineLeftSlice,
+        style: TextStyle(
+          fontSize: EditorConstants.fontSize,
+          fontFamily: EditorConstants.fontFamily,
+          color: Colors.black,
+        ),
+      );
+      _textPainter.layout();
+      double startLineLeft = _textPainter.width;
+      double startLineWidth =
+          measureLineWidth(editorState.lines[selectionStartLine]) -
+              startLineLeft;
 
-        _drawSelectionForLine(canvas, selectionStartLine, startLineLeft,
-            startLineWidth, selectionPaint);
+      _drawSelectionForLine(canvas, selectionStartLine, startLineLeft,
+          startLineWidth, selectionPaint);
 
-        // Middle lines
-        for (int i = selectionStartLine + 1; i < selectionEndLine; i++) {
+      // Middle lines
+      for (int i = selectionStartLine + 1; i < selectionEndLine; i++) {
+        // Check if within visible line bounds
+        if (i >= firstVisibleLine && i <= lastVisibleLine) {
           // Whole line is selected
           double width = measureLineWidth(editorState.lines[i]);
           _drawSelectionForLine(canvas, i, 0, width, selectionPaint);
         }
-
-        // End line
-        String endLineSlice = editorState.lines[selectionEndLine]
-            .substring(0, selectionEndColumn);
-        _textPainter.text = TextSpan(
-          text: endLineSlice,
-          style: TextStyle(
-            fontSize: EditorConstants.fontSize,
-            fontFamily: EditorConstants.fontFamily,
-            color: Colors.black,
-          ),
-        );
-        _textPainter.layout();
-        double endLineWidth = _textPainter.width;
-        _drawSelectionForLine(
-            canvas, selectionEndLine, 0, endLineWidth, selectionPaint);
       }
+
+      // End line
+      String endLineSlice =
+          editorState.lines[selectionEndLine].substring(0, selectionEndColumn);
+      _textPainter.text = TextSpan(
+        text: endLineSlice,
+        style: TextStyle(
+          fontSize: EditorConstants.fontSize,
+          fontFamily: EditorConstants.fontFamily,
+          color: Colors.black,
+        ),
+      );
+      _textPainter.layout();
+      double endLineWidth = _textPainter.width;
+      _drawSelectionForLine(
+          canvas, selectionEndLine, 0, endLineWidth, selectionPaint);
+    }
+  }
+
+  void _drawSelectionForLine(
+      Canvas canvas, int lineNumber, double left, double width, Paint paint) {
+    // Draw small selection for empty lines
+    if (width == 0) {
+      width = EditorConstants.fontSize / 2;
     }
 
-    // Draw caret
+    canvas.drawRect(
+        Rect.fromLTWH(left, lineNumber * EditorConstants.lineHeight, width,
+            EditorConstants.lineHeight),
+        paint);
+  }
+
+  void _drawCaret(Canvas canvas) {
     String textUpToCaret = editorState.lines[editorState.cursor.line]
         .substring(0, editorState.cursor.column);
     _textPainter.text = TextSpan(
@@ -206,14 +239,6 @@ class EditorPainter extends CustomPainter {
     canvas.drawRect(
         Rect.fromLTWH(caretLeft, caretTop, 2.0, EditorConstants.lineHeight),
         Paint()..color = Colors.blue);
-  }
-
-  void _drawSelectionForLine(
-      Canvas canvas, int lineNumber, double left, double width, Paint paint) {
-    canvas.drawRect(
-        Rect.fromLTWH(left, lineNumber * EditorConstants.lineHeight, width,
-            EditorConstants.lineHeight),
-        paint);
   }
 
   @override
