@@ -1,16 +1,51 @@
-# crystal
+# Crystal
 
-A new Flutter project.
+Crystal aims to be a lightweight yet powerful code editor.
+
+## Features
+- Fast and Lightweight
+- Cross Platform (Windows, macOS, Linux)
+- Built-in File Explorer
+- Syntax Highlighting (basic)
+
+### Planned Features
+- Multiple Themes
+- Multi-Cursor Editing
+- Split View
+- Integrated Terminal
+- Git Integration
+- Extensions
+- Code Completion/Suggestions
+- Search and Replace
+- Code Folding
+- Custom Keybindings
+- Integrated Debugger (?)
+- Remote Development (?)
 
 ## Getting Started
+To get started with Crystal, follow these steps:
 
-This project is a starting point for a Flutter application.
+1. Prerequisites:
+   - Flutter SDK (latest stable version)
 
-A few resources to get you started if this is your first Flutter project:
+2. Clone the repository:
+   ```
+   git clone https://github.com/scarryaa/crystal.git
+   cd crystal
+   ```
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+3. Install dependencies:
+   ```
+   flutter pub get
+   ```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+4. Run the application:
+   ```
+   flutter run -d <PLATFORM>
+   ```
+
+## Contributing
+Contributions are welcome.
+
+## License
+This project is licensed under the MIT License.
