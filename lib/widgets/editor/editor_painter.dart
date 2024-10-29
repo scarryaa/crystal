@@ -19,6 +19,16 @@ class EditorPainter extends CustomPainter {
   })  : _textPainter = TextPainter(
           textDirection: TextDirection.ltr,
           textAlign: TextAlign.left,
+          textHeightBehavior: const TextHeightBehavior(
+            applyHeightToFirstAscent: false,
+            applyHeightToLastDescent: false,
+          ),
+          strutStyle: StrutStyle(
+            fontSize: EditorConstants.fontSize,
+            fontFamily: EditorConstants.fontFamily,
+            height: 1.0,
+            forceStrutHeight: true,
+          ),
         ),
         super(repaint: editorState);
 
@@ -95,6 +105,8 @@ class EditorPainter extends CustomPainter {
           fontSize: EditorConstants.fontSize,
           fontFamily: EditorConstants.fontFamily,
           color: Colors.black,
+          height: 1.0,
+          leadingDistribution: TextLeadingDistribution.even,
         ),
       );
       _textPainter.layout();
@@ -172,6 +184,13 @@ class EditorPainter extends CustomPainter {
             fontSize: EditorConstants.fontSize,
             fontFamily: EditorConstants.fontFamily,
             color: Colors.black,
+            height: 1.0,
+            leadingDistribution: TextLeadingDistribution.even,
+            fontFeatures: const [
+              FontFeature.enable('kern'),
+              FontFeature.enable('liga'),
+              FontFeature.enable('calt'),
+            ],
           ),
         );
         _textPainter.layout();

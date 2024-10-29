@@ -18,7 +18,7 @@ class EditorConstants {
   static double fontSize = 14;
   static double lineHeight = fontSize * lineHeightRatio;
   static double verticalPadding = lineHeight * verticalPaddingLines;
-  static String fontFamily = "ZedMono Nerd Font";
+  static String fontFamily = "IBM Plex Mono";
   static double charWidth = _textPainter.width;
   static Paint currentLineHighlight = Paint()
     ..color = Colors.blue.withOpacity(0.2);

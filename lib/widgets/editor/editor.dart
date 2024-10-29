@@ -95,6 +95,8 @@ class _EditorState extends State<Editor> {
       EditorConstants.lineHeight * widget.state.lines.length +
           EditorConstants.verticalPadding,
     );
+    widget.state.scrollState
+        .updateViewportHeight(MediaQuery.of(context).size.height);
 
     return Focus(
       focusNode: _focusNode,

@@ -93,7 +93,7 @@ class _FileExplorerState extends State<FileExplorer> {
       child: Container(
         decoration: BoxDecoration(
           border: Border(
-            right: BorderSide(width: 1, color: Colors.grey[400]!),
+            right: BorderSide(color: Colors.grey[400]!),
           ),
         ),
         child: Container(
@@ -145,4 +145,3 @@ class _FileExplorerState extends State<FileExplorer> {
     );
   }
 }
-
