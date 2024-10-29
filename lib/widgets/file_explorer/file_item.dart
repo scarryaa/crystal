@@ -57,10 +57,13 @@ class _FileItemState extends State<FileItem> {
                     child: Text(
                       widget.fileName,
                       style: TextStyle(
-                        fontWeight: FontWeight.normal,
                         fontSize: 14,
                         fontStyle: FontStyle.normal,
                         fontFamily: 'IBM Plex Sans',
+                        fontVariations: const [
+                          FontVariation('wght', 400),
+                        ],
+                        fontWeight: FontWeight.w400,
                         color: _hovered ? Colors.teal[700] : Colors.black,
                         decoration: TextDecoration.none,
                         decorationStyle: TextDecorationStyle.solid,

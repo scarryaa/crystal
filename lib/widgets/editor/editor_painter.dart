@@ -23,6 +23,7 @@ class EditorPainter extends CustomPainter {
             applyHeightToFirstAscent: false,
             applyHeightToLastDescent: false,
           ),
+          textWidthBasis: TextWidthBasis.longestLine,
           strutStyle: StrutStyle(
             fontSize: EditorConstants.fontSize,
             fontFamily: EditorConstants.fontFamily,
@@ -35,10 +36,7 @@ class EditorPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     // Draw background
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, size.width, size.height),
-      Paint()..color = Colors.white,
-    );
+    _drawBackground(canvas, size);
 
     // Calculate visible lines
     int firstVisibleLine = max(
@@ -95,6 +93,17 @@ class EditorPainter extends CustomPainter {
         EditorConstants.currentLineHighlight);
   }
 
+  void _drawBackground(Canvas canvas, Size size) {
+    final Paint backgroundPaint = Paint()
+      ..color = Colors.white
+      ..isAntiAlias = true;
+
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      backgroundPaint,
+    );
+  }
+
   void _drawCaret(Canvas canvas) {
     if (editorState.showCaret) {
       String textUpToCaret = editorState.lines[editorState.cursor.line]
@@ -107,6 +116,14 @@ class EditorPainter extends CustomPainter {
           color: Colors.black,
           height: 1.0,
           leadingDistribution: TextLeadingDistribution.even,
+          fontFeatures: const [
+            FontFeature.enable('kern'),
+            FontFeature.enable('liga'),
+            FontFeature.enable('calt'),
+          ],
+          fontVariations: const [
+            FontVariation('wght', 400),
+          ],
         ),
       );
       _textPainter.layout();
