@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/models/cursor.dart';
+import 'package:crystal/models/editor/cursor_shape.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/state/editor/editor_scroll_state.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +18,7 @@ class EditorState extends ChangeNotifier {
   int? anchorColumn;
   VoidCallback resetGutterScroll;
   bool showCaret = true;
+  CursorShape cursorShape = CursorShape.bar;
 
   EditorState({required this.resetGutterScroll});
 

@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:crystal/constants/editor_constants.dart';
+import 'package:crystal/models/editor/cursor_shape.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/state/editor/editor_syntax_highlighter.dart';
@@ -130,10 +131,38 @@ class EditorPainter extends CustomPainter {
 
       double caretLeft = _textPainter.width;
       double caretTop = EditorConstants.lineHeight * editorState.cursor.line;
+      Paint caretPaint = Paint()..color = Colors.blue;
 
-      canvas.drawRect(
-          Rect.fromLTWH(caretLeft, caretTop, 2.0, EditorConstants.lineHeight),
-          Paint()..color = Colors.blue);
+      switch (editorState.cursorShape) {
+        case CursorShape.bar:
+          canvas.drawRect(
+              Rect.fromLTWH(
+                  caretLeft, caretTop, 2.0, EditorConstants.lineHeight),
+              caretPaint);
+          break;
+        case CursorShape.block:
+          canvas.drawRect(
+              Rect.fromLTWH(caretLeft, caretTop, EditorConstants.charWidth,
+                  EditorConstants.lineHeight),
+              caretPaint);
+          break;
+        case CursorShape.hollow:
+          canvas.drawRect(
+              Rect.fromLTWH(caretLeft, caretTop, EditorConstants.charWidth,
+                  EditorConstants.lineHeight),
+              caretPaint..style = PaintingStyle.stroke);
+          break;
+
+        case CursorShape.underline:
+          canvas.drawRect(
+              Rect.fromLTWH(
+                  caretLeft,
+                  caretTop + EditorConstants.lineHeight - 2,
+                  EditorConstants.charWidth,
+                  2),
+              caretPaint);
+          break;
+      }
     }
   }
 
@@ -382,6 +411,7 @@ class EditorPainter extends CustomPainter {
             oldDelegate.editorState.scrollState.horizontalOffset ||
         editorState.scrollState.verticalOffset !=
             oldDelegate.editorState.scrollState.verticalOffset ||
-        editorState.showCaret != oldDelegate.editorState.showCaret;
+        editorState.showCaret != oldDelegate.editorState.showCaret ||
+        editorState.cursorShape != oldDelegate.editorState.cursorShape;
   }
 }
