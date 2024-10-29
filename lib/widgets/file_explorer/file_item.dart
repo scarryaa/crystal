@@ -5,12 +5,13 @@ class FileItem extends StatefulWidget {
   final String fileName;
   final VoidCallback? onTap;
   bool expanded;
-  int level = 0;
+  int level;
 
   FileItem({
     super.key,
     required this.fileName,
     required this.expanded,
+    this.level = 0,
     this.isDirectory = false,
     this.onTap,
   });
@@ -24,25 +25,24 @@ class _FileItemState extends State<FileItem> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-        padding: EdgeInsets.only(left: 8.0 * widget.level),
-        child: MouseRegion(
-          onEnter: (_) => setState(() {
-            _hovered = true;
-          }),
-          onExit: (_) => setState(() {
-            _hovered = false;
-          }),
-          child: GestureDetector(
-            onTap: widget.onTap,
-            behavior: HitTestBehavior.opaque,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 2.5, horizontal: 8),
-              decoration: BoxDecoration(
-                color: _hovered
-                    ? Colors.teal.withOpacity(0.1)
-                    : Colors.transparent,
-              ),
+    return MouseRegion(
+        onEnter: (_) => setState(() {
+              _hovered = true;
+            }),
+        onExit: (_) => setState(() {
+              _hovered = false;
+            }),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 2.5, horizontal: 8),
+            decoration: BoxDecoration(
+              color:
+                  _hovered ? Colors.teal.withOpacity(0.1) : Colors.transparent,
+            ),
+            child: Padding(
+              padding: EdgeInsets.only(left: 8.0 * widget.level),
               child: Row(
                 children: [
                   Icon(

@@ -56,6 +56,7 @@ class _FileExplorerState extends State<FileExplorer> {
           fileName: fileName,
           isDirectory: isDirectory,
           expanded: isExpanded,
+          level: depth,
           onTap: () async {
             if (isDirectory) {
               setState(() {
@@ -69,20 +70,17 @@ class _FileExplorerState extends State<FileExplorer> {
           },
         ),
         if (isDirectory && isExpanded)
-          Padding(
-            padding: const EdgeInsets.only(left: 16.0),
-            child: FutureBuilder<List<FileSystemEntity>>(
-              future: _enumerateFiles(entity.path),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) return const SizedBox();
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: snapshot.data!
-                      .map((e) => _buildFileTree(e, depth + 1))
-                      .toList(),
-                );
-              },
-            ),
+          FutureBuilder<List<FileSystemEntity>>(
+            future: _enumerateFiles(entity.path),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const SizedBox();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: snapshot.data!
+                    .map((e) => _buildFileTree(e, depth + 1))
+                    .toList(),
+              );
+            },
           ),
       ],
     );
@@ -91,54 +89,60 @@ class _FileExplorerState extends State<FileExplorer> {
   @override
   Widget build(BuildContext context) {
     return Align(
-        alignment: Alignment.topLeft,
+      alignment: Alignment.topLeft,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            right: BorderSide(width: 1, color: Colors.grey[400]!),
+          ),
+        ),
         child: Container(
-            decoration: BoxDecoration(
-                border: Border(
-                    right: BorderSide(width: 1, color: Colors.grey[400]!))),
-            child: Container(
-              color: Colors.white,
-              height: double.infinity,
-              child: SizedBox(
-                width: 150,
-                child: FutureBuilder<List<FileSystemEntity>>(
-                  future: _filesFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(
-                        child: CircularProgressIndicator(),
-                      );
-                    } else if (snapshot.hasError) {
-                      return Center(
-                        child: Text(
-                          'Error: ${snapshot.error}',
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                      );
-                    } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return const Center(
-                        child: Text(
-                          'No files found',
-                          style: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 14,
-                          ),
-                        ),
-                      );
-                    }
-
-                    return SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: snapshot.data!
-                            .map((entity) => _buildFileTree(entity, 0))
-                            .toList(),
+          color: Colors.white,
+          height: double.infinity,
+          child: SizedBox(
+            width: 150,
+            child: FutureBuilder<List<FileSystemEntity>>(
+              future: _filesFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
+                } else if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Error: ${snapshot.error}',
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  );
+                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'No files found',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 14,
                       ),
-                    );
-                  },
-                ),
-              ),
-            )));
+                    ),
+                  );
+                }
+
+                return SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ...snapshot.data!
+                          .map((entity) => _buildFileTree(entity, 0)),
+                      const SizedBox(height: 18),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
