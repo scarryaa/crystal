@@ -36,10 +36,10 @@ class _FileItemState extends State<FileItem> {
           onTap: widget.onTap,
           behavior: HitTestBehavior.opaque,
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 2.5, horizontal: 8),
+            padding: const EdgeInsets.symmetric(vertical: 1.5, horizontal: 8),
             decoration: BoxDecoration(
               color:
-                  _hovered ? Colors.teal.withOpacity(0.1) : Colors.transparent,
+                  _hovered ? Colors.blue.withOpacity(0.2) : Colors.transparent,
             ),
             child: Padding(
               padding: EdgeInsets.only(left: 8.0 * widget.level),
@@ -48,9 +48,8 @@ class _FileItemState extends State<FileItem> {
                   Icon(
                     widget.isDirectory ? Icons.folder : Icons.insert_drive_file,
                     size: 16,
-                    color: _hovered
-                        ? Colors.teal[300]
-                        : Colors.black.withOpacity(0.5),
+                    color:
+                        _hovered ? Colors.blue : Colors.black.withOpacity(0.5),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -64,7 +63,7 @@ class _FileItemState extends State<FileItem> {
                           FontVariation('wght', 400),
                         ],
                         fontWeight: FontWeight.w400,
-                        color: _hovered ? Colors.teal[700] : Colors.black,
+                        color: _hovered ? Colors.blue : Colors.black,
                         decoration: TextDecoration.none,
                         decorationStyle: TextDecorationStyle.solid,
                         decorationThickness: 0,

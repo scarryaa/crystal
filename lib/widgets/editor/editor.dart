@@ -13,13 +13,16 @@ class Editor extends StatefulWidget {
   final ScrollController verticalScrollController;
   final ScrollController horizontalScrollController;
   final double gutterWidth;
+  final VoidCallback scrollToCursor;
 
-  const Editor(
-      {super.key,
-      required this.state,
-      required this.gutterWidth,
-      required this.verticalScrollController,
-      required this.horizontalScrollController});
+  const Editor({
+    super.key,
+    required this.state,
+    required this.gutterWidth,
+    required this.verticalScrollController,
+    required this.horizontalScrollController,
+    required this.scrollToCursor,
+  });
 
   @override
   State<StatefulWidget> createState() => _EditorState();
@@ -181,17 +184,21 @@ class _EditorState extends State<Editor> {
           if (isControlPressed) {
             widget.state.cut();
             _updateCachedMaxLineWidth();
+            widget.scrollToCursor();
             return KeyEventResult.handled;
           }
         case LogicalKeyboardKey.keyV:
           if (isControlPressed) {
             widget.state.paste();
             _updateCachedMaxLineWidth();
+            WidgetsBinding.instance
+                .addPostFrameCallback((_) => widget.scrollToCursor());
             return KeyEventResult.handled;
           }
         case LogicalKeyboardKey.keyA:
           if (isControlPressed) {
             widget.state.selectAll();
+            widget.scrollToCursor();
             return KeyEventResult.handled;
           }
       }
@@ -199,28 +206,35 @@ class _EditorState extends State<Editor> {
       switch (event.logicalKey) {
         case LogicalKeyboardKey.arrowDown:
           widget.state.moveCursorDown(isShiftPressed);
+          widget.scrollToCursor();
           return KeyEventResult.handled;
         case LogicalKeyboardKey.arrowUp:
           widget.state.moveCursorUp(isShiftPressed);
+          widget.scrollToCursor();
           return KeyEventResult.handled;
         case LogicalKeyboardKey.arrowLeft:
           widget.state.moveCursorLeft(isShiftPressed);
+          widget.scrollToCursor();
           return KeyEventResult.handled;
         case LogicalKeyboardKey.arrowRight:
           widget.state.moveCursorRight(isShiftPressed);
+          widget.scrollToCursor();
           return KeyEventResult.handled;
 
         case LogicalKeyboardKey.enter:
           widget.state.insertNewLine();
           _updateCachedMaxLineWidth();
+          widget.scrollToCursor();
           return KeyEventResult.handled;
         case LogicalKeyboardKey.backspace:
           widget.state.backspace();
           _updateCachedMaxLineWidth();
+          widget.scrollToCursor();
           return KeyEventResult.handled;
         case LogicalKeyboardKey.delete:
           widget.state.delete();
           _updateCachedMaxLineWidth();
+          widget.scrollToCursor();
           return KeyEventResult.handled;
         case LogicalKeyboardKey.tab:
           if (isShiftPressed) {
@@ -229,6 +243,7 @@ class _EditorState extends State<Editor> {
             widget.state.insertTab();
             _updateCachedMaxLineWidth();
           }
+          widget.scrollToCursor();
           return KeyEventResult.handled;
         default:
           if (event.character != null &&
@@ -236,6 +251,7 @@ class _EditorState extends State<Editor> {
               event.logicalKey != LogicalKeyboardKey.escape) {
             widget.state.insertChar(event.character!);
             _updateCachedMaxLineWidth();
+            widget.scrollToCursor();
             return KeyEventResult.handled;
           }
       }
