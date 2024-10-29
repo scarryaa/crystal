@@ -62,6 +62,17 @@ class GutterPainter extends CustomPainter {
       Canvas canvas, Size size, int firstVisibleLine, int lastVisibleLine) {
     final textPainter = TextPainter(
       textDirection: TextDirection.ltr,
+      textAlign: TextAlign.left,
+      textHeightBehavior: const TextHeightBehavior(
+        applyHeightToFirstAscent: false,
+        applyHeightToLastDescent: false,
+      ),
+      strutStyle: StrutStyle(
+        fontSize: EditorConstants.fontSize,
+        fontFamily: EditorConstants.fontFamily,
+        height: 1.0,
+        forceStrutHeight: true,
+      ),
     );
 
     for (var i = firstVisibleLine; i < lastVisibleLine; i++) {

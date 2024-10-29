@@ -60,6 +60,7 @@ class _FileItemState extends State<FileItem> {
                         fontWeight: FontWeight.normal,
                         fontSize: 14,
                         fontStyle: FontStyle.normal,
+                        fontFamily: 'IBM Plex Sans',
                         color: _hovered ? Colors.teal[700] : Colors.black,
                         decoration: TextDecoration.none,
                         decorationStyle: TextDecorationStyle.solid,
