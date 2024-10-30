@@ -123,6 +123,10 @@ class _EditorScreenState extends State<EditorScreen> {
   void onActiveEditorChanged(int index) {
     setState(() {
       activeEditorIndex = index;
+      _editorVerticalScrollController
+          .jumpTo(activeEditor!.scrollState.verticalOffset);
+      _editorHorizontalScrollController
+          .jumpTo(activeEditor!.scrollState.horizontalOffset);
     });
   }
 
