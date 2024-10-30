@@ -27,7 +27,7 @@ class _GutterState extends State<Gutter> {
   Widget build(BuildContext context) {
     double height = max(
         MediaQuery.of(context).size.height,
-        (editorState.lines.length * EditorConstants.lineHeight) +
+        (editorState.buffer.lineCount * EditorConstants.lineHeight) +
             EditorConstants.verticalPadding);
 
     return Consumer<EditorState>(
@@ -73,8 +73,8 @@ class _GutterState extends State<Gutter> {
     int targetLine = adjustedY ~/ EditorConstants.lineHeight;
 
     // If out of range, select the last line
-    if (targetLine > editorState.lines.length) {
-      editorState.selectLine(isMultiSelect, editorState.lines.length - 1);
+    if (targetLine > editorState.buffer.lineCount) {
+      editorState.selectLine(isMultiSelect, editorState.buffer.lineCount - 1);
     } else {
       editorState.selectLine(isMultiSelect, targetLine);
     }

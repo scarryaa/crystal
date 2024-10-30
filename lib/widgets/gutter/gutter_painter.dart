@@ -39,11 +39,11 @@ class GutterPainter extends CustomPainter {
     int firstVisibleLine =
         max(0, (verticalOffset / EditorConstants.lineHeight).floor() - 5);
     int lastVisibleLine = min(
-        editorState.lines.length,
+        editorState.buffer.lineCount,
         ((verticalOffset + viewportHeight) / EditorConstants.lineHeight)
                 .ceil() +
             5);
-    lastVisibleLine = lastVisibleLine.clamp(0, editorState.lines.length);
+    lastVisibleLine = lastVisibleLine.clamp(0, editorState.buffer.lineCount);
 
     _drawText(canvas, size, firstVisibleLine, lastVisibleLine);
 
@@ -115,7 +115,8 @@ class GutterPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(GutterPainter oldDelegate) {
-    return editorState.lines.length != oldDelegate.editorState.lines.length ||
+    return editorState.buffer.lineCount !=
+            oldDelegate.editorState.buffer.lineCount ||
         editorState.cursor != oldDelegate.editorState.cursor;
   }
 }

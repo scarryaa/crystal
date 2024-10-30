@@ -45,12 +45,12 @@ class EditorPainter extends CustomPainter {
                 .floor() -
             5);
     int lastVisibleLine = min(
-        editorState.lines.length,
+        editorState.buffer.lineCount,
         ((editorState.scrollState.verticalOffset + viewportHeight) /
                     EditorConstants.lineHeight)
                 .ceil() +
             5);
-    List<String> lines = editorState.lines;
+    List<String> lines = editorState.buffer.lines;
     lastVisibleLine = lastVisibleLine.clamp(0, lines.length);
 
     // Draw text
@@ -106,7 +106,8 @@ class EditorPainter extends CustomPainter {
 
   void _drawCaret(Canvas canvas) {
     if (editorState.showCaret) {
-      String textUpToCaret = editorState.lines[editorState.cursor.line]
+      String textUpToCaret = editorState.buffer
+          .getLine(editorState.cursor.line)
           .substring(0, editorState.cursor.column);
       _textPainter.text = TextSpan(
         text: textUpToCaret,
@@ -168,7 +169,7 @@ class EditorPainter extends CustomPainter {
   void _drawWhitespaceIndicatorsForSelectionWhitespace(
       Canvas canvas, int startColumn, int endColumn, int lineNumber) {
     for (int i = startColumn; i < endColumn; i++) {
-      if (editorState.lines[lineNumber][i] == ' ') {
+      if (editorState.buffer.getLine(lineNumber)[i] == ' ') {
         _drawWhitespaceIndicator(
             canvas,
             (i + 0.5) * EditorConstants.charWidth,
@@ -218,9 +219,11 @@ class EditorPainter extends CustomPainter {
       // Single line
       if (selectionStartLine >= firstVisibleLine &&
           selectionStartLine <= lastVisibleLine) {
-        String textUpToSelection = editorState.lines[selectionStartLine]
+        String textUpToSelection = editorState.buffer
+            .getLine(selectionStartLine)
             .substring(0, selectionStartColumn);
-        String textSlice = editorState.lines[selectionStartLine]
+        String textSlice = editorState.buffer
+            .getLine(selectionStartLine)
             .substring(selectionStartColumn, selectionEndColumn);
 
         _textPainter.text = TextSpan(
@@ -271,7 +274,8 @@ class EditorPainter extends CustomPainter {
       // Multi line selection
 
       // Start line
-      String startLineLeftSlice = editorState.lines[selectionStartLine]
+      String startLineLeftSlice = editorState.buffer
+          .getLine(selectionStartLine)
           .substring(0, selectionStartColumn);
       _textPainter.text = TextSpan(
         text: startLineLeftSlice,
@@ -284,13 +288,13 @@ class EditorPainter extends CustomPainter {
       _textPainter.layout();
       double startLineLeft = _textPainter.width;
       double startLineWidth =
-          measureLineWidth(editorState.lines[selectionStartLine]) -
+          measureLineWidth(editorState.buffer.getLine(selectionStartLine)) -
               startLineLeft;
 
       _drawWhitespaceIndicatorsForSelectionWhitespace(
           canvas,
           selectionStartColumn,
-          editorState.lines[selectionStartLine].length,
+          editorState.buffer.getLineLength(selectionStartLine),
           selectionStartLine);
 
       _drawSelectionForLine(canvas, selectionStartLine, startLineLeft,
@@ -302,16 +306,17 @@ class EditorPainter extends CustomPainter {
         if (i >= firstVisibleLine && i <= lastVisibleLine) {
           // Whole line is selected
           _drawWhitespaceIndicatorsForSelectionWhitespace(
-              canvas, 0, editorState.lines[i].length, i);
+              canvas, 0, editorState.buffer.getLineLength(i), i);
 
-          double width = measureLineWidth(editorState.lines[i]);
+          double width = measureLineWidth(editorState.buffer.getLine(i));
           _drawSelectionForLine(canvas, i, 0, width, selectionPaint);
         }
       }
 
       // End line
-      String endLineSlice =
-          editorState.lines[selectionEndLine].substring(0, selectionEndColumn);
+      String endLineSlice = editorState.buffer
+          .getLine(selectionEndLine)
+          .substring(0, selectionEndColumn);
       _textPainter.text = TextSpan(
         text: endLineSlice,
         style: TextStyle(
@@ -404,7 +409,8 @@ class EditorPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(EditorPainter oldDelegate) {
-    return editorState.version != oldDelegate.editorState.version ||
+    return editorState.buffer.version !=
+            oldDelegate.editorState.buffer.version ||
         editorState.selection != oldDelegate.editorState.selection ||
         editorState.scrollState.horizontalOffset !=
             oldDelegate.editorState.scrollState.horizontalOffset ||

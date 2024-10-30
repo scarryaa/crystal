@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/models/cursor.dart';
+import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/editor/cursor_shape.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/services/file_service.dart';
@@ -10,25 +11,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class EditorState extends ChangeNotifier {
-  int version = 1;
-  List<String> lines = [''];
   Cursor cursor = Cursor(0, 0);
   EditorScrollState scrollState = EditorScrollState();
   Selection? selection;
+  final Buffer _buffer = Buffer();
   int? anchorLine;
   int? anchorColumn;
   VoidCallback resetGutterScroll;
   bool showCaret = true;
   CursorShape cursorShape = CursorShape.bar;
   String path = '';
-  String _originalContent = '';
 
   EditorState({required this.resetGutterScroll, this.path = ''});
 
-  bool get isDirty => _originalContent != lines.join('\n');
+  Buffer get buffer => _buffer;
 
   double getGutterWidth() {
-    return math.max((lines.length.toString().length * 10.0) + 40.0, 48.0);
+    return math.max((_buffer.lineCount.toString().length * 10.0) + 40.0, 48.0);
   }
 
   void toggleCaret() {
@@ -78,15 +77,15 @@ class EditorState extends ChangeNotifier {
   }
 
   void selectAll() {
-    anchorLine = lines.length - 1;
-    anchorColumn = lines.last.length;
+    anchorLine = _buffer.lineCount - 1;
+    anchorColumn = _buffer.getLineLength(_buffer.lineCount - 1);
     cursor.line = 0;
     cursor.column = 0;
     selection = Selection(
         startLine: 0,
-        endLine: lines.length - 1,
+        endLine: _buffer.lineCount - 1,
         startColumn: 0,
-        endColumn: lines.last.length);
+        endColumn: _buffer.getLineLength(_buffer.lineCount - 1));
     notifyListeners();
   }
 
@@ -96,7 +95,8 @@ class EditorState extends ChangeNotifier {
 
     if (_selection.startLine == _selection.endLine) {
       // Single line selection
-      return lines[_selection.startLine]
+      return _buffer
+          .getLine(_selection.startLine)
           .substring(_selection.startColumn, _selection.endColumn);
     }
 
@@ -104,17 +104,20 @@ class EditorState extends ChangeNotifier {
     StringBuffer result = StringBuffer();
 
     // First line
-    result.write(lines[_selection.startLine].substring(_selection.startColumn));
+    result.write(_buffer
+        .getLine(_selection.startLine)
+        .substring(_selection.startColumn));
     result.write('\n');
 
     // Middle lines
     for (int i = _selection.startLine + 1; i < _selection.endLine; i++) {
-      result.write(lines[i]);
+      result.write(_buffer.getLine(i));
       result.write('\n');
     }
 
     // Last line
-    result.write(lines[_selection.endLine].substring(0, _selection.endColumn));
+    result.write(
+        _buffer.getLine(_selection.endLine).substring(0, _selection.endColumn));
 
     return result.toString();
   }
@@ -125,25 +128,29 @@ class EditorState extends ChangeNotifier {
 
     if (_selection.startLine == _selection.endLine) {
       // Single line deletion
-      lines[_selection.startLine] =
-          lines[_selection.startLine].substring(0, _selection.startColumn) +
-              lines[_selection.startLine].substring(_selection.endColumn);
+      String newContent = _buffer
+              .getLine(_selection.startLine)
+              .substring(0, _selection.startColumn) +
+          _buffer.getLine(_selection.startLine).substring(_selection.endColumn);
+      _buffer.setLine(_selection.startLine, newContent);
       cursor.line = _selection.startLine;
       cursor.column = _selection.startColumn;
     } else {
       // Multi-line deletion
-      String startText =
-          lines[_selection.startLine].substring(0, _selection.startColumn);
+      String startText = _buffer
+          .getLine(_selection.startLine)
+          .substring(0, _selection.startColumn);
       String endText =
-          lines[_selection.endLine].substring(_selection.endColumn);
+          _buffer.getLine(_selection.endLine).substring(_selection.endColumn);
 
       // Combine first and last lines
-      lines[_selection.startLine] = startText + endText;
+      _buffer.setLine(_selection.startLine, startText + endText);
 
       // Remove lines in between
       for (int i = 0; i < _selection.endLine - _selection.startLine; i++) {
-        lines.removeAt(_selection.startLine + 1);
+        _buffer.removeLine(_selection.startLine);
       }
+      _buffer.setLine(_selection.startLine, '');
 
       // Update cursor position
       cursor.line = _selection.startLine;
@@ -151,9 +158,10 @@ class EditorState extends ChangeNotifier {
     }
 
     clearSelection();
-    version++;
+    _buffer.incrementVersion();
 
-    if (lines.isEmpty || (lines.length == 1 && lines[0].isEmpty)) {
+    if (_buffer.isEmpty ||
+        (_buffer.lineCount == 1 && _buffer.getLine(0).isEmpty)) {
       scrollState.updateVerticalScrollOffset(0);
       scrollState.updateHorizontalScrollOffset(0);
       resetGutterScroll();
@@ -170,26 +178,31 @@ class EditorState extends ChangeNotifier {
 
     if (cursor.column > 0) {
       // Check if we're deleting spaces at the start of a line
-      String currentLine = lines[cursor.line];
+      String currentLine = _buffer.getLine(cursor.line);
       String beforeCursor = currentLine.substring(0, cursor.column);
       if (beforeCursor.endsWith('    ') && beforeCursor.trim().isEmpty) {
         // Delete entire tab (4 spaces)
-        lines[cursor.line] = currentLine.substring(0, cursor.column - 4) +
-            currentLine.substring(cursor.column);
+        _buffer.setLine(
+            cursor.line,
+            currentLine.substring(0, cursor.column - 4) +
+                currentLine.substring(cursor.column));
         cursor.column -= 4;
       } else {
         // Normal single character deletion
-        lines[cursor.line] = currentLine.substring(0, cursor.column - 1) +
-            currentLine.substring(cursor.column);
+        _buffer.setLine(
+            cursor.line,
+            currentLine.substring(0, cursor.column - 1) +
+                currentLine.substring(cursor.column));
         cursor.column--;
       }
     } else if (cursor.line > 0) {
-      cursor.column = lines[cursor.line - 1].length;
-      lines[cursor.line - 1] += lines[cursor.line];
-      lines.removeAt(cursor.line);
+      cursor.column = _buffer.getLineLength(cursor.line - 1);
+      _buffer.setLine(cursor.line - 1,
+          _buffer.getLine(cursor.line - 1) + _buffer.getLine(cursor.line));
+      _buffer.removeLine(cursor.line);
       cursor.line--;
     }
-    version++;
+    _buffer.incrementVersion();
     notifyListeners();
   }
 
@@ -199,24 +212,29 @@ class EditorState extends ChangeNotifier {
       return;
     }
 
-    if (cursor.column < lines[cursor.line].length) {
-      String currentLine = lines[cursor.line];
+    if (cursor.column < _buffer.getLineLength(cursor.line)) {
+      String currentLine = _buffer.getLine(cursor.line);
       String afterCursor = currentLine.substring(cursor.column);
       if (afterCursor.startsWith('    ') &&
           afterCursor.substring(4).trim().isEmpty) {
         // Delete entire tab (4 spaces)
-        lines[cursor.line] = currentLine.substring(0, cursor.column) +
-            currentLine.substring(cursor.column + 4);
+        _buffer.setLine(
+            cursor.line,
+            currentLine.substring(0, cursor.column) +
+                currentLine.substring(cursor.column + 4));
       } else {
         // Normal single character deletion
-        lines[cursor.line] = currentLine.substring(0, cursor.column) +
-            currentLine.substring(cursor.column + 1);
+        _buffer.setLine(
+            cursor.line,
+            currentLine.substring(0, cursor.column) +
+                currentLine.substring(cursor.column + 1));
       }
-    } else if (cursor.line < lines.length - 1) {
-      lines[cursor.line] += lines[cursor.line + 1];
-      lines.removeAt(cursor.line + 1);
+    } else if (cursor.line < _buffer.lineCount - 1) {
+      _buffer.setLine(cursor.line,
+          _buffer.getLine(cursor.line) + _buffer.getLine(cursor.line + 1));
+      _buffer.removeLine(cursor.line + 1);
     }
-    version++;
+    _buffer.incrementVersion();
     notifyListeners();
   }
 
@@ -242,32 +260,37 @@ class EditorState extends ChangeNotifier {
 
     if (pastedLines.length == 1) {
       // Single line paste
-      lines[cursor.line] = lines[cursor.line].substring(0, cursor.column) +
-          pastedLines[0] +
-          lines[cursor.line].substring(cursor.column);
+      String newContent =
+          _buffer.getLine(cursor.line).substring(0, cursor.column) +
+              pastedLines[0] +
+              _buffer.getLine(cursor.line).substring(cursor.column);
+      _buffer.setLine(cursor.line, newContent);
       cursor.column += pastedLines[0].length;
     } else {
       // Multi-line paste
-      String remainingText = lines[cursor.line].substring(cursor.column);
+      String remainingText =
+          _buffer.getLine(cursor.line).substring(cursor.column);
 
       // First line
-      lines[cursor.line] =
-          lines[cursor.line].substring(0, cursor.column) + pastedLines[0];
+      _buffer.setLine(
+          cursor.line,
+          _buffer.getLine(cursor.line).substring(0, cursor.column) +
+              pastedLines[0]);
 
       // Middle lines
       for (int i = 1; i < pastedLines.length - 1; i++) {
-        lines.insert(cursor.line + i, pastedLines[i]);
+        _buffer.insertLine(cursor.line + i, content: pastedLines[i]);
       }
 
       // Last line
-      lines.insert(cursor.line + pastedLines.length - 1,
-          pastedLines.last + remainingText);
+      _buffer.insertLine(cursor.line + pastedLines.length - 1,
+          content: pastedLines.last + remainingText);
 
       cursor.line += pastedLines.length - 1;
       cursor.column = pastedLines.last.length;
     }
 
-    version++;
+    _buffer.incrementVersion();
     notifyListeners();
   }
 
@@ -277,7 +300,7 @@ class EditorState extends ChangeNotifier {
 
       // Add tab to each line in selection
       for (int i = _selection.startLine; i <= _selection.endLine; i++) {
-        lines[i] = '    ${lines[i]}';
+        _buffer.setLine(i, '    ${_buffer.getLine(i)}');
 
         // Adjust selection and cursor columns
         if (i == _selection.startLine) {
@@ -299,7 +322,7 @@ class EditorState extends ChangeNotifier {
       cursor.column += 3;
     }
 
-    version++;
+    _buffer.incrementVersion();
     notifyListeners();
   }
 
@@ -309,8 +332,8 @@ class EditorState extends ChangeNotifier {
 
       // Remove tab from each line in selection
       for (int i = _selection.startLine; i <= _selection.endLine; i++) {
-        if (lines[i].startsWith('    ')) {
-          lines[i] = lines[i].substring(4);
+        if (_buffer.getLine(i).startsWith('    ')) {
+          _buffer.setLine(i, _buffer.getLine(i).substring(4));
 
           // Adjust selection and cursor columns
           if (i == _selection.startLine) {
@@ -329,14 +352,14 @@ class EditorState extends ChangeNotifier {
       selection = _selection;
     } else {
       // Remove tab at cursor position if line starts with spaces
-      String currentLine = lines[cursor.line];
+      String currentLine = _buffer.getLine(cursor.line);
       if (currentLine.startsWith('    ')) {
-        lines[cursor.line] = currentLine.substring(4);
+        _buffer.setLine(cursor.line, currentLine.substring(4));
         cursor.column = math.max(0, cursor.column - 4);
       }
     }
 
-    version++;
+    _buffer.incrementVersion();
     notifyListeners();
   }
 
@@ -345,11 +368,13 @@ class EditorState extends ChangeNotifier {
       deleteSelection();
     }
 
-    lines[cursor.line] = lines[cursor.line].substring(0, cursor.column) +
-        c +
-        lines[cursor.line].substring(cursor.column);
+    String newContent =
+        _buffer.getLine(cursor.line).substring(0, cursor.column) +
+            c +
+            _buffer.getLine(cursor.line).substring(cursor.column);
+    _buffer.setLine(cursor.line, newContent);
     cursor.column++;
-    version++;
+    _buffer.incrementVersion();
     notifyListeners();
   }
 
@@ -376,9 +401,9 @@ class EditorState extends ChangeNotifier {
         }
       case LogicalKeyboardKey.keyS:
         if (isControlPressed) {
-          String content = lines.join('\n');
+          String content = _buffer.lines.join('\n');
           FileService.saveFile(path, content);
-          _originalContent = content;
+          _buffer.setOriginalContent(content);
           notifyListeners();
           return true;
         }
@@ -389,12 +414,12 @@ class EditorState extends ChangeNotifier {
 
   void handleTap(double dy, double dx, Function(String line) measureLineWidth) {
     int targetLine = dy ~/ EditorConstants.lineHeight;
-    if (targetLine >= lines.length) {
-      targetLine = lines.length - 1;
+    if (targetLine >= _buffer.lineCount) {
+      targetLine = _buffer.lineCount - 1;
     }
 
     double x = dx;
-    String lineText = lines[targetLine];
+    String lineText = _buffer.getLine(targetLine);
     int targetColumn = 0;
     double currentWidth = 0;
 
@@ -421,14 +446,14 @@ class EditorState extends ChangeNotifier {
   void handleDragUpdate(
       double dy, double dx, Function(String line) measureLineWidth) {
     int targetLine = dy ~/ EditorConstants.lineHeight;
-    if (targetLine >= lines.length) {
-      targetLine = lines.length - 1;
+    if (targetLine >= _buffer.lineCount) {
+      targetLine = _buffer.lineCount - 1;
     } else if (targetLine < 0) {
       targetLine = 0;
     }
 
     double x = dx + scrollState.horizontalOffset;
-    String lineText = lines[targetLine];
+    String lineText = _buffer.getLine(targetLine);
     int targetColumn = 0;
     double currentWidth = 0;
 
@@ -450,7 +475,7 @@ class EditorState extends ChangeNotifier {
       deleteSelection();
     }
 
-    String currentLine = lines[cursor.line];
+    String currentLine = _buffer.getLine(cursor.line);
     String remainingText = currentLine.substring(cursor.column);
     String beforeCursor = currentLine.substring(0, cursor.column);
 
@@ -465,29 +490,28 @@ class EditorState extends ChangeNotifier {
     }
 
     // Keep indentation for new line
-    lines[cursor.line] = beforeCursor;
-    lines.insert(cursor.line + 1, indentation + remainingText);
+    _buffer.setLine(cursor.line, beforeCursor);
+    _buffer.insertLine(cursor.line + 1, content: indentation + remainingText);
 
     cursor.line++;
     cursor.column = indentation.length;
-    version++;
     notifyListeners();
   }
 
   void selectLine(bool extend, int lineNumber) {
-    if (lineNumber < 0 || lineNumber >= lines.length) return;
+    if (lineNumber < 0 || lineNumber >= _buffer.lineCount) return;
 
     if (!extend) {
       // Select single line
       cursor.line = lineNumber;
-      cursor.column = lines[lineNumber].length;
+      cursor.column = _buffer.getLineLength(lineNumber);
       anchorLine = lineNumber;
       anchorColumn = 0;
       selection = Selection(
           startLine: lineNumber,
           endLine: lineNumber,
           startColumn: 0,
-          endColumn: lines[lineNumber].length);
+          endColumn: _buffer.getLineLength(lineNumber));
     } else {
       // Extend selection to include target line
       if (selection == null) {
@@ -495,20 +519,20 @@ class EditorState extends ChangeNotifier {
       }
 
       cursor.line = lineNumber;
-      cursor.column = lines[lineNumber].length;
+      cursor.column = _buffer.getLineLength(lineNumber);
 
       if (lineNumber < anchorLine!) {
         selection = Selection(
             startLine: lineNumber,
             endLine: anchorLine!,
             startColumn: 0,
-            endColumn: lines[anchorLine!].length);
+            endColumn: _buffer.getLineLength(anchorLine!));
       } else {
         selection = Selection(
             startLine: anchorLine!,
             endLine: lineNumber,
             startColumn: 0,
-            endColumn: lines[lineNumber].length);
+            endColumn: _buffer.getLineLength(lineNumber));
       }
     }
 
@@ -516,13 +540,14 @@ class EditorState extends ChangeNotifier {
   }
 
   void moveCursorDown(bool isShiftPressed) {
-    if (cursor.line < lines.length - 1) {
+    if (cursor.line < _buffer.lineCount - 1) {
       if (selection == null && isShiftPressed) {
         startSelection();
       }
 
       cursor.line++;
-      cursor.column = cursor.column.clamp(0, lines[cursor.line].length);
+      cursor.column =
+          cursor.column.clamp(0, _buffer.getLineLength(cursor.line));
     }
 
     if (isShiftPressed) {
@@ -543,7 +568,7 @@ class EditorState extends ChangeNotifier {
       cursor.column--;
     } else if (cursor.line > 0) {
       cursor.line--;
-      cursor.column = lines[cursor.line].length;
+      cursor.column = _buffer.getLineLength(cursor.line);
     }
 
     if (isShiftPressed) {
@@ -560,9 +585,9 @@ class EditorState extends ChangeNotifier {
       startSelection();
     }
 
-    if (cursor.column < lines[cursor.line].length) {
+    if (cursor.column < _buffer.getLineLength(cursor.line)) {
       cursor.column++;
-    } else if (cursor.line < lines.length - 1) {
+    } else if (cursor.line < _buffer.lineCount - 1) {
       cursor.line++;
       cursor.column = 0;
     }
@@ -583,7 +608,8 @@ class EditorState extends ChangeNotifier {
       }
 
       cursor.line--;
-      cursor.column = cursor.column.clamp(0, lines[cursor.line].length);
+      cursor.column =
+          cursor.column.clamp(0, _buffer.getLineLength(cursor.line));
     }
 
     if (isShiftPressed) {
@@ -606,23 +632,16 @@ class EditorState extends ChangeNotifier {
   }
 
   void openFile(String content) {
-    // Split content into lines and update the editor state
-    lines = content.split('\n');
-    if (lines.isEmpty) {
-      lines = [''];
-    }
-
     // Reset cursor and selection
     cursor = Cursor(0, 0);
     clearSelection();
+    _buffer.setContent(content);
 
     // Reset scroll positions
     scrollState.updateVerticalScrollOffset(0);
     scrollState.updateHorizontalScrollOffset(0);
     resetGutterScroll();
 
-    version++;
-    _originalContent = content;
     notifyListeners();
   }
 }

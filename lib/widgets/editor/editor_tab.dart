@@ -37,7 +37,7 @@ class EditorTab extends StatelessWidget {
             ),
             child: Row(
               children: [
-                if (editor.isDirty) ...[
+                if (editor.buffer.isDirty) ...[
                   Container(
                     width: 8,
                     height: 8,

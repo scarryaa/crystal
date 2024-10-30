@@ -91,7 +91,7 @@ class _EditorScreenState extends State<EditorScreen> {
     }
 
     final cursorColumn = activeEditor!.cursor.column;
-    final currentLine = activeEditor!.lines[cursorLine];
+    final currentLine = activeEditor!.buffer.getLine(cursorLine);
     final textBeforeCursor = currentLine.substring(0, cursorColumn);
     final cursorX = textBeforeCursor.length * EditorConstants.charWidth;
     final viewportWidth =

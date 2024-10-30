@@ -80,7 +80,7 @@ class _EditorState extends State<Editor> {
   }
 
   double _maxLineWidth() {
-    return widget.state.lines.fold<double>(0, (maxWidth, line) {
+    return widget.state.buffer.lines.fold<double>(0, (maxWidth, line) {
       final lineWidth = EditorPainter.measureLineWidth(line);
       return math.max(maxWidth, lineWidth);
     });
@@ -95,7 +95,7 @@ class _EditorState extends State<Editor> {
     );
     final height = math.max(
       mediaQuery.size.height,
-      EditorConstants.lineHeight * widget.state.lines.length +
+      EditorConstants.lineHeight * widget.state.buffer.lineCount +
           EditorConstants.verticalPadding,
     );
     widget.state.scrollState
