@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/widgets/editor/editor.dart';
-import 'package:crystal/widgets/editor/editor_tab.dart';
+import 'package:crystal/widgets/editor/editor_tab_bar.dart';
 import 'package:crystal/widgets/file_explorer/file_explorer.dart';
 import 'package:crystal/widgets/gutter/gutter.dart';
 import 'package:flutter/material.dart';
@@ -120,6 +120,41 @@ class _EditorScreenState extends State<EditorScreen> {
     if (_gutterScrollController.hasClients) _gutterScrollController.jumpTo(0);
   }
 
+  void onActiveEditorChanged(int index) {
+    setState(() {
+      activeEditorIndex = index;
+    });
+  }
+
+  void onEditorClosed(int index) {
+    setState(() {
+      _editors.removeAt(index);
+      if (activeEditorIndex >= _editors.length) {
+        activeEditorIndex = _editors.length - 1;
+      }
+    });
+  }
+
+  void onReorder(int oldIndex, int newIndex) {
+    setState(() {
+      if (oldIndex < newIndex) {
+        newIndex -= 1;
+      }
+      final item = _editors.removeAt(oldIndex);
+      _editors.insert(newIndex, item);
+
+      if (activeEditorIndex == oldIndex) {
+        activeEditorIndex = newIndex;
+      } else if (activeEditorIndex > oldIndex &&
+          activeEditorIndex <= newIndex) {
+        activeEditorIndex--;
+      } else if (activeEditorIndex < oldIndex &&
+          activeEditorIndex >= newIndex) {
+        activeEditorIndex++;
+      }
+    });
+  }
+
   @override
   void dispose() {
     _gutterScrollController.removeListener(_handleEditorScroll);
@@ -149,90 +184,45 @@ class _EditorScreenState extends State<EditorScreen> {
                 child: Column(
                   children: [
                     if (_editors.isNotEmpty)
-                      Container(
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                        ),
-                        height: 35,
-                        child: ReorderableListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          buildDefaultDragHandles: false,
-                          onReorder: (oldIndex, newIndex) {
-                            setState(() {
-                              if (oldIndex < newIndex) {
-                                newIndex -= 1;
-                              }
-                              final item = _editors.removeAt(oldIndex);
-                              _editors.insert(newIndex, item);
-
-                              if (activeEditorIndex == oldIndex) {
-                                activeEditorIndex = newIndex;
-                              } else if (activeEditorIndex > oldIndex &&
-                                  activeEditorIndex <= newIndex) {
-                                activeEditorIndex--;
-                              } else if (activeEditorIndex < oldIndex &&
-                                  activeEditorIndex >= newIndex) {
-                                activeEditorIndex++;
-                              }
-                            });
-                          },
-                          itemCount: _editors.length,
-                          itemBuilder: (context, index) {
-                            final editor = _editors[index];
-                            return ReorderableDragStartListener(
-                                key: ValueKey(editor.path),
-                                index: index,
-                                child: EditorTab(
-                                  editor: editor,
-                                  isActive: index == activeEditorIndex,
-                                  onTap: () {
-                                    setState(() {
-                                      activeEditorIndex = index;
-                                    });
-                                  },
-                                  onClose: () {
-                                    setState(() {
-                                      _editors.removeAt(index);
-                                      if (activeEditorIndex >=
-                                          _editors.length) {
-                                        activeEditorIndex = _editors.length - 1;
-                                      }
-                                    });
-                                  },
-                                ));
-                          },
-                        ),
-                      ),
-                    Expanded(
-                      child: Row(
-                        children: [
-                          if (_editors.isNotEmpty)
-                            Gutter(
-                              editorState: state!,
-                              verticalScrollController: _gutterScrollController,
-                            ),
-                          Expanded(
-                            child: _editors.isNotEmpty
-                                ? Editor(
-                                    state: state!,
-                                    scrollToCursor: _scrollToCursor,
-                                    gutterWidth: gutterWidth!,
-                                    verticalScrollController:
-                                        _editorVerticalScrollController,
-                                    horizontalScrollController:
-                                        _editorHorizontalScrollController,
-                                  )
-                                : Container(color: Colors.white),
-                          )
-                        ],
-                      ),
-                    ),
+                      EditorTabBar(
+                          editors: _editors,
+                          activeEditorIndex: activeEditorIndex,
+                          onActiveEditorChanged: onActiveEditorChanged,
+                          onEditorClosed: onEditorClosed,
+                          onReorder: onReorder),
+                    _buildEditor(state, gutterWidth),
                   ],
                 ),
               ),
             ],
           ));
         },
+      ),
+    );
+  }
+
+  Widget _buildEditor(dynamic state, double? gutterWidth) {
+    return Expanded(
+      child: Row(
+        children: [
+          if (_editors.isNotEmpty)
+            Gutter(
+              editorState: state!,
+              verticalScrollController: _gutterScrollController,
+            ),
+          Expanded(
+            child: _editors.isNotEmpty
+                ? Editor(
+                    state: state!,
+                    scrollToCursor: _scrollToCursor,
+                    gutterWidth: gutterWidth!,
+                    verticalScrollController: _editorVerticalScrollController,
+                    horizontalScrollController:
+                        _editorHorizontalScrollController,
+                  )
+                : Container(color: Colors.white),
+          )
+        ],
       ),
     );
   }

@@ -57,7 +57,7 @@ class _FileExplorerState extends State<FileExplorer> {
           isDirectory: isDirectory,
           expanded: isExpanded,
           level: depth,
-          onTap: () async {
+          onTap: () {
             if (isDirectory) {
               setState(() {
                 expandedDirs[entity.path] = !isExpanded;

@@ -29,18 +29,31 @@ class EditorTab extends StatelessWidget {
                 right: BorderSide(
                   color: Colors.grey[200]!,
                 ),
+                bottom: BorderSide(
+                  color: isActive ? Colors.transparent : Colors.grey[200]!,
+                ),
               ),
               color: isActive ? Colors.white : Colors.grey[50],
             ),
             child: Row(
               children: [
+                if (editor.isDirty) ...[
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isActive ? Colors.blue : Colors.black54,
+                    ),
+                  ),
+                ],
+                const SizedBox(width: 8),
                 Text(
                   editor.path.split('/').last,
                   style: TextStyle(
                     color: isActive ? Colors.blue : Colors.black87,
                   ),
                 ),
-                const SizedBox(width: 8),
                 MouseRegion(
                   child: GestureDetector(
                     onTap: onClose,

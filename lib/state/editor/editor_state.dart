@@ -21,8 +21,11 @@ class EditorState extends ChangeNotifier {
   bool showCaret = true;
   CursorShape cursorShape = CursorShape.bar;
   String path = '';
+  String _originalContent = '';
 
   EditorState({required this.resetGutterScroll, this.path = ''});
+
+  bool get isDirty => _originalContent != lines.join('\n');
 
   double getGutterWidth() {
     return math.max((lines.length.toString().length * 10.0) + 40.0, 48.0);
@@ -373,7 +376,10 @@ class EditorState extends ChangeNotifier {
         }
       case LogicalKeyboardKey.keyS:
         if (isControlPressed) {
-          FileService.saveFile(path, lines.join('\n'));
+          String content = lines.join('\n');
+          FileService.saveFile(path, content);
+          _originalContent = content;
+          notifyListeners();
           return true;
         }
     }
@@ -616,6 +622,7 @@ class EditorState extends ChangeNotifier {
     resetGutterScroll();
 
     version++;
+    _originalContent = content;
     notifyListeners();
   }
 }
