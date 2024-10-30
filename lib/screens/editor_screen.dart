@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/widgets/editor/editor.dart';
+import 'package:crystal/widgets/editor/editor_tab.dart';
 import 'package:crystal/widgets/file_explorer/file_explorer.dart';
 import 'package:crystal/widgets/gutter/gutter.dart';
 import 'package:flutter/material.dart';
@@ -149,67 +150,56 @@ class _EditorScreenState extends State<EditorScreen> {
                   children: [
                     if (_editors.isNotEmpty)
                       Container(
-                        color: Colors.grey[200],
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                        ),
                         height: 35,
-                        child: ListView.builder(
+                        child: ReorderableListView.builder(
                           scrollDirection: Axis.horizontal,
+                          buildDefaultDragHandles: false,
+                          onReorder: (oldIndex, newIndex) {
+                            setState(() {
+                              if (oldIndex < newIndex) {
+                                newIndex -= 1;
+                              }
+                              final item = _editors.removeAt(oldIndex);
+                              _editors.insert(newIndex, item);
+
+                              if (activeEditorIndex == oldIndex) {
+                                activeEditorIndex = newIndex;
+                              } else if (activeEditorIndex > oldIndex &&
+                                  activeEditorIndex <= newIndex) {
+                                activeEditorIndex--;
+                              } else if (activeEditorIndex < oldIndex &&
+                                  activeEditorIndex >= newIndex) {
+                                activeEditorIndex++;
+                              }
+                            });
+                          },
                           itemCount: _editors.length,
                           itemBuilder: (context, index) {
                             final editor = _editors[index];
-                            return InkWell(
-                              onTap: () {
-                                setState(() {
-                                  activeEditorIndex = index;
-                                });
-                              },
-                              child: Container(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 16),
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  border: Border(
-                                    bottom: BorderSide(
-                                      color: index == activeEditorIndex
-                                          ? Colors.blue
-                                          : Colors.transparent,
-                                      width: 2,
-                                    ),
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      editor.path.split('/').last,
-                                      style: TextStyle(
-                                        color: index == activeEditorIndex
-                                            ? Colors.blue
-                                            : Colors.black87,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    InkWell(
-                                      onTap: () {
-                                        setState(() {
-                                          _editors.removeAt(index);
-                                          if (activeEditorIndex >=
-                                              _editors.length) {
-                                            activeEditorIndex =
-                                                _editors.length - 1;
-                                          }
-                                        });
-                                      },
-                                      child: Icon(
-                                        Icons.close,
-                                        size: 16,
-                                        color: index == activeEditorIndex
-                                            ? Colors.blue
-                                            : Colors.black54,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
+                            return ReorderableDragStartListener(
+                                key: ValueKey(editor.path),
+                                index: index,
+                                child: EditorTab(
+                                  editor: editor,
+                                  isActive: index == activeEditorIndex,
+                                  onTap: () {
+                                    setState(() {
+                                      activeEditorIndex = index;
+                                    });
+                                  },
+                                  onClose: () {
+                                    setState(() {
+                                      _editors.removeAt(index);
+                                      if (activeEditorIndex >=
+                                          _editors.length) {
+                                        activeEditorIndex = _editors.length - 1;
+                                      }
+                                    });
+                                  },
+                                ));
                           },
                         ),
                       ),
