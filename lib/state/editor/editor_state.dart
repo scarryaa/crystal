@@ -19,8 +19,9 @@ class EditorState extends ChangeNotifier {
   VoidCallback resetGutterScroll;
   bool showCaret = true;
   CursorShape cursorShape = CursorShape.bar;
+  String path = '';
 
-  EditorState({required this.resetGutterScroll});
+  EditorState({required this.resetGutterScroll, this.path = ''});
 
   double getGutterWidth() {
     return math.max((lines.length.toString().length * 10.0) + 40.0, 48.0);
@@ -346,6 +347,32 @@ class EditorState extends ChangeNotifier {
     cursor.column++;
     version++;
     notifyListeners();
+  }
+
+  bool handleSpecialKeys(bool isControlPressed, LogicalKeyboardKey key) {
+    switch (key) {
+      case LogicalKeyboardKey.add:
+        if (isControlPressed) {
+          EditorConstants.fontSize += 2.0;
+          EditorConstants.lineHeight =
+              EditorConstants.fontSize * EditorConstants.lineHeightRatio;
+          notifyListeners();
+          return true;
+        }
+      case LogicalKeyboardKey.minus:
+        if (isControlPressed) {
+          if (EditorConstants.fontSize > 8.0) {
+            EditorConstants.fontSize -= 2.0;
+            EditorConstants.lineHeight =
+                EditorConstants.fontSize * EditorConstants.lineHeightRatio;
+
+            notifyListeners();
+          }
+          return true;
+        }
+    }
+
+    return false;
   }
 
   void handleTap(double dy, double dx, Function(String line) measureLineWidth) {

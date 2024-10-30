@@ -63,9 +63,7 @@ class _FileExplorerState extends State<FileExplorer> {
                 expandedDirs[entity.path] = !isExpanded;
               });
             } else {
-              final file = File(entity.path);
-              final content = await file.readAsString();
-              widget.tapCallback(content);
+              widget.tapCallback(entity.path);
             }
           },
         ),

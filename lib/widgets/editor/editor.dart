@@ -173,6 +173,11 @@ class _EditorState extends State<Editor> {
           HardwareKeyboard.instance.isControlPressed ||
               HardwareKeyboard.instance.isMetaPressed;
 
+      // Special keys
+      if (widget.state.handleSpecialKeys(isControlPressed, event.logicalKey)) {
+        return KeyEventResult.handled;
+      }
+
       // Ctrl shortcuts
       switch (event.logicalKey) {
         case LogicalKeyboardKey.keyC:
