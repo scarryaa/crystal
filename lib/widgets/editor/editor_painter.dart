@@ -24,7 +24,6 @@ class EditorPainter extends CustomPainter {
             applyHeightToFirstAscent: false,
             applyHeightToLastDescent: false,
           ),
-          textWidthBasis: TextWidthBasis.longestLine,
           strutStyle: StrutStyle(
             fontSize: EditorConstants.fontSize,
             fontFamily: EditorConstants.fontFamily,
