@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'dart:math';
+
 import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/state/editor/editor_state.dart';
-import 'package:crystal/widgets/editor/editor.dart';
+import 'package:crystal/widgets/editor/editor_control_bar_view.dart';
 import 'package:crystal/widgets/editor/editor_tab_bar.dart';
+import 'package:crystal/widgets/editor/editor_view.dart';
 import 'package:crystal/widgets/file_explorer/file_explorer.dart';
 import 'package:crystal/widgets/gutter/gutter.dart';
 import 'package:flutter/material.dart';
@@ -194,6 +196,8 @@ class _EditorScreenState extends State<EditorScreen> {
                           onActiveEditorChanged: onActiveEditorChanged,
                           onEditorClosed: onEditorClosed,
                           onReorder: onReorder),
+                    if (_editors.isNotEmpty)
+                      EditorControlBarView(filePath: activeEditor!.path),
                     _buildEditor(state, gutterWidth),
                   ],
                 ),
@@ -216,7 +220,7 @@ class _EditorScreenState extends State<EditorScreen> {
             ),
           Expanded(
             child: _editors.isNotEmpty
-                ? Editor(
+                ? EditorView(
                     state: state!,
                     scrollToCursor: _scrollToCursor,
                     gutterWidth: gutterWidth!,

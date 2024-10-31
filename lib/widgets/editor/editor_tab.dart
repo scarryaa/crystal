@@ -46,7 +46,8 @@ class EditorTab extends StatelessWidget {
                       color: isActive ? Colors.blue : Colors.black54,
                     ),
                   ),
-                ],
+                ] else
+                  const SizedBox(width: 8, height: 8),
                 const SizedBox(width: 8),
                 Text(
                   editor.path.split('/').last,

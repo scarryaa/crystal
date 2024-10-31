@@ -14,7 +14,7 @@ class MyApp extends StatelessWidget {
       title: 'crystal',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
         fontFamily: 'IBM Plex Sans',
       ),

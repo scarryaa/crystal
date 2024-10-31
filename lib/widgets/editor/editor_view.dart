@@ -8,14 +8,14 @@ import 'package:crystal/widgets/editor/editor_painter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-class Editor extends StatefulWidget {
+class EditorView extends StatefulWidget {
   final EditorState state;
   final ScrollController verticalScrollController;
   final ScrollController horizontalScrollController;
   final double gutterWidth;
   final VoidCallback scrollToCursor;
 
-  const Editor({
+  const EditorView({
     super.key,
     required this.state,
     required this.gutterWidth,
@@ -25,10 +25,10 @@ class Editor extends StatefulWidget {
   });
 
   @override
-  State<StatefulWidget> createState() => _EditorState();
+  State<StatefulWidget> createState() => _EditorViewState();
 }
 
-class _EditorState extends State<Editor> {
+class _EditorViewState extends State<EditorView> {
   final FocusNode _focusNode = FocusNode();
   double _cachedMaxLineWidth = 0;
   Timer? _caretTimer;
