@@ -263,10 +263,8 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
   }
 
   Widget _buildCurrentSearchMatchLabel() {
-    var currentSearchTermMatch =
-        widget.currentSearchTermMatch + widget.totalSearchTermMatches == 0
-            ? 0
-            : 1;
+    var currentSearchTermMatch = widget.currentSearchTermMatch +
+        (widget.totalSearchTermMatches == 0 ? 0 : 1);
     var totalSearchTermMatches = widget.totalSearchTermMatches;
     return Text('$currentSearchTermMatch/$totalSearchTermMatches');
   }

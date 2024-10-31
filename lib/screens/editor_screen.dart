@@ -2,7 +2,9 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:crystal/constants/editor_constants.dart';
+import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/search_match.dart';
+import 'package:crystal/models/selection.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/widgets/editor/editor_control_bar_view.dart';
 import 'package:crystal/widgets/editor/editor_tab_bar.dart';
@@ -84,6 +86,8 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   void _scrollToCursor() {
+    if (activeEditor == null) return;
+
     final cursorLine = activeEditor!.cursor.line;
     final lineHeight = EditorConstants.lineHeight;
     final viewportHeight =
@@ -170,6 +174,22 @@ class _EditorScreenState extends State<EditorScreen> {
     });
   }
 
+  void _updateSearchMatches(String newTerm) {
+    setState(() {
+      _searchTerm = newTerm;
+
+      if (activeEditor?.buffer.lines != null) {
+        _searchTermMatches = findMatches(
+          lines: activeEditor!.buffer.lines,
+          searchTerm: newTerm,
+          caseSensitive: _caseSensitiveActive,
+          wholeWord: _wholeWordActive,
+          useRegex: _regexActive,
+        );
+      }
+    });
+  }
+
   void _onSearchTermChanged(String newTerm) {
     setState(() {
       _searchTerm = newTerm;
@@ -182,8 +202,14 @@ class _EditorScreenState extends State<EditorScreen> {
           wholeWord: _wholeWordActive,
           useRegex: _regexActive,
         );
+
         // Reset current match index when search term changes
-        _currentSearchTermMatch = _searchTermMatches.isEmpty ? 0 : 0;
+        _currentSearchTermMatch = 0;
+
+        // If there are matches, position cursor at the first match
+        if (_searchTermMatches.isNotEmpty) {
+          _positionCursorAtMatch(_searchTermMatches[0]);
+        }
       } else {
         _searchTermMatches = [];
       }
@@ -267,22 +293,54 @@ class _EditorScreenState extends State<EditorScreen> {
 
   void _nextSearchTerm() {
     if (_searchTermMatches.isEmpty) return;
+
     setState(() {
       _currentSearchTermMatch = getNextMatchIndex(
         _currentSearchTermMatch,
         _searchTermMatches.length,
       );
+
+      // Position cursor at the current match
+      _positionCursorAtMatch(_searchTermMatches[_currentSearchTermMatch]);
     });
   }
 
   void _previousSearchTerm() {
     if (_searchTermMatches.isEmpty) return;
+
     setState(() {
       _currentSearchTermMatch = getPreviousMatchIndex(
         _currentSearchTermMatch,
         _searchTermMatches.length,
       );
+
+      // Position cursor at the current match
+      _positionCursorAtMatch(_searchTermMatches[_currentSearchTermMatch]);
     });
+  }
+
+  void _positionCursorAtMatch(SearchMatch match) {
+    if (activeEditor == null) return;
+
+    final matchLine = match.lineNumber;
+    final matchEndColumn = match.startIndex + match.length;
+
+    // Update cursor position to end of match
+    activeEditor!.cursor = Cursor(
+      matchLine,
+      matchEndColumn,
+    );
+
+    // Update selection to cover the entire match
+    activeEditor!.selection = Selection(
+      startLine: matchLine,
+      startColumn: match.startIndex,
+      endLine: matchLine,
+      endColumn: matchEndColumn,
+    );
+
+    // Scroll to make the cursor visible
+    _scrollToCursor();
   }
 
   void _toggleRegex(bool active) {
@@ -383,7 +441,7 @@ class _EditorScreenState extends State<EditorScreen> {
                     searchTerm: _searchTerm,
                     searchTermMatches: _searchTermMatches,
                     currentSearchTermMatch: _currentSearchTermMatch,
-                    onSearchTermChanged: _onSearchTermChanged,
+                    onSearchTermChanged: _updateSearchMatches,
                     scrollToCursor: _scrollToCursor,
                     gutterWidth: gutterWidth!,
                     verticalScrollController: _editorVerticalScrollController,
