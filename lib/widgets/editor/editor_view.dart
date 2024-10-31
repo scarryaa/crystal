@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:crystal/constants/editor_constants.dart';
+import 'package:crystal/models/editor/search_match.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/state/editor/editor_syntax_highlighter.dart';
 import 'package:crystal/widgets/editor/editor_painter.dart';
@@ -14,6 +15,10 @@ class EditorView extends StatefulWidget {
   final ScrollController horizontalScrollController;
   final double gutterWidth;
   final VoidCallback scrollToCursor;
+  final Function(String newTerm) onSearchTermChanged;
+  final String searchTerm;
+  final int currentSearchTermMatch;
+  final List<SearchMatch> searchTermMatches;
 
   const EditorView({
     super.key,
@@ -22,6 +27,10 @@ class EditorView extends StatefulWidget {
     required this.verticalScrollController,
     required this.horizontalScrollController,
     required this.scrollToCursor,
+    required this.searchTerm,
+    required this.searchTermMatches,
+    required this.onSearchTermChanged,
+    required this.currentSearchTermMatch,
   });
 
   @override
@@ -130,6 +139,9 @@ class _EditorViewState extends State<EditorView> {
                         painter: EditorPainter(
                           editorSyntaxHighlighter: editorSyntaxHighlighter,
                           editorState: widget.state,
+                          searchTerm: widget.searchTerm,
+                          searchTermMatches: widget.searchTermMatches,
+                          currentSearchTermMatch: widget.currentSearchTermMatch,
                           viewportHeight: MediaQuery.of(context).size.height,
                         ),
                         size: Size(width, height),
@@ -142,6 +154,8 @@ class _EditorViewState extends State<EditorView> {
   }
 
   void _handleTap(TapDownDetails details) {
+    _focusNode.requestFocus();
+
     final localY =
         details.localPosition.dy + widget.verticalScrollController.offset;
     final localX =
@@ -175,6 +189,7 @@ class _EditorViewState extends State<EditorView> {
 
       // Special keys
       if (widget.state.handleSpecialKeys(isControlPressed, event.logicalKey)) {
+        widget.onSearchTermChanged(widget.searchTerm);
         return KeyEventResult.handled;
       }
 
@@ -189,15 +204,20 @@ class _EditorViewState extends State<EditorView> {
           if (isControlPressed) {
             widget.state.cut();
             _updateCachedMaxLineWidth();
-            widget.scrollToCursor();
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              widget.scrollToCursor();
+              widget.onSearchTermChanged(widget.searchTerm);
+            });
             return KeyEventResult.handled;
           }
         case LogicalKeyboardKey.keyV:
           if (isControlPressed) {
             widget.state.paste();
             _updateCachedMaxLineWidth();
-            WidgetsBinding.instance
-                .addPostFrameCallback((_) => widget.scrollToCursor());
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              widget.scrollToCursor();
+              widget.onSearchTermChanged(widget.searchTerm);
+            });
             return KeyEventResult.handled;
           }
         case LogicalKeyboardKey.keyA:
@@ -230,16 +250,19 @@ class _EditorViewState extends State<EditorView> {
           widget.state.insertNewLine();
           _updateCachedMaxLineWidth();
           widget.scrollToCursor();
+          widget.onSearchTermChanged(widget.searchTerm);
           return KeyEventResult.handled;
         case LogicalKeyboardKey.backspace:
           widget.state.backspace();
           _updateCachedMaxLineWidth();
           widget.scrollToCursor();
+          widget.onSearchTermChanged(widget.searchTerm);
           return KeyEventResult.handled;
         case LogicalKeyboardKey.delete:
           widget.state.delete();
           _updateCachedMaxLineWidth();
           widget.scrollToCursor();
+          widget.onSearchTermChanged(widget.searchTerm);
           return KeyEventResult.handled;
         case LogicalKeyboardKey.tab:
           if (isShiftPressed) {
@@ -249,6 +272,7 @@ class _EditorViewState extends State<EditorView> {
             _updateCachedMaxLineWidth();
           }
           widget.scrollToCursor();
+          widget.onSearchTermChanged(widget.searchTerm);
           return KeyEventResult.handled;
         default:
           if (event.character != null &&
@@ -257,6 +281,7 @@ class _EditorViewState extends State<EditorView> {
             widget.state.insertChar(event.character!);
             _updateCachedMaxLineWidth();
             widget.scrollToCursor();
+            widget.onSearchTermChanged(widget.searchTerm);
             return KeyEventResult.handled;
           }
       }

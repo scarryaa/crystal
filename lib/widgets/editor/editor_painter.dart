@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/models/editor/cursor_shape.dart';
+import 'package:crystal/models/editor/search_match.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/state/editor/editor_syntax_highlighter.dart';
@@ -12,11 +13,17 @@ class EditorPainter extends CustomPainter {
   final TextPainter _textPainter;
   final double viewportHeight;
   final EditorSyntaxHighlighter editorSyntaxHighlighter;
+  final String searchTerm;
+  final List<SearchMatch> searchTermMatches;
+  final int currentSearchTermMatch;
 
   EditorPainter({
     required this.editorState,
     required this.viewportHeight,
     required this.editorSyntaxHighlighter,
+    required this.searchTerm,
+    required this.searchTermMatches,
+    required this.currentSearchTermMatch,
   })  : _textPainter = TextPainter(
           textDirection: TextDirection.ltr,
           textAlign: TextAlign.left,
@@ -61,6 +68,12 @@ class EditorPainter extends CustomPainter {
       _highlightCurrentLine(canvas, size, editorState.cursor.line);
     }
 
+    // Draw search highlights
+    if (searchTerm.isNotEmpty) {
+      _drawSearchHighlights(
+          canvas, searchTerm, firstVisibleLine, lastVisibleLine);
+    }
+
     // Draw selection
     if (editorState.selection != null) {
       _drawSelection(canvas, firstVisibleLine, lastVisibleLine);
@@ -80,6 +93,26 @@ class EditorPainter extends CustomPainter {
             lineNumber * EditorConstants.lineHeight +
                 EditorConstants.lineHeight),
         EditorConstants.indentLineColor);
+  }
+
+  void _drawSearchHighlights(
+      Canvas canvas, String searchTerm, int startLine, int endLine) {
+    for (int i = 0; i < searchTermMatches.length; i++) {
+      if (searchTermMatches[i].lineNumber >= startLine &&
+          searchTermMatches[i].lineNumber <= endLine) {
+        var left = searchTermMatches[i].startIndex * EditorConstants.charWidth;
+        var top = searchTermMatches[i].lineNumber * EditorConstants.lineHeight;
+        var width = searchTerm.length * EditorConstants.charWidth;
+        var height = EditorConstants.lineHeight;
+
+        canvas.drawRect(
+            Rect.fromLTWH(left, top, width, height),
+            Paint()
+              ..color = i == currentSearchTermMatch
+                  ? Colors.blue.withOpacity(0.4)
+                  : Colors.blue.withOpacity(0.2));
+      }
+    }
   }
 
   void _highlightCurrentLine(Canvas canvas, Size size, int lineNumber) {
@@ -417,6 +450,8 @@ class EditorPainter extends CustomPainter {
         editorState.scrollState.verticalOffset !=
             oldDelegate.editorState.scrollState.verticalOffset ||
         editorState.showCaret != oldDelegate.editorState.showCaret ||
-        editorState.cursorShape != oldDelegate.editorState.cursorShape;
+        editorState.cursorShape != oldDelegate.editorState.cursorShape ||
+        searchTerm != oldDelegate.searchTerm ||
+        currentSearchTermMatch != oldDelegate.currentSearchTermMatch;
   }
 }

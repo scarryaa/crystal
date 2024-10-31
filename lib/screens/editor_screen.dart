@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:crystal/constants/editor_constants.dart';
+import 'package:crystal/models/editor/search_match.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/widgets/editor/editor_control_bar_view.dart';
 import 'package:crystal/widgets/editor/editor_tab_bar.dart';
@@ -23,6 +24,12 @@ class _EditorScreenState extends State<EditorScreen> {
   final ScrollController _editorVerticalScrollController = ScrollController();
   final ScrollController _editorHorizontalScrollController = ScrollController();
   final List<EditorState> _editors = [];
+  String _searchTerm = '';
+  List<SearchMatch> _searchTermMatches = [];
+  int _currentSearchTermMatch = 0;
+  bool _caseSensitiveActive = false;
+  bool _wholeWordActive = false;
+  bool _regexActive = false;
 
   int activeEditorIndex = 0;
   EditorState? get activeEditor =>
@@ -44,6 +51,7 @@ class _EditorScreenState extends State<EditorScreen> {
         activeEditorIndex = _editors.length - 1;
 
         _editors[activeEditorIndex].openFile(content);
+        _onSearchTermChanged(_searchTerm);
       });
     }
   }
@@ -129,6 +137,7 @@ class _EditorScreenState extends State<EditorScreen> {
           .jumpTo(activeEditor!.scrollState.verticalOffset);
       _editorHorizontalScrollController
           .jumpTo(activeEditor!.scrollState.horizontalOffset);
+      _onSearchTermChanged(_searchTerm);
     });
   }
 
@@ -158,6 +167,142 @@ class _EditorScreenState extends State<EditorScreen> {
           activeEditorIndex >= newIndex) {
         activeEditorIndex++;
       }
+    });
+  }
+
+  void _onSearchTermChanged(String newTerm) {
+    setState(() {
+      _searchTerm = newTerm;
+
+      if (activeEditor?.buffer.lines != null) {
+        _searchTermMatches = findMatches(
+          lines: activeEditor!.buffer.lines,
+          searchTerm: newTerm,
+          caseSensitive: _caseSensitiveActive,
+          wholeWord: _wholeWordActive,
+          useRegex: _regexActive,
+        );
+        // Reset current match index when search term changes
+        _currentSearchTermMatch = _searchTermMatches.isEmpty ? 0 : 0;
+      } else {
+        _searchTermMatches = [];
+      }
+    });
+  }
+
+  List<SearchMatch> findMatches({
+    required List<String> lines,
+    required String searchTerm,
+    required bool caseSensitive,
+    required bool wholeWord,
+    required bool useRegex,
+  }) {
+    if (searchTerm.isEmpty || lines.isEmpty) {
+      return [];
+    }
+
+    final List<SearchMatch> matches = [];
+
+    // Prepare regex pattern based on search options
+    RegExp? pattern;
+    try {
+      if (useRegex) {
+        pattern = RegExp(
+          searchTerm,
+          caseSensitive: caseSensitive,
+          multiLine: true,
+        );
+      } else if (wholeWord) {
+        // Escape special regex characters in the search term
+        final escapedTerm = RegExp.escape(searchTerm);
+        pattern = RegExp(
+          r'\b' + escapedTerm + r'\b',
+          caseSensitive: caseSensitive,
+          multiLine: true,
+        );
+      } else {
+        // Escape special regex characters in the search term
+        final escapedTerm = RegExp.escape(searchTerm);
+        pattern = RegExp(
+          escapedTerm,
+          caseSensitive: caseSensitive,
+          multiLine: true,
+        );
+      }
+    } catch (e) {
+      // Handle invalid regex pattern
+      print('Invalid regex pattern: $e');
+      return [];
+    }
+
+    // Process each line
+    for (int lineNumber = 0; lineNumber < lines.length; lineNumber++) {
+      final line = lines[lineNumber];
+      if (line.isEmpty) continue;
+
+      // Find all matches in the current line
+      final Iterable<RegExpMatch> lineMatches = pattern.allMatches(line);
+
+      for (final match in lineMatches) {
+        matches.add(SearchMatch(
+          lineNumber: lineNumber,
+          startIndex: match.start,
+          length: match.end - match.start,
+        ));
+      }
+    }
+
+    return matches;
+  }
+
+  int getNextMatchIndex(int currentIndex, int totalMatches) {
+    if (totalMatches == 0) return 0;
+    return (currentIndex + 1) % totalMatches;
+  }
+
+  int getPreviousMatchIndex(int currentIndex, int totalMatches) {
+    if (totalMatches == 0) return 0;
+    return currentIndex > 0 ? currentIndex - 1 : totalMatches - 1;
+  }
+
+  void _nextSearchTerm() {
+    if (_searchTermMatches.isEmpty) return;
+    setState(() {
+      _currentSearchTermMatch = getNextMatchIndex(
+        _currentSearchTermMatch,
+        _searchTermMatches.length,
+      );
+    });
+  }
+
+  void _previousSearchTerm() {
+    if (_searchTermMatches.isEmpty) return;
+    setState(() {
+      _currentSearchTermMatch = getPreviousMatchIndex(
+        _currentSearchTermMatch,
+        _searchTermMatches.length,
+      );
+    });
+  }
+
+  void _toggleRegex(bool active) {
+    setState(() {
+      _regexActive = active;
+      _onSearchTermChanged(_searchTerm);
+    });
+  }
+
+  void _toggleWholeWord(bool active) {
+    setState(() {
+      _wholeWordActive = active;
+      _onSearchTermChanged(_searchTerm);
+    });
+  }
+
+  void _toggleCaseSensitive(bool active) {
+    setState(() {
+      _caseSensitiveActive = active;
+      _onSearchTermChanged(_searchTerm);
     });
   }
 
@@ -197,7 +342,20 @@ class _EditorScreenState extends State<EditorScreen> {
                           onEditorClosed: onEditorClosed,
                           onReorder: onReorder),
                     if (_editors.isNotEmpty)
-                      EditorControlBarView(filePath: activeEditor!.path),
+                      EditorControlBarView(
+                        filePath: activeEditor!.path,
+                        searchTermChanged: _onSearchTermChanged,
+                        nextSearchTerm: _nextSearchTerm,
+                        previousSearchTerm: _previousSearchTerm,
+                        currentSearchTermMatch: _currentSearchTermMatch,
+                        totalSearchTermMatches: _searchTermMatches.length,
+                        isCaseSensitiveActive: _caseSensitiveActive,
+                        isRegexActive: _regexActive,
+                        isWholeWordActive: _wholeWordActive,
+                        toggleRegex: _toggleRegex,
+                        toggleWholeWord: _toggleWholeWord,
+                        toggleCaseSensitive: _toggleCaseSensitive,
+                      ),
                     _buildEditor(state, gutterWidth),
                   ],
                 ),
@@ -222,6 +380,10 @@ class _EditorScreenState extends State<EditorScreen> {
             child: _editors.isNotEmpty
                 ? EditorView(
                     state: state!,
+                    searchTerm: _searchTerm,
+                    searchTermMatches: _searchTermMatches,
+                    currentSearchTermMatch: _currentSearchTermMatch,
+                    onSearchTermChanged: _onSearchTermChanged,
                     scrollToCursor: _scrollToCursor,
                     gutterWidth: gutterWidth!,
                     verticalScrollController: _editorVerticalScrollController,

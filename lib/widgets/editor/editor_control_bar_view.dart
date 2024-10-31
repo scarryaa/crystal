@@ -2,7 +2,33 @@ import 'package:flutter/material.dart';
 
 class EditorControlBarView extends StatefulWidget {
   final String filePath;
-  const EditorControlBarView({super.key, required this.filePath});
+  final int currentSearchTermMatch;
+  final int totalSearchTermMatches;
+  final Function(String newTerm) searchTermChanged;
+  final Function() previousSearchTerm;
+  final Function() nextSearchTerm;
+  final Function(bool active) toggleCaseSensitive;
+  final Function(bool active) toggleRegex;
+  final Function(bool active) toggleWholeWord;
+  final bool isCaseSensitiveActive;
+  final bool isWholeWordActive;
+  final bool isRegexActive;
+
+  const EditorControlBarView({
+    super.key,
+    required this.filePath,
+    required this.searchTermChanged,
+    required this.currentSearchTermMatch,
+    required this.totalSearchTermMatches,
+    required this.previousSearchTerm,
+    required this.nextSearchTerm,
+    required this.isCaseSensitiveActive,
+    required this.isWholeWordActive,
+    required this.isRegexActive,
+    required this.toggleRegex,
+    required this.toggleWholeWord,
+    required this.toggleCaseSensitive,
+  });
 
   @override
   State<StatefulWidget> createState() => _EditorControlBarViewState();
@@ -60,8 +86,46 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
     );
   }
 
-  Widget _buildToggleButton(Widget icon, Function(dynamic) onEnter,
-      Function(dynamic) onExit, bool hovered, VoidCallback onPress) {
+  Widget _buildSearchOptionButton({
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    required String tooltip,
+    required Widget child,
+  }) {
+    return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 2.0),
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: Tooltip(
+            message: tooltip,
+            child: GestureDetector(
+              onTap: () => onChanged(!value),
+              child: Container(
+                height: 24,
+                width: 28,
+                decoration: BoxDecoration(
+                  color:
+                      value ? Colors.blue.withOpacity(0.1) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+                child: Center(
+                  child: DefaultTextStyle(
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: value ? Colors.blue : Colors.black54,
+                    ),
+                    child: child,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ));
+  }
+
+  Widget _buildToggleButton(Widget icon, Function(dynamic)? onEnter,
+      Function(dynamic)? onExit, bool? hovered, VoidCallback onPress) {
     return MouseRegion(
       onEnter: onEnter,
       onExit: onExit,
@@ -71,22 +135,13 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
           height: 24,
           width: 24,
           decoration: BoxDecoration(
-            color: hovered ? Colors.grey[200] : Colors.transparent,
+            color: (hovered != null && hovered)
+                ? Colors.grey[200]
+                : Colors.transparent,
             borderRadius: const BorderRadius.all(Radius.circular(4)),
           ),
           child: Center(child: icon),
         ),
-      ),
-    );
-  }
-
-  Widget _buildCustomTextIcon(String text) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.bold,
-        color: Colors.black54,
       ),
     );
   }
@@ -133,38 +188,87 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
       child: Align(
         alignment: Alignment.centerLeft,
         child: Row(children: [
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 450),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                isDense: true,
-                hintText: 'Search',
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(4.0),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
+          Row(children: [
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 450),
+              child: TextField(
+                controller: _searchController,
+                onChanged: widget.searchTermChanged,
+                decoration: InputDecoration(
+                  isDense: true,
+                  hintText: 'Search',
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 8.0, vertical: 8.0),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(4.0),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(4.0),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(4.0),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildSearchOptionButton(
+                        value: widget.isCaseSensitiveActive,
+                        onChanged: (value) => setState(() {
+                          widget.toggleCaseSensitive(value);
+                        }),
+                        tooltip: 'Match Case',
+                        child: const Text('Aa'),
+                      ),
+                      _buildSearchOptionButton(
+                        value: widget.isWholeWordActive,
+                        onChanged: (value) => setState(() {
+                          widget.toggleWholeWord(value);
+                        }),
+                        tooltip: 'Match Whole Word',
+                        child: const Text('ab'),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 3.0),
+                        child: _buildSearchOptionButton(
+                          value: widget.isRegexActive,
+                          onChanged: (value) => setState(() {
+                            widget.toggleRegex(value);
+                          }),
+                          tooltip: 'Use Regular Expression',
+                          child: const Text('.*'),
+                        ),
+                      )
+                    ],
+                  ),
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(4.0),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontFamily: 'IBM Plex Sans',
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(4.0),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-              ),
-              style: const TextStyle(
-                fontSize: 14,
-                fontFamily: 'IBM Plex Sans',
               ),
             ),
-          ),
+          ]),
           _buildReplaceToggle(),
+          _buildToggleButton(const Icon(Icons.arrow_left), null, null, null,
+              widget.previousSearchTerm),
+          _buildToggleButton(const Icon(Icons.arrow_right), null, null, null,
+              widget.nextSearchTerm),
+          _buildCurrentSearchMatchLabel(),
         ]),
       ),
     );
+  }
+
+  Widget _buildCurrentSearchMatchLabel() {
+    var currentSearchTermMatch =
+        widget.currentSearchTermMatch + widget.totalSearchTermMatches == 0
+            ? 0
+            : 1;
+    var totalSearchTermMatches = widget.totalSearchTermMatches;
+    return Text('$currentSearchTermMatch/$totalSearchTermMatches');
   }
 
   Widget _buildReplacePane() {
