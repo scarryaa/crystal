@@ -10,6 +10,8 @@ class EditorControlBarView extends StatefulWidget {
   final Function(bool active) toggleCaseSensitive;
   final Function(bool active) toggleRegex;
   final Function(bool active) toggleWholeWord;
+  final Function(String newTerm) replaceNextMatch;
+  final Function(String newTerm) replaceAllMatches;
   final bool isCaseSensitiveActive;
   final bool isWholeWordActive;
   final bool isRegexActive;
@@ -28,6 +30,8 @@ class EditorControlBarView extends StatefulWidget {
     required this.toggleRegex,
     required this.toggleWholeWord,
     required this.toggleCaseSensitive,
+    required this.replaceNextMatch,
+    required this.replaceAllMatches,
   });
 
   @override
@@ -176,7 +180,7 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
 
   Widget _buildSearchPane() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+      padding: const EdgeInsets.fromLTRB(8.0, 0.0, 8.0, 4.0),
       height: 36,
       decoration: BoxDecoration(
         color: Colors.white,
@@ -279,37 +283,68 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
           bottom: BorderSide(color: Colors.grey[200]!),
         ),
       ),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 450),
-          child: TextField(
-            controller: _replaceController,
-            decoration: InputDecoration(
-              isDense: true,
-              hintText: 'Replace',
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(4.0),
-                borderSide: BorderSide(color: Colors.grey[300]!),
+      child: Row(children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 450),
+            child: TextField(
+              controller: _replaceController,
+              decoration: InputDecoration(
+                isDense: true,
+                hintText: 'Replace',
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(4.0),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(4.0),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(4.0),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(4.0),
-                borderSide: BorderSide(color: Colors.grey[300]!),
+              style: const TextStyle(
+                fontSize: 14,
+                fontFamily: 'IBM Plex Sans',
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(4.0),
-                borderSide: BorderSide(color: Colors.grey[300]!),
-              ),
-            ),
-            style: const TextStyle(
-              fontSize: 14,
-              fontFamily: 'IBM Plex Sans',
             ),
           ),
         ),
-      ),
+        const SizedBox(width: 8), // Add spacing between text field and buttons
+        _buildToggleButton(
+          const Text(
+            '1↓',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Colors.black54,
+            ),
+          ),
+          null,
+          null,
+          null,
+          () => widget.replaceNextMatch(_replaceController.value.text),
+        ),
+        _buildToggleButton(
+          const Text(
+            'all',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Colors.black54,
+            ),
+          ),
+          null,
+          null,
+          null,
+          () => widget.replaceAllMatches(_replaceController.value.text),
+        ),
+      ]),
     );
   }
 }

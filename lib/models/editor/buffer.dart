@@ -30,6 +30,12 @@ class Buffer {
     _originalContent = content;
   }
 
+  void replace(int lineNumber, int index, int length, String newTerm) {
+    _lines[lineNumber] = _lines[lineNumber].substring(0, index) +
+        newTerm +
+        _lines[lineNumber].substring(index + length);
+  }
+
   void setOriginalContent(String content) {
     _originalContent = content;
   }

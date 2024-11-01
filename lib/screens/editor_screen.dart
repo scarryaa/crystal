@@ -213,6 +213,7 @@ class _EditorScreenState extends State<EditorScreen> {
       } else {
         _searchTermMatches = [];
       }
+      activeEditor!.clearSelection();
     });
   }
 
@@ -364,6 +365,30 @@ class _EditorScreenState extends State<EditorScreen> {
     });
   }
 
+  void _replaceNextMatch(String newTerm) {
+    if (_searchTermMatches.isEmpty) return;
+
+    activeEditor!.buffer.replace(
+        _searchTermMatches[_currentSearchTermMatch].lineNumber,
+        _searchTermMatches[_currentSearchTermMatch].startIndex,
+        _searchTermMatches[_currentSearchTermMatch].length,
+        newTerm);
+    _onSearchTermChanged(_searchTerm);
+  }
+
+  void _replaceAllMatches(String newTerm) {
+    if (_searchTermMatches.isEmpty) return;
+
+    for (int i = 0; i < _searchTermMatches.length; i++) {
+      activeEditor!.buffer.replace(
+          _searchTermMatches[i].lineNumber,
+          _searchTermMatches[i].startIndex,
+          _searchTermMatches[i].length,
+          newTerm);
+    }
+    _onSearchTermChanged(_searchTerm);
+  }
+
   @override
   void dispose() {
     _gutterScrollController.removeListener(_handleEditorScroll);
@@ -413,6 +438,8 @@ class _EditorScreenState extends State<EditorScreen> {
                         toggleRegex: _toggleRegex,
                         toggleWholeWord: _toggleWholeWord,
                         toggleCaseSensitive: _toggleCaseSensitive,
+                        replaceNextMatch: _replaceNextMatch,
+                        replaceAllMatches: _replaceAllMatches,
                       ),
                     _buildEditor(state, gutterWidth),
                   ],
