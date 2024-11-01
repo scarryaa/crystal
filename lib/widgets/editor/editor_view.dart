@@ -99,7 +99,7 @@ class _EditorViewState extends State<EditorView> {
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final width = math.max(
-      mediaQuery.size.width - widget.gutterWidth,
+      mediaQuery.size.width - widget.gutterWidth - 151, // File Explorer
       _cachedMaxLineWidth + EditorConstants.horizontalPadding,
     );
     final height = math.max(
