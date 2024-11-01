@@ -11,6 +11,7 @@ import 'package:crystal/widgets/editor/editor_tab_bar.dart';
 import 'package:crystal/widgets/editor/editor_view.dart';
 import 'package:crystal/widgets/file_explorer/file_explorer.dart';
 import 'package:crystal/widgets/gutter/gutter.dart';
+import 'package:crystal/widgets/status_bar/status_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -408,45 +409,58 @@ class _EditorScreenState extends State<EditorScreen> {
           final gutterWidth = state?.getGutterWidth();
 
           return Material(
-              child: Row(
-            children: [
-              FileExplorer(
-                rootDir: '',
-                tapCallback: tapCallback,
-              ),
-              Expanded(
-                child: Column(
-                  children: [
-                    if (_editors.isNotEmpty)
-                      EditorTabBar(
-                          editors: _editors,
-                          activeEditorIndex: activeEditorIndex,
-                          onActiveEditorChanged: onActiveEditorChanged,
-                          onEditorClosed: onEditorClosed,
-                          onReorder: onReorder),
-                    if (_editors.isNotEmpty)
-                      EditorControlBarView(
-                        filePath: activeEditor!.path,
-                        searchTermChanged: _onSearchTermChanged,
-                        nextSearchTerm: _nextSearchTerm,
-                        previousSearchTerm: _previousSearchTerm,
-                        currentSearchTermMatch: _currentSearchTermMatch,
-                        totalSearchTermMatches: _searchTermMatches.length,
-                        isCaseSensitiveActive: _caseSensitiveActive,
-                        isRegexActive: _regexActive,
-                        isWholeWordActive: _wholeWordActive,
-                        toggleRegex: _toggleRegex,
-                        toggleWholeWord: _toggleWholeWord,
-                        toggleCaseSensitive: _toggleCaseSensitive,
-                        replaceNextMatch: _replaceNextMatch,
-                        replaceAllMatches: _replaceAllMatches,
+            child: Column(
+              children: [
+                Expanded(
+                  // Wrap the main content in Expanded
+                  child: Row(
+                    children: [
+                      FileExplorer(
+                        rootDir: '',
+                        tapCallback: tapCallback,
                       ),
-                    _buildEditor(state, gutterWidth),
-                  ],
+                      Expanded(
+                        child: Column(
+                          children: [
+                            if (_editors.isNotEmpty)
+                              EditorTabBar(
+                                editors: _editors,
+                                activeEditorIndex: activeEditorIndex,
+                                onActiveEditorChanged: onActiveEditorChanged,
+                                onEditorClosed: onEditorClosed,
+                                onReorder: onReorder,
+                              ),
+                            if (_editors.isNotEmpty)
+                              EditorControlBarView(
+                                filePath: activeEditor!.path,
+                                searchTermChanged: _onSearchTermChanged,
+                                nextSearchTerm: _nextSearchTerm,
+                                previousSearchTerm: _previousSearchTerm,
+                                currentSearchTermMatch: _currentSearchTermMatch,
+                                totalSearchTermMatches:
+                                    _searchTermMatches.length,
+                                isCaseSensitiveActive: _caseSensitiveActive,
+                                isRegexActive: _regexActive,
+                                isWholeWordActive: _wholeWordActive,
+                                toggleRegex: _toggleRegex,
+                                toggleWholeWord: _toggleWholeWord,
+                                toggleCaseSensitive: _toggleCaseSensitive,
+                                replaceNextMatch: _replaceNextMatch,
+                                replaceAllMatches: _replaceAllMatches,
+                              ),
+                            Expanded(
+                              child: _buildEditor(state, gutterWidth),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ));
+                const StatusBar(),
+              ],
+            ),
+          );
         },
       ),
     );
