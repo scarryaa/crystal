@@ -412,7 +412,6 @@ class _EditorScreenState extends State<EditorScreen> {
             child: Column(
               children: [
                 Expanded(
-                  // Wrap the main content in Expanded
                   child: Row(
                     children: [
                       FileExplorer(
@@ -449,7 +448,36 @@ class _EditorScreenState extends State<EditorScreen> {
                                 replaceAllMatches: _replaceAllMatches,
                               ),
                             Expanded(
-                              child: _buildEditor(state, gutterWidth),
+                              child: Row(
+                                children: [
+                                  if (_editors.isNotEmpty)
+                                    Gutter(
+                                      editorState: state!,
+                                      verticalScrollController:
+                                          _gutterScrollController,
+                                    ),
+                                  Expanded(
+                                    child: _editors.isNotEmpty
+                                        ? EditorView(
+                                            state: state!,
+                                            searchTerm: _searchTerm,
+                                            searchTermMatches:
+                                                _searchTermMatches,
+                                            currentSearchTermMatch:
+                                                _currentSearchTermMatch,
+                                            onSearchTermChanged:
+                                                _updateSearchMatches,
+                                            scrollToCursor: _scrollToCursor,
+                                            gutterWidth: gutterWidth!,
+                                            verticalScrollController:
+                                                _editorVerticalScrollController,
+                                            horizontalScrollController:
+                                                _editorHorizontalScrollController,
+                                          )
+                                        : Container(color: Colors.white),
+                                  )
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -462,36 +490,6 @@ class _EditorScreenState extends State<EditorScreen> {
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildEditor(dynamic state, double? gutterWidth) {
-    return Expanded(
-      child: Row(
-        children: [
-          if (_editors.isNotEmpty)
-            Gutter(
-              editorState: state!,
-              verticalScrollController: _gutterScrollController,
-            ),
-          Expanded(
-            child: _editors.isNotEmpty
-                ? EditorView(
-                    state: state!,
-                    searchTerm: _searchTerm,
-                    searchTermMatches: _searchTermMatches,
-                    currentSearchTermMatch: _currentSearchTermMatch,
-                    onSearchTermChanged: _updateSearchMatches,
-                    scrollToCursor: _scrollToCursor,
-                    gutterWidth: gutterWidth!,
-                    verticalScrollController: _editorVerticalScrollController,
-                    horizontalScrollController:
-                        _editorHorizontalScrollController,
-                  )
-                : Container(color: Colors.white),
-          )
-        ],
       ),
     );
   }
