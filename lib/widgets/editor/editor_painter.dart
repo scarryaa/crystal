@@ -22,7 +22,7 @@ class EditorPainter extends CustomPainter {
   final int currentSearchTermMatch;
   final BackgroundPainter backgroundPainter = const BackgroundPainter();
   final CaretPainter caretPainter;
-  late final IndentationPainter indentationPainter;
+  final IndentationPainter indentationPainter;
   late final SearchPainter searchPainter;
   late final SelectionPainter selectionPainter;
 
@@ -43,6 +43,10 @@ class EditorPainter extends CustomPainter {
           editorSyntaxHighlighter: editorSyntaxHighlighter,
         ),
         caretPainter = CaretPainter(editorState),
+        indentationPainter = IndentationPainter(
+          editorState: editorState,
+          viewportHeight: viewportHeight,
+        ),
         super(repaint: editorState);
 
   @override
@@ -64,12 +68,6 @@ class EditorPainter extends CustomPainter {
             5);
     List<String> lines = editorState.buffer.lines;
     lastVisibleLine = lastVisibleLine.clamp(0, lines.length);
-
-    // Initialize indentation painter with current visible lines
-    indentationPainter = IndentationPainter(
-      editorState: editorState,
-      viewportHeight: viewportHeight,
-    );
 
     // Draw indentation lines
     indentationPainter.paint(canvas, size,

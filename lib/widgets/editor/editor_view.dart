@@ -41,14 +41,12 @@ class _EditorViewState extends State<EditorView> {
   final FocusNode _focusNode = FocusNode();
   double _cachedMaxLineWidth = 0;
   Timer? _caretTimer;
-  late EditorSyntaxHighlighter editorSyntaxHighlighter;
+  final EditorSyntaxHighlighter editorSyntaxHighlighter =
+      EditorSyntaxHighlighter();
 
   @override
   void initState() {
     super.initState();
-
-    editorSyntaxHighlighter = EditorSyntaxHighlighter();
-
     _updateCachedMaxLineWidth();
     _startCaretBlinking();
   }
@@ -174,7 +172,7 @@ class _EditorViewState extends State<EditorView> {
   void _handleDragUpdate(DragUpdateDetails details) {
     widget.state.handleDragUpdate(
         details.localPosition.dy + widget.verticalScrollController.offset,
-        details.localPosition.dx + widget.horizontalScrollController.offset,
+        details.localPosition.dx,
         EditorPainter.measureLineWidth);
   }
 
