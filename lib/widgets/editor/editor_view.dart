@@ -186,7 +186,8 @@ class _EditorViewState extends State<EditorView> {
               HardwareKeyboard.instance.isMetaPressed;
 
       // Special keys
-      if (widget.state.handleSpecialKeys(isControlPressed, event.logicalKey)) {
+      if (widget.state.handleSpecialKeys(
+          isControlPressed, isShiftPressed, event.logicalKey)) {
         widget.onSearchTermChanged(widget.searchTerm);
         return KeyEventResult.handled;
       }

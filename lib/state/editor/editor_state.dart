@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/buffer.dart';
+import 'package:crystal/models/editor/command.dart';
 import 'package:crystal/models/editor/cursor_shape.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/services/file_service.dart';
@@ -21,8 +22,35 @@ class EditorState extends ChangeNotifier {
   bool showCaret = true;
   CursorShape cursorShape = CursorShape.bar;
   String path = '';
+  final List<Command> _undoStack = [];
+  final List<Command> _redoStack = [];
 
   EditorState({required this.resetGutterScroll, this.path = ''});
+
+  void executeCommand(Command command) {
+    command.execute();
+    _undoStack.add(command);
+    _redoStack.clear();
+    notifyListeners();
+  }
+
+  void undo() {
+    if (_undoStack.isEmpty) return;
+
+    Command command = _undoStack.removeLast();
+    command.undo();
+    _redoStack.add(command);
+    notifyListeners();
+  }
+
+  void redo() {
+    if (_redoStack.isEmpty) return;
+
+    Command command = _redoStack.removeLast();
+    command.execute();
+    _undoStack.add(command);
+    notifyListeners();
+  }
 
   Buffer get buffer => _buffer;
 
@@ -368,17 +396,12 @@ class EditorState extends ChangeNotifier {
       deleteSelection();
     }
 
-    String newContent =
-        _buffer.getLine(cursor.line).substring(0, cursor.column) +
-            c +
-            _buffer.getLine(cursor.line).substring(cursor.column);
-    _buffer.setLine(cursor.line, newContent);
-    cursor.column++;
-    _buffer.incrementVersion();
-    notifyListeners();
+    executeCommand(
+        TextInsertCommand(_buffer, c, cursor.line, cursor.column, cursor));
   }
 
-  bool handleSpecialKeys(bool isControlPressed, LogicalKeyboardKey key) {
+  bool handleSpecialKeys(
+      bool isControlPressed, bool isShiftPressed, LogicalKeyboardKey key) {
     switch (key) {
       case LogicalKeyboardKey.add:
         if (isControlPressed) {
@@ -405,6 +428,16 @@ class EditorState extends ChangeNotifier {
           FileService.saveFile(path, content);
           _buffer.setOriginalContent(content);
           notifyListeners();
+          return true;
+        }
+      case LogicalKeyboardKey.keyZ:
+        if (isControlPressed && isShiftPressed) {
+          redo();
+          return true;
+        }
+
+        if (isControlPressed) {
+          undo();
           return true;
         }
     }
