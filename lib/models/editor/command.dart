@@ -12,9 +12,15 @@ class TextInsertCommand implements Command {
   final int line;
   final int column;
   final Cursor cursor;
+  late final int _originalLine;
+  late final int _originalColumn;
 
   TextInsertCommand(
-      this.buffer, this.text, this.line, this.column, this.cursor);
+      this.buffer, this.text, this.line, this.column, this.cursor) {
+    // Store initial cursor state
+    _originalLine = cursor.line;
+    _originalColumn = cursor.column;
+  }
 
   @override
   void execute() {
@@ -22,7 +28,8 @@ class TextInsertCommand implements Command {
     String newContent =
         currentLine.substring(0, column) + text + currentLine.substring(column);
     buffer.setLine(line, newContent);
-    cursor.column += text.length;
+    cursor.line = line;
+    cursor.column = column + text.length;
     buffer.incrementVersion();
   }
 
@@ -32,7 +39,9 @@ class TextInsertCommand implements Command {
     String newContent = currentLine.substring(0, column) +
         currentLine.substring(column + text.length);
     buffer.setLine(line, newContent);
-    cursor.column -= text.length;
+    // Restore original cursor position
+    cursor.line = _originalLine;
+    cursor.column = _originalColumn;
     buffer.incrementVersion();
   }
 }
@@ -43,9 +52,15 @@ class TextDeleteCommand implements Command {
   final int column;
   final String deletedText;
   final Cursor cursor;
+  late final int _originalLine;
+  late final int _originalColumn;
 
   TextDeleteCommand(
-      this.buffer, this.line, this.column, this.deletedText, this.cursor);
+      this.buffer, this.line, this.column, this.deletedText, this.cursor) {
+    // Store initial cursor state
+    _originalLine = cursor.line;
+    _originalColumn = cursor.column;
+  }
 
   @override
   void execute() {
@@ -53,6 +68,7 @@ class TextDeleteCommand implements Command {
     String newContent = currentLine.substring(0, column) +
         currentLine.substring(column + deletedText.length);
     buffer.setLine(line, newContent);
+    cursor.line = line;
     cursor.column = column;
     buffer.incrementVersion();
   }
@@ -64,7 +80,9 @@ class TextDeleteCommand implements Command {
         deletedText +
         currentLine.substring(column);
     buffer.setLine(line, newContent);
-    cursor.column = column + deletedText.length;
+    // Restore original cursor position
+    cursor.line = _originalLine;
+    cursor.column = _originalColumn;
     buffer.incrementVersion();
   }
 }
