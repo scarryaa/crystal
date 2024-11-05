@@ -20,7 +20,7 @@ class EditorPainter extends CustomPainter {
   final String searchTerm;
   final List<SearchMatch> searchTermMatches;
   final int currentSearchTermMatch;
-  final BackgroundPainter backgroundPainter = const BackgroundPainter();
+  final BackgroundPainter backgroundPainter = BackgroundPainter();
   final CaretPainter caretPainter;
   final IndentationPainter indentationPainter;
   late final SearchPainter searchPainter;

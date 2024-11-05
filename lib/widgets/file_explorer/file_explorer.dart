@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:crystal/widgets/file_explorer/file_item.dart';
+import 'package:crystal/widgets/file_explorer/indent_painter.dart';
 import 'package:flutter/material.dart';
 
 class FileExplorer extends StatefulWidget {
@@ -52,20 +53,23 @@ class _FileExplorerState extends State<FileExplorer> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        FileItem(
-          fileName: fileName,
-          isDirectory: isDirectory,
-          expanded: isExpanded,
-          level: depth,
-          onTap: () {
-            if (isDirectory) {
-              setState(() {
-                expandedDirs[entity.path] = !isExpanded;
-              });
-            } else {
-              widget.tapCallback(entity.path);
-            }
-          },
+        CustomPaint(
+          painter: IndentPainter(level: depth),
+          child: FileItem(
+            fileName: fileName,
+            isDirectory: isDirectory,
+            expanded: isExpanded,
+            level: depth,
+            onTap: () {
+              if (isDirectory) {
+                setState(() {
+                  expandedDirs[entity.path] = !isExpanded;
+                });
+              } else {
+                widget.tapCallback(entity.path);
+              }
+            },
+          ),
         ),
         if (isDirectory && isExpanded)
           FutureBuilder<List<FileSystemEntity>>(
