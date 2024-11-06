@@ -26,21 +26,22 @@ class _FileItemState extends State<FileItem> {
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-        onEnter: (_) => setState(() {
-              _hovered = true;
-            }),
-        onExit: (_) => setState(() {
-              _hovered = false;
-            }),
-        child: GestureDetector(
-          onTap: widget.onTap,
-          behavior: HitTestBehavior.opaque,
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 1.5, horizontal: 8),
-            decoration: BoxDecoration(
-              color:
-                  _hovered ? Colors.blue.withOpacity(0.2) : Colors.transparent,
-            ),
+      onEnter: (_) => setState(() {
+        _hovered = true;
+      }),
+      onExit: (_) => setState(() {
+        _hovered = false;
+      }),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 1.5, horizontal: 8),
+          decoration: BoxDecoration(
+            color: _hovered ? Colors.blue.withOpacity(0.2) : Colors.transparent,
+          ),
+          child: SizedBox(
+            width: 400,
             child: Padding(
               padding: EdgeInsets.only(left: 8.0 * widget.level),
               child: Row(
@@ -77,6 +78,8 @@ class _FileItemState extends State<FileItem> {
               ),
             ),
           ),
-        ));
+        ),
+      ),
+    );
   }
 }

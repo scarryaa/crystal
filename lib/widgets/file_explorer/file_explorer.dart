@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:crystal/widgets/file_explorer/file_explorer_action_bar.dart';
 import 'package:crystal/widgets/file_explorer/file_item.dart';
 import 'package:crystal/widgets/file_explorer/indent_painter.dart';
 import 'package:flutter/material.dart';
@@ -18,13 +19,23 @@ class FileExplorer extends StatefulWidget {
 }
 
 class _FileExplorerState extends State<FileExplorer> {
+  final ScrollController _verticalController = ScrollController();
+  final ScrollController _horizontalController = ScrollController();
   late Future<List<FileSystemEntity>> _filesFuture;
   Map<String, bool> expandedDirs = {};
+  double width = 150;
 
   @override
   void initState() {
     super.initState();
     _filesFuture = _enumerateFiles(widget.rootDir);
+  }
+
+  @override
+  void dispose() {
+    _verticalController.dispose();
+    _horizontalController.dispose();
+    super.dispose();
   }
 
   Future<List<FileSystemEntity>> _enumerateFiles(String directory) async {
@@ -42,6 +53,16 @@ class _FileExplorerState extends State<FileExplorer> {
       return entities;
     } catch (e) {
       return [];
+    }
+  }
+
+  Future<void> _expandAllRecursively(List<FileSystemEntity> entities) async {
+    for (var entity in entities) {
+      if (entity is Directory) {
+        expandedDirs[entity.path] = true;
+        final subEntities = await _enumerateFiles(entity.path);
+        await _expandAllRecursively(subEntities);
+      }
     }
   }
 
@@ -92,57 +113,122 @@ class _FileExplorerState extends State<FileExplorer> {
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.topLeft,
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border(
-            right: BorderSide(color: Colors.grey[400]!),
-          ),
-        ),
-        child: Container(
-          color: Colors.white,
-          height: double.infinity,
-          child: SizedBox(
-            width: 150,
-            child: FutureBuilder<List<FileSystemEntity>>(
-              future: _filesFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
-                } else if (snapshot.hasError) {
-                  return Center(
-                    child: Text(
-                      'Error: ${snapshot.error}',
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                  );
-                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      'No files found',
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: 14,
+      child: Row(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              border: Border(
+                right: BorderSide(color: Colors.grey[400]!),
+              ),
+            ),
+            child: Container(
+              color: Colors.white,
+              height: double.infinity,
+              width: width,
+              child: FutureBuilder<List<FileSystemEntity>>(
+                future: _filesFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  } else if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        'Error: ${snapshot.error}',
+                        style: const TextStyle(color: Colors.red),
                       ),
-                    ),
-                  );
-                }
+                    );
+                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'No files found',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 14,
+                        ),
+                      ),
+                    );
+                  }
 
-                return SingleChildScrollView(
-                  child: Column(
+                  return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      ...snapshot.data!
-                          .map((entity) => _buildFileTree(entity, 0)),
-                      const SizedBox(height: 18),
+                      FileExplorerActionBar(
+                        onRefresh: () {
+                          setState(() {
+                            _filesFuture = _enumerateFiles(widget.rootDir);
+                          });
+                        },
+                        onExpandAll: () async {
+                          await _expandAllRecursively(snapshot.data!);
+                          setState(() {});
+                        },
+                        onCollapseAll: () {
+                          setState(() {
+                            expandedDirs.clear();
+                          });
+                        },
+                      ),
+                      Expanded(
+                        child: ScrollbarTheme(
+                          data: ScrollbarThemeData(
+                            thickness: WidgetStateProperty.all(8.0),
+                            radius: const Radius.circular(0),
+                            thumbColor:
+                                WidgetStateProperty.all(Colors.grey[400]),
+                          ),
+                          child: Scrollbar(
+                            controller: _horizontalController,
+                            thickness: 8,
+                            notificationPredicate: (notification) =>
+                                notification.depth == 1,
+                            child: Scrollbar(
+                              controller: _verticalController,
+                              thickness: 8,
+                              child: SingleChildScrollView(
+                                controller: _verticalController,
+                                child: SingleChildScrollView(
+                                  controller: _horizontalController,
+                                  scrollDirection: Axis.horizontal,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      ...snapshot.data!.map((entity) =>
+                                          _buildFileTree(entity, 0)),
+                                      const SizedBox(height: 18),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
-        ),
+          MouseRegion(
+            cursor: SystemMouseCursors.resizeColumn,
+            child: GestureDetector(
+              onHorizontalDragUpdate: (details) {
+                setState(() {
+                  width = (width + details.delta.dx)
+                      .clamp(150.0, MediaQuery.of(context).size.width - 200);
+                });
+              },
+              child: Container(
+                width: 1.5,
+                height: double.infinity,
+                color: Colors.transparent,
+              ),
+            ),
+          )
+        ],
       ),
     );
   }
