@@ -142,32 +142,43 @@ class _EditorViewState extends State<EditorView> {
               onTapDown: _handleTap,
               onPanStart: _handleDragStart,
               onPanUpdate: _handleDragUpdate,
-              child: Scrollbar(
-                  controller: widget.verticalScrollController,
-                  thickness: 10,
-                  radius: const Radius.circular(0),
+              child: ScrollbarTheme(
+                  data: ScrollbarThemeData(
+                    thumbColor: WidgetStateProperty.all(widget
+                                .editorConfigService
+                                .themeService
+                                .currentTheme !=
+                            null
+                        ? widget.editorConfigService.themeService.currentTheme!
+                            .border
+                        : Colors.grey[600]),
+                  ),
                   child: Scrollbar(
-                    controller: widget.horizontalScrollController,
-                    thickness: 10,
-                    radius: const Radius.circular(0),
-                    notificationPredicate: (notification) =>
-                        notification.depth == 1,
-                    child: ScrollConfiguration(
-                      behavior:
-                          const ScrollBehavior().copyWith(scrollbars: false),
-                      child: SingleChildScrollView(
-                        controller: widget.verticalScrollController,
-                        child: SingleChildScrollView(
-                          controller: widget.horizontalScrollController,
-                          scrollDirection: Axis.horizontal,
-                          child: CustomPaint(
-                            painter: editorPainter,
-                            size: Size(width, height),
+                      controller: widget.verticalScrollController,
+                      thickness: 10,
+                      radius: const Radius.circular(0),
+                      child: Scrollbar(
+                        controller: widget.horizontalScrollController,
+                        thickness: 10,
+                        radius: const Radius.circular(0),
+                        notificationPredicate: (notification) =>
+                            notification.depth == 1,
+                        child: ScrollConfiguration(
+                          behavior: const ScrollBehavior()
+                              .copyWith(scrollbars: false),
+                          child: SingleChildScrollView(
+                            controller: widget.verticalScrollController,
+                            child: SingleChildScrollView(
+                              controller: widget.horizontalScrollController,
+                              scrollDirection: Axis.horizontal,
+                              child: CustomPaint(
+                                painter: editorPainter,
+                                size: Size(width, height),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                  ))),
+                      )))),
         ));
   }
 
