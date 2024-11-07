@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/widgets/gutter/gutter_painter.dart';
 import 'package:flutter/material.dart';
@@ -10,12 +11,14 @@ class Gutter extends StatefulWidget {
   final ScrollController verticalScrollController;
   final EditorState editorState;
   final EditorLayoutService editorLayoutService;
+  final EditorConfigService editorConfigService;
 
   const Gutter({
     super.key,
     required this.verticalScrollController,
     required this.editorState,
     required this.editorLayoutService,
+    required this.editorConfigService,
   });
 
   @override
@@ -49,6 +52,7 @@ class _GutterState extends State<Gutter> {
                     child: SizedBox(
                       child: CustomPaint(
                           painter: GutterPainter(
+                            editorConfigService: widget.editorConfigService,
                             editorLayoutService: widget.editorLayoutService,
                             editorState: editorState,
                             verticalOffset:

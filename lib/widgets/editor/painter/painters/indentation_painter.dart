@@ -11,6 +11,7 @@ class IndentationPainter extends EditorPainterBase {
     required this.editorState,
     required this.viewportHeight,
     required super.editorLayoutService,
+    required super.editorConfigService,
   });
 
   @override
@@ -25,7 +26,7 @@ class IndentationPainter extends EditorPainterBase {
 
         for (int space = 0; space < leadingSpaces; space += 4) {
           if (line.isNotEmpty && !line.startsWith(' ')) continue;
-          final xPosition = space * EditorConstants.charWidth;
+          final xPosition = space * editorLayoutService.config.charWidth;
           _drawIndentLine(canvas, xPosition, i);
         }
       }

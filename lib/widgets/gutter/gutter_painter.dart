@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:crystal/constants/editor_constants.dart';
+import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ class GutterPainter extends CustomPainter {
   final double verticalOffset;
   final double viewportHeight;
   final EditorLayoutService editorLayoutService;
+  final EditorConfigService editorConfigService;
 
   final TextStyle _defaultStyle;
   final TextStyle _highlightStyle;
@@ -19,17 +21,18 @@ class GutterPainter extends CustomPainter {
     required this.verticalOffset,
     required this.viewportHeight,
     required this.editorLayoutService,
+    required this.editorConfigService,
     Color? textColor,
     Color? highlightColor,
   })  : _defaultStyle = TextStyle(
           color: textColor ?? Colors.grey[600],
-          fontSize: EditorConstants.fontSize,
-          fontFamily: EditorConstants.fontFamily,
+          fontSize: editorConfigService.config.fontSize,
+          fontFamily: editorConfigService.config.fontFamily,
         ),
         _highlightStyle = TextStyle(
           color: highlightColor ?? Colors.blue,
-          fontSize: EditorConstants.fontSize,
-          fontFamily: EditorConstants.fontFamily,
+          fontSize: editorConfigService.config.fontSize,
+          fontFamily: editorConfigService.config.fontFamily,
         ),
         super(repaint: editorState);
 
@@ -72,8 +75,8 @@ class GutterPainter extends CustomPainter {
         applyHeightToLastDescent: false,
       ),
       strutStyle: StrutStyle(
-        fontSize: EditorConstants.fontSize,
-        fontFamily: EditorConstants.fontFamily,
+        fontSize: editorConfigService.config.fontSize,
+        fontFamily: editorConfigService.config.fontFamily,
         height: 1.0,
         forceStrutHeight: true,
       ),

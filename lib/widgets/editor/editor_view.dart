@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/models/editor/search_match.dart';
+import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/state/editor/editor_syntax_highlighter.dart';
@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class EditorView extends StatefulWidget {
+  final EditorConfigService editorConfigService;
   final EditorLayoutService editorLayoutService;
   final EditorState state;
   final ScrollController verticalScrollController;
@@ -34,6 +35,7 @@ class EditorView extends StatefulWidget {
     required this.onSearchTermChanged,
     required this.currentSearchTermMatch,
     required this.editorLayoutService,
+    required this.editorConfigService,
   });
 
   @override
@@ -45,11 +47,13 @@ class _EditorViewState extends State<EditorView> {
   double _cachedMaxLineWidth = 0;
   Timer? _caretTimer;
   late final EditorSyntaxHighlighter editorSyntaxHighlighter;
+  EditorPainter? editorPainter;
 
   @override
   void initState() {
     super.initState();
     editorSyntaxHighlighter = EditorSyntaxHighlighter(
+        editorConfigService: widget.editorConfigService,
         editorLayoutService: widget.editorLayoutService);
     _updateCachedMaxLineWidth();
     _startCaretBlinking();
@@ -91,8 +95,11 @@ class _EditorViewState extends State<EditorView> {
   }
 
   double _maxLineWidth() {
+    if (editorPainter == null) return 0;
+
     return widget.state.buffer.lines.fold<double>(0, (maxWidth, line) {
-      final lineWidth = EditorPainter.measureLineWidth(line);
+      final lineWidth =
+          editorPainter == null ? 0.0 : editorPainter!.measureLineWidth(line);
       return math.max(maxWidth, lineWidth);
     });
   }
@@ -109,6 +116,16 @@ class _EditorViewState extends State<EditorView> {
       widget.editorLayoutService.config.lineHeight *
               widget.state.buffer.lineCount +
           widget.editorLayoutService.config.verticalPadding,
+    );
+    editorPainter = EditorPainter(
+      editorConfigService: widget.editorConfigService,
+      editorLayoutService: widget.editorLayoutService,
+      editorSyntaxHighlighter: editorSyntaxHighlighter,
+      editorState: widget.state,
+      searchTerm: widget.searchTerm,
+      searchTermMatches: widget.searchTermMatches,
+      currentSearchTermMatch: widget.currentSearchTermMatch,
+      viewportHeight: MediaQuery.of(context).size.height,
     );
     widget.state.scrollState
         .updateViewportHeight(MediaQuery.of(context).size.height);
@@ -139,15 +156,7 @@ class _EditorViewState extends State<EditorView> {
                       controller: widget.horizontalScrollController,
                       scrollDirection: Axis.horizontal,
                       child: CustomPaint(
-                        painter: EditorPainter(
-                          editorLayoutService: widget.editorLayoutService,
-                          editorSyntaxHighlighter: editorSyntaxHighlighter,
-                          editorState: widget.state,
-                          searchTerm: widget.searchTerm,
-                          searchTermMatches: widget.searchTermMatches,
-                          currentSearchTermMatch: widget.currentSearchTermMatch,
-                          viewportHeight: MediaQuery.of(context).size.height,
-                        ),
+                        painter: editorPainter,
                         size: Size(width, height),
                       ),
                     ),
@@ -160,26 +169,32 @@ class _EditorViewState extends State<EditorView> {
   void _handleTap(TapDownDetails details) {
     _focusNode.requestFocus();
 
+    if (editorPainter == null) return;
+
     final localY =
         details.localPosition.dy + widget.verticalScrollController.offset;
     final localX =
         details.localPosition.dx + widget.horizontalScrollController.offset;
-    widget.state.handleTap(localY, localX, EditorPainter.measureLineWidth);
+    widget.state.handleTap(localY, localX, editorPainter!.measureLineWidth);
     _resetCaretBlink();
   }
 
   void _handleDragStart(DragStartDetails details) {
+    if (editorPainter == null) return;
+
     widget.state.handleDragStart(
         details.localPosition.dy + widget.verticalScrollController.offset,
         details.localPosition.dx + widget.horizontalScrollController.offset,
-        EditorPainter.measureLineWidth);
+        editorPainter!.measureLineWidth);
   }
 
   void _handleDragUpdate(DragUpdateDetails details) {
+    if (editorPainter == null) return;
+
     widget.state.handleDragUpdate(
         details.localPosition.dy + widget.verticalScrollController.offset,
         details.localPosition.dx,
-        EditorPainter.measureLineWidth);
+        editorPainter!.measureLineWidth);
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {

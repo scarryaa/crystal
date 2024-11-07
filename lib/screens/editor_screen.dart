@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'dart:math';
 
-import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/search_match.dart';
 import 'package:crystal/models/selection.dart';
+import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/widgets/editor/editor_control_bar_view.dart';
@@ -34,6 +34,7 @@ class EditorScreen extends StatefulWidget {
 
 class _EditorScreenState extends State<EditorScreen> {
   late final EditorLayoutService _editorLayoutService;
+  late final EditorConfigService _editorConfigService;
   final ScrollController _gutterScrollController = ScrollController();
   final ScrollController _editorVerticalScrollController = ScrollController();
   final ScrollController _editorHorizontalScrollController = ScrollController();
@@ -59,6 +60,7 @@ class _EditorScreenState extends State<EditorScreen> {
       String content = await File(path).readAsString();
 
       final newEditor = EditorState(
+          editorConfigService: _editorConfigService,
           editorLayoutService: _editorLayoutService,
           resetGutterScroll: _resetGutterScroll,
           path: path);
@@ -75,7 +77,10 @@ class _EditorScreenState extends State<EditorScreen> {
   @override
   void initState() {
     super.initState();
+    _editorConfigService = EditorConfigService(
+        fontSize: 14.0, fontFamily: 'IBM Plex Mono', theme: 'default-light');
     _editorLayoutService = EditorLayoutService(
+        fontFamily: 'IBM Plex Mono',
         fontSize: 14.0,
         horizontalPadding: widget.horizontalPadding,
         verticalPaddingLines: widget.verticalPaddingLines,
@@ -126,7 +131,8 @@ class _EditorScreenState extends State<EditorScreen> {
     final cursorColumn = activeEditor!.cursor.column;
     final currentLine = activeEditor!.buffer.getLine(cursorLine);
     final textBeforeCursor = currentLine.substring(0, cursorColumn);
-    final cursorX = textBeforeCursor.length * EditorConstants.charWidth;
+    final cursorX =
+        textBeforeCursor.length * _editorLayoutService.config.charWidth;
     final viewportWidth =
         _editorHorizontalScrollController.position.viewportDimension;
     final currentHorizontalOffset = _editorHorizontalScrollController.offset;
@@ -135,10 +141,10 @@ class _EditorScreenState extends State<EditorScreen> {
     if (cursorX < currentHorizontalOffset + horizontalPadding) {
       _editorHorizontalScrollController
           .jumpTo(max(0, cursorX - horizontalPadding));
-    } else if (cursorX + EditorConstants.charWidth >
+    } else if (cursorX + _editorLayoutService.config.charWidth >
         currentHorizontalOffset + viewportWidth - horizontalPadding) {
       _editorHorizontalScrollController.jumpTo(cursorX +
-          EditorConstants.charWidth -
+          _editorLayoutService.config.charWidth -
           viewportWidth +
           horizontalPadding);
     }
@@ -470,6 +476,7 @@ class _EditorScreenState extends State<EditorScreen> {
                                 children: [
                                   if (_editors.isNotEmpty)
                                     Gutter(
+                                      editorConfigService: _editorConfigService,
                                       editorLayoutService: _editorLayoutService,
                                       editorState: state!,
                                       verticalScrollController:
@@ -478,6 +485,8 @@ class _EditorScreenState extends State<EditorScreen> {
                                   Expanded(
                                     child: _editors.isNotEmpty
                                         ? EditorView(
+                                            editorConfigService:
+                                                _editorConfigService,
                                             editorLayoutService:
                                                 _editorLayoutService,
                                             state: state!,

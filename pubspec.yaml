@@ -23,6 +23,7 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/themes/
   fonts:
       - family: IBM Plex Mono
         fonts:

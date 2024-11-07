@@ -6,6 +6,7 @@ import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/editor/command.dart';
 import 'package:crystal/models/editor/cursor_shape.dart';
 import 'package:crystal/models/selection.dart';
+import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/services/file_service.dart';
 import 'package:crystal/state/editor/editor_scroll_state.dart';
@@ -26,10 +27,12 @@ class EditorState extends ChangeNotifier {
   final List<Command> _undoStack = [];
   final List<Command> _redoStack = [];
   final EditorLayoutService editorLayoutService;
+  final EditorConfigService editorConfigService;
 
   EditorState({
     required this.resetGutterScroll,
     required this.editorLayoutService,
+    required this.editorConfigService,
     this.path = '',
   });
 
@@ -411,18 +414,20 @@ class EditorState extends ChangeNotifier {
     switch (key) {
       case LogicalKeyboardKey.add:
         if (isControlPressed) {
-          EditorConstants.fontSize += 2.0;
-          editorLayoutService.config.lineHeight = EditorConstants.fontSize *
-              editorLayoutService.config.lineHeightMultiplier;
+          editorConfigService.config.fontSize += 2.0;
+          editorLayoutService.config.lineHeight =
+              editorConfigService.config.fontSize *
+                  editorLayoutService.config.lineHeightMultiplier;
           notifyListeners();
           return true;
         }
       case LogicalKeyboardKey.minus:
         if (isControlPressed) {
-          if (EditorConstants.fontSize > 8.0) {
-            EditorConstants.fontSize -= 2.0;
-            editorLayoutService.config.lineHeight = EditorConstants.fontSize *
-                editorLayoutService.config.lineHeightMultiplier;
+          if (editorConfigService.config.fontSize > 8.0) {
+            editorConfigService.config.fontSize -= 2.0;
+            editorLayoutService.config.lineHeight =
+                editorConfigService.config.fontSize *
+                    editorLayoutService.config.lineHeightMultiplier;
 
             notifyListeners();
           }

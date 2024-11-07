@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/models/editor/search_match.dart';
+import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/state/editor/editor_syntax_highlighter.dart';
@@ -14,6 +15,7 @@ import 'package:crystal/widgets/editor/painter/painters/text_painter_helper.dart
 import 'package:flutter/material.dart';
 
 class EditorPainter extends CustomPainter {
+  final EditorConfigService editorConfigService;
   final EditorLayoutService editorLayoutService;
   final EditorState editorState;
   final TextPainterHelper textPainterHelper;
@@ -36,10 +38,14 @@ class EditorPainter extends CustomPainter {
     required this.searchTermMatches,
     required this.currentSearchTermMatch,
     required this.editorLayoutService,
-  })  : backgroundPainter =
-            BackgroundPainter(editorLayoutService: editorLayoutService),
+    required this.editorConfigService,
+  })  : backgroundPainter = BackgroundPainter(
+            editorConfigService: editorConfigService,
+            editorLayoutService: editorLayoutService),
         selectionPainter = SelectionPainter(
-            editorLayoutService: editorLayoutService, editorState),
+            editorConfigService: editorConfigService,
+            editorLayoutService: editorLayoutService,
+            editorState),
         searchPainter = SearchPainter(
           editorLayoutService: editorLayoutService,
           searchTerm: searchTerm,
@@ -47,12 +53,16 @@ class EditorPainter extends CustomPainter {
           currentSearchTermMatch: currentSearchTermMatch,
         ),
         textPainterHelper = TextPainterHelper(
+          editorConfigService: editorConfigService,
           editorLayoutService: editorLayoutService,
           editorSyntaxHighlighter: editorSyntaxHighlighter,
         ),
-        caretPainter =
-            CaretPainter(editorLayoutService: editorLayoutService, editorState),
+        caretPainter = CaretPainter(
+            editorConfigService: editorConfigService,
+            editorLayoutService: editorLayoutService,
+            editorState),
         indentationPainter = IndentationPainter(
+          editorConfigService: editorConfigService,
           editorLayoutService: editorLayoutService,
           editorState: editorState,
           viewportHeight: viewportHeight,
@@ -115,8 +125,8 @@ class EditorPainter extends CustomPainter {
         EditorConstants.currentLineHighlight);
   }
 
-  static double measureLineWidth(String line) {
-    return TextPainterHelper.measureLineWidth(line);
+  double measureLineWidth(String line) {
+    return textPainterHelper.measureLineWidth(line);
   }
 
   @override

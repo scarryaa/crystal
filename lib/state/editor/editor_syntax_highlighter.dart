@@ -1,7 +1,7 @@
-import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/models/highlighted_text.dart';
 import 'package:crystal/models/languages/dart.dart';
 import 'package:crystal/models/languages/language.dart';
+import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:flutter/material.dart';
 
@@ -9,10 +9,12 @@ class EditorSyntaxHighlighter {
   final List<HighlightedText> highlightedText = [];
   final Language language;
   final EditorLayoutService editorLayoutService;
+  final EditorConfigService editorConfigService;
 
   EditorSyntaxHighlighter({
     Language? language,
     required this.editorLayoutService,
+    required this.editorConfigService,
   }) : language = language ?? Dart();
 
   static const keywordColor = Colors.blue;
@@ -149,8 +151,8 @@ class EditorSyntaxHighlighter {
         text: text,
         style: TextStyle(
           color: defaultTextColor,
-          fontFamily: EditorConstants.fontFamily,
-          fontSize: EditorConstants.fontSize,
+          fontFamily: editorConfigService.config.fontFamily,
+          fontSize: editorConfigService.config.fontSize,
           height: editorLayoutService.config.lineHeightMultiplier,
         ),
       );
@@ -165,8 +167,8 @@ class EditorSyntaxHighlighter {
           text: text.substring(currentIndex, highlight.start),
           style: TextStyle(
             color: defaultTextColor,
-            fontFamily: EditorConstants.fontFamily,
-            fontSize: EditorConstants.fontSize,
+            fontFamily: editorConfigService.config.fontFamily,
+            fontSize: editorConfigService.config.fontSize,
             height: editorLayoutService.config.lineHeightMultiplier,
           ),
         ));
@@ -175,8 +177,8 @@ class EditorSyntaxHighlighter {
         text: highlight.text,
         style: TextStyle(
           color: highlight.color,
-          fontFamily: EditorConstants.fontFamily,
-          fontSize: EditorConstants.fontSize,
+          fontFamily: editorConfigService.config.fontFamily,
+          fontSize: editorConfigService.config.fontSize,
           height: editorLayoutService.config.lineHeightMultiplier,
         ),
       ));
@@ -188,8 +190,8 @@ class EditorSyntaxHighlighter {
         text: text.substring(currentIndex),
         style: TextStyle(
           color: defaultTextColor,
-          fontFamily: EditorConstants.fontFamily,
-          fontSize: EditorConstants.fontSize,
+          fontFamily: editorConfigService.config.fontFamily,
+          fontSize: editorConfigService.config.fontSize,
           height: editorLayoutService.config.lineHeightMultiplier,
         ),
       ));

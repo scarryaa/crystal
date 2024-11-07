@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 class BackgroundPainter extends EditorPainterBase {
   final Color backgroundColor;
 
-  const BackgroundPainter(
-      {this.backgroundColor = Colors.white,
-      required super.editorLayoutService});
+  const BackgroundPainter({
+    this.backgroundColor = Colors.white,
+    required super.editorLayoutService,
+    required super.editorConfigService,
+  });
 
   @override
   void paint(Canvas canvas, Size size,

@@ -1,5 +1,5 @@
-import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/models/selection.dart';
+import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:flutter/material.dart';
@@ -8,10 +8,12 @@ class SelectionPainter {
   final EditorState editorState;
   final TextPainter _textPainter;
   final EditorLayoutService editorLayoutService;
+  final EditorConfigService editorConfigService;
 
   SelectionPainter(
     this.editorState, {
     required this.editorLayoutService,
+    required this.editorConfigService,
   }) : _textPainter = TextPainter(
           textDirection: TextDirection.ltr,
           textAlign: TextAlign.left,
@@ -72,8 +74,8 @@ class SelectionPainter {
       _textPainter.text = TextSpan(
         text: textUpToSelection,
         style: TextStyle(
-          fontSize: EditorConstants.fontSize,
-          fontFamily: EditorConstants.fontFamily,
+          fontSize: editorConfigService.config.fontSize,
+          fontFamily: editorConfigService.config.fontFamily,
           color: Colors.black,
           height: 1.0,
           leadingDistribution: TextLeadingDistribution.even,
@@ -90,8 +92,8 @@ class SelectionPainter {
       _textPainter.text = TextSpan(
         text: textSlice,
         style: TextStyle(
-          fontSize: EditorConstants.fontSize,
-          fontFamily: EditorConstants.fontFamily,
+          fontSize: editorConfigService.config.fontSize,
+          fontFamily: editorConfigService.config.fontFamily,
           color: Colors.black,
         ),
       );
@@ -126,8 +128,8 @@ class SelectionPainter {
     _textPainter.text = TextSpan(
       text: startLineLeftSlice,
       style: TextStyle(
-        fontSize: EditorConstants.fontSize,
-        fontFamily: EditorConstants.fontFamily,
+        fontSize: editorConfigService.config.fontSize,
+        fontFamily: editorConfigService.config.fontFamily,
         color: Colors.black,
       ),
     );
@@ -160,8 +162,8 @@ class SelectionPainter {
     _textPainter.text = TextSpan(
       text: endLineSlice,
       style: TextStyle(
-        fontSize: EditorConstants.fontSize,
-        fontFamily: EditorConstants.fontFamily,
+        fontSize: editorConfigService.config.fontSize,
+        fontFamily: editorConfigService.config.fontFamily,
         color: Colors.black,
       ),
     );
@@ -176,7 +178,7 @@ class SelectionPainter {
   void _drawSelectionForLine(
       Canvas canvas, int lineNumber, double left, double width, Paint paint) {
     if (width == 0) {
-      width = EditorConstants.fontSize / 2;
+      width = editorConfigService.config.fontSize / 2;
     }
 
     canvas.drawRect(
@@ -191,7 +193,7 @@ class SelectionPainter {
       if (editorState.buffer.getLine(lineNumber)[i] == ' ') {
         _drawWhitespaceIndicator(
             canvas,
-            (i + 0.5) * EditorConstants.charWidth,
+            (i + 0.5) * editorLayoutService.config.charWidth,
             lineNumber * editorLayoutService.config.lineHeight +
                 editorLayoutService.config.lineHeight / 2);
       }
@@ -200,10 +202,12 @@ class SelectionPainter {
 
   void _drawWhitespaceIndicator(Canvas canvas, double left, double top) {
     canvas.drawCircle(
-      Offset(left, top + EditorConstants.whitespaceIndicatorRadius / 2),
-      EditorConstants.whitespaceIndicatorRadius,
-      EditorConstants.whitespaceIndicatorColor,
-    );
+        Offset(left,
+            top + editorConfigService.config.whitespaceIndicatorRadius / 2),
+        editorConfigService.config.whitespaceIndicatorRadius,
+        Paint()
+          ..color = editorConfigService
+              .themeService.currentTheme.whitespaceIndicatorColor);
   }
 
   double _measureLineWidth(String line) {
@@ -211,8 +215,8 @@ class SelectionPainter {
       text: TextSpan(
         text: line,
         style: TextStyle(
-          fontFamily: EditorConstants.fontFamily,
-          fontSize: EditorConstants.fontSize,
+          fontFamily: editorConfigService.config.fontFamily,
+          fontSize: editorConfigService.config.fontSize,
           fontWeight: FontWeight.normal,
         ),
       ),

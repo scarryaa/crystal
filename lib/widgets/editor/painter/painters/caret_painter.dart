@@ -1,11 +1,14 @@
-import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/models/editor/cursor_shape.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/widgets/editor/painter/painters/editor_painter_base.dart';
 import 'package:flutter/material.dart';
 
 class CaretPainter extends EditorPainterBase {
-  CaretPainter(this.editorState, {required super.editorLayoutService});
+  CaretPainter(
+    this.editorState, {
+    required super.editorLayoutService,
+    required super.editorConfigService,
+  });
 
   final EditorState editorState;
   final TextPainter _textPainter = TextPainter(
@@ -23,8 +26,8 @@ class CaretPainter extends EditorPainterBase {
     _textPainter.text = TextSpan(
       text: textUpToCaret,
       style: TextStyle(
-        fontSize: EditorConstants.fontSize,
-        fontFamily: EditorConstants.fontFamily,
+        fontSize: editorConfigService.config.fontSize,
+        fontFamily: editorConfigService.config.fontFamily,
         color: Colors.black,
         height: 1.0,
         leadingDistribution: TextLeadingDistribution.even,
@@ -80,7 +83,7 @@ class CaretPainter extends EditorPainterBase {
           Rect.fromLTWH(
             left,
             top,
-            EditorConstants.charWidth,
+            editorLayoutService.config.charWidth,
             editorLayoutService.config.lineHeight,
           ),
           paint,
@@ -92,7 +95,7 @@ class CaretPainter extends EditorPainterBase {
           Rect.fromLTWH(
             left,
             top,
-            EditorConstants.charWidth,
+            editorLayoutService.config.charWidth,
             editorLayoutService.config.lineHeight,
           ),
           paint..style = PaintingStyle.stroke,
@@ -104,7 +107,7 @@ class CaretPainter extends EditorPainterBase {
           Rect.fromLTWH(
             left,
             top + editorLayoutService.config.lineHeight - 2,
-            EditorConstants.charWidth,
+            editorLayoutService.config.charWidth,
             2,
           ),
           paint,
@@ -114,11 +117,11 @@ class CaretPainter extends EditorPainterBase {
   }
 
   @override
-  bool shouldRepaint(covariant CaretPainter oldPainter) {
-    return oldPainter.editorState.showCaret != editorState.showCaret ||
-        oldPainter.editorState.cursor != editorState.cursor ||
-        oldPainter.editorState.cursorShape != editorState.cursorShape ||
-        oldPainter.editorState.buffer.getLine(editorState.cursor.line) !=
+  bool shouldRepaint(covariant CaretPainter oldDelegate) {
+    return oldDelegate.editorState.showCaret != editorState.showCaret ||
+        oldDelegate.editorState.cursor != editorState.cursor ||
+        oldDelegate.editorState.cursorShape != editorState.cursorShape ||
+        oldDelegate.editorState.buffer.getLine(editorState.cursor.line) !=
             editorState.buffer.getLine(editorState.cursor.line);
   }
 

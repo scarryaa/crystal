@@ -1,4 +1,4 @@
-import 'package:crystal/constants/editor_constants.dart';
+import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_syntax_highlighter.dart';
 import 'package:flutter/material.dart';
@@ -7,10 +7,12 @@ class TextPainterHelper {
   final TextPainter _textPainter;
   final EditorSyntaxHighlighter editorSyntaxHighlighter;
   final EditorLayoutService editorLayoutService;
+  final EditorConfigService editorConfigService;
 
   TextPainterHelper({
     required this.editorSyntaxHighlighter,
     required this.editorLayoutService,
+    required this.editorConfigService,
   }) : _textPainter = TextPainter(
           textDirection: TextDirection.ltr,
           textAlign: TextAlign.left,
@@ -19,8 +21,8 @@ class TextPainterHelper {
             applyHeightToLastDescent: false,
           ),
           strutStyle: StrutStyle(
-            fontSize: EditorConstants.fontSize,
-            fontFamily: EditorConstants.fontFamily,
+            fontSize: editorConfigService.config.fontSize,
+            fontFamily: editorConfigService.config.fontFamily,
             height: 1.0,
             forceStrutHeight: true,
           ),
@@ -47,13 +49,13 @@ class TextPainterHelper {
     }
   }
 
-  static double measureLineWidth(String line) {
+  double measureLineWidth(String line) {
     final textPainter = TextPainter(
       text: TextSpan(
         text: line,
         style: TextStyle(
-          fontFamily: EditorConstants.fontFamily,
-          fontSize: EditorConstants.fontSize,
+          fontFamily: editorConfigService.config.fontFamily,
+          fontSize: editorConfigService.config.fontSize,
           fontWeight: FontWeight.normal,
         ),
       ),

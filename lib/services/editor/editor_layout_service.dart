@@ -9,9 +9,12 @@ class EditorLayoutService {
     required double horizontalPadding,
     required int verticalPaddingLines,
     required double fontSize,
+    required String fontFamily,
     required double lineHeightMultiplier,
   })  : _textMeasurer = TextMeasurer(),
         _editorLayoutConfig = EditorLayoutConfig(
+            charWidth:
+                TextMeasurer().measureTextWidth('w', fontFamily, fontSize),
             fontSize: fontSize,
             horizontalPadding: horizontalPadding,
             verticalPaddingLines: verticalPaddingLines,
