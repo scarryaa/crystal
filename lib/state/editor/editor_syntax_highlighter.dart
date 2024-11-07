@@ -15,7 +15,11 @@ class EditorSyntaxHighlighter {
     Language? language,
     required this.editorLayoutService,
     required this.editorConfigService,
-  }) : language = language ?? Dart();
+  }) : language = language ?? Dart() {
+    defaultTextColor = editorConfigService.themeService.currentTheme != null
+        ? editorConfigService.themeService.currentTheme!.text
+        : Colors.black;
+  }
 
   static const keywordColor = Colors.blue;
   static const typeColor = Colors.teal;
@@ -23,7 +27,7 @@ class EditorSyntaxHighlighter {
   static const commentColor = Colors.grey;
   static const numberColor = Colors.orange;
   static const symbolColor = Colors.purple;
-  static const defaultTextColor = Colors.black;
+  static Color defaultTextColor = Colors.black;
 
   void highlight(String text) {
     highlightedText.clear();

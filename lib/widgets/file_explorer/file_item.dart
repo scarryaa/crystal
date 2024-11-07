@@ -6,11 +6,15 @@ class FileItem extends StatefulWidget {
   final VoidCallback? onTap;
   bool expanded;
   int level;
+  Color textColor;
+  Color highlightColor;
 
   FileItem({
     super.key,
     required this.fileName,
     required this.expanded,
+    required this.textColor,
+    required this.highlightColor,
     this.level = 0,
     this.isDirectory = false,
     this.onTap,
@@ -38,7 +42,9 @@ class _FileItemState extends State<FileItem> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 1.5, horizontal: 8),
           decoration: BoxDecoration(
-            color: _hovered ? Colors.blue.withOpacity(0.2) : Colors.transparent,
+            color: _hovered
+                ? widget.highlightColor.withOpacity(0.2)
+                : Colors.transparent,
           ),
           child: SizedBox(
             width: 400,
@@ -49,8 +55,9 @@ class _FileItemState extends State<FileItem> {
                   Icon(
                     widget.isDirectory ? Icons.folder : Icons.insert_drive_file,
                     size: 16,
-                    color:
-                        _hovered ? Colors.blue : Colors.black.withOpacity(0.5),
+                    color: _hovered
+                        ? widget.highlightColor
+                        : widget.textColor.withOpacity(0.5),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -64,7 +71,8 @@ class _FileItemState extends State<FileItem> {
                           FontVariation('wght', 400),
                         ],
                         fontWeight: FontWeight.w400,
-                        color: _hovered ? Colors.blue : Colors.black,
+                        color:
+                            _hovered ? widget.highlightColor : widget.textColor,
                         decoration: TextDecoration.none,
                         decorationStyle: TextDecorationStyle.solid,
                         decorationThickness: 0,

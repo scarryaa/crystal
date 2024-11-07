@@ -39,6 +39,10 @@ class EditorPainter extends CustomPainter {
     required this.editorLayoutService,
     required this.editorConfigService,
   })  : backgroundPainter = BackgroundPainter(
+            backgroundColor:
+                editorConfigService.themeService.currentTheme != null
+                    ? editorConfigService.themeService.currentTheme!.background
+                    : Colors.white,
             editorConfigService: editorConfigService,
             editorLayoutService: editorLayoutService),
         selectionPainter = SelectionPainter(
@@ -46,6 +50,7 @@ class EditorPainter extends CustomPainter {
             editorLayoutService: editorLayoutService,
             editorState),
         searchPainter = SearchPainter(
+          editorConfigService: editorConfigService,
           editorLayoutService: editorLayoutService,
           searchTerm: searchTerm,
           searchTermMatches: searchTermMatches,
@@ -122,8 +127,10 @@ class EditorPainter extends CustomPainter {
           editorLayoutService.config.lineHeight,
         ),
         Paint()
-          ..color = editorConfigService
-              .themeService.currentTheme.currentLineHighlight);
+          ..color = editorConfigService.themeService.currentTheme != null
+              ? editorConfigService
+                  .themeService.currentTheme!.currentLineHighlight
+              : Colors.blue.withOpacity(0.2));
   }
 
   double measureLineWidth(String line) {

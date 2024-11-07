@@ -43,8 +43,9 @@ class IndentationPainter extends EditorPainterBase {
             lineNumber * editorLayoutService.config.lineHeight +
                 editorLayoutService.config.lineHeight),
         Paint()
-          ..color =
-              editorConfigService.themeService.currentTheme.indentLineColor);
+          ..color = editorConfigService.themeService.currentTheme != null
+              ? editorConfigService.themeService.currentTheme!.indentLineColor
+              : Colors.black.withOpacity(0.2));
   }
 
   int _countLeadingSpaces(String line) {

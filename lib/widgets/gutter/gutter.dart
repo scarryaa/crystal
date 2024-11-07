@@ -39,32 +39,36 @@ class _GutterState extends State<Gutter> {
 
     return Consumer<EditorState>(
       builder: (context, editorState, child) {
-        return ScrollConfiguration(
-            behavior: const ScrollBehavior().copyWith(scrollbars: false),
-            child: GestureDetector(
-                onTapDown: _handleGutterTap,
-                onPanStart: _handleGutterDragStart,
-                onPanUpdate: _handleGutterDrag,
-                child: SingleChildScrollView(
-                  controller: widget.verticalScrollController,
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    child: SizedBox(
-                      child: CustomPaint(
-                          painter: GutterPainter(
-                            editorConfigService: widget.editorConfigService,
-                            editorLayoutService: widget.editorLayoutService,
-                            editorState: editorState,
-                            verticalOffset:
-                                widget.verticalScrollController.hasClients
-                                    ? widget.verticalScrollController.offset
-                                    : 0,
-                            viewportHeight: MediaQuery.of(context).size.height,
-                          ),
-                          size: Size(gutterWidth, height)),
-                    ),
-                  ),
-                )));
+        return Container(
+            color: widget.editorConfigService.themeService.currentTheme != null
+                ? widget
+                    .editorConfigService.themeService.currentTheme!.background
+                : Colors.white,
+            child: ScrollConfiguration(
+                behavior: const ScrollBehavior().copyWith(scrollbars: false),
+                child: GestureDetector(
+                    onTapDown: _handleGutterTap,
+                    onPanStart: _handleGutterDragStart,
+                    onPanUpdate: _handleGutterDrag,
+                    child: SingleChildScrollView(
+                      controller: widget.verticalScrollController,
+                      child: Align(
+                        alignment: Alignment.topCenter,
+                        child: CustomPaint(
+                            painter: GutterPainter(
+                              editorConfigService: widget.editorConfigService,
+                              editorLayoutService: widget.editorLayoutService,
+                              editorState: editorState,
+                              verticalOffset:
+                                  widget.verticalScrollController.hasClients
+                                      ? widget.verticalScrollController.offset
+                                      : 0,
+                              viewportHeight:
+                                  MediaQuery.of(context).size.height,
+                            ),
+                            size: Size(gutterWidth, height)),
+                      ),
+                    ))));
       },
     );
   }

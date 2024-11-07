@@ -1,3 +1,4 @@
+import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:flutter/material.dart';
 
@@ -6,12 +7,14 @@ class EditorTab extends StatelessWidget {
   final bool isActive;
   final VoidCallback onTap;
   final VoidCallback onClose;
+  final EditorConfigService editorConfigService;
 
   const EditorTab({
     required this.editor,
     required this.isActive,
     required this.onTap,
     required this.onClose,
+    required this.editorConfigService,
     super.key,
   });
 
@@ -27,13 +30,28 @@ class EditorTab extends StatelessWidget {
             decoration: BoxDecoration(
               border: Border(
                 right: BorderSide(
-                  color: Colors.grey[200]!,
+                  color: editorConfigService.themeService.currentTheme != null
+                      ? editorConfigService.themeService.currentTheme!.border
+                      : Colors.grey[200]!,
                 ),
                 bottom: BorderSide(
-                  color: isActive ? Colors.transparent : Colors.grey[200]!,
+                  color: isActive
+                      ? Colors.transparent
+                      : editorConfigService.themeService.currentTheme != null
+                          ? editorConfigService
+                              .themeService.currentTheme!.border
+                          : Colors.grey[200]!,
                 ),
               ),
-              color: isActive ? Colors.white : Colors.grey[50],
+              color: isActive
+                  ? editorConfigService.themeService.currentTheme != null
+                      ? editorConfigService
+                          .themeService.currentTheme!.background
+                      : Colors.white
+                  : editorConfigService.themeService.currentTheme != null
+                      ? editorConfigService
+                          .themeService.currentTheme!.backgroundLight
+                      : Colors.grey[50],
             ),
             child: Row(
               children: [
@@ -43,7 +61,17 @@ class EditorTab extends StatelessWidget {
                     height: 8,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: isActive ? Colors.blue : Colors.black54,
+                      color: isActive
+                          ? editorConfigService.themeService.currentTheme !=
+                                  null
+                              ? editorConfigService
+                                  .themeService.currentTheme!.primary
+                              : Colors.blue
+                          : editorConfigService.themeService.currentTheme !=
+                                  null
+                              ? editorConfigService
+                                  .themeService.currentTheme!.text
+                              : Colors.black54,
                     ),
                   ),
                 ] else
@@ -52,7 +80,15 @@ class EditorTab extends StatelessWidget {
                 Text(
                   editor.path.split('/').last,
                   style: TextStyle(
-                    color: isActive ? Colors.blue : Colors.black87,
+                    color: isActive
+                        ? editorConfigService.themeService.currentTheme != null
+                            ? editorConfigService
+                                .themeService.currentTheme!.primary
+                            : Colors.blue
+                        : editorConfigService.themeService.currentTheme != null
+                            ? editorConfigService
+                                .themeService.currentTheme!.text
+                            : Colors.black87,
                   ),
                 ),
                 MouseRegion(
@@ -74,7 +110,19 @@ class EditorTab extends StatelessWidget {
                             child: Icon(
                               Icons.close,
                               size: 16,
-                              color: isActive ? Colors.blue : Colors.black54,
+                              color: isActive
+                                  ? editorConfigService
+                                              .themeService.currentTheme !=
+                                          null
+                                      ? editorConfigService
+                                          .themeService.currentTheme!.primary
+                                      : Colors.blue
+                                  : editorConfigService
+                                              .themeService.currentTheme !=
+                                          null
+                                      ? editorConfigService
+                                          .themeService.currentTheme!.text
+                                      : Colors.black54,
                             ),
                           ),
                         ),

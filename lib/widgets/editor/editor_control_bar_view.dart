@@ -1,3 +1,4 @@
+import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:flutter/material.dart';
 
 class EditorControlBarView extends StatefulWidget {
@@ -15,6 +16,7 @@ class EditorControlBarView extends StatefulWidget {
   final bool isCaseSensitiveActive;
   final bool isWholeWordActive;
   final bool isRegexActive;
+  final EditorConfigService editorConfigService;
 
   const EditorControlBarView({
     super.key,
@@ -32,6 +34,7 @@ class EditorControlBarView extends StatefulWidget {
     required this.toggleCaseSensitive,
     required this.replaceNextMatch,
     required this.replaceAllMatches,
+    required this.editorConfigService,
   });
 
   @override
@@ -60,13 +63,20 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
           padding: const EdgeInsets.symmetric(horizontal: 8.0),
           height: 36,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: widget.editorConfigService.themeService.currentTheme != null
+                ? widget
+                    .editorConfigService.themeService.currentTheme!.background
+                : Colors.white,
             border: Border(
-              bottom: BorderSide(
-                  color: !_isSearchActive
-                      ? Colors.grey[200]!
-                      : Colors.transparent),
-            ),
+                bottom: BorderSide(
+                    color: !_isSearchActive
+                        ? widget.editorConfigService.themeService
+                                    .currentTheme !=
+                                null
+                            ? widget.editorConfigService.themeService
+                                .currentTheme!.border
+                            : Colors.grey[200]!
+                        : Colors.transparent)),
           ),
           child: Row(children: [
             _buildFilePath(widget.filePath),
@@ -81,10 +91,12 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
   Widget _buildFilePath(String path) {
     return Text(
       path,
-      style: const TextStyle(
+      style: TextStyle(
         fontFamily: 'IBM Plex Sans',
         fontSize: 14,
-        color: Colors.black87,
+        color: widget.editorConfigService.themeService.currentTheme != null
+            ? widget.editorConfigService.themeService.currentTheme!.text
+            : Colors.black87,
       ),
       overflow: TextOverflow.ellipsis,
     );
@@ -108,8 +120,11 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
                 height: 24,
                 width: 28,
                 decoration: BoxDecoration(
-                  color:
-                      value ? Colors.blue.withOpacity(0.1) : Colors.transparent,
+                  color: value
+                      ? widget.editorConfigService.themeService.currentTheme!
+                          .primary
+                          .withOpacity(0.1)
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(3),
                 ),
                 child: Center(
@@ -117,7 +132,11 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
-                      color: value ? Colors.blue : Colors.black54,
+                      color: value
+                          ? widget.editorConfigService.themeService
+                              .currentTheme!.primary
+                          : widget.editorConfigService.themeService
+                              .currentTheme!.text,
                     ),
                     child: child,
                   ),
@@ -140,7 +159,8 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
           width: 24,
           decoration: BoxDecoration(
             color: (hovered != null && hovered)
-                ? Colors.grey[200]
+                ? widget.editorConfigService.themeService.currentTheme!
+                    .backgroundLight
                 : Colors.transparent,
             borderRadius: const BorderRadius.all(Radius.circular(4)),
           ),
@@ -154,7 +174,9 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
     return _buildToggleButton(
       Icon(
         Icons.search,
-        color: _isSearchActive ? Colors.blue : Colors.black54,
+        color: _isSearchActive
+            ? widget.editorConfigService.themeService.currentTheme!.primary
+            : widget.editorConfigService.themeService.currentTheme!.text,
         size: 16,
       ),
       (_) => setState(() => _searchHovered = true),
@@ -168,7 +190,9 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
     return _buildToggleButton(
       Icon(
         Icons.find_replace,
-        color: _isReplaceActive ? Colors.blue : Colors.black54,
+        color: _isReplaceActive
+            ? widget.editorConfigService.themeService.currentTheme!.primary
+            : widget.editorConfigService.themeService.currentTheme!.text,
         size: 16,
       ),
       (_) => setState(() => _replaceHovered = true),
@@ -183,10 +207,13 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
       padding: const EdgeInsets.fromLTRB(8.0, 0.0, 8.0, 4.0),
       height: 36,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: widget.editorConfigService.themeService.currentTheme!.background,
         border: Border(
           bottom: BorderSide(
-              color: _isReplaceActive ? Colors.transparent : Colors.grey[200]!),
+              color: _isReplaceActive
+                  ? Colors.transparent
+                  : widget
+                      .editorConfigService.themeService.currentTheme!.border),
         ),
       ),
       child: Align(
@@ -205,15 +232,21 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
                       horizontal: 8.0, vertical: 8.0),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(4.0),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
+                    borderSide: BorderSide(
+                        color: widget.editorConfigService.themeService
+                            .currentTheme!.border),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(4.0),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
+                    borderSide: BorderSide(
+                        color: widget.editorConfigService.themeService
+                            .currentTheme!.border),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(4.0),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
+                    borderSide: BorderSide(
+                        color: widget.editorConfigService.themeService
+                            .currentTheme!.border),
                   ),
                   suffixIcon: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -248,17 +281,35 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
                     ],
                   ),
                 ),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontFamily: 'IBM Plex Sans',
+                  color: widget
+                      .editorConfigService.themeService.currentTheme!.text,
                 ),
               ),
             ),
           ]),
           _buildReplaceToggle(),
-          _buildToggleButton(const Icon(Icons.arrow_left), null, null, null,
+          _buildToggleButton(
+              Icon(
+                Icons.arrow_left,
+                color:
+                    widget.editorConfigService.themeService.currentTheme!.text,
+              ),
+              null,
+              null,
+              null,
               widget.previousSearchTerm),
-          _buildToggleButton(const Icon(Icons.arrow_right), null, null, null,
+          _buildToggleButton(
+              Icon(
+                Icons.arrow_right,
+                color:
+                    widget.editorConfigService.themeService.currentTheme!.text,
+              ),
+              null,
+              null,
+              null,
               widget.nextSearchTerm),
           _buildCurrentSearchMatchLabel(),
         ]),
@@ -270,7 +321,12 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
     var currentSearchTermMatch = widget.currentSearchTermMatch +
         (widget.totalSearchTermMatches == 0 ? 0 : 1);
     var totalSearchTermMatches = widget.totalSearchTermMatches;
-    return Text('$currentSearchTermMatch/$totalSearchTermMatches');
+    return Text(
+      '$currentSearchTermMatch/$totalSearchTermMatches',
+      style: TextStyle(
+        color: widget.editorConfigService.themeService.currentTheme!.text,
+      ),
+    );
   }
 
   Widget _buildReplacePane() {
@@ -278,9 +334,11 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
       padding: const EdgeInsets.symmetric(horizontal: 8.0),
       height: 36,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: widget.editorConfigService.themeService.currentTheme!.background,
         border: Border(
-          bottom: BorderSide(color: Colors.grey[200]!),
+          bottom: BorderSide(
+              color:
+                  widget.editorConfigService.themeService.currentTheme!.border),
         ),
       ),
       child: Row(children: [
@@ -297,32 +355,40 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
                     const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(4.0),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
+                  borderSide: BorderSide(
+                      color: widget.editorConfigService.themeService
+                          .currentTheme!.border),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(4.0),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
+                  borderSide: BorderSide(
+                      color: widget.editorConfigService.themeService
+                          .currentTheme!.border),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(4.0),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
+                  borderSide: BorderSide(
+                      color: widget.editorConfigService.themeService
+                          .currentTheme!.border),
                 ),
               ),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontFamily: 'IBM Plex Sans',
+                color:
+                    widget.editorConfigService.themeService.currentTheme!.text,
               ),
             ),
           ),
         ),
-        const SizedBox(width: 8), // Add spacing between text field and buttons
+        const SizedBox(width: 8),
         _buildToggleButton(
-          const Text(
+          Text(
             '1↓',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: Colors.black54,
+              color: widget.editorConfigService.themeService.currentTheme!.text,
             ),
           ),
           null,
@@ -331,12 +397,12 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
           () => widget.replaceNextMatch(_replaceController.value.text),
         ),
         _buildToggleButton(
-          const Text(
+          Text(
             'all',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: Colors.black54,
+              color: widget.editorConfigService.themeService.currentTheme!.text,
             ),
           ),
           null,

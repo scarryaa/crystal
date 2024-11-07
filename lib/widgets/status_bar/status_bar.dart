@@ -1,9 +1,12 @@
+import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class StatusBar extends StatefulWidget {
-  const StatusBar({super.key});
+  EditorConfigService editorConfigService;
+
+  StatusBar({super.key, required this.editorConfigService});
 
   @override
   State<StatusBar> createState() => _StatusBarState();
@@ -15,10 +18,13 @@ class _StatusBarState extends State<StatusBar> {
     return Container(
       height: 25,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: widget.editorConfigService.themeService.currentTheme != null
+            ? widget.editorConfigService.themeService.currentTheme!.background
+            : Colors.white,
         border: Border.all(
-          color: Colors.grey[300]!,
-        ),
+            color: widget.editorConfigService.themeService.currentTheme != null
+                ? widget.editorConfigService.themeService.currentTheme!.border
+                : Colors.grey[300]!),
       ),
       child: Row(
         children: [

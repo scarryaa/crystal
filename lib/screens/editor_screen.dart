@@ -78,7 +78,7 @@ class _EditorScreenState extends State<EditorScreen> {
   void initState() {
     super.initState();
     _editorConfigService = EditorConfigService(
-        fontSize: 14.0, fontFamily: 'IBM Plex Mono', theme: 'default-light');
+        fontSize: 14.0, fontFamily: 'IBM Plex Mono', theme: 'default-dark');
     _editorLayoutService = EditorLayoutService(
         fontFamily: 'IBM Plex Mono',
         fontSize: 14.0,
@@ -87,6 +87,13 @@ class _EditorScreenState extends State<EditorScreen> {
         lineHeightMultiplier: widget.lineHeightMultipler);
     _editorVerticalScrollController.addListener(_handleEditorScroll);
     _gutterScrollController.addListener(_handleGutterScroll);
+    _editorConfigService.themeService.addListener(_onThemeChanged);
+  }
+
+  void _onThemeChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _handleEditorScroll() {
@@ -421,6 +428,7 @@ class _EditorScreenState extends State<EditorScreen> {
     _gutterScrollController.dispose();
     _editorVerticalScrollController.dispose();
     _editorHorizontalScrollController.dispose();
+    _editorConfigService.themeService.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -439,6 +447,7 @@ class _EditorScreenState extends State<EditorScreen> {
                   child: Row(
                     children: [
                       FileExplorer(
+                        editorConfigService: _editorConfigService,
                         rootDir: '',
                         tapCallback: tapCallback,
                       ),
@@ -447,6 +456,7 @@ class _EditorScreenState extends State<EditorScreen> {
                           children: [
                             if (_editors.isNotEmpty)
                               EditorTabBar(
+                                editorConfigService: _editorConfigService,
                                 editors: _editors,
                                 activeEditorIndex: activeEditorIndex,
                                 onActiveEditorChanged: onActiveEditorChanged,
@@ -455,6 +465,7 @@ class _EditorScreenState extends State<EditorScreen> {
                               ),
                             if (_editors.isNotEmpty)
                               EditorControlBarView(
+                                editorConfigService: _editorConfigService,
                                 filePath: activeEditor!.path,
                                 searchTermChanged: _onSearchTermChanged,
                                 nextSearchTerm: _nextSearchTerm,
@@ -472,50 +483,71 @@ class _EditorScreenState extends State<EditorScreen> {
                                 replaceAllMatches: _replaceAllMatches,
                               ),
                             Expanded(
-                              child: Row(
-                                children: [
-                                  if (_editors.isNotEmpty)
-                                    Gutter(
-                                      editorConfigService: _editorConfigService,
-                                      editorLayoutService: _editorLayoutService,
-                                      editorState: state!,
-                                      verticalScrollController:
-                                          _gutterScrollController,
-                                    ),
-                                  Expanded(
-                                    child: _editors.isNotEmpty
-                                        ? EditorView(
-                                            editorConfigService:
-                                                _editorConfigService,
-                                            editorLayoutService:
-                                                _editorLayoutService,
-                                            state: state!,
-                                            searchTerm: _searchTerm,
-                                            searchTermMatches:
-                                                _searchTermMatches,
-                                            currentSearchTermMatch:
-                                                _currentSearchTermMatch,
-                                            onSearchTermChanged:
-                                                _updateSearchMatches,
-                                            scrollToCursor: _scrollToCursor,
-                                            gutterWidth: gutterWidth!,
-                                            verticalScrollController:
-                                                _editorVerticalScrollController,
-                                            horizontalScrollController:
-                                                _editorHorizontalScrollController,
-                                          )
-                                        : Container(color: Colors.white),
-                                  )
-                                ],
+                              child: Container(
+                                color: _editorConfigService
+                                            .themeService.currentTheme !=
+                                        null
+                                    ? _editorConfigService
+                                        .themeService.currentTheme!.background
+                                    : Colors.white,
+                                child: Row(
+                                  children: [
+                                    if (_editors.isNotEmpty)
+                                      Gutter(
+                                        editorConfigService:
+                                            _editorConfigService,
+                                        editorLayoutService:
+                                            _editorLayoutService,
+                                        editorState: state!,
+                                        verticalScrollController:
+                                            _gutterScrollController,
+                                      ),
+                                    Expanded(
+                                      child: _editors.isNotEmpty
+                                          ? EditorView(
+                                              editorConfigService:
+                                                  _editorConfigService,
+                                              editorLayoutService:
+                                                  _editorLayoutService,
+                                              state: state!,
+                                              searchTerm: _searchTerm,
+                                              searchTermMatches:
+                                                  _searchTermMatches,
+                                              currentSearchTermMatch:
+                                                  _currentSearchTermMatch,
+                                              onSearchTermChanged:
+                                                  _updateSearchMatches,
+                                              scrollToCursor: _scrollToCursor,
+                                              gutterWidth: gutterWidth!,
+                                              verticalScrollController:
+                                                  _editorVerticalScrollController,
+                                              horizontalScrollController:
+                                                  _editorHorizontalScrollController,
+                                            )
+                                          : Container(
+                                              color: _editorConfigService
+                                                          .themeService
+                                                          .currentTheme !=
+                                                      null
+                                                  ? _editorConfigService
+                                                      .themeService
+                                                      .currentTheme!
+                                                      .background
+                                                  : Colors.white),
+                                    )
+                                  ],
+                                ),
                               ),
-                            ),
+                            )
                           ],
                         ),
                       ),
                     ],
                   ),
                 ),
-                const StatusBar(),
+                StatusBar(
+                  editorConfigService: _editorConfigService,
+                ),
               ],
             ),
           );

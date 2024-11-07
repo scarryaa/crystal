@@ -4,9 +4,11 @@ class FileExplorerActionBar extends StatelessWidget {
   final VoidCallback? onCollapseAll;
   final VoidCallback? onExpandAll;
   final VoidCallback? onRefresh;
+  final Color textColor;
 
   const FileExplorerActionBar({
     super.key,
+    required this.textColor,
     this.onCollapseAll,
     this.onExpandAll,
     this.onRefresh,
@@ -43,6 +45,7 @@ class FileExplorerActionBar extends StatelessWidget {
   }) {
     return IconButton(
       icon: Icon(icon),
+      color: textColor,
       iconSize: 16.0,
       tooltip: tooltip,
       onPressed: onPressed,

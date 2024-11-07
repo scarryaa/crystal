@@ -1,7 +1,8 @@
 import 'package:crystal/models/editor/config/editor_config.dart';
 import 'package:crystal/services/editor/editor_theme_service.dart';
+import 'package:flutter/material.dart';
 
-class EditorConfigService {
+class EditorConfigService extends ChangeNotifier {
   final EditorThemeService _themeService;
   final EditorConfig _config;
 
@@ -19,4 +20,9 @@ class EditorConfigService {
 
   EditorThemeService get themeService => _themeService;
   EditorConfig get config => _config;
+
+  Future<void> setTheme(String themeName) async {
+    await _themeService.loadThemeFromJson(themeName);
+    notifyListeners();
+  }
 }

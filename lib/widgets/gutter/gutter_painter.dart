@@ -60,8 +60,12 @@ class GutterPainter extends CustomPainter {
   }
 
   void _drawBackground(Canvas canvas, Size size) {
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height),
-        Paint()..color = Colors.white);
+    canvas.drawRect(
+        Rect.fromLTWH(0, 0, size.width, size.height),
+        Paint()
+          ..color = editorConfigService.themeService.currentTheme != null
+              ? editorConfigService.themeService.currentTheme!.background
+              : Colors.white);
   }
 
   void _drawText(
@@ -117,8 +121,10 @@ class GutterPainter extends CustomPainter {
           editorLayoutService.config.lineHeight,
         ),
         Paint()
-          ..color = editorConfigService
-              .themeService.currentTheme.currentLineHighlight);
+          ..color = editorConfigService.themeService.currentTheme != null
+              ? editorConfigService
+                  .themeService.currentTheme!.currentLineHighlight
+              : Colors.blue.withOpacity(0.2));
   }
 
   @override

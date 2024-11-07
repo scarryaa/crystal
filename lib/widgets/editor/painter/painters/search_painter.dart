@@ -1,4 +1,5 @@
 import 'package:crystal/models/editor/search_match.dart';
+import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:flutter/material.dart';
 
@@ -7,12 +8,14 @@ class SearchPainter {
   final List<SearchMatch> searchTermMatches;
   final int currentSearchTermMatch;
   final EditorLayoutService editorLayoutService;
+  final EditorConfigService editorConfigService;
 
   const SearchPainter({
     required this.searchTerm,
     required this.searchTermMatches,
     required this.currentSearchTermMatch,
     required this.editorLayoutService,
+    required this.editorConfigService,
   });
 
   void paint(Canvas canvas, String searchTerm, int startLine, int endLine) {
@@ -32,8 +35,14 @@ class SearchPainter {
             Rect.fromLTWH(left, top, width, height),
             Paint()
               ..color = i == currentSearchTermMatch
-                  ? Colors.blue.withOpacity(0.4)
-                  : Colors.blue.withOpacity(0.2));
+                  ? editorConfigService.themeService.currentTheme != null
+                      ? editorConfigService.themeService.currentTheme!.primary
+                          .withOpacity(0.4)
+                      : Colors.blue.withOpacity(0.4)
+                  : editorConfigService.themeService.currentTheme != null
+                      ? editorConfigService.themeService.currentTheme!.primary
+                          .withOpacity(0.2)
+                      : Colors.blue.withOpacity(0.2));
       }
     }
   }

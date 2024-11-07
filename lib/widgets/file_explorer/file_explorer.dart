@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/widgets/file_explorer/file_explorer_action_bar.dart';
 import 'package:crystal/widgets/file_explorer/file_item.dart';
 import 'package:crystal/widgets/file_explorer/indent_painter.dart';
@@ -7,11 +8,13 @@ import 'package:flutter/material.dart';
 class FileExplorer extends StatefulWidget {
   final String rootDir;
   final Function(String path) tapCallback;
+  final EditorConfigService editorConfigService;
 
   const FileExplorer({
     super.key,
     required this.rootDir,
     required this.tapCallback,
+    required this.editorConfigService,
   });
 
   @override
@@ -77,6 +80,15 @@ class _FileExplorerState extends State<FileExplorer> {
         CustomPaint(
           painter: IndentPainter(level: depth),
           child: FileItem(
+            highlightColor:
+                widget.editorConfigService.themeService.currentTheme != null
+                    ? widget
+                        .editorConfigService.themeService.currentTheme!.primary
+                    : Colors.blue,
+            textColor:
+                widget.editorConfigService.themeService.currentTheme != null
+                    ? widget.editorConfigService.themeService.currentTheme!.text
+                    : Colors.black,
             fileName: fileName,
             isDirectory: isDirectory,
             expanded: isExpanded,
@@ -117,12 +129,20 @@ class _FileExplorerState extends State<FileExplorer> {
         children: [
           Container(
             decoration: BoxDecoration(
-              border: Border(
-                right: BorderSide(color: Colors.grey[400]!),
-              ),
-            ),
+                border: Border(
+                    right: BorderSide(
+                        color: widget.editorConfigService.themeService
+                                    .currentTheme !=
+                                null
+                            ? widget.editorConfigService.themeService
+                                .currentTheme!.border
+                            : Colors.grey[400]!))),
             child: Container(
-              color: Colors.white,
+              color:
+                  widget.editorConfigService.themeService.currentTheme != null
+                      ? widget.editorConfigService.themeService.currentTheme!
+                          .background
+                      : Colors.white,
               height: double.infinity,
               width: width,
               child: FutureBuilder<List<FileSystemEntity>>(
@@ -155,6 +175,12 @@ class _FileExplorerState extends State<FileExplorer> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       FileExplorerActionBar(
+                        textColor: widget.editorConfigService.themeService
+                                    .currentTheme !=
+                                null
+                            ? widget.editorConfigService.themeService
+                                .currentTheme!.text
+                            : Colors.black,
                         onRefresh: () {
                           setState(() {
                             _filesFuture = _enumerateFiles(widget.rootDir);
@@ -175,8 +201,14 @@ class _FileExplorerState extends State<FileExplorer> {
                           data: ScrollbarThemeData(
                             thickness: WidgetStateProperty.all(8.0),
                             radius: const Radius.circular(0),
-                            thumbColor:
-                                WidgetStateProperty.all(Colors.grey[400]),
+                            thumbColor: WidgetStateProperty.all(widget
+                                        .editorConfigService
+                                        .themeService
+                                        .currentTheme !=
+                                    null
+                                ? widget.editorConfigService.themeService
+                                    .currentTheme!.border
+                                : Colors.grey[400]),
                           ),
                           child: Scrollbar(
                             controller: _horizontalController,
@@ -224,7 +256,11 @@ class _FileExplorerState extends State<FileExplorer> {
               child: Container(
                 width: 1.5,
                 height: double.infinity,
-                color: Colors.transparent,
+                color:
+                    widget.editorConfigService.themeService.currentTheme != null
+                        ? widget.editorConfigService.themeService.currentTheme!
+                            .border
+                        : Colors.transparent,
               ),
             ),
           )

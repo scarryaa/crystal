@@ -206,8 +206,10 @@ class SelectionPainter {
             top + editorConfigService.config.whitespaceIndicatorRadius / 2),
         editorConfigService.config.whitespaceIndicatorRadius,
         Paint()
-          ..color = editorConfigService
-              .themeService.currentTheme.whitespaceIndicatorColor);
+          ..color = editorConfigService.themeService.currentTheme != null
+              ? editorConfigService
+                  .themeService.currentTheme!.whitespaceIndicatorColor
+              : Colors.black.withOpacity(0.5));
   }
 
   double _measureLineWidth(String line) {

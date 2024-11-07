@@ -4,6 +4,8 @@ class EditorTheme {
   final String name;
   final Color primary;
   final Color background;
+  final Color backgroundLight;
+  final Color border;
   final Color text;
   late final Color whitespaceIndicatorColor;
   late final Color currentLineHighlight;
@@ -13,6 +15,8 @@ class EditorTheme {
     required this.name,
     required this.primary,
     required this.background,
+    required this.backgroundLight,
+    required this.border,
     required this.text,
   }) {
     whitespaceIndicatorColor = text.withOpacity(0.5);
@@ -25,6 +29,8 @@ class EditorTheme {
       name: json['name'] as String,
       primary: _colorFromHex(json['primary'] as String),
       background: _colorFromHex(json['background'] as String),
+      backgroundLight: _colorFromHex(json['backgroundLight'] as String),
+      border: _colorFromHex(json['border'] as String),
       text: _colorFromHex(json['text'] as String),
     );
   }
