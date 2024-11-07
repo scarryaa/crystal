@@ -21,12 +21,12 @@ class EditorSyntaxHighlighter {
         : Colors.black;
   }
 
-  static const keywordColor = Colors.blue;
-  static const typeColor = Colors.teal;
-  static Color stringColor = Colors.green[700]!;
-  static const commentColor = Colors.grey;
-  static const numberColor = Colors.orange;
-  static const symbolColor = Colors.purple;
+  static const keywordColor = Color(0xFF6B8EFF);
+  static const typeColor = Color(0xFF66B2B2);
+  static Color stringColor = const Color(0xFF7CB073);
+  static const commentColor = Color(0xFFB0B0B0);
+  static const numberColor = Color(0xFFFFB366);
+  static const symbolColor = Color(0xFFD4A6E3);
   static Color defaultTextColor = Colors.black;
 
   void highlight(String text) {
