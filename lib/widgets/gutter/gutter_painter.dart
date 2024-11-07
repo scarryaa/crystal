@@ -11,6 +11,7 @@ class GutterPainter extends CustomPainter {
   final double viewportHeight;
   final EditorLayoutService editorLayoutService;
   final EditorConfigService editorConfigService;
+  final Set<int> _currentHighlightedLines = {};
 
   final TextStyle _defaultStyle;
   final TextStyle _highlightStyle;
@@ -56,7 +57,10 @@ class GutterPainter extends CustomPainter {
     // Highlight current line (if no selection)
     if (!editorState.editorSelectionManager.hasSelection()) {
       for (var cursor in editorState.editorCursorManager.cursors) {
-        _highlightCurrentLine(canvas, size, cursor.line);
+        if (!_currentHighlightedLines.contains(cursor.line)) {
+          _highlightCurrentLine(canvas, size, cursor.line);
+          _currentHighlightedLines.add(cursor.line);
+        }
       }
     }
   }

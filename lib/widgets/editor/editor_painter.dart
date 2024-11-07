@@ -29,6 +29,9 @@ class EditorPainter extends CustomPainter {
   late final SearchPainter searchPainter;
   late final SelectionPainter selectionPainter;
 
+  // Remove the static list of highlighted lines
+  Set<int> _currentHighlightedLines = {};
+
   EditorPainter({
     required this.editorState,
     required this.viewportHeight,
@@ -102,10 +105,16 @@ class EditorPainter extends CustomPainter {
     textPainterHelper.paintText(
         canvas, size, firstVisibleLine, lastVisibleLine, lines);
 
+    // Clear previous highlighted lines
+    _currentHighlightedLines.clear();
+
     // Highlight current line (if no selection)
     if (!editorState.editorSelectionManager.hasSelection()) {
       for (var cursor in editorState.editorCursorManager.cursors) {
-        _highlightCurrentLine(canvas, size, cursor.line);
+        if (!_currentHighlightedLines.contains(cursor.line)) {
+          _highlightCurrentLine(canvas, size, cursor.line);
+          _currentHighlightedLines.add(cursor.line);
+        }
       }
     }
 

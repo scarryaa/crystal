@@ -201,9 +201,33 @@ class EditorState extends ChangeNotifier {
       deleteSelection();
     }
 
-    for (var cursor in editorCursorManager.cursors) {
-      executeCommand(
-          TextInsertCommand(_buffer, c, cursor.line, cursor.column, cursor));
+    var sortedCursors = List.from(editorCursorManager.cursors)
+      ..sort((a, b) {
+        if (a.line != b.line) {
+          return a.line.compareTo(b.line);
+        }
+        return a.column.compareTo(b.column);
+      });
+
+    // Keep track of adjustments needed for subsequent cursors
+    for (int i = 0; i < sortedCursors.length; i++) {
+      var currentCursor = sortedCursors[i];
+
+      // Apply adjustments to later cursors if they're on the same line
+      if (i < sortedCursors.length - 1) {
+        for (int j = i + 1; j < sortedCursors.length; j++) {
+          var laterCursor = sortedCursors[j];
+
+          if (laterCursor.line == currentCursor.line &&
+              laterCursor.column > currentCursor.column) {
+            // Adjust the column position for cursors after the insertion point
+            laterCursor.column += c.length;
+          }
+        }
+      }
+
+      executeCommand(TextInsertCommand(
+          _buffer, c, currentCursor.line, currentCursor.column, currentCursor));
     }
   }
 
