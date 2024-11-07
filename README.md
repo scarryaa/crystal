@@ -8,10 +8,10 @@ Crystal aims to be a lightweight yet powerful code editor.
 - Built-in File Explorer
 - Syntax Highlighting (basic)
 - Search and Replace
+- Multi-Cursor Editing
 
 ### Planned Features
 - Multiple Themes
-- Multi-Cursor Editing
 - Split View
 - Integrated Terminal
 - Git Integration

@@ -9,6 +9,7 @@ class EditorTabBar extends StatefulWidget {
   final Function(int) onActiveEditorChanged;
   final Function(int) onEditorClosed;
   final Function(int, int) onReorder;
+  final Function(int) onPin;
   final EditorConfigService editorConfigService;
 
   const EditorTabBar({
@@ -18,6 +19,7 @@ class EditorTabBar extends StatefulWidget {
     required this.onActiveEditorChanged,
     required this.onEditorClosed,
     required this.onReorder,
+    required this.onPin,
     required this.editorConfigService,
   });
 
@@ -29,33 +31,32 @@ class _EditorTabBarState extends State<EditorTabBar> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        color: widget.editorConfigService.themeService.currentTheme != null
-            ? widget.editorConfigService.themeService.currentTheme!.background
-            : Colors.white,
-      ),
-      height: 35,
-      child: ReorderableListView.builder(
-        scrollDirection: Axis.horizontal,
-        buildDefaultDragHandles: false,
-        onReorder: widget.onReorder,
-        itemCount: widget.editors.length,
-        itemBuilder: (context, index) {
-          final editor = widget.editors[index];
-
-          return ReorderableDragStartListener(
-            key: ValueKey(editor.path),
-            index: index,
-            child: EditorTab(
-              editorConfigService: widget.editorConfigService,
-              editor: editor,
-              isActive: index == widget.activeEditorIndex,
-              onTap: () => widget.onActiveEditorChanged(index),
-              onClose: () => widget.onEditorClosed(index),
-            ),
-          );
-        },
-      ),
-    );
+        decoration: BoxDecoration(
+          color: widget.editorConfigService.themeService.currentTheme != null
+              ? widget.editorConfigService.themeService.currentTheme!.background
+              : Colors.white,
+        ),
+        height: 35,
+        child: ReorderableListView.builder(
+            scrollDirection: Axis.horizontal,
+            buildDefaultDragHandles: false,
+            onReorder: widget.onReorder,
+            itemCount: widget.editors.length,
+            itemBuilder: (context, index) {
+              final editor = widget.editors[index];
+              return ReorderableDragStartListener(
+                key: ValueKey(editor.path),
+                index: index,
+                child: EditorTab(
+                  editorConfigService: widget.editorConfigService,
+                  editor: editor,
+                  isActive: index == widget.activeEditorIndex,
+                  onTap: () => widget.onActiveEditorChanged(index),
+                  onClose: () => widget.onEditorClosed(index),
+                  onPin: () => widget.onPin(index),
+                  isPinned: editor.isPinned,
+                ),
+              );
+            }));
   }
 }

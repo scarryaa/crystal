@@ -30,6 +30,7 @@ class EditorState extends ChangeNotifier {
   final EditorCursorManager editorCursorManager = EditorCursorManager();
   final EditorSelectionManager editorSelectionManager =
       EditorSelectionManager();
+  bool isPinned = false;
 
   EditorState({
     required this.resetGutterScroll,

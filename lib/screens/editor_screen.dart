@@ -179,6 +179,10 @@ class _EditorScreenState extends State<EditorScreen> {
 
   void onEditorClosed(int index) {
     setState(() {
+      if (_editors[index].isPinned) {
+        return;
+      }
+
       _editors.removeAt(index);
       if (activeEditorIndex >= _editors.length) {
         activeEditorIndex = _editors.length - 1;
@@ -186,14 +190,46 @@ class _EditorScreenState extends State<EditorScreen> {
     });
   }
 
+  void onPin(int index) {
+    setState(() {
+      _editors[index].isPinned = !_editors[index].isPinned;
+
+      if (_editors[index].isPinned) {
+        int pinnedCount = _editors.where((e) => e.isPinned).length - 1;
+        if (index > pinnedCount) {
+          final editor = _editors.removeAt(index);
+          _editors.insert(pinnedCount, editor);
+          if (activeEditorIndex == index) {
+            activeEditorIndex = pinnedCount;
+          }
+        }
+      }
+    });
+  }
+
   void onReorder(int oldIndex, int newIndex) {
     setState(() {
+      final movingEditor = _editors[oldIndex];
+      final pinnedCount = _editors.where((e) => e.isPinned).length;
+
+      // Prevent moving unpinned tabs before pinned ones
+      if (!movingEditor.isPinned && newIndex < pinnedCount) {
+        newIndex = pinnedCount;
+      }
+
+      // Prevent moving pinned tabs after unpinned ones
+      if (movingEditor.isPinned && newIndex > pinnedCount - 1) {
+        newIndex = pinnedCount - 1;
+      }
+
       if (oldIndex < newIndex) {
         newIndex -= 1;
       }
+
       final item = _editors.removeAt(oldIndex);
       _editors.insert(newIndex, item);
 
+      // Update activeEditorIndex
       if (activeEditorIndex == oldIndex) {
         activeEditorIndex = newIndex;
       } else if (activeEditorIndex > oldIndex &&
@@ -458,6 +494,7 @@ class _EditorScreenState extends State<EditorScreen> {
                           children: [
                             if (_editors.isNotEmpty)
                               EditorTabBar(
+                                onPin: onPin,
                                 editorConfigService: _editorConfigService,
                                 editors: _editors,
                                 activeEditorIndex: activeEditorIndex,
