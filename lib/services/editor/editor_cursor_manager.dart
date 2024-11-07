@@ -182,15 +182,15 @@ class EditorCursorManager {
             buffer.getLine(cursor.line - 1) + buffer.getLine(cursor.line));
         buffer.removeLine(cursor.line);
         cursor.line--;
+      }
 
-        // Update earlier cursor positions
-        for (var otherCursor in _cursors) {
-          if (otherCursor.line > cursor.line) {
-            otherCursor.line -= 1;
-          } else if (otherCursor.line == cursor.line &&
-              otherCursor.column > cursor.column) {
-            otherCursor.column -= 1;
-          }
+      // Update earlier cursor positions
+      for (var otherCursor in _cursors) {
+        if (otherCursor.line > cursor.line) {
+          otherCursor.line -= 1;
+        } else if (otherCursor.line == cursor.line &&
+            otherCursor.column > cursor.column) {
+          otherCursor.column -= 1;
         }
       }
     }
