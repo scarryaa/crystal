@@ -193,6 +193,13 @@ class EditorCursorManager {
           }
         }
       }
+
+      for (var otherCursor in _cursors) {
+        if (otherCursor.line == cursor.line &&
+            otherCursor.column > cursor.column) {
+          otherCursor.column -= 1;
+        }
+      }
     }
   }
 
