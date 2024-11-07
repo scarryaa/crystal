@@ -1,10 +1,8 @@
 {
   "name": "default-dark",
-  "primary": "#2196F3",
-  "background": "#000000",
-  "backgroundLight": "#222222",
-  "border": "#444444",
-  "text": "#ffffff"
+  "primary": "#9370DB",
+  "background": "#121212",
+  "backgroundLight": "#1E1E1E",
+  "border": "#333333",
+  "text": "#E1E1E1"
 }
-
-
