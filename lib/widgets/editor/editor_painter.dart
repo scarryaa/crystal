@@ -6,6 +6,7 @@ import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/state/editor/editor_syntax_highlighter.dart';
 import 'package:crystal/widgets/editor/painter/painters/background_painter.dart';
+import 'package:crystal/widgets/editor/painter/painters/bracket_match_painter.dart';
 import 'package:crystal/widgets/editor/painter/painters/caret_painter.dart';
 import 'package:crystal/widgets/editor/painter/painters/indentation_painter.dart';
 import 'package:crystal/widgets/editor/painter/painters/search_painter.dart';
@@ -28,9 +29,10 @@ class EditorPainter extends CustomPainter {
   final IndentationPainter indentationPainter;
   late final SearchPainter searchPainter;
   late final SelectionPainter selectionPainter;
+  final BracketMatchPainter bracketMatchPainter;
 
   // Remove the static list of highlighted lines
-  Set<int> _currentHighlightedLines = {};
+  final Set<int> _currentHighlightedLines = {};
 
   EditorPainter({
     required this.editorState,
@@ -59,6 +61,11 @@ class EditorPainter extends CustomPainter {
           searchTermMatches: searchTermMatches,
           currentSearchTermMatch: currentSearchTermMatch,
         ),
+        bracketMatchPainter = BracketMatchPainter(
+            editorState: editorState,
+            cursors: editorState.editorCursorManager.cursors,
+            editorLayoutService: editorLayoutService,
+            editorConfigService: editorConfigService),
         textPainterHelper = TextPainterHelper(
           editorConfigService: editorConfigService,
           editorLayoutService: editorLayoutService,
@@ -123,6 +130,9 @@ class EditorPainter extends CustomPainter {
 
     // Draw selection
     selectionPainter.paint(canvas, firstVisibleLine, lastVisibleLine);
+
+    bracketMatchPainter.paint(canvas, size,
+        firstVisibleLine: firstVisibleLine, lastVisibleLine: lastVisibleLine);
 
     // Draw caret
     caretPainter.paint(canvas, size,
