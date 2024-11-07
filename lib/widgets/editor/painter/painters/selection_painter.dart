@@ -108,7 +108,11 @@ class SelectionPainter {
               editorState.cursor.line * editorLayoutService.config.lineHeight,
               width,
               editorLayoutService.config.lineHeight),
-          Paint()..color = Colors.blue.withOpacity(0.2));
+          Paint()
+            ..color = editorConfigService.themeService.currentTheme != null
+                ? editorConfigService.themeService.currentTheme!.primary
+                    .withOpacity(0.2)
+                : Colors.blue.withOpacity(0.2));
     }
   }
 
@@ -120,7 +124,11 @@ class SelectionPainter {
       int endColumn,
       int firstVisibleLine,
       int lastVisibleLine) {
-    Paint selectionPaint = Paint()..color = Colors.blue.withOpacity(0.2);
+    Paint selectionPaint = Paint()
+      ..color = editorConfigService.themeService.currentTheme != null
+          ? editorConfigService.themeService.currentTheme!.primary
+              .withOpacity(0.2)
+          : Colors.blue.withOpacity(0.2);
 
     // Start line
     String startLineLeftSlice =

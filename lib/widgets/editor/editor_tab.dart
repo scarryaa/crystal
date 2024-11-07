@@ -103,7 +103,12 @@ class EditorTab extends StatelessWidget {
                         color: Colors.transparent,
                         child: InkWell(
                           onTap: onClose,
-                          hoverColor: Colors.black12,
+                          hoverColor:
+                              editorConfigService.themeService.currentTheme !=
+                                      null
+                                  ? editorConfigService.themeService
+                                      .currentTheme!.backgroundLight
+                                  : Colors.black12,
                           borderRadius: BorderRadius.circular(8),
                           child: Padding(
                             padding: const EdgeInsets.all(2),

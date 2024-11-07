@@ -16,6 +16,7 @@ class TextPainterHelper {
   }) : _textPainter = TextPainter(
           textDirection: TextDirection.ltr,
           textAlign: TextAlign.left,
+          maxLines: 1,
           textHeightBehavior: const TextHeightBehavior(
             applyHeightToFirstAscent: false,
             applyHeightToLastDescent: false,
@@ -25,21 +26,21 @@ class TextPainterHelper {
             fontFamily: editorConfigService.config.fontFamily,
             height: 1.0,
             forceStrutHeight: true,
+            leadingDistribution: TextLeadingDistribution.even,
           ),
         );
 
   void paintText(Canvas canvas, Size size, int firstVisibleLine,
       int lastVisibleLine, List<String> lines) {
+    canvas.save();
     for (int i = firstVisibleLine; i < lastVisibleLine; i++) {
       if (i >= 0 && i < lines.length) {
         String line = lines[i];
 
-        // Highlight the current line's syntax
         editorSyntaxHighlighter.highlight(line);
 
-        // Create text painter with highlighted spans
         _textPainter.text = editorSyntaxHighlighter.buildTextSpan(line);
-        _textPainter.layout();
+        _textPainter.layout(maxWidth: size.width);
 
         double yPosition = (i * editorLayoutService.config.lineHeight) +
             (editorLayoutService.config.lineHeight - _textPainter.height) / 2;
@@ -47,6 +48,7 @@ class TextPainterHelper {
         _textPainter.paint(canvas, Offset(0, yPosition));
       }
     }
+    canvas.restore();
   }
 
   double measureLineWidth(String line) {
@@ -57,12 +59,15 @@ class TextPainterHelper {
           fontFamily: editorConfigService.config.fontFamily,
           fontSize: editorConfigService.config.fontSize,
           fontWeight: FontWeight.normal,
+          height: 1.0,
+          leadingDistribution: TextLeadingDistribution.even,
         ),
       ),
       textDirection: TextDirection.ltr,
+      maxLines: 1,
     );
 
-    textPainter.layout();
+    textPainter.layout(minWidth: 0, maxWidth: double.infinity);
     return textPainter.width;
   }
 }
