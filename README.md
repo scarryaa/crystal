@@ -2,7 +2,7 @@
 
 Crystal aims to be a lightweight yet powerful code editor.
 
-![Crystal Editor Screenshot](assets/sc-1.png)
+![Crystal Editor Screenshot](assets/images/sc-1.png)
 
 ## Features
 - Fast and Lightweight
