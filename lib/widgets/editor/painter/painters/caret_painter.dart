@@ -20,45 +20,46 @@ class CaretPainter extends EditorPainterBase {
       {required int firstVisibleLine, required int lastVisibleLine}) {
     if (!editorState.showCaret) return;
 
-    final line = editorState.buffer.getLine(editorState.cursor.line);
-    final textUpToCaret = line.substring(0, editorState.cursor.column);
+    for (var cursor in editorState.editorCursorManager.cursors) {
+      final line = editorState.buffer.getLine(cursor.line);
+      final textUpToCaret = line.substring(0, cursor.column);
 
-    _textPainter.text = TextSpan(
-      text: textUpToCaret,
-      style: TextStyle(
-        fontSize: editorConfigService.config.fontSize,
-        fontFamily: editorConfigService.config.fontFamily,
-        color: Colors.transparent,
-        height: 1.0,
-        leadingDistribution: TextLeadingDistribution.even,
-        fontFeatures: const [
-          FontFeature.enable('kern'),
-          FontFeature.enable('liga'),
-          FontFeature.enable('calt'),
-        ],
-        fontVariations: const [
-          FontVariation('wght', 400),
-        ],
-      ),
-    );
+      _textPainter.text = TextSpan(
+        text: textUpToCaret,
+        style: TextStyle(
+          fontSize: editorConfigService.config.fontSize,
+          fontFamily: editorConfigService.config.fontFamily,
+          color: Colors.transparent,
+          height: 1.0,
+          leadingDistribution: TextLeadingDistribution.even,
+          fontFeatures: const [
+            FontFeature.enable('kern'),
+            FontFeature.enable('liga'),
+            FontFeature.enable('calt'),
+          ],
+          fontVariations: const [
+            FontVariation('wght', 400),
+          ],
+        ),
+      );
 
-    _textPainter.layout();
+      _textPainter.layout();
 
-    final caretLeft = _textPainter.width;
-    final caretTop =
-        editorLayoutService.config.lineHeight * editorState.cursor.line;
-    final caretPaint = Paint()
-      ..color = editorConfigService.themeService.currentTheme != null
-          ? editorConfigService.themeService.currentTheme!.primary
-          : Colors.blue;
+      final caretLeft = _textPainter.width;
+      final caretTop = editorLayoutService.config.lineHeight * cursor.line;
+      final caretPaint = Paint()
+        ..color = editorConfigService.themeService.currentTheme != null
+            ? editorConfigService.themeService.currentTheme!.primary
+            : Colors.blue;
 
-    _drawCaret(
-      canvas,
-      caretLeft,
-      caretTop,
-      editorState.cursorShape,
-      caretPaint,
-    );
+      _drawCaret(
+        canvas,
+        caretLeft,
+        caretTop,
+        editorState.cursorShape,
+        caretPaint,
+      );
+    }
   }
 
   void _drawCaret(
@@ -122,10 +123,12 @@ class CaretPainter extends EditorPainterBase {
   @override
   bool shouldRepaint(covariant CaretPainter oldDelegate) {
     return oldDelegate.editorState.showCaret != editorState.showCaret ||
-        oldDelegate.editorState.cursor != editorState.cursor ||
+        oldDelegate.editorState.editorCursorManager.cursors !=
+            editorState.editorCursorManager.cursors ||
         oldDelegate.editorState.cursorShape != editorState.cursorShape ||
-        oldDelegate.editorState.buffer.getLine(editorState.cursor.line) !=
-            editorState.buffer.getLine(editorState.cursor.line);
+        oldDelegate.editorState.editorCursorManager.cursors.any((cursor) =>
+            oldDelegate.editorState.buffer.getLine(cursor.line) !=
+            editorState.buffer.getLine(cursor.line));
   }
 
   void dispose() {

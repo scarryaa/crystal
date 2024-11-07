@@ -119,7 +119,7 @@ class _EditorScreenState extends State<EditorScreen> {
   void _scrollToCursor() {
     if (activeEditor == null) return;
 
-    final cursorLine = activeEditor!.cursor.line;
+    final cursorLine = activeEditor!.editorCursorManager.cursors.last.line;
     final lineHeight = _editorLayoutService.config.lineHeight;
     final viewportHeight =
         _editorVerticalScrollController.position.viewportDimension;
@@ -135,7 +135,7 @@ class _EditorScreenState extends State<EditorScreen> {
           .jumpTo(cursorY + lineHeight - viewportHeight + verticalPadding);
     }
 
-    final cursorColumn = activeEditor!.cursor.column;
+    final cursorColumn = activeEditor!.editorCursorManager.cursors.last.column;
     final currentLine = activeEditor!.buffer.getLine(cursorLine);
     final textBeforeCursor = currentLine.substring(0, cursorColumn);
     final cursorX =
@@ -359,18 +359,20 @@ class _EditorScreenState extends State<EditorScreen> {
     final matchEndColumn = match.startIndex + match.length;
 
     // Update cursor position to end of match
-    activeEditor!.cursor = Cursor(
-      matchLine,
-      matchEndColumn,
-    );
+    activeEditor!.editorCursorManager.clearAll();
+    activeEditor!.editorCursorManager
+        .addCursor(Cursor(matchLine, matchEndColumn));
 
     // Update selection to cover the entire match
-    activeEditor!.selection = Selection(
+    activeEditor!.editorSelectionManager.clearAll();
+    activeEditor!.editorSelectionManager.addSelection(Selection(
       startLine: matchLine,
       startColumn: match.startIndex,
       endLine: matchLine,
       endColumn: matchEndColumn,
-    );
+      anchorLine: matchLine,
+      anchorColumn: match.startIndex,
+    ));
 
     // Scroll to make the cursor visible
     _scrollToCursor();

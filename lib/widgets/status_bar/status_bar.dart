@@ -36,7 +36,9 @@ class _StatusBarState extends State<StatusBar> {
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8.0),
                 child: Text(
-                  '${state.cursor.line + 1}:${state.cursor.column + 1}',
+                  state.editorCursorManager.cursors.length > 1
+                      ? '${state.editorCursorManager.cursors.length} cursors'
+                      : '${state.editorCursorManager.cursors.first.line + 1}:${state.editorCursorManager.cursors.first.column + 1}',
                   style: TextStyle(
                     color: widget.editorConfigService.themeService
                                 .currentTheme !=

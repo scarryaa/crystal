@@ -6,16 +6,16 @@ import 'package:crystal/models/editor/command.dart';
 import 'package:crystal/models/editor/cursor_shape.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
+import 'package:crystal/services/editor/editor_cursor_manager.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
+import 'package:crystal/services/editor/editor_selection_manager.dart';
 import 'package:crystal/services/file_service.dart';
 import 'package:crystal/state/editor/editor_scroll_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class EditorState extends ChangeNotifier {
-  Cursor cursor = Cursor(0, 0);
   EditorScrollState scrollState = EditorScrollState();
-  Selection? selection;
   final Buffer _buffer = Buffer();
   int? anchorLine;
   int? anchorColumn;
@@ -27,6 +27,9 @@ class EditorState extends ChangeNotifier {
   final List<Command> _redoStack = [];
   final EditorLayoutService editorLayoutService;
   final EditorConfigService editorConfigService;
+  final EditorCursorManager editorCursorManager = EditorCursorManager();
+  final EditorSelectionManager editorSelectionManager =
+      EditorSelectionManager();
 
   EditorState({
     required this.resetGutterScroll,
@@ -72,128 +75,40 @@ class EditorState extends ChangeNotifier {
   }
 
   void startSelection() {
-    // Store the anchor point when starting selection
-    anchorLine = cursor.line;
-    anchorColumn = cursor.column;
-
-    selection = Selection(
-        startLine: cursor.line,
-        endLine: cursor.line,
-        startColumn: cursor.column,
-        endColumn: cursor.column);
+    editorSelectionManager.startSelection(editorCursorManager.cursors);
   }
 
   void updateSelection() {
-    if (selection == null || anchorLine == null || anchorColumn == null) return;
-
-    // Compare cursor position with anchor to determine direction
-    if (cursor.line < anchorLine! ||
-        (cursor.line == anchorLine! && cursor.column < anchorColumn!)) {
-      // Selecting backwards
-      selection = Selection(
-          startLine: cursor.line,
-          endLine: anchorLine!,
-          startColumn: cursor.column,
-          endColumn: anchorColumn!);
-    } else {
-      // Selecting forwards
-      selection = Selection(
-          startLine: anchorLine!,
-          endLine: cursor.line,
-          startColumn: anchorColumn!,
-          endColumn: cursor.column);
-    }
+    editorSelectionManager.updateSelection(editorCursorManager.cursors);
   }
 
   void clearSelection() {
-    selection = null;
-    anchorLine = null;
-    anchorColumn = null;
+    editorSelectionManager.clearAll();
     notifyListeners();
   }
 
+  /// Clear all selections and add a single selection that encompasses the whole document.
+  ///
+  /// Creates a new [Selection] that spans from the start (0,0) to the last character
+  /// of the last line in the document. Updates the [EditorSelectionManager] with this
+  /// new selection and notifies listeners of the change.
   void selectAll() {
-    anchorLine = _buffer.lineCount - 1;
-    anchorColumn = _buffer.getLineLength(_buffer.lineCount - 1);
-    cursor.line = 0;
-    cursor.column = 0;
-    selection = Selection(
-        startLine: 0,
-        endLine: _buffer.lineCount - 1,
-        startColumn: 0,
-        endColumn: _buffer.getLineLength(_buffer.lineCount - 1));
+    editorSelectionManager.selectAll(
+        _buffer.lineCount - 1, _buffer.getLineLength(_buffer.lineCount - 1));
     notifyListeners();
   }
 
   String getSelectedText() {
-    if (selection == null) return '';
-    Selection _selection = selection!;
-
-    if (_selection.startLine == _selection.endLine) {
-      // Single line selection
-      return _buffer
-          .getLine(_selection.startLine)
-          .substring(_selection.startColumn, _selection.endColumn);
-    }
-
-    // Multi-line selection
-    StringBuffer result = StringBuffer();
-
-    // First line
-    result.write(_buffer
-        .getLine(_selection.startLine)
-        .substring(_selection.startColumn));
-    result.write('\n');
-
-    // Middle lines
-    for (int i = _selection.startLine + 1; i < _selection.endLine; i++) {
-      result.write(_buffer.getLine(i));
-      result.write('\n');
-    }
-
-    // Last line
-    result.write(
-        _buffer.getLine(_selection.endLine).substring(0, _selection.endColumn));
-
-    return result.toString();
+    return editorSelectionManager.getSelectedText(_buffer);
   }
 
   void deleteSelection() {
-    if (selection == null) return;
-    Selection _selection = selection!;
+    if (!editorSelectionManager.hasSelection()) return;
 
-    if (_selection.startLine == _selection.endLine) {
-      // Single line deletion
-      String newContent = _buffer
-              .getLine(_selection.startLine)
-              .substring(0, _selection.startColumn) +
-          _buffer.getLine(_selection.startLine).substring(_selection.endColumn);
-      _buffer.setLine(_selection.startLine, newContent);
-      cursor.line = _selection.startLine;
-      cursor.column = _selection.startColumn;
-    } else {
-      // Multi-line deletion
-      String startText = _buffer
-          .getLine(_selection.startLine)
-          .substring(0, _selection.startColumn);
-      String endText =
-          _buffer.getLine(_selection.endLine).substring(_selection.endColumn);
+    var newStartLinesColumns = editorSelectionManager.deleteSelection(_buffer);
 
-      // Combine first and last lines
-      _buffer.setLine(_selection.startLine, startText + endText);
-
-      // Remove lines in between
-      for (int i = 0; i < _selection.endLine - _selection.startLine; i++) {
-        _buffer.removeLine(_selection.startLine);
-      }
-      _buffer.setLine(_selection.startLine, '');
-
-      // Update cursor position
-      cursor.line = _selection.startLine;
-      cursor.column = _selection.startColumn;
-    }
-
-    clearSelection();
+    // Update cursor positions
+    editorCursorManager.setAllCursors(newStartLinesColumns);
     _buffer.incrementVersion();
 
     if (_buffer.isEmpty ||
@@ -207,69 +122,23 @@ class EditorState extends ChangeNotifier {
   }
 
   void backspace() {
-    if (selection != null) {
-      deleteSelection();
+    if (editorSelectionManager.hasSelection()) {
+      editorSelectionManager.deleteSelection(_buffer);
       return;
     }
 
-    if (cursor.column > 0) {
-      // Check if we're deleting spaces at the start of a line
-      String currentLine = _buffer.getLine(cursor.line);
-      String beforeCursor = currentLine.substring(0, cursor.column);
-      if (beforeCursor.endsWith('    ') && beforeCursor.trim().isEmpty) {
-        // Delete entire tab (4 spaces)
-        _buffer.setLine(
-            cursor.line,
-            currentLine.substring(0, cursor.column - 4) +
-                currentLine.substring(cursor.column));
-        cursor.column -= 4;
-      } else {
-        // Normal single character deletion
-        _buffer.setLine(
-            cursor.line,
-            currentLine.substring(0, cursor.column - 1) +
-                currentLine.substring(cursor.column));
-        cursor.column--;
-      }
-    } else if (cursor.line > 0) {
-      cursor.column = _buffer.getLineLength(cursor.line - 1);
-      _buffer.setLine(cursor.line - 1,
-          _buffer.getLine(cursor.line - 1) + _buffer.getLine(cursor.line));
-      _buffer.removeLine(cursor.line);
-      cursor.line--;
-    }
+    editorCursorManager.backspace(_buffer);
     _buffer.incrementVersion();
     notifyListeners();
   }
 
   void delete() {
-    if (selection != null) {
-      deleteSelection();
+    if (editorSelectionManager.hasSelection()) {
+      editorSelectionManager.deleteSelection(_buffer);
       return;
     }
 
-    if (cursor.column < _buffer.getLineLength(cursor.line)) {
-      String currentLine = _buffer.getLine(cursor.line);
-      String afterCursor = currentLine.substring(cursor.column);
-      if (afterCursor.startsWith('    ') &&
-          afterCursor.substring(4).trim().isEmpty) {
-        // Delete entire tab (4 spaces)
-        _buffer.setLine(
-            cursor.line,
-            currentLine.substring(0, cursor.column) +
-                currentLine.substring(cursor.column + 4));
-      } else {
-        // Normal single character deletion
-        _buffer.setLine(
-            cursor.line,
-            currentLine.substring(0, cursor.column) +
-                currentLine.substring(cursor.column + 1));
-      }
-    } else if (cursor.line < _buffer.lineCount - 1) {
-      _buffer.setLine(cursor.line,
-          _buffer.getLine(cursor.line) + _buffer.getLine(cursor.line + 1));
-      _buffer.removeLine(cursor.line + 1);
-    }
+    editorCursorManager.delete(buffer);
     _buffer.incrementVersion();
     notifyListeners();
   }
@@ -288,74 +157,28 @@ class EditorState extends ChangeNotifier {
     ClipboardData? data = await Clipboard.getData(Clipboard.kTextPlain);
     if (data == null || data.text == null) return;
 
-    if (selection != null) {
+    if (editorSelectionManager.hasSelection()) {
       deleteSelection();
     }
 
-    List<String> pastedLines = data.text!.split('\n');
-
-    if (pastedLines.length == 1) {
-      // Single line paste
-      String newContent =
-          _buffer.getLine(cursor.line).substring(0, cursor.column) +
-              pastedLines[0] +
-              _buffer.getLine(cursor.line).substring(cursor.column);
-      _buffer.setLine(cursor.line, newContent);
-      cursor.column += pastedLines[0].length;
-    } else {
-      // Multi-line paste
-      String remainingText =
-          _buffer.getLine(cursor.line).substring(cursor.column);
-
-      // First line
-      _buffer.setLine(
-          cursor.line,
-          _buffer.getLine(cursor.line).substring(0, cursor.column) +
-              pastedLines[0]);
-
-      // Middle lines
-      for (int i = 1; i < pastedLines.length - 1; i++) {
-        _buffer.insertLine(cursor.line + i, content: pastedLines[i]);
-      }
-
-      // Last line
-      _buffer.insertLine(cursor.line + pastedLines.length - 1,
-          content: pastedLines.last + remainingText);
-
-      cursor.line += pastedLines.length - 1;
-      cursor.column = pastedLines.last.length;
-    }
+    String pastedLines = data.text!;
+    editorCursorManager.paste(_buffer, pastedLines);
 
     _buffer.incrementVersion();
     notifyListeners();
   }
 
   void insertTab() {
-    if (selection != null) {
-      Selection _selection = selection!;
-
-      // Add tab to each line in selection
-      for (int i = _selection.startLine; i <= _selection.endLine; i++) {
-        _buffer.setLine(i, '    ${_buffer.getLine(i)}');
-
-        // Adjust selection and cursor columns
-        if (i == _selection.startLine) {
-          _selection = Selection(
-              startLine: _selection.startLine,
-              endLine: _selection.endLine,
-              startColumn: _selection.startColumn + 4,
-              endColumn: _selection.endColumn + 4);
-        }
-        if (i == cursor.line) {
-          cursor.column += 4;
-        }
-      }
-
-      selection = _selection;
+    if (editorSelectionManager.hasSelection()) {
+      var newCursors = editorSelectionManager.insertTab(
+          _buffer, editorCursorManager.cursors);
+      editorCursorManager.setAllCursors(newCursors);
     } else {
       // Insert tab at cursor position
       insertChar('    ');
-      cursor.column += 3;
+      for (int i = 0; i < 3; i++) {
+        editorCursorManager.moveRight(buffer);
+      }
     }
 
     _buffer.incrementVersion();
@@ -363,36 +186,10 @@ class EditorState extends ChangeNotifier {
   }
 
   void backTab() {
-    if (selection != null) {
-      Selection _selection = selection!;
-
-      // Remove tab from each line in selection
-      for (int i = _selection.startLine; i <= _selection.endLine; i++) {
-        if (_buffer.getLine(i).startsWith('    ')) {
-          _buffer.setLine(i, _buffer.getLine(i).substring(4));
-
-          // Adjust selection and cursor columns
-          if (i == _selection.startLine) {
-            _selection = Selection(
-                startLine: _selection.startLine,
-                endLine: _selection.endLine,
-                startColumn: math.max(0, _selection.startColumn - 4),
-                endColumn: math.max(0, _selection.endColumn - 4));
-          }
-          if (i == cursor.line) {
-            cursor.column = math.max(0, cursor.column - 4);
-          }
-        }
-      }
-
-      selection = _selection;
+    if (editorSelectionManager.hasSelection()) {
+      editorSelectionManager.backTab(buffer, editorCursorManager.cursors);
     } else {
-      // Remove tab at cursor position if line starts with spaces
-      String currentLine = _buffer.getLine(cursor.line);
-      if (currentLine.startsWith('    ')) {
-        _buffer.setLine(cursor.line, currentLine.substring(4));
-        cursor.column = math.max(0, cursor.column - 4);
-      }
+      editorCursorManager.backTab(_buffer);
     }
 
     _buffer.incrementVersion();
@@ -400,12 +197,14 @@ class EditorState extends ChangeNotifier {
   }
 
   void insertChar(String c) {
-    if (selection != null) {
+    if (editorSelectionManager.hasSelection()) {
       deleteSelection();
     }
 
-    executeCommand(
-        TextInsertCommand(_buffer, c, cursor.line, cursor.column, cursor));
+    for (var cursor in editorCursorManager.cursors) {
+      executeCommand(
+          TextInsertCommand(_buffer, c, cursor.line, cursor.column, cursor));
+    }
   }
 
   bool handleSpecialKeys(
@@ -473,8 +272,9 @@ class EditorState extends ChangeNotifier {
       targetColumn = i + 1;
     }
 
-    cursor.line = targetLine;
-    cursor.column = targetColumn;
+    // Clear all cursors and set one
+    editorCursorManager.clearAll();
+    editorCursorManager.addCursor(Cursor(targetLine, targetColumn));
     clearSelection();
     notifyListeners();
   }
@@ -507,91 +307,39 @@ class EditorState extends ChangeNotifier {
       targetColumn = i + 1;
     }
 
-    cursor.line = targetLine;
-    cursor.column = targetColumn;
+    // Clear and set single cursor
+    editorCursorManager.clearAll();
+    editorCursorManager.addCursor(Cursor(targetLine, targetColumn));
     updateSelection();
     notifyListeners();
   }
 
   void insertNewLine() {
-    if (selection != null) {
+    if (editorSelectionManager.hasSelection()) {
       deleteSelection();
     }
 
-    String currentLine = _buffer.getLine(cursor.line);
-    String remainingText = currentLine.substring(cursor.column);
-    String beforeCursor = currentLine.substring(0, cursor.column);
-
-    // Calculate indentation of current line
-    String indentation = '';
-    for (int i = 0; i < currentLine.length; i++) {
-      if (currentLine[i] == ' ') {
-        indentation += ' ';
-      } else {
-        break;
-      }
-    }
-
-    // Keep indentation for new line
-    _buffer.setLine(cursor.line, beforeCursor);
-    _buffer.insertLine(cursor.line + 1, content: indentation + remainingText);
-
-    cursor.line++;
-    cursor.column = indentation.length;
+    editorCursorManager.insertNewLine(_buffer);
     notifyListeners();
   }
 
   void selectLine(bool extend, int lineNumber) {
     if (lineNumber < 0 || lineNumber >= _buffer.lineCount) return;
 
-    if (!extend) {
-      // Select single line
-      cursor.line = lineNumber;
-      cursor.column = _buffer.getLineLength(lineNumber);
-      anchorLine = lineNumber;
-      anchorColumn = 0;
-      selection = Selection(
-          startLine: lineNumber,
-          endLine: lineNumber,
-          startColumn: 0,
-          endColumn: _buffer.getLineLength(lineNumber));
-    } else {
-      // Extend selection to include target line
-      if (selection == null) {
-        startSelection();
-      }
-
-      cursor.line = lineNumber;
-      cursor.column = _buffer.getLineLength(lineNumber);
-
-      if (lineNumber < anchorLine!) {
-        selection = Selection(
-            startLine: lineNumber,
-            endLine: anchorLine!,
-            startColumn: 0,
-            endColumn: _buffer.getLineLength(anchorLine!));
-      } else {
-        selection = Selection(
-            startLine: anchorLine!,
-            endLine: lineNumber,
-            startColumn: 0,
-            endColumn: _buffer.getLineLength(lineNumber));
-      }
-    }
+    editorSelectionManager.selectLine(buffer, extend, lineNumber);
+    editorCursorManager.clearAll();
+    editorCursorManager
+        .addCursor(Cursor(lineNumber, _buffer.getLineLength(lineNumber)));
 
     notifyListeners();
   }
 
   void moveCursorDown(bool isShiftPressed) {
-    if (cursor.line < _buffer.lineCount - 1) {
-      if (selection == null && isShiftPressed) {
-        startSelection();
-      }
-
-      cursor.line++;
-      cursor.column =
-          cursor.column.clamp(0, _buffer.getLineLength(cursor.line));
+    if (!editorSelectionManager.hasSelection() && isShiftPressed) {
+      startSelection();
     }
+
+    editorCursorManager.moveDown(_buffer);
 
     if (isShiftPressed) {
       updateSelection();
@@ -603,16 +351,12 @@ class EditorState extends ChangeNotifier {
   }
 
   void moveCursorLeft(bool isShiftPressed) {
-    if (selection == null && isShiftPressed) {
+    // TODO revise this?
+    if (!editorSelectionManager.hasSelection() && isShiftPressed) {
       startSelection();
     }
 
-    if (cursor.column > 0) {
-      cursor.column--;
-    } else if (cursor.line > 0) {
-      cursor.line--;
-      cursor.column = _buffer.getLineLength(cursor.line);
-    }
+    editorCursorManager.moveLeft(_buffer);
 
     if (isShiftPressed) {
       updateSelection();
@@ -624,16 +368,11 @@ class EditorState extends ChangeNotifier {
   }
 
   void moveCursorRight(bool isShiftPressed) {
-    if (selection == null && isShiftPressed) {
+    if (!editorSelectionManager.hasSelection() && isShiftPressed) {
       startSelection();
     }
 
-    if (cursor.column < _buffer.getLineLength(cursor.line)) {
-      cursor.column++;
-    } else if (cursor.line < _buffer.lineCount - 1) {
-      cursor.line++;
-      cursor.column = 0;
-    }
+    editorCursorManager.moveRight(_buffer);
 
     if (isShiftPressed) {
       updateSelection();
@@ -645,15 +384,11 @@ class EditorState extends ChangeNotifier {
   }
 
   void moveCursorUp(bool isShiftPressed) {
-    if (cursor.line > 0) {
-      if (selection == null && isShiftPressed) {
-        startSelection();
-      }
-
-      cursor.line--;
-      cursor.column =
-          cursor.column.clamp(0, _buffer.getLineLength(cursor.line));
+    if (!editorSelectionManager.hasSelection() && isShiftPressed) {
+      startSelection();
     }
+
+    editorCursorManager.moveUp(_buffer);
 
     if (isShiftPressed) {
       updateSelection();
@@ -676,7 +411,7 @@ class EditorState extends ChangeNotifier {
 
   void openFile(String content) {
     // Reset cursor and selection
-    cursor = Cursor(0, 0);
+    editorCursorManager.reset();
     clearSelection();
     _buffer.setContent(content);
 

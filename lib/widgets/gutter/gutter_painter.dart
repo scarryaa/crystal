@@ -54,8 +54,10 @@ class GutterPainter extends CustomPainter {
     _drawText(canvas, size, firstVisibleLine, lastVisibleLine);
 
     // Highlight current line (if no selection)
-    if (editorState.selection?.hasSelection != true) {
-      _highlightCurrentLine(canvas, size, editorState.cursor.line);
+    if (!editorState.editorSelectionManager.hasSelection()) {
+      for (var cursor in editorState.editorCursorManager.cursors) {
+        _highlightCurrentLine(canvas, size, cursor.line);
+      }
     }
   }
 
@@ -87,10 +89,12 @@ class GutterPainter extends CustomPainter {
 
     for (var i = firstVisibleLine; i < lastVisibleLine; i++) {
       final lineNumber = (i + 1).toString();
-      final isLineInSelection = editorState.selection != null &&
-          i >= editorState.selection!.startLine &&
-          i <= editorState.selection!.endLine;
-      final style = editorState.cursor.line == i || isLineInSelection
+      final isLineInSelection = editorState.editorSelectionManager.selections
+          .any((selection) =>
+              i >= selection.startLine && i <= selection.endLine);
+      final style = editorState.editorCursorManager.cursors
+                  .any((cursor) => cursor.line == i) ||
+              isLineInSelection
           ? _highlightStyle
           : _defaultStyle;
 
@@ -131,6 +135,7 @@ class GutterPainter extends CustomPainter {
   bool shouldRepaint(GutterPainter oldDelegate) {
     return editorState.buffer.lineCount !=
             oldDelegate.editorState.buffer.lineCount ||
-        editorState.cursor != oldDelegate.editorState.cursor;
+        editorState.editorCursorManager.cursors !=
+            oldDelegate.editorState.editorCursorManager.cursors;
   }
 }

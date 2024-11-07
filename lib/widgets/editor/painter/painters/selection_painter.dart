@@ -20,46 +20,47 @@ class SelectionPainter {
         );
 
   void paint(Canvas canvas, int firstVisibleLine, int lastVisibleLine) {
-    if (editorState.selection == null) return;
+    if (!editorState.editorSelectionManager.hasSelection()) return;
 
-    Selection selection = editorState.selection!;
-    int selectionStartLine,
-        selectionEndLine,
-        selectionStartColumn,
-        selectionEndColumn;
-
-    // Normalize selection
-    if (selection.startLine > selection.endLine ||
-        selection.startLine == selection.endLine &&
-            selection.startColumn > selection.endColumn) {
-      selectionStartLine = selection.endLine;
-      selectionEndLine = selection.startLine;
-      selectionStartColumn = selection.endColumn;
-      selectionEndColumn = selection.startColumn;
-    } else {
-      selectionStartLine = selection.startLine;
-      selectionEndLine = selection.endLine;
-      selectionStartColumn = selection.startColumn;
-      selectionEndColumn = selection.endColumn;
-    }
-
-    if (selectionStartLine == selectionEndLine) {
-      _paintSingleLineSelection(
-          canvas,
-          selectionStartLine,
-          selectionStartColumn,
-          selectionEndColumn,
-          firstVisibleLine,
-          lastVisibleLine);
-    } else {
-      _paintMultiLineSelection(
-          canvas,
-          selectionStartLine,
+    for (var selection in editorState.editorSelectionManager.selections) {
+      int selectionStartLine,
           selectionEndLine,
           selectionStartColumn,
-          selectionEndColumn,
-          firstVisibleLine,
-          lastVisibleLine);
+          selectionEndColumn;
+
+      // Normalize selection
+      if (selection.startLine > selection.endLine ||
+          selection.startLine == selection.endLine &&
+              selection.startColumn > selection.endColumn) {
+        selectionStartLine = selection.endLine;
+        selectionEndLine = selection.startLine;
+        selectionStartColumn = selection.endColumn;
+        selectionEndColumn = selection.startColumn;
+      } else {
+        selectionStartLine = selection.startLine;
+        selectionEndLine = selection.endLine;
+        selectionStartColumn = selection.startColumn;
+        selectionEndColumn = selection.endColumn;
+      }
+
+      if (selectionStartLine == selectionEndLine) {
+        _paintSingleLineSelection(
+            canvas,
+            selectionStartLine,
+            selectionStartColumn,
+            selectionEndColumn,
+            firstVisibleLine,
+            lastVisibleLine);
+      } else {
+        _paintMultiLineSelection(
+            canvas,
+            selectionStartLine,
+            selectionEndLine,
+            selectionStartColumn,
+            selectionEndColumn,
+            firstVisibleLine,
+            lastVisibleLine);
+      }
     }
   }
 
@@ -102,12 +103,10 @@ class SelectionPainter {
 
       _drawWhitespaceIndicators(canvas, startColumn, endColumn, line);
 
+      // TODO revise this?
       canvas.drawRect(
-          Rect.fromLTWH(
-              left,
-              editorState.cursor.line * editorLayoutService.config.lineHeight,
-              width,
-              editorLayoutService.config.lineHeight),
+          Rect.fromLTWH(left, line * editorLayoutService.config.lineHeight,
+              width, editorLayoutService.config.lineHeight),
           Paint()
             ..color = editorConfigService.themeService.currentTheme != null
                 ? editorConfigService.themeService.currentTheme!.primary

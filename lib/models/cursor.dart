@@ -12,4 +12,9 @@ class Cursor {
 
   @override
   int get hashCode => Object.hash(line, column);
+
+  @override
+  String toString() {
+    return 'Cursor(line: $line, column: $column)';
+  }
 }

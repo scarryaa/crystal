@@ -103,8 +103,10 @@ class EditorPainter extends CustomPainter {
         canvas, size, firstVisibleLine, lastVisibleLine, lines);
 
     // Highlight current line (if no selection)
-    if (editorState.selection?.hasSelection != true) {
-      _highlightCurrentLine(canvas, size, editorState.cursor.line);
+    if (!editorState.editorSelectionManager.hasSelection()) {
+      for (var cursor in editorState.editorCursorManager.cursors) {
+        _highlightCurrentLine(canvas, size, cursor.line);
+      }
     }
 
     // Draw search highlights
@@ -141,7 +143,8 @@ class EditorPainter extends CustomPainter {
   bool shouldRepaint(EditorPainter oldDelegate) {
     return editorState.buffer.version !=
             oldDelegate.editorState.buffer.version ||
-        editorState.selection != oldDelegate.editorState.selection ||
+        editorState.editorSelectionManager.selections !=
+            oldDelegate.editorState.editorSelectionManager.selections ||
         editorState.scrollState.horizontalOffset !=
             oldDelegate.editorState.scrollState.horizontalOffset ||
         editorState.scrollState.verticalOffset !=
