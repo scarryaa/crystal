@@ -1,6 +1,5 @@
 import 'dart:math';
 
-import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
@@ -117,7 +116,9 @@ class GutterPainter extends CustomPainter {
           size.width,
           editorLayoutService.config.lineHeight,
         ),
-        EditorConstants.currentLineHighlight);
+        Paint()
+          ..color = editorConfigService
+              .themeService.currentTheme.currentLineHighlight);
   }
 
   @override

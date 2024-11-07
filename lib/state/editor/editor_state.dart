@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/editor/command.dart';

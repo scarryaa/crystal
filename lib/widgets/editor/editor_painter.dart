@@ -1,6 +1,5 @@
 import 'dart:math';
 
-import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/models/editor/search_match.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
@@ -122,7 +121,9 @@ class EditorPainter extends CustomPainter {
           size.width,
           editorLayoutService.config.lineHeight,
         ),
-        EditorConstants.currentLineHighlight);
+        Paint()
+          ..color = editorConfigService
+              .themeService.currentTheme.currentLineHighlight);
   }
 
   double measureLineWidth(String line) {

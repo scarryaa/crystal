@@ -6,6 +6,8 @@ class EditorTheme {
   final Color background;
   final Color text;
   late final Color whitespaceIndicatorColor;
+  late final Color currentLineHighlight;
+  late final Color indentLineColor;
 
   EditorTheme({
     required this.name,
@@ -14,6 +16,8 @@ class EditorTheme {
     required this.text,
   }) {
     whitespaceIndicatorColor = text.withOpacity(0.5);
+    currentLineHighlight = primary.withOpacity(0.1);
+    indentLineColor = text.withOpacity(0.2);
   }
 
   factory EditorTheme.fromJson(Map<String, dynamic> json) {

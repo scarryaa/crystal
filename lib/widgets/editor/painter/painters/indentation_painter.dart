@@ -1,4 +1,3 @@
-import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/widgets/editor/painter/painters/editor_painter_base.dart';
 import 'package:flutter/material.dart';
@@ -43,7 +42,9 @@ class IndentationPainter extends EditorPainterBase {
             left + lineOffset,
             lineNumber * editorLayoutService.config.lineHeight +
                 editorLayoutService.config.lineHeight),
-        EditorConstants.indentLineColor);
+        Paint()
+          ..color =
+              editorConfigService.themeService.currentTheme.indentLineColor);
   }
 
   int _countLeadingSpaces(String line) {
