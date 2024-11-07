@@ -4,5 +4,6 @@
   "background": "#121212",
   "backgroundLight": "#1E1E1E",
   "border": "#333333",
-  "text": "#E1E1E1"
+  "text": "#E1E1E1",
+  "textLight": "#CCCCCC"
 }

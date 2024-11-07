@@ -56,6 +56,18 @@ class _GutterState extends State<Gutter> {
                         alignment: Alignment.topCenter,
                         child: CustomPaint(
                             painter: GutterPainter(
+                              textColor: widget.editorConfigService.themeService
+                                          .currentTheme !=
+                                      null
+                                  ? widget.editorConfigService.themeService
+                                      .currentTheme!.textLight
+                                  : Colors.grey,
+                              highlightColor: widget.editorConfigService
+                                          .themeService.currentTheme !=
+                                      null
+                                  ? widget.editorConfigService.themeService
+                                      .currentTheme!.primary
+                                  : Colors.blue,
                               editorConfigService: widget.editorConfigService,
                               editorLayoutService: widget.editorLayoutService,
                               editorState: editorState,

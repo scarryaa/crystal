@@ -7,6 +7,7 @@ class EditorTheme {
   final Color backgroundLight;
   final Color border;
   final Color text;
+  final Color textLight;
   late final Color whitespaceIndicatorColor;
   late final Color currentLineHighlight;
   late final Color indentLineColor;
@@ -18,6 +19,7 @@ class EditorTheme {
     required this.backgroundLight,
     required this.border,
     required this.text,
+    required this.textLight,
   }) {
     whitespaceIndicatorColor = text.withOpacity(0.5);
     currentLineHighlight = primary.withOpacity(0.1);
@@ -32,6 +34,7 @@ class EditorTheme {
       backgroundLight: _colorFromHex(json['backgroundLight'] as String),
       border: _colorFromHex(json['border'] as String),
       text: _colorFromHex(json['text'] as String),
+      textLight: _colorFromHex(json['textLight'] as String),
     );
   }
 
