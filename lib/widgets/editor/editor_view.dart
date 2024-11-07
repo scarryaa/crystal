@@ -186,21 +186,27 @@ class _EditorViewState extends State<EditorView> {
 
     if (editorPainter == null) return;
 
+    bool isAltPressed = HardwareKeyboard.instance.isAltPressed;
+
     final localY =
         details.localPosition.dy + widget.verticalScrollController.offset;
     final localX =
         details.localPosition.dx + widget.horizontalScrollController.offset;
-    widget.state.handleTap(localY, localX, editorPainter!.measureLineWidth);
+    widget.state.handleTap(
+        localY, localX, editorPainter!.measureLineWidth, isAltPressed);
     _resetCaretBlink();
   }
 
   void _handleDragStart(DragStartDetails details) {
     if (editorPainter == null) return;
 
+    bool isAltPressed = HardwareKeyboard.instance.isAltPressed;
+
     widget.state.handleDragStart(
         details.localPosition.dy + widget.verticalScrollController.offset,
         details.localPosition.dx + widget.horizontalScrollController.offset,
-        editorPainter!.measureLineWidth);
+        editorPainter!.measureLineWidth,
+        isAltPressed);
   }
 
   void _handleDragUpdate(DragUpdateDetails details) {

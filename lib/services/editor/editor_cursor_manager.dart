@@ -2,13 +2,50 @@ import 'dart:math' as math;
 
 import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/buffer.dart';
+import 'package:flutter/material.dart';
 
 class EditorCursorManager {
-  final List<Cursor> _cursors = [];
+  List<Cursor> _cursors = [];
   List<Cursor> get cursors => _cursors;
 
   void addCursor(Cursor cursor) {
     _cursors.add(cursor);
+  }
+
+  void removeCursor(Cursor cursor) {
+    _cursors.remove(cursor);
+  }
+
+  void mergeCursorsIfNeeded() {
+    // Create a new list to store unique cursors
+    final uniqueCursors = <Cursor>[];
+
+    // Sort cursors by line and column
+    _cursors.sort((a, b) {
+      if (a.line != b.line) {
+        return a.line.compareTo(b.line);
+      }
+      return a.column.compareTo(b.column);
+    });
+
+    // Iterate through sorted cursors
+    for (var cursor in _cursors) {
+      // Check if this cursor overlaps with any cursor in uniqueCursors
+      bool hasOverlap = uniqueCursors.any((existing) =>
+          existing.line == cursor.line && existing.column == cursor.column);
+
+      // Only add cursor if it doesn't overlap with existing ones
+      if (!hasOverlap) {
+        uniqueCursors.add(cursor);
+      }
+    }
+
+    _cursors = uniqueCursors;
+  }
+
+  bool cursorExistsAtPosition(int line, int column) {
+    return _cursors
+        .any((cursor) => cursor.line == line && cursor.column == column);
   }
 
   void reset() {
@@ -21,11 +58,13 @@ class EditorCursorManager {
   }
 
   void insertNewLine(Buffer buffer) {
-    for (var cursor in _cursors) {
+    // Sort cursors from bottom to top to maintain correct positions
+    final sortedCursors = List<Cursor>.from(_cursors)
+      ..sort((a, b) => b.line.compareTo(a.line));
+    for (var cursor in sortedCursors) {
       String currentLine = buffer.getLine(cursor.line);
       String remainingText = currentLine.substring(cursor.column);
       String beforeCursor = currentLine.substring(0, cursor.column);
-
       // Calculate indentation of current line
       String indentation = '';
       for (int i = 0; i < currentLine.length; i++) {
@@ -39,9 +78,19 @@ class EditorCursorManager {
       // Keep indentation for new line
       buffer.setLine(cursor.line, beforeCursor);
       buffer.insertLine(cursor.line + 1, content: indentation + remainingText);
-
-      cursor.line++;
+      // Update cursor position
+      cursor.line += 1;
       cursor.column = indentation.length;
+
+      // Update later cursor positions
+      for (var otherCursor in _cursors) {
+        if (otherCursor.line > cursor.line) {
+          otherCursor.line += 1;
+        } else if (otherCursor.line == cursor.line &&
+            otherCursor.column > cursor.column) {
+          otherCursor.column += 1;
+        }
+      }
     }
   }
 
@@ -53,6 +102,8 @@ class EditorCursorManager {
             cursor.column.clamp(0, buffer.getLineLength(cursor.line));
       }
     }
+
+    mergeCursorsIfNeeded();
   }
 
   void moveRight(Buffer buffer) {
@@ -64,6 +115,8 @@ class EditorCursorManager {
         cursor.column = 0;
       }
     }
+
+    mergeCursorsIfNeeded();
   }
 
   void moveLeft(Buffer buffer) {
@@ -75,6 +128,8 @@ class EditorCursorManager {
         cursor.column = buffer.getLineLength(cursor.line);
       }
     }
+
+    mergeCursorsIfNeeded();
   }
 
   void moveDown(Buffer buffer) {
@@ -85,6 +140,8 @@ class EditorCursorManager {
             cursor.column.clamp(0, buffer.getLineLength(cursor.line));
       }
     }
+
+    mergeCursorsIfNeeded();
   }
 
   void setAllCursors(List<Cursor> newCursors) {
@@ -92,10 +149,16 @@ class EditorCursorManager {
       _cursors[i].line = newCursors[i].line;
       _cursors[i].column = newCursors[i].column;
     }
+
+    mergeCursorsIfNeeded();
   }
 
   void backspace(Buffer buffer) {
-    for (var cursor in _cursors) {
+    // Sort cursors from bottom to top to maintain correct positions
+    final sortedCursors = List<Cursor>.from(_cursors)
+      ..sort((a, b) => b.line.compareTo(a.line));
+
+    for (var cursor in sortedCursors) {
       if (cursor.column > 0) {
         // Check if we're deleting spaces at the start of a line
         String currentLine = buffer.getLine(cursor.line);
@@ -121,8 +184,20 @@ class EditorCursorManager {
             buffer.getLine(cursor.line - 1) + buffer.getLine(cursor.line));
         buffer.removeLine(cursor.line);
         cursor.line--;
+
+        // Update earlier cursor positions
+        for (var otherCursor in _cursors) {
+          if (otherCursor.line > cursor.line) {
+            otherCursor.line -= 1;
+          } else if (otherCursor.line == cursor.line &&
+              otherCursor.column > cursor.column) {
+            otherCursor.column -= 1;
+          }
+        }
       }
     }
+
+    mergeCursorsIfNeeded();
   }
 
   void backTab(Buffer buffer) {
@@ -134,6 +209,8 @@ class EditorCursorManager {
         cursor.column = math.max(0, cursor.column - 4);
       }
     }
+
+    mergeCursorsIfNeeded();
   }
 
   void paste(Buffer buffer, String pastedLines) {
@@ -198,5 +275,7 @@ class EditorCursorManager {
         buffer.removeLine(cursor.line + 1);
       }
     }
+
+    mergeCursorsIfNeeded();
   }
 }

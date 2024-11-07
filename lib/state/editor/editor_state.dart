@@ -254,7 +254,8 @@ class EditorState extends ChangeNotifier {
     return false;
   }
 
-  void handleTap(double dy, double dx, Function(String line) measureLineWidth) {
+  void handleTap(double dy, double dx, Function(String line) measureLineWidth,
+      bool isAltPressed) {
     int targetLine = dy ~/ editorLayoutService.config.lineHeight;
     if (targetLine >= _buffer.lineCount) {
       targetLine = _buffer.lineCount - 1;
@@ -272,16 +273,32 @@ class EditorState extends ChangeNotifier {
       targetColumn = i + 1;
     }
 
-    // Clear all cursors and set one
-    editorCursorManager.clearAll();
-    editorCursorManager.addCursor(Cursor(targetLine, targetColumn));
-    clearSelection();
+    // Single cursor
+    if (!isAltPressed) {
+      editorCursorManager.clearAll();
+      editorCursorManager.addCursor(Cursor(targetLine, targetColumn));
+      clearSelection();
+    } else {
+      // Multi cursor
+      // Check if overlapping -- if so, remove cursor
+      // if it is not the last one
+      if (editorCursorManager.cursorExistsAtPosition(
+          targetLine, targetColumn)) {
+        if (editorCursorManager.cursors.length > 1) {
+          editorCursorManager.removeCursor(Cursor(targetLine, targetColumn));
+        }
+      } else {
+        editorCursorManager.addCursor(Cursor(targetLine, targetColumn));
+      }
+      // TODO add more refined logic for multi cursor selection -- check if tap is within selection, etc.
+      clearSelection();
+    }
     notifyListeners();
   }
 
-  void handleDragStart(
-      double dy, double dx, Function(String line) measureLineWidth) {
-    handleTap(dy, dx, measureLineWidth);
+  void handleDragStart(double dy, double dx,
+      Function(String line) measureLineWidth, bool isAltPressed) {
+    handleTap(dy, dx, measureLineWidth, isAltPressed);
     startSelection();
     notifyListeners();
   }
