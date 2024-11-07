@@ -5,7 +5,7 @@ import 'package:crystal/widgets/editor/painter/painters/editor_painter_base.dart
 import 'package:flutter/material.dart';
 
 class CaretPainter extends EditorPainterBase {
-  CaretPainter(this.editorState);
+  CaretPainter(this.editorState, {required super.editorLayoutService});
 
   final EditorState editorState;
   final TextPainter _textPainter = TextPainter(
@@ -42,7 +42,8 @@ class CaretPainter extends EditorPainterBase {
     _textPainter.layout();
 
     final caretLeft = _textPainter.width;
-    final caretTop = EditorConstants.lineHeight * editorState.cursor.line;
+    final caretTop =
+        editorLayoutService.config.lineHeight * editorState.cursor.line;
     final caretPaint = Paint()..color = Colors.blue;
 
     _drawCaret(
@@ -68,7 +69,7 @@ class CaretPainter extends EditorPainterBase {
             left,
             top,
             2.0,
-            EditorConstants.lineHeight,
+            editorLayoutService.config.lineHeight,
           ),
           paint,
         );
@@ -80,7 +81,7 @@ class CaretPainter extends EditorPainterBase {
             left,
             top,
             EditorConstants.charWidth,
-            EditorConstants.lineHeight,
+            editorLayoutService.config.lineHeight,
           ),
           paint,
         );
@@ -92,7 +93,7 @@ class CaretPainter extends EditorPainterBase {
             left,
             top,
             EditorConstants.charWidth,
-            EditorConstants.lineHeight,
+            editorLayoutService.config.lineHeight,
           ),
           paint..style = PaintingStyle.stroke,
         );
@@ -102,7 +103,7 @@ class CaretPainter extends EditorPainterBase {
         canvas.drawRect(
           Rect.fromLTWH(
             left,
-            top + EditorConstants.lineHeight - 2,
+            top + editorLayoutService.config.lineHeight - 2,
             EditorConstants.charWidth,
             2,
           ),

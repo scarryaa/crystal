@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/models/editor/search_match.dart';
+import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/state/editor/editor_syntax_highlighter.dart';
 import 'package:crystal/widgets/editor/painter/painters/background_painter.dart';
@@ -13,6 +14,7 @@ import 'package:crystal/widgets/editor/painter/painters/text_painter_helper.dart
 import 'package:flutter/material.dart';
 
 class EditorPainter extends CustomPainter {
+  final EditorLayoutService editorLayoutService;
   final EditorState editorState;
   final TextPainterHelper textPainterHelper;
   final double viewportHeight;
@@ -20,7 +22,7 @@ class EditorPainter extends CustomPainter {
   final String searchTerm;
   final List<SearchMatch> searchTermMatches;
   final int currentSearchTermMatch;
-  final BackgroundPainter backgroundPainter = BackgroundPainter();
+  final BackgroundPainter backgroundPainter;
   final CaretPainter caretPainter;
   final IndentationPainter indentationPainter;
   late final SearchPainter searchPainter;
@@ -33,17 +35,25 @@ class EditorPainter extends CustomPainter {
     required this.searchTerm,
     required this.searchTermMatches,
     required this.currentSearchTermMatch,
-  })  : selectionPainter = SelectionPainter(editorState),
+    required this.editorLayoutService,
+  })  : backgroundPainter =
+            BackgroundPainter(editorLayoutService: editorLayoutService),
+        selectionPainter = SelectionPainter(
+            editorLayoutService: editorLayoutService, editorState),
         searchPainter = SearchPainter(
+          editorLayoutService: editorLayoutService,
           searchTerm: searchTerm,
           searchTermMatches: searchTermMatches,
           currentSearchTermMatch: currentSearchTermMatch,
         ),
         textPainterHelper = TextPainterHelper(
+          editorLayoutService: editorLayoutService,
           editorSyntaxHighlighter: editorSyntaxHighlighter,
         ),
-        caretPainter = CaretPainter(editorState),
+        caretPainter =
+            CaretPainter(editorLayoutService: editorLayoutService, editorState),
         indentationPainter = IndentationPainter(
+          editorLayoutService: editorLayoutService,
           editorState: editorState,
           viewportHeight: viewportHeight,
         ),
@@ -57,13 +67,14 @@ class EditorPainter extends CustomPainter {
     // Calculate visible lines
     int firstVisibleLine = max(
         0,
-        (editorState.scrollState.verticalOffset / EditorConstants.lineHeight)
+        (editorState.scrollState.verticalOffset /
+                    editorLayoutService.config.lineHeight)
                 .floor() -
             5);
     int lastVisibleLine = min(
         editorState.buffer.lineCount,
         ((editorState.scrollState.verticalOffset + viewportHeight) /
-                    EditorConstants.lineHeight)
+                    editorLayoutService.config.lineHeight)
                 .ceil() +
             5);
     List<String> lines = editorState.buffer.lines;
@@ -97,9 +108,9 @@ class EditorPainter extends CustomPainter {
     canvas.drawRect(
         Rect.fromLTWH(
           0,
-          lineNumber * EditorConstants.lineHeight,
+          lineNumber * editorLayoutService.config.lineHeight,
           size.width,
-          EditorConstants.lineHeight,
+          editorLayoutService.config.lineHeight,
         ),
         EditorConstants.currentLineHighlight);
   }

@@ -1,13 +1,16 @@
 import 'package:crystal/constants/editor_constants.dart';
+import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_syntax_highlighter.dart';
 import 'package:flutter/material.dart';
 
 class TextPainterHelper {
   final TextPainter _textPainter;
   final EditorSyntaxHighlighter editorSyntaxHighlighter;
+  final EditorLayoutService editorLayoutService;
 
   TextPainterHelper({
     required this.editorSyntaxHighlighter,
+    required this.editorLayoutService,
   }) : _textPainter = TextPainter(
           textDirection: TextDirection.ltr,
           textAlign: TextAlign.left,
@@ -36,8 +39,8 @@ class TextPainterHelper {
         _textPainter.text = editorSyntaxHighlighter.buildTextSpan(line);
         _textPainter.layout();
 
-        double yPosition = (i * EditorConstants.lineHeight) +
-            (EditorConstants.lineHeight - _textPainter.height) / 2;
+        double yPosition = (i * editorLayoutService.config.lineHeight) +
+            (editorLayoutService.config.lineHeight - _textPainter.height) / 2;
 
         _textPainter.paint(canvas, Offset(0, yPosition));
       }

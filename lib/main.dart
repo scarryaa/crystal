@@ -18,7 +18,11 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         fontFamily: 'IBM Plex Sans',
       ),
-      home: const EditorScreen(),
+      home: const EditorScreen(
+        lineHeightMultipler: 1.5,
+        verticalPaddingLines: 5,
+        horizontalPadding: 100,
+      ),
     );
   }
 }

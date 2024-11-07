@@ -1,10 +1,12 @@
 import 'package:crystal/widgets/editor/painter/painters/editor_painter_base.dart';
 import 'package:flutter/material.dart';
 
-class BackgroundPainter implements EditorPainterBase {
+class BackgroundPainter extends EditorPainterBase {
   final Color backgroundColor;
 
-  const BackgroundPainter({this.backgroundColor = Colors.white});
+  const BackgroundPainter(
+      {this.backgroundColor = Colors.white,
+      required super.editorLayoutService});
 
   @override
   void paint(Canvas canvas, Size size,

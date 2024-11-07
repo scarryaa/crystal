@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/models/editor/search_match.dart';
+import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/state/editor/editor_syntax_highlighter.dart';
 import 'package:crystal/widgets/editor/editor_painter.dart';
@@ -10,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class EditorView extends StatefulWidget {
+  final EditorLayoutService editorLayoutService;
   final EditorState state;
   final ScrollController verticalScrollController;
   final ScrollController horizontalScrollController;
@@ -31,6 +33,7 @@ class EditorView extends StatefulWidget {
     required this.searchTermMatches,
     required this.onSearchTermChanged,
     required this.currentSearchTermMatch,
+    required this.editorLayoutService,
   });
 
   @override
@@ -41,12 +44,13 @@ class _EditorViewState extends State<EditorView> {
   final FocusNode _focusNode = FocusNode();
   double _cachedMaxLineWidth = 0;
   Timer? _caretTimer;
-  final EditorSyntaxHighlighter editorSyntaxHighlighter =
-      EditorSyntaxHighlighter();
+  late final EditorSyntaxHighlighter editorSyntaxHighlighter;
 
   @override
   void initState() {
     super.initState();
+    editorSyntaxHighlighter = EditorSyntaxHighlighter(
+        editorLayoutService: widget.editorLayoutService);
     _updateCachedMaxLineWidth();
     _startCaretBlinking();
   }
@@ -97,13 +101,14 @@ class _EditorViewState extends State<EditorView> {
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final width = math.max(
-      mediaQuery.size.width - widget.gutterWidth - 151, // File Explorer
-      _cachedMaxLineWidth + EditorConstants.horizontalPadding,
+      mediaQuery.size.width - widget.gutterWidth - 153, // File Explorer
+      _cachedMaxLineWidth + widget.editorLayoutService.config.horizontalPadding,
     );
     final height = math.max(
       mediaQuery.size.height,
-      EditorConstants.lineHeight * widget.state.buffer.lineCount +
-          EditorConstants.verticalPadding,
+      widget.editorLayoutService.config.lineHeight *
+              widget.state.buffer.lineCount +
+          widget.editorLayoutService.config.verticalPadding,
     );
     widget.state.scrollState
         .updateViewportHeight(MediaQuery.of(context).size.height);
@@ -135,6 +140,7 @@ class _EditorViewState extends State<EditorView> {
                       scrollDirection: Axis.horizontal,
                       child: CustomPaint(
                         painter: EditorPainter(
+                          editorLayoutService: widget.editorLayoutService,
                           editorSyntaxHighlighter: editorSyntaxHighlighter,
                           editorState: widget.state,
                           searchTerm: widget.searchTerm,

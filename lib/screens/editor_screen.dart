@@ -5,6 +5,7 @@ import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/search_match.dart';
 import 'package:crystal/models/selection.dart';
+import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/widgets/editor/editor_control_bar_view.dart';
 import 'package:crystal/widgets/editor/editor_tab_bar.dart';
@@ -16,13 +17,23 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class EditorScreen extends StatefulWidget {
-  const EditorScreen({super.key});
+  final double horizontalPadding;
+  final int verticalPaddingLines;
+  final double lineHeightMultipler;
+
+  const EditorScreen({
+    super.key,
+    required this.horizontalPadding,
+    required this.verticalPaddingLines,
+    required this.lineHeightMultipler,
+  });
 
   @override
   State<StatefulWidget> createState() => _EditorScreenState();
 }
 
 class _EditorScreenState extends State<EditorScreen> {
+  late final EditorLayoutService _editorLayoutService;
   final ScrollController _gutterScrollController = ScrollController();
   final ScrollController _editorVerticalScrollController = ScrollController();
   final ScrollController _editorHorizontalScrollController = ScrollController();
@@ -47,8 +58,10 @@ class _EditorScreenState extends State<EditorScreen> {
     } else {
       String content = await File(path).readAsString();
 
-      final newEditor =
-          EditorState(resetGutterScroll: _resetGutterScroll, path: path);
+      final newEditor = EditorState(
+          editorLayoutService: _editorLayoutService,
+          resetGutterScroll: _resetGutterScroll,
+          path: path);
       setState(() {
         _editors.add(newEditor);
         activeEditorIndex = _editors.length - 1;
@@ -62,6 +75,11 @@ class _EditorScreenState extends State<EditorScreen> {
   @override
   void initState() {
     super.initState();
+    _editorLayoutService = EditorLayoutService(
+        fontSize: 14.0,
+        horizontalPadding: widget.horizontalPadding,
+        verticalPaddingLines: widget.verticalPaddingLines,
+        lineHeightMultiplier: widget.lineHeightMultipler);
     _editorVerticalScrollController.addListener(_handleEditorScroll);
     _gutterScrollController.addListener(_handleGutterScroll);
   }
@@ -90,11 +108,11 @@ class _EditorScreenState extends State<EditorScreen> {
     if (activeEditor == null) return;
 
     final cursorLine = activeEditor!.cursor.line;
-    final lineHeight = EditorConstants.lineHeight;
+    final lineHeight = _editorLayoutService.config.lineHeight;
     final viewportHeight =
         _editorVerticalScrollController.position.viewportDimension;
     final currentOffset = _editorVerticalScrollController.offset;
-    final verticalPadding = EditorConstants.verticalPadding;
+    final verticalPadding = _editorLayoutService.config.verticalPadding;
 
     final cursorY = cursorLine * lineHeight;
     if (cursorY < currentOffset + verticalPadding) {
@@ -112,7 +130,7 @@ class _EditorScreenState extends State<EditorScreen> {
     final viewportWidth =
         _editorHorizontalScrollController.position.viewportDimension;
     final currentHorizontalOffset = _editorHorizontalScrollController.offset;
-    const horizontalPadding = EditorConstants.horizontalPadding;
+    final horizontalPadding = _editorLayoutService.config.horizontalPadding;
 
     if (cursorX < currentHorizontalOffset + horizontalPadding) {
       _editorHorizontalScrollController
@@ -452,6 +470,7 @@ class _EditorScreenState extends State<EditorScreen> {
                                 children: [
                                   if (_editors.isNotEmpty)
                                     Gutter(
+                                      editorLayoutService: _editorLayoutService,
                                       editorState: state!,
                                       verticalScrollController:
                                           _gutterScrollController,
@@ -459,6 +478,8 @@ class _EditorScreenState extends State<EditorScreen> {
                                   Expanded(
                                     child: _editors.isNotEmpty
                                         ? EditorView(
+                                            editorLayoutService:
+                                                _editorLayoutService,
                                             state: state!,
                                             searchTerm: _searchTerm,
                                             searchTermMatches:

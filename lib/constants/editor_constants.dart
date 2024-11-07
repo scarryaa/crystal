@@ -12,12 +12,7 @@ class EditorConstants {
     textDirection: TextDirection.ltr,
   )..layout();
 
-  static const double horizontalPadding = 100;
-  static const int verticalPaddingLines = 5;
-  static const double lineHeightRatio = 1.5;
   static double fontSize = 14;
-  static double lineHeight = fontSize * lineHeightRatio;
-  static double verticalPadding = lineHeight * verticalPaddingLines;
   static String fontFamily = 'IBM Plex Mono';
   static double charWidth = _textPainter.width;
   static Paint currentLineHighlight = Paint()

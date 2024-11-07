@@ -3,13 +3,14 @@ import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/widgets/editor/painter/painters/editor_painter_base.dart';
 import 'package:flutter/material.dart';
 
-class IndentationPainter implements EditorPainterBase {
+class IndentationPainter extends EditorPainterBase {
   final EditorState editorState;
   final double viewportHeight;
 
   IndentationPainter({
     required this.editorState,
     required this.viewportHeight,
+    required super.editorLayoutService,
   });
 
   @override
@@ -35,11 +36,12 @@ class IndentationPainter implements EditorPainterBase {
     const double lineOffset = 1;
 
     canvas.drawLine(
-        Offset(left + lineOffset, lineNumber * EditorConstants.lineHeight),
+        Offset(left + lineOffset,
+            lineNumber * editorLayoutService.config.lineHeight),
         Offset(
             left + lineOffset,
-            lineNumber * EditorConstants.lineHeight +
-                EditorConstants.lineHeight),
+            lineNumber * editorLayoutService.config.lineHeight +
+                editorLayoutService.config.lineHeight),
         EditorConstants.indentLineColor);
   }
 

@@ -1,14 +1,18 @@
 import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/models/selection.dart';
+import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:flutter/material.dart';
 
 class SelectionPainter {
   final EditorState editorState;
   final TextPainter _textPainter;
+  final EditorLayoutService editorLayoutService;
 
-  SelectionPainter(this.editorState)
-      : _textPainter = TextPainter(
+  SelectionPainter(
+    this.editorState, {
+    required this.editorLayoutService,
+  }) : _textPainter = TextPainter(
           textDirection: TextDirection.ltr,
           textAlign: TextAlign.left,
         );
@@ -99,9 +103,9 @@ class SelectionPainter {
       canvas.drawRect(
           Rect.fromLTWH(
               left,
-              editorState.cursor.line * EditorConstants.lineHeight,
+              editorState.cursor.line * editorLayoutService.config.lineHeight,
               width,
-              EditorConstants.lineHeight),
+              editorLayoutService.config.lineHeight),
           Paint()..color = Colors.blue.withOpacity(0.2));
     }
   }
@@ -176,8 +180,8 @@ class SelectionPainter {
     }
 
     canvas.drawRect(
-        Rect.fromLTWH(left, lineNumber * EditorConstants.lineHeight, width,
-            EditorConstants.lineHeight),
+        Rect.fromLTWH(left, lineNumber * editorLayoutService.config.lineHeight,
+            width, editorLayoutService.config.lineHeight),
         paint);
   }
 
@@ -188,8 +192,8 @@ class SelectionPainter {
         _drawWhitespaceIndicator(
             canvas,
             (i + 0.5) * EditorConstants.charWidth,
-            lineNumber * EditorConstants.lineHeight +
-                EditorConstants.lineHeight / 2);
+            lineNumber * editorLayoutService.config.lineHeight +
+                editorLayoutService.config.lineHeight / 2);
       }
     }
   }

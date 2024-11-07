@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:crystal/constants/editor_constants.dart';
+import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/widgets/gutter/gutter_painter.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -9,11 +9,14 @@ import '../../state/editor/editor_state.dart';
 class Gutter extends StatefulWidget {
   final ScrollController verticalScrollController;
   final EditorState editorState;
+  final EditorLayoutService editorLayoutService;
 
-  const Gutter(
-      {super.key,
-      required this.verticalScrollController,
-      required this.editorState});
+  const Gutter({
+    super.key,
+    required this.verticalScrollController,
+    required this.editorState,
+    required this.editorLayoutService,
+  });
 
   @override
   State<Gutter> createState() => _GutterState();
@@ -27,8 +30,9 @@ class _GutterState extends State<Gutter> {
   Widget build(BuildContext context) {
     double height = max(
         MediaQuery.of(context).size.height,
-        (editorState.buffer.lineCount * EditorConstants.lineHeight) +
-            EditorConstants.verticalPadding);
+        (editorState.buffer.lineCount *
+                widget.editorLayoutService.config.lineHeight) +
+            widget.editorLayoutService.config.verticalPadding);
 
     return Consumer<EditorState>(
       builder: (context, editorState, child) {
@@ -45,6 +49,7 @@ class _GutterState extends State<Gutter> {
                     child: SizedBox(
                       child: CustomPaint(
                           painter: GutterPainter(
+                            editorLayoutService: widget.editorLayoutService,
                             editorState: editorState,
                             verticalOffset:
                                 widget.verticalScrollController.hasClients
@@ -70,7 +75,7 @@ class _GutterState extends State<Gutter> {
 
   void _handleGutterSelection(double localY, bool isMultiSelect) {
     double adjustedY = localY + editorState.scrollState.verticalOffset;
-    int targetLine = adjustedY ~/ EditorConstants.lineHeight;
+    int targetLine = adjustedY ~/ widget.editorLayoutService.config.lineHeight;
 
     // If out of range, select the last line
     if (targetLine > editorState.buffer.lineCount) {
@@ -84,6 +89,7 @@ class _GutterState extends State<Gutter> {
     // Select multiple lines
     double adjustedY =
         details.localPosition.dy + editorState.scrollState.verticalOffset;
-    editorState.selectLine(true, adjustedY ~/ EditorConstants.lineHeight);
+    editorState.selectLine(
+        true, adjustedY ~/ widget.editorLayoutService.config.lineHeight);
   }
 }

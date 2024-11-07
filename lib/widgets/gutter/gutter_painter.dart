@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:crystal/constants/editor_constants.dart';
+import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:flutter/material.dart';
 
@@ -8,6 +9,7 @@ class GutterPainter extends CustomPainter {
   final EditorState editorState;
   final double verticalOffset;
   final double viewportHeight;
+  final EditorLayoutService editorLayoutService;
 
   final TextStyle _defaultStyle;
   final TextStyle _highlightStyle;
@@ -16,6 +18,7 @@ class GutterPainter extends CustomPainter {
     required this.editorState,
     required this.verticalOffset,
     required this.viewportHeight,
+    required this.editorLayoutService,
     Color? textColor,
     Color? highlightColor,
   })  : _defaultStyle = TextStyle(
@@ -36,11 +39,12 @@ class GutterPainter extends CustomPainter {
     _drawBackground(canvas, size);
 
     // Calculate visible lines
-    int firstVisibleLine =
-        max(0, (verticalOffset / EditorConstants.lineHeight).floor() - 5);
+    int firstVisibleLine = max(0,
+        (verticalOffset / editorLayoutService.config.lineHeight).floor() - 5);
     int lastVisibleLine = min(
         editorState.buffer.lineCount,
-        ((verticalOffset + viewportHeight) / EditorConstants.lineHeight)
+        ((verticalOffset + viewportHeight) /
+                    editorLayoutService.config.lineHeight)
                 .ceil() +
             5);
     lastVisibleLine = lastVisibleLine.clamp(0, editorState.buffer.lineCount);
@@ -92,8 +96,8 @@ class GutterPainter extends CustomPainter {
       textPainter.layout();
 
       final xOffset = size.width / 2 - textPainter.width;
-      final yOffset = i * EditorConstants.lineHeight +
-          (EditorConstants.lineHeight - textPainter.height) / 2;
+      final yOffset = i * editorLayoutService.config.lineHeight +
+          (editorLayoutService.config.lineHeight - textPainter.height) / 2;
 
       textPainter.paint(
         canvas,
@@ -106,9 +110,9 @@ class GutterPainter extends CustomPainter {
     canvas.drawRect(
         Rect.fromLTWH(
           0,
-          lineNumber * EditorConstants.lineHeight,
+          lineNumber * editorLayoutService.config.lineHeight,
           size.width,
-          EditorConstants.lineHeight,
+          editorLayoutService.config.lineHeight,
         ),
         EditorConstants.currentLineHighlight);
   }

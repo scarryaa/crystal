@@ -2,13 +2,18 @@ import 'package:crystal/constants/editor_constants.dart';
 import 'package:crystal/models/highlighted_text.dart';
 import 'package:crystal/models/languages/dart.dart';
 import 'package:crystal/models/languages/language.dart';
+import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:flutter/material.dart';
 
 class EditorSyntaxHighlighter {
   final List<HighlightedText> highlightedText = [];
   final Language language;
+  final EditorLayoutService editorLayoutService;
 
-  EditorSyntaxHighlighter({Language? language}) : language = language ?? Dart();
+  EditorSyntaxHighlighter({
+    Language? language,
+    required this.editorLayoutService,
+  }) : language = language ?? Dart();
 
   static const keywordColor = Colors.blue;
   static const typeColor = Colors.teal;
@@ -146,7 +151,7 @@ class EditorSyntaxHighlighter {
           color: defaultTextColor,
           fontFamily: EditorConstants.fontFamily,
           fontSize: EditorConstants.fontSize,
-          height: EditorConstants.lineHeightRatio,
+          height: editorLayoutService.config.lineHeightMultiplier,
         ),
       );
     }
@@ -162,7 +167,7 @@ class EditorSyntaxHighlighter {
             color: defaultTextColor,
             fontFamily: EditorConstants.fontFamily,
             fontSize: EditorConstants.fontSize,
-            height: EditorConstants.lineHeightRatio,
+            height: editorLayoutService.config.lineHeightMultiplier,
           ),
         ));
       }
@@ -172,7 +177,7 @@ class EditorSyntaxHighlighter {
           color: highlight.color,
           fontFamily: EditorConstants.fontFamily,
           fontSize: EditorConstants.fontSize,
-          height: EditorConstants.lineHeightRatio,
+          height: editorLayoutService.config.lineHeightMultiplier,
         ),
       ));
       currentIndex = highlight.end;
@@ -185,7 +190,7 @@ class EditorSyntaxHighlighter {
           color: defaultTextColor,
           fontFamily: EditorConstants.fontFamily,
           fontSize: EditorConstants.fontSize,
-          height: EditorConstants.lineHeightRatio,
+          height: editorLayoutService.config.lineHeightMultiplier,
         ),
       ));
     }

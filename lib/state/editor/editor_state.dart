@@ -6,6 +6,7 @@ import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/editor/command.dart';
 import 'package:crystal/models/editor/cursor_shape.dart';
 import 'package:crystal/models/selection.dart';
+import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/services/file_service.dart';
 import 'package:crystal/state/editor/editor_scroll_state.dart';
 import 'package:flutter/material.dart';
@@ -24,8 +25,13 @@ class EditorState extends ChangeNotifier {
   String path = '';
   final List<Command> _undoStack = [];
   final List<Command> _redoStack = [];
+  final EditorLayoutService editorLayoutService;
 
-  EditorState({required this.resetGutterScroll, this.path = ''});
+  EditorState({
+    required this.resetGutterScroll,
+    required this.editorLayoutService,
+    this.path = '',
+  });
 
   void executeCommand(Command command) {
     command.execute();
@@ -406,8 +412,8 @@ class EditorState extends ChangeNotifier {
       case LogicalKeyboardKey.add:
         if (isControlPressed) {
           EditorConstants.fontSize += 2.0;
-          EditorConstants.lineHeight =
-              EditorConstants.fontSize * EditorConstants.lineHeightRatio;
+          editorLayoutService.config.lineHeight = EditorConstants.fontSize *
+              editorLayoutService.config.lineHeightMultiplier;
           notifyListeners();
           return true;
         }
@@ -415,8 +421,8 @@ class EditorState extends ChangeNotifier {
         if (isControlPressed) {
           if (EditorConstants.fontSize > 8.0) {
             EditorConstants.fontSize -= 2.0;
-            EditorConstants.lineHeight =
-                EditorConstants.fontSize * EditorConstants.lineHeightRatio;
+            editorLayoutService.config.lineHeight = EditorConstants.fontSize *
+                editorLayoutService.config.lineHeightMultiplier;
 
             notifyListeners();
           }
@@ -446,7 +452,7 @@ class EditorState extends ChangeNotifier {
   }
 
   void handleTap(double dy, double dx, Function(String line) measureLineWidth) {
-    int targetLine = dy ~/ EditorConstants.lineHeight;
+    int targetLine = dy ~/ editorLayoutService.config.lineHeight;
     if (targetLine >= _buffer.lineCount) {
       targetLine = _buffer.lineCount - 1;
     }
@@ -478,7 +484,7 @@ class EditorState extends ChangeNotifier {
 
   void handleDragUpdate(
       double dy, double dx, Function(String line) measureLineWidth) {
-    int targetLine = dy ~/ EditorConstants.lineHeight;
+    int targetLine = dy ~/ editorLayoutService.config.lineHeight;
     if (targetLine >= _buffer.lineCount) {
       targetLine = _buffer.lineCount - 1;
     } else if (targetLine < 0) {
