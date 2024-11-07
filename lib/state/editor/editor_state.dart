@@ -123,7 +123,7 @@ class EditorState extends ChangeNotifier {
 
   void backspace() {
     if (editorSelectionManager.hasSelection()) {
-      editorSelectionManager.deleteSelection(_buffer);
+      deleteSelection();
       return;
     }
 
@@ -134,7 +134,7 @@ class EditorState extends ChangeNotifier {
 
   void delete() {
     if (editorSelectionManager.hasSelection()) {
-      editorSelectionManager.deleteSelection(_buffer);
+      deleteSelection();
       return;
     }
 

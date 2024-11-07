@@ -2,7 +2,6 @@ import 'dart:math' as math;
 
 import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/buffer.dart';
-import 'package:flutter/material.dart';
 
 class EditorCursorManager {
   List<Cursor> _cursors = [];
@@ -17,7 +16,6 @@ class EditorCursorManager {
   }
 
   void mergeCursorsIfNeeded() {
-    // Create a new list to store unique cursors
     final uniqueCursors = <Cursor>[];
 
     // Sort cursors by line and column
@@ -28,13 +26,11 @@ class EditorCursorManager {
       return a.column.compareTo(b.column);
     });
 
-    // Iterate through sorted cursors
     for (var cursor in _cursors) {
       // Check if this cursor overlaps with any cursor in uniqueCursors
       bool hasOverlap = uniqueCursors.any((existing) =>
           existing.line == cursor.line && existing.column == cursor.column);
 
-      // Only add cursor if it doesn't overlap with existing ones
       if (!hasOverlap) {
         uniqueCursors.add(cursor);
       }
@@ -159,6 +155,8 @@ class EditorCursorManager {
       ..sort((a, b) => b.line.compareTo(a.line));
 
     for (var cursor in sortedCursors) {
+      mergeCursorsIfNeeded();
+
       if (cursor.column > 0) {
         // Check if we're deleting spaces at the start of a line
         String currentLine = buffer.getLine(cursor.line);
@@ -196,8 +194,6 @@ class EditorCursorManager {
         }
       }
     }
-
-    mergeCursorsIfNeeded();
   }
 
   void backTab(Buffer buffer) {
