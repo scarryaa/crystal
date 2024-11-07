@@ -144,14 +144,13 @@ class _EditorViewState extends State<EditorView> {
               onPanUpdate: _handleDragUpdate,
               child: ScrollbarTheme(
                   data: ScrollbarThemeData(
-                    thumbColor: WidgetStateProperty.all(widget
-                                .editorConfigService
-                                .themeService
-                                .currentTheme !=
-                            null
-                        ? widget.editorConfigService.themeService.currentTheme!
-                            .border
-                        : Colors.grey[600]),
+                    thumbColor: WidgetStateProperty.all(
+                        widget.editorConfigService.themeService.currentTheme !=
+                                null
+                            ? widget.editorConfigService.themeService
+                                .currentTheme!.border
+                                .withOpacity(0.65)
+                            : Colors.grey[600]!.withOpacity(0.65)),
                   ),
                   child: Scrollbar(
                       controller: widget.verticalScrollController,

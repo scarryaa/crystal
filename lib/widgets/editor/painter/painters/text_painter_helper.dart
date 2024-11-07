@@ -67,7 +67,7 @@ class TextPainterHelper {
       maxLines: 1,
     );
 
-    textPainter.layout(minWidth: 0, maxWidth: double.infinity);
+    textPainter.layout();
     return textPainter.width;
   }
 }

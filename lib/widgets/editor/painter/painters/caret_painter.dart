@@ -28,7 +28,7 @@ class CaretPainter extends EditorPainterBase {
       style: TextStyle(
         fontSize: editorConfigService.config.fontSize,
         fontFamily: editorConfigService.config.fontFamily,
-        color: Colors.black,
+        color: Colors.transparent,
         height: 1.0,
         leadingDistribution: TextLeadingDistribution.even,
         fontFeatures: const [
@@ -47,7 +47,10 @@ class CaretPainter extends EditorPainterBase {
     final caretLeft = _textPainter.width;
     final caretTop =
         editorLayoutService.config.lineHeight * editorState.cursor.line;
-    final caretPaint = Paint()..color = Colors.blue;
+    final caretPaint = Paint()
+      ..color = editorConfigService.themeService.currentTheme != null
+          ? editorConfigService.themeService.currentTheme!.primary
+          : Colors.blue;
 
     _drawCaret(
       canvas,

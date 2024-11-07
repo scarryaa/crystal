@@ -7,6 +7,7 @@ Crystal aims to be a lightweight yet powerful code editor.
 - Cross Platform (Windows, macOS, Linux)
 - Built-in File Explorer
 - Syntax Highlighting (basic)
+- Search and Replace
 
 ### Planned Features
 - Multiple Themes
@@ -16,7 +17,6 @@ Crystal aims to be a lightweight yet powerful code editor.
 - Git Integration
 - Extensions
 - Code Completion/Suggestions
-- Search and Replace
 - Code Folding
 - Custom Keybindings
 - Integrated Debugger (?)

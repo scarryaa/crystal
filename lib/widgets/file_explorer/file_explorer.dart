@@ -78,7 +78,13 @@ class _FileExplorerState extends State<FileExplorer> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         CustomPaint(
-          painter: IndentPainter(level: depth),
+          painter: IndentPainter(
+              level: depth,
+              lineColor: widget.editorConfigService.themeService.currentTheme !=
+                      null
+                  ? widget.editorConfigService.themeService.currentTheme!.text
+                      .withOpacity(0.3)
+                  : Colors.black.withOpacity(0.3)),
           child: FileItem(
             highlightColor:
                 widget.editorConfigService.themeService.currentTheme != null
@@ -208,7 +214,8 @@ class _FileExplorerState extends State<FileExplorer> {
                                     null
                                 ? widget.editorConfigService.themeService
                                     .currentTheme!.border
-                                : Colors.grey[400]),
+                                    .withOpacity(0.65)
+                                : Colors.grey[400]!.withOpacity(0.65)),
                           ),
                           child: Scrollbar(
                             controller: _horizontalController,
