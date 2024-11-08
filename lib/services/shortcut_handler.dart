@@ -7,18 +7,25 @@ class ShortcutHandler {
   VoidCallback openSettings;
   VoidCallback openDefaultSettings;
   VoidCallback closeTab;
+  VoidCallback openNewTab;
+  Future<void> Function() saveFileAs;
+  Future<void> Function() saveFile;
 
   ShortcutHandler({
     required this.openSettings,
     required this.openDefaultSettings,
     required this.closeTab,
+    required this.openNewTab,
+    required this.saveFileAs,
+    required this.saveFile,
   });
 
   KeyEventResult handleKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is KeyDownEvent) {
+    if (event is KeyDownEvent || event is KeyRepeatEvent) {
       final bool isControlPressed = Platform.isMacOS
           ? HardwareKeyboard.instance.isMetaPressed
           : HardwareKeyboard.instance.isControlPressed;
+      final bool isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
 
       switch (event.logicalKey) {
         case LogicalKeyboardKey.comma:
@@ -35,6 +42,19 @@ class ShortcutHandler {
         case LogicalKeyboardKey.keyW:
           if (isControlPressed) {
             closeTab();
+            return KeyEventResult.handled;
+          }
+        case LogicalKeyboardKey.keyN:
+          if (isControlPressed) {
+            openNewTab();
+            return KeyEventResult.handled;
+          }
+        case LogicalKeyboardKey.keyS:
+          if (isControlPressed && isShiftPressed) {
+            saveFileAs();
+            return KeyEventResult.handled;
+          } else if (isControlPressed) {
+            saveFile();
             return KeyEventResult.handled;
           }
       }

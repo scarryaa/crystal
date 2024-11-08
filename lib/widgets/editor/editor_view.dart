@@ -21,6 +21,9 @@ class EditorView extends StatefulWidget {
   final double gutterWidth;
   final VoidCallback scrollToCursor;
   final Function(int index) onEditorClosed;
+  final Future<void> Function() saveFileAs;
+  final Future<void> Function() saveFile;
+  final VoidCallback openNewTab;
   final Function(String newTerm) onSearchTermChanged;
   final String searchTerm;
   final int currentSearchTermMatch;
@@ -35,6 +38,9 @@ class EditorView extends StatefulWidget {
     required this.horizontalScrollController,
     required this.scrollToCursor,
     required this.onEditorClosed,
+    required this.saveFileAs,
+    required this.saveFile,
+    required this.openNewTab,
     required this.searchTerm,
     required this.searchTermMatches,
     required this.onSearchTermChanged,
@@ -64,15 +70,19 @@ class _EditorViewState extends State<EditorView> {
         resetCaretBlink: _resetCaretBlink, requestFocus: requestFocus);
 
     editorKeyboardHandler = EditorKeyboardHandler(
-        onSearchTermChanged: widget.onSearchTermChanged,
-        updateCachedMaxLineWidth: _updateCachedMaxLineWidth,
-        scrollToCursor: widget.scrollToCursor,
-        openConfig: _openConfig,
-        openDefaultConfig: _openDefaultConfig,
-        state: widget.state,
-        searchTerm: widget.searchTerm,
-        activeEditorIndex: () => widget.activeEditorIndex(),
-        onEditorClosed: widget.onEditorClosed);
+      onSearchTermChanged: widget.onSearchTermChanged,
+      updateCachedMaxLineWidth: _updateCachedMaxLineWidth,
+      scrollToCursor: widget.scrollToCursor,
+      openConfig: _openConfig,
+      openDefaultConfig: _openDefaultConfig,
+      getState: () => widget.state,
+      searchTerm: widget.searchTerm,
+      openNewTab: widget.openNewTab,
+      activeEditorIndex: () => widget.activeEditorIndex(),
+      onEditorClosed: widget.onEditorClosed,
+      saveFileAs: widget.saveFileAs,
+      saveFile: widget.saveFile,
+    );
 
     editorSyntaxHighlighter = EditorSyntaxHighlighter(
         editorConfigService: widget.editorConfigService,

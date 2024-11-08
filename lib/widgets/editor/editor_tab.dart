@@ -141,7 +141,9 @@ class EditorTab extends StatelessWidget {
     final theme = editorConfigService.themeService.currentTheme;
 
     return Semantics(
-      label: '${editor.path.split('/').last} tab',
+      // TODO add tab index?
+      label:
+          '${editor.path.isEmpty ? "untitled" : editor.path.split('/').last} tab',
       selected: isActive,
       button: true,
       child: InkWell(
@@ -175,7 +177,10 @@ class EditorTab extends StatelessWidget {
                 const SizedBox(width: _kSpacing),
                 Flexible(
                   child: Text(
-                    editor.path.split('/').last,
+                    (editor.path.isEmpty ||
+                            editor.path.substring(0, 6) == '__temp')
+                        ? 'untitled'
+                        : editor.path.split('/').last,
                     style: TextStyle(
                       color: isActive
                           ? theme?.primary ?? Colors.blue

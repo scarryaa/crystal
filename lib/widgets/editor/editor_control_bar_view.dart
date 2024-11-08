@@ -90,7 +90,7 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
 
   Widget _buildFilePath(String path) {
     return Text(
-      path,
+      (path.isEmpty || path.substring(0, 6) == '__temp') ? 'untitled' : path,
       style: TextStyle(
         fontFamily: 'IBM Plex Sans',
         fontSize: 14,

@@ -11,10 +11,14 @@ import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/services/editor/editor_selection_manager.dart';
 import 'package:crystal/services/file_service.dart';
 import 'package:crystal/state/editor/editor_scroll_state.dart';
+import 'package:crystal/utils/utils.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
 
 class EditorState extends ChangeNotifier {
+  final String id = UniqueKey().toString();
   EditorScrollState scrollState = EditorScrollState();
   final Buffer _buffer = Buffer();
   int? anchorLine;
@@ -38,8 +42,8 @@ class EditorState extends ChangeNotifier {
     required this.editorLayoutService,
     required this.editorConfigService,
     required this.tapCallback,
-    this.path = '',
-  });
+    String? path,
+  }) : path = path ?? generateUniqueTempPath();
 
   void executeCommand(Command command) {
     command.execute();
@@ -258,14 +262,6 @@ class EditorState extends ChangeNotifier {
           }
           return true;
         }
-      case LogicalKeyboardKey.keyS:
-        if (isControlPressed) {
-          String content = _buffer.lines.join('\n');
-          FileService.saveFile(path, content);
-          _buffer.setOriginalContent(content);
-          notifyListeners();
-          return true;
-        }
       case LogicalKeyboardKey.keyZ:
         if (isControlPressed && isShiftPressed) {
           redo();
@@ -279,6 +275,45 @@ class EditorState extends ChangeNotifier {
     }
 
     return false;
+  }
+
+  Future<bool> _writeFileToDisk(String path, String content) async {
+    try {
+      FileService.saveFile(path, content);
+      _buffer.setOriginalContent(content);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      // Handle error
+      return false;
+    }
+  }
+
+  Future<bool> saveFile(String path) async {
+    if (path.isEmpty || path.startsWith('__temp')) {
+      return saveFileAs(path);
+    }
+
+    final String content = _buffer.lines.join('\n');
+    return _writeFileToDisk(path, content);
+  }
+
+  Future<bool> saveFileAs(String path) async {
+    try {
+      final String? outputFile = await FilePicker.platform.saveFile(
+          dialogTitle: 'Save As',
+          fileName: p.basename(path).contains('__temp') ? '' : p.basename(path),
+          initialDirectory: p.dirname(path));
+
+      if (outputFile == null) {
+        return false; // User cancelled
+      }
+
+      final String content = _buffer.lines.join('\n');
+      return _writeFileToDisk(outputFile, content);
+    } catch (e) {
+      return false;
+    }
   }
 
   void handleTap(double dy, double dx, Function(String line) measureLineWidth,

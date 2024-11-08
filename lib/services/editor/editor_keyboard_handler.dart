@@ -5,23 +5,29 @@ import 'package:flutter/services.dart';
 class EditorKeyboardHandler {
   Function(String searchTerm) onSearchTermChanged;
   Function(int) onEditorClosed;
+  Future<void> Function() saveFileAs;
+  Future<void> Function() saveFile;
   VoidCallback updateCachedMaxLineWidth;
   VoidCallback scrollToCursor;
   VoidCallback openConfig;
   VoidCallback openDefaultConfig;
+  VoidCallback openNewTab;
 
+  final EditorState Function() getState;
   final Function() activeEditorIndex;
-  EditorState state;
   String searchTerm;
 
   EditorKeyboardHandler({
     required this.onSearchTermChanged,
     required this.onEditorClosed,
+    required this.saveFileAs,
+    required this.saveFile,
     required this.updateCachedMaxLineWidth,
     required this.scrollToCursor,
     required this.openConfig,
     required this.openDefaultConfig,
-    required this.state,
+    required this.openNewTab,
+    required this.getState,
     required this.searchTerm,
     required this.activeEditorIndex,
   });
@@ -34,7 +40,7 @@ class EditorKeyboardHandler {
               HardwareKeyboard.instance.isMetaPressed;
 
       // Special keys
-      if (state.handleSpecialKeys(
+      if (getState().handleSpecialKeys(
           isControlPressed, isShiftPressed, event.logicalKey)) {
         onSearchTermChanged(searchTerm);
         return KeyEventResult.handled;
@@ -44,12 +50,12 @@ class EditorKeyboardHandler {
       switch (event.logicalKey) {
         case LogicalKeyboardKey.keyC:
           if (isControlPressed) {
-            state.copy();
+            getState().copy();
             return KeyEventResult.handled;
           }
         case LogicalKeyboardKey.keyX:
           if (isControlPressed) {
-            state.cut();
+            getState().cut();
             updateCachedMaxLineWidth();
             WidgetsBinding.instance.addPostFrameCallback((_) {
               scrollToCursor();
@@ -59,7 +65,7 @@ class EditorKeyboardHandler {
           }
         case LogicalKeyboardKey.keyV:
           if (isControlPressed) {
-            state.paste();
+            getState().paste();
             updateCachedMaxLineWidth();
             WidgetsBinding.instance.addPostFrameCallback((_) {
               scrollToCursor();
@@ -69,7 +75,7 @@ class EditorKeyboardHandler {
           }
         case LogicalKeyboardKey.keyA:
           if (isControlPressed) {
-            state.selectAll();
+            getState().selectAll();
             scrollToCursor();
             return KeyEventResult.handled;
           }
@@ -88,49 +94,66 @@ class EditorKeyboardHandler {
             onEditorClosed(activeEditorIndex());
             return KeyEventResult.handled;
           }
+        case LogicalKeyboardKey.keyN:
+          {
+            if (isControlPressed) {
+              openNewTab();
+              return KeyEventResult.handled;
+            }
+          }
+        case LogicalKeyboardKey.keyS:
+          {
+            if (isControlPressed && isShiftPressed) {
+              saveFileAs();
+              return KeyEventResult.handled;
+            } else if (isControlPressed) {
+              saveFile();
+              return KeyEventResult.handled;
+            }
+          }
       }
 
       switch (event.logicalKey) {
         case LogicalKeyboardKey.arrowDown:
-          state.moveCursorDown(isShiftPressed);
+          getState().moveCursorDown(isShiftPressed);
           scrollToCursor();
           return KeyEventResult.handled;
         case LogicalKeyboardKey.arrowUp:
-          state.moveCursorUp(isShiftPressed);
+          getState().moveCursorUp(isShiftPressed);
           scrollToCursor();
           return KeyEventResult.handled;
         case LogicalKeyboardKey.arrowLeft:
-          state.moveCursorLeft(isShiftPressed);
+          getState().moveCursorLeft(isShiftPressed);
           scrollToCursor();
           return KeyEventResult.handled;
         case LogicalKeyboardKey.arrowRight:
-          state.moveCursorRight(isShiftPressed);
+          getState().moveCursorRight(isShiftPressed);
           scrollToCursor();
           return KeyEventResult.handled;
 
         case LogicalKeyboardKey.enter:
-          state.insertNewLine();
+          getState().insertNewLine();
           updateCachedMaxLineWidth();
           scrollToCursor();
           onSearchTermChanged(searchTerm);
           return KeyEventResult.handled;
         case LogicalKeyboardKey.backspace:
-          state.backspace();
+          getState().backspace();
           updateCachedMaxLineWidth();
           scrollToCursor();
           onSearchTermChanged(searchTerm);
           return KeyEventResult.handled;
         case LogicalKeyboardKey.delete:
-          state.delete();
+          getState().delete();
           updateCachedMaxLineWidth();
           scrollToCursor();
           onSearchTermChanged(searchTerm);
           return KeyEventResult.handled;
         case LogicalKeyboardKey.tab:
           if (isShiftPressed) {
-            state.backTab();
+            getState().backTab();
           } else {
-            state.insertTab();
+            getState().insertTab();
             updateCachedMaxLineWidth();
           }
           scrollToCursor();
@@ -140,7 +163,7 @@ class EditorKeyboardHandler {
           if (event.character != null &&
               event.character!.length == 1 &&
               event.logicalKey != LogicalKeyboardKey.escape) {
-            state.insertChar(event.character!);
+            getState().insertChar(event.character!);
             updateCachedMaxLineWidth();
             scrollToCursor();
             onSearchTermChanged(searchTerm);

@@ -53,6 +53,22 @@ class _EditorScreenState extends State<EditorScreen> {
   EditorState? get activeEditor =>
       _editors.isEmpty ? null : _editors[activeEditorIndex];
 
+  void openNewTab() {
+    final newEditor = EditorState(
+      editorConfigService: _editorConfigService,
+      editorLayoutService: _editorLayoutService,
+      resetGutterScroll: _resetGutterScroll,
+      tapCallback: tapCallback,
+    );
+
+    setState(() {
+      _editors.add(newEditor);
+      activeEditorIndex = _editors.length - 1;
+      _editors[activeEditorIndex].openFile('');
+      _onSearchTermChanged(_searchTerm);
+    });
+  }
+
   Future<void> tapCallback(String path) async {
     final editorIndex = _editors.indexWhere((editor) => editor.path == path);
     if (editorIndex != -1) {
@@ -82,20 +98,42 @@ class _EditorScreenState extends State<EditorScreen> {
   @override
   void initState() {
     super.initState();
+
     _editorConfigService = EditorConfigService();
     _editorLayoutService = EditorLayoutService(
-        fontFamily: 'IBM Plex Mono',
-        fontSize: 14.0,
-        horizontalPadding: widget.horizontalPadding,
-        verticalPaddingLines: widget.verticalPaddingLines,
-        lineHeightMultiplier: widget.lineHeightMultipler);
+      fontFamily: 'IBM Plex Mono',
+      fontSize: 14.0,
+      horizontalPadding: widget.horizontalPadding,
+      verticalPaddingLines: widget.verticalPaddingLines,
+      lineHeightMultiplier: widget.lineHeightMultipler,
+    );
 
     _shortcutHandler = ShortcutHandler(
       openSettings: _openSettings,
       openDefaultSettings: _openDefaultSettings,
-      closeTab: () => onEditorClosed(activeEditorIndex),
+      closeTab: () {
+        if (activeEditorIndex >= 0) {
+          onEditorClosed(activeEditorIndex);
+        }
+      },
+      openNewTab: () {
+        openNewTab();
+      },
+      saveFile: () async {
+        if (activeEditor != null) {
+          await activeEditor!.saveFile(activeEditor!.path);
+        }
+        return Future<void>.value();
+      },
+      saveFileAs: () async {
+        if (activeEditor != null) {
+          await activeEditor!.saveFileAs(activeEditor!.path);
+        }
+        return Future<void>.value();
+      },
     );
 
+    // Listeners
     _editorVerticalScrollController.addListener(_handleEditorScroll);
     _gutterScrollController.addListener(_handleGutterScroll);
     _editorConfigService.themeService.addListener(_onThemeChanged);
@@ -586,6 +624,22 @@ class _EditorScreenState extends State<EditorScreen> {
                                                       _scrollToCursor,
                                                   onEditorClosed:
                                                       onEditorClosed,
+                                                  saveFileAs: activeEditor !=
+                                                          null
+                                                      ? () => activeEditor!
+                                                          .saveFileAs(
+                                                              activeEditor!
+                                                                  .path)
+                                                      : () =>
+                                                          Future<void>.value(),
+                                                  saveFile: activeEditor != null
+                                                      ? () => activeEditor!
+                                                          .saveFile(
+                                                              activeEditor!
+                                                                  .path)
+                                                      : () =>
+                                                          Future<void>.value(),
+                                                  openNewTab: openNewTab,
                                                   activeEditorIndex: () =>
                                                       activeEditorIndex,
                                                   gutterWidth: gutterWidth!,

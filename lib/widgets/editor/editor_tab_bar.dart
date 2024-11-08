@@ -45,7 +45,7 @@ class _EditorTabBarState extends State<EditorTabBar> {
             itemBuilder: (context, index) {
               final editor = widget.editors[index];
               return ReorderableDragStartListener(
-                key: ValueKey(editor.path),
+                key: ValueKey(editor.id),
                 index: index,
                 child: EditorTab(
                   editorConfigService: widget.editorConfigService,
