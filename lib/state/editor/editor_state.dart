@@ -379,7 +379,7 @@ class EditorState extends ChangeNotifier {
       targetLine = 0;
     }
 
-    double x = dx + scrollState.horizontalOffset;
+    double x = dx;
     String lineText = _buffer.getLine(targetLine);
     int targetColumn = 0;
     double currentWidth = 0;

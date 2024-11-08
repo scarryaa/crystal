@@ -162,6 +162,7 @@ class _EditorScreenState extends State<EditorScreen> {
 
     // Listeners
     _editorVerticalScrollController.addListener(_handleEditorScroll);
+    _editorHorizontalScrollController.addListener(_handleEditorScroll);
     _gutterScrollController.addListener(_handleGutterScroll);
     _editorConfigService.themeService.addListener(_onThemeChanged);
   }
@@ -182,6 +183,7 @@ class _EditorScreenState extends State<EditorScreen> {
 
     activeEditor!
         .updateHorizontalScrollOffset(_editorHorizontalScrollController.offset);
+    print(_editorHorizontalScrollController.offset);
   }
 
   void _handleGutterScroll() {

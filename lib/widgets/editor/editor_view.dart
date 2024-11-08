@@ -64,8 +64,6 @@ class EditorViewState extends State<EditorView> {
   late final EditorKeyboardHandler editorKeyboardHandler;
   EditorPainter? editorPainter;
 
-  double get cachedMaxLineWidth => _cachedMaxLineWidth;
-
   @override
   void initState() {
     super.initState();
