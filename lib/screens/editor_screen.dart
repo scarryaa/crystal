@@ -37,6 +37,7 @@ class EditorScreen extends StatefulWidget {
 }
 
 class _EditorScreenState extends State<EditorScreen> {
+  bool _isFileExplorerVisible = true;
   final editorViewKey = GlobalKey<EditorViewState>();
   late final EditorLayoutService _editorLayoutService;
   late final EditorConfigService _editorConfigService;
@@ -56,6 +57,12 @@ class _EditorScreenState extends State<EditorScreen> {
   int activeEditorIndex = 0;
   EditorState? get activeEditor =>
       _editors.isEmpty ? null : _editors[activeEditorIndex];
+
+  void _toggleFileExplorer() {
+    setState(() {
+      _isFileExplorerVisible = !_isFileExplorerVisible;
+    });
+  }
 
   void openNewTab() {
     final newEditor = EditorState(
@@ -608,11 +615,12 @@ class _EditorScreenState extends State<EditorScreen> {
                           Expanded(
                             child: Row(
                               children: [
-                                FileExplorer(
-                                  editorConfigService: _editorConfigService,
-                                  rootDir: widget.currentDirectory ?? '',
-                                  tapCallback: tapCallback,
-                                ),
+                                if (_isFileExplorerVisible)
+                                  FileExplorer(
+                                    editorConfigService: _editorConfigService,
+                                    rootDir: widget.currentDirectory ?? '',
+                                    tapCallback: tapCallback,
+                                  ),
                                 Expanded(
                                   child: Column(
                                     children: [
@@ -746,6 +754,8 @@ class _EditorScreenState extends State<EditorScreen> {
                           ),
                           StatusBar(
                             editorConfigService: _editorConfigService,
+                            onFileExplorerToggle: _toggleFileExplorer,
+                            isFileExplorerVisible: _isFileExplorerVisible,
                           ),
                         ],
                       ),
