@@ -1,5 +1,5 @@
+import 'package:crystal/app/title_bar.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
-import 'package:crystal/title_bar.dart';
 import 'package:flutter/material.dart';
 
 class AppLayout extends StatelessWidget {
