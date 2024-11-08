@@ -38,6 +38,7 @@ class _EditorScreenState extends State<EditorScreen> {
   late final EditorLayoutService _editorLayoutService;
   late final EditorConfigService _editorConfigService;
   late final ShortcutHandler _shortcutHandler;
+  late final Future<void> _initializationFuture;
   final ScrollController _gutterScrollController = ScrollController();
   final ScrollController _editorVerticalScrollController = ScrollController();
   final ScrollController _editorHorizontalScrollController = ScrollController();
@@ -98,11 +99,15 @@ class _EditorScreenState extends State<EditorScreen> {
   @override
   void initState() {
     super.initState();
+    _initializationFuture = _initializeServices();
+  }
 
-    _editorConfigService = EditorConfigService();
+  Future<void> _initializeServices() async {
+    _editorConfigService = await EditorConfigService.create();
+
     _editorLayoutService = EditorLayoutService(
-      fontFamily: 'IBM Plex Mono',
-      fontSize: 14.0,
+      fontFamily: _editorConfigService.config.fontFamily,
+      fontSize: _editorConfigService.config.fontSize,
       horizontalPadding: widget.horizontalPadding,
       verticalPaddingLines: widget.verticalPaddingLines,
       lineHeightMultiplier: widget.lineHeightMultipler,
@@ -535,154 +540,177 @@ class _EditorScreenState extends State<EditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Focus(
-        autofocus: true,
-        onKeyEvent: (node, event) =>
-            _shortcutHandler.handleKeyEvent(node, event),
-        child: ChangeNotifierProvider.value(
-          value: activeEditor,
-          child: Consumer<EditorState?>(
-            builder: (context, state, _) {
-              final gutterWidth = state?.getGutterWidth();
+    return FutureBuilder(
+        future: _initializationFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-              return Material(
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: Row(
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          return Focus(
+              autofocus: true,
+              onKeyEvent: (node, event) =>
+                  _shortcutHandler.handleKeyEvent(node, event),
+              child: ChangeNotifierProvider.value(
+                value: activeEditor,
+                child: Consumer<EditorState?>(
+                  builder: (context, state, _) {
+                    final gutterWidth = state?.getGutterWidth();
+
+                    return Material(
+                      child: Column(
                         children: [
-                          FileExplorer(
-                            editorConfigService: _editorConfigService,
-                            rootDir: '',
-                            tapCallback: tapCallback,
-                          ),
                           Expanded(
-                            child: Column(
+                            child: Row(
                               children: [
-                                if (_editors.isNotEmpty)
-                                  EditorTabBar(
-                                    onPin: onPin,
-                                    editorConfigService: _editorConfigService,
-                                    editors: _editors,
-                                    activeEditorIndex: activeEditorIndex,
-                                    onActiveEditorChanged:
-                                        onActiveEditorChanged,
-                                    onEditorClosed: (index) =>
-                                        onEditorClosed(index),
-                                    onReorder: onReorder,
-                                  ),
-                                if (_editors.isNotEmpty)
-                                  EditorControlBarView(
-                                    editorConfigService: _editorConfigService,
-                                    filePath: activeEditor!.path,
-                                    searchTermChanged: _onSearchTermChanged,
-                                    nextSearchTerm: _nextSearchTerm,
-                                    previousSearchTerm: _previousSearchTerm,
-                                    currentSearchTermMatch:
-                                        _currentSearchTermMatch,
-                                    totalSearchTermMatches:
-                                        _searchTermMatches.length,
-                                    isCaseSensitiveActive: _caseSensitiveActive,
-                                    isRegexActive: _regexActive,
-                                    isWholeWordActive: _wholeWordActive,
-                                    toggleRegex: _toggleRegex,
-                                    toggleWholeWord: _toggleWholeWord,
-                                    toggleCaseSensitive: _toggleCaseSensitive,
-                                    replaceNextMatch: _replaceNextMatch,
-                                    replaceAllMatches: _replaceAllMatches,
-                                  ),
+                                FileExplorer(
+                                  editorConfigService: _editorConfigService,
+                                  rootDir: '',
+                                  tapCallback: tapCallback,
+                                ),
                                 Expanded(
-                                  child: Container(
-                                    color: _editorConfigService
-                                                .themeService.currentTheme !=
-                                            null
-                                        ? _editorConfigService.themeService
-                                            .currentTheme!.background
-                                        : Colors.white,
-                                    child: Row(
-                                      children: [
-                                        if (_editors.isNotEmpty)
-                                          Gutter(
-                                            editorConfigService:
-                                                _editorConfigService,
-                                            editorLayoutService:
-                                                _editorLayoutService,
-                                            editorState: state!,
-                                            verticalScrollController:
-                                                _gutterScrollController,
-                                          ),
-                                        Expanded(
-                                          child: _editors.isNotEmpty
-                                              ? EditorView(
+                                  child: Column(
+                                    children: [
+                                      if (_editors.isNotEmpty)
+                                        EditorTabBar(
+                                          onPin: onPin,
+                                          editorConfigService:
+                                              _editorConfigService,
+                                          editors: _editors,
+                                          activeEditorIndex: activeEditorIndex,
+                                          onActiveEditorChanged:
+                                              onActiveEditorChanged,
+                                          onEditorClosed: (index) =>
+                                              onEditorClosed(index),
+                                          onReorder: onReorder,
+                                        ),
+                                      if (_editors.isNotEmpty)
+                                        EditorControlBarView(
+                                          editorConfigService:
+                                              _editorConfigService,
+                                          filePath: activeEditor!.path,
+                                          searchTermChanged:
+                                              _onSearchTermChanged,
+                                          nextSearchTerm: _nextSearchTerm,
+                                          previousSearchTerm:
+                                              _previousSearchTerm,
+                                          currentSearchTermMatch:
+                                              _currentSearchTermMatch,
+                                          totalSearchTermMatches:
+                                              _searchTermMatches.length,
+                                          isCaseSensitiveActive:
+                                              _caseSensitiveActive,
+                                          isRegexActive: _regexActive,
+                                          isWholeWordActive: _wholeWordActive,
+                                          toggleRegex: _toggleRegex,
+                                          toggleWholeWord: _toggleWholeWord,
+                                          toggleCaseSensitive:
+                                              _toggleCaseSensitive,
+                                          replaceNextMatch: _replaceNextMatch,
+                                          replaceAllMatches: _replaceAllMatches,
+                                        ),
+                                      Expanded(
+                                        child: Container(
+                                          color:
+                                              _editorConfigService.themeService
+                                                          .currentTheme !=
+                                                      null
+                                                  ? _editorConfigService
+                                                      .themeService
+                                                      .currentTheme!
+                                                      .background
+                                                  : Colors.white,
+                                          child: Row(
+                                            children: [
+                                              if (_editors.isNotEmpty)
+                                                Gutter(
                                                   editorConfigService:
                                                       _editorConfigService,
                                                   editorLayoutService:
                                                       _editorLayoutService,
-                                                  state: state!,
-                                                  searchTerm: _searchTerm,
-                                                  searchTermMatches:
-                                                      _searchTermMatches,
-                                                  currentSearchTermMatch:
-                                                      _currentSearchTermMatch,
-                                                  onSearchTermChanged:
-                                                      _updateSearchMatches,
-                                                  scrollToCursor:
-                                                      _scrollToCursor,
-                                                  onEditorClosed:
-                                                      onEditorClosed,
-                                                  saveFileAs: activeEditor !=
-                                                          null
-                                                      ? () => activeEditor!
-                                                          .saveFileAs(
-                                                              activeEditor!
-                                                                  .path)
-                                                      : () =>
-                                                          Future<void>.value(),
-                                                  saveFile: activeEditor != null
-                                                      ? () => activeEditor!
-                                                          .saveFile(
-                                                              activeEditor!
-                                                                  .path)
-                                                      : () =>
-                                                          Future<void>.value(),
-                                                  openNewTab: openNewTab,
-                                                  activeEditorIndex: () =>
-                                                      activeEditorIndex,
-                                                  gutterWidth: gutterWidth!,
+                                                  editorState: state!,
                                                   verticalScrollController:
-                                                      _editorVerticalScrollController,
-                                                  horizontalScrollController:
-                                                      _editorHorizontalScrollController,
-                                                )
-                                              : Container(
-                                                  color: _editorConfigService
-                                                              .themeService
-                                                              .currentTheme !=
-                                                          null
-                                                      ? _editorConfigService
-                                                          .themeService
-                                                          .currentTheme!
-                                                          .background
-                                                      : Colors.white),
-                                        )
-                                      ],
-                                    ),
+                                                      _gutterScrollController,
+                                                ),
+                                              Expanded(
+                                                child: _editors.isNotEmpty
+                                                    ? EditorView(
+                                                        editorConfigService:
+                                                            _editorConfigService,
+                                                        editorLayoutService:
+                                                            _editorLayoutService,
+                                                        state: state!,
+                                                        searchTerm: _searchTerm,
+                                                        searchTermMatches:
+                                                            _searchTermMatches,
+                                                        currentSearchTermMatch:
+                                                            _currentSearchTermMatch,
+                                                        onSearchTermChanged:
+                                                            _updateSearchMatches,
+                                                        scrollToCursor:
+                                                            _scrollToCursor,
+                                                        onEditorClosed:
+                                                            onEditorClosed,
+                                                        saveFileAs: activeEditor !=
+                                                                null
+                                                            ? () => activeEditor!
+                                                                .saveFileAs(
+                                                                    activeEditor!
+                                                                        .path)
+                                                            : () => Future<
+                                                                void>.value(),
+                                                        saveFile: activeEditor !=
+                                                                null
+                                                            ? () => activeEditor!
+                                                                .saveFile(
+                                                                    activeEditor!
+                                                                        .path)
+                                                            : () => Future<
+                                                                void>.value(),
+                                                        openNewTab: openNewTab,
+                                                        activeEditorIndex: () =>
+                                                            activeEditorIndex,
+                                                        gutterWidth:
+                                                            gutterWidth!,
+                                                        verticalScrollController:
+                                                            _editorVerticalScrollController,
+                                                        horizontalScrollController:
+                                                            _editorHorizontalScrollController,
+                                                      )
+                                                    : Container(
+                                                        color: _editorConfigService
+                                                                    .themeService
+                                                                    .currentTheme !=
+                                                                null
+                                                            ? _editorConfigService
+                                                                .themeService
+                                                                .currentTheme!
+                                                                .background
+                                                            : Colors.white),
+                                              )
+                                            ],
+                                          ),
+                                        ),
+                                      )
+                                    ],
                                   ),
-                                )
+                                ),
                               ],
                             ),
                           ),
+                          StatusBar(
+                            editorConfigService: _editorConfigService,
+                          ),
                         ],
                       ),
-                    ),
-                    StatusBar(
-                      editorConfigService: _editorConfigService,
-                    ),
-                  ],
+                    );
+                  },
                 ),
-              );
-            },
-          ),
-        ));
+              ));
+        });
   }
 }

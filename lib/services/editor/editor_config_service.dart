@@ -19,9 +19,13 @@ class EditorConfigService extends ChangeNotifier {
     'theme': 'default-dark',
   };
 
-  EditorConfigService() : themeService = EditorThemeService() {
-    _loadConfig();
-    saveDefaultConfig();
+  EditorConfigService._() : themeService = EditorThemeService();
+
+  static Future<EditorConfigService> create() async {
+    final service = EditorConfigService._();
+    await service._loadConfig();
+    await service.saveDefaultConfig();
+    return service;
   }
 
   Future<void> _loadConfig() async {

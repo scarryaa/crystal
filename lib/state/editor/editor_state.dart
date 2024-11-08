@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/buffer.dart';
@@ -247,6 +249,7 @@ class EditorState extends ChangeNotifier {
           editorLayoutService.config.lineHeight =
               editorConfigService.config.fontSize *
                   editorLayoutService.config.lineHeightMultiplier;
+          editorConfigService.saveConfig();
           notifyListeners();
           return true;
         }
@@ -258,6 +261,7 @@ class EditorState extends ChangeNotifier {
                 editorConfigService.config.fontSize *
                     editorLayoutService.config.lineHeightMultiplier;
 
+            editorConfigService.saveConfig();
             notifyListeners();
           }
           return true;

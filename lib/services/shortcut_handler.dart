@@ -63,6 +63,7 @@ class ShortcutHandler {
       }
     }
 
-    return KeyEventResult.ignored;
+    // Ignore other keys
+    return KeyEventResult.handled;
   }
 }
