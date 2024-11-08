@@ -4,13 +4,13 @@ import 'dart:math' as math;
 import 'package:crystal/models/editor/config/config_paths.dart';
 import 'package:crystal/models/editor/search_match.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
+import 'package:crystal/services/editor/editor_input_handler.dart';
 import 'package:crystal/services/editor/editor_keyboard_handler.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/state/editor/editor_syntax_highlighter.dart';
 import 'package:crystal/widgets/editor/editor_painter.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 class EditorView extends StatefulWidget {
   final EditorConfigService editorConfigService;
@@ -48,6 +48,7 @@ class _EditorViewState extends State<EditorView> {
   final FocusNode _focusNode = FocusNode();
   double _cachedMaxLineWidth = 0;
   Timer? _caretTimer;
+  late final EditorInputHandler editorInputHandler;
   late final EditorSyntaxHighlighter editorSyntaxHighlighter;
   late final EditorKeyboardHandler editorKeyboardHandler;
   EditorPainter? editorPainter;
@@ -55,6 +56,9 @@ class _EditorViewState extends State<EditorView> {
   @override
   void initState() {
     super.initState();
+    editorInputHandler = EditorInputHandler(
+        resetCaretBlink: _resetCaretBlink, requestFocus: requestFocus);
+
     editorKeyboardHandler = EditorKeyboardHandler(
         onSearchTermChanged: widget.onSearchTermChanged,
         updateCachedMaxLineWidth: _updateCachedMaxLineWidth,
@@ -149,9 +153,24 @@ class _EditorViewState extends State<EditorView> {
           onKeyEvent: _handleKeyEvent,
           autofocus: true,
           child: GestureDetector(
-              onTapDown: _handleTap,
-              onPanStart: _handleDragStart,
-              onPanUpdate: _handleDragUpdate,
+              onTapDown: (details) => editorInputHandler.handleTap(
+                  details,
+                  widget.verticalScrollController.offset,
+                  widget.horizontalScrollController.offset,
+                  editorPainter,
+                  widget.state),
+              onPanStart: (details) => editorInputHandler.handleDragStart(
+                  details,
+                  widget.verticalScrollController.offset,
+                  widget.horizontalScrollController.offset,
+                  editorPainter,
+                  widget.state),
+              onPanUpdate: (details) => editorInputHandler.handleDragUpdate(
+                  details,
+                  widget.verticalScrollController.offset,
+                  widget.horizontalScrollController.offset,
+                  editorPainter,
+                  widget.state),
               child: ScrollbarTheme(
                   data: ScrollbarThemeData(
                     thumbColor: WidgetStateProperty.all(
@@ -191,46 +210,12 @@ class _EditorViewState extends State<EditorView> {
         ));
   }
 
-  void _handleTap(TapDownDetails details) {
+  void requestFocus() {
     _focusNode.requestFocus();
-
-    if (editorPainter == null) return;
-
-    bool isAltPressed = HardwareKeyboard.instance.isAltPressed;
-
-    final localY =
-        details.localPosition.dy + widget.verticalScrollController.offset;
-    final localX =
-        details.localPosition.dx + widget.horizontalScrollController.offset;
-    widget.state.handleTap(
-        localY, localX, editorPainter!.measureLineWidth, isAltPressed);
-    _resetCaretBlink();
-  }
-
-  void _handleDragStart(DragStartDetails details) {
-    if (editorPainter == null) return;
-
-    bool isAltPressed = HardwareKeyboard.instance.isAltPressed;
-
-    widget.state.handleDragStart(
-        details.localPosition.dy + widget.verticalScrollController.offset,
-        details.localPosition.dx + widget.horizontalScrollController.offset,
-        editorPainter!.measureLineWidth,
-        isAltPressed);
-  }
-
-  void _handleDragUpdate(DragUpdateDetails details) {
-    if (editorPainter == null) return;
-
-    widget.state.handleDragUpdate(
-        details.localPosition.dy + widget.verticalScrollController.offset,
-        details.localPosition.dx,
-        editorPainter!.measureLineWidth);
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     _resetCaretBlink();
-
     return editorKeyboardHandler.handleKeyEvent(node, event);
   }
 
