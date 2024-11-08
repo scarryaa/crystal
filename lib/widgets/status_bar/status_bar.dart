@@ -108,7 +108,7 @@ class _StatusBarState extends State<StatusBar> {
                                     .isFileExplorerVisible
                                 ? Icons.folder
                                 : Icons.folder_open,
-                            size: 16,
+                            size: widget.editorConfigService.config.uiFontSize,
                             color: themeColor,
                           ),
                           const SizedBox(width: 4),

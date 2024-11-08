@@ -61,7 +61,7 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
     return Column(children: [
       Container(
           padding: const EdgeInsets.symmetric(horizontal: 8.0),
-          height: 36,
+          height: widget.editorConfigService.config.uiFontSize * 3.0,
           decoration: BoxDecoration(
             color: widget.editorConfigService.themeService.currentTheme != null
                 ? widget
@@ -116,8 +116,8 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
             child: GestureDetector(
               onTap: () => onChanged(!value),
               child: Container(
-                height: 24,
-                width: 28,
+                height: widget.editorConfigService.config.uiFontSize * 1.5,
+                width: widget.editorConfigService.config.uiFontSize * 1.5,
                 decoration: BoxDecoration(
                   color: value
                       ? widget.editorConfigService.themeService.currentTheme!
@@ -154,8 +154,8 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
       child: GestureDetector(
         onTap: onPress,
         child: Container(
-          height: 24,
-          width: 24,
+          height: widget.editorConfigService.config.uiFontSize * 2,
+          width: widget.editorConfigService.config.uiFontSize * 2,
           decoration: BoxDecoration(
             color: (hovered != null && hovered)
                 ? widget.editorConfigService.themeService.currentTheme!
@@ -204,7 +204,7 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
   Widget _buildSearchPane() {
     return Container(
       padding: const EdgeInsets.fromLTRB(8.0, 0.0, 8.0, 4.0),
-      height: 36,
+      height: widget.editorConfigService.config.uiFontSize * 2,
       decoration: BoxDecoration(
         color: widget.editorConfigService.themeService.currentTheme!.background,
         border: Border(
@@ -220,7 +220,9 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
         child: Row(children: [
           Row(children: [
             ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 450),
+              constraints: BoxConstraints(
+                  maxWidth:
+                      widget.editorConfigService.config.uiFontSize * 30.0),
               child: TextField(
                 controller: _searchController,
                 onChanged: widget.searchTermChanged,
@@ -292,7 +294,7 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
           _buildToggleButton(
               Icon(
                 Icons.arrow_left,
-                size: widget.editorConfigService.config.uiFontSize,
+                size: widget.editorConfigService.config.uiFontSize * 1.25,
                 color:
                     widget.editorConfigService.themeService.currentTheme!.text,
               ),
@@ -302,7 +304,7 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
               widget.previousSearchTerm),
           _buildToggleButton(
               Icon(
-                size: widget.editorConfigService.config.uiFontSize,
+                size: widget.editorConfigService.config.uiFontSize * 1.25,
                 Icons.arrow_right,
                 color:
                     widget.editorConfigService.themeService.currentTheme!.text,
@@ -333,7 +335,7 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
   Widget _buildReplacePane() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8.0),
-      height: 36,
+      height: widget.editorConfigService.config.uiFontSize * 2.0,
       decoration: BoxDecoration(
         color: widget.editorConfigService.themeService.currentTheme!.background,
         border: Border(
@@ -346,7 +348,8 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
         Align(
           alignment: Alignment.centerLeft,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 450),
+            constraints: BoxConstraints(
+                maxWidth: widget.editorConfigService.config.uiFontSize * 30.0),
             child: TextField(
               controller: _replaceController,
               decoration: InputDecoration(

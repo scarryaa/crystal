@@ -32,11 +32,12 @@ class _FileExplorerState extends State<FileExplorer> {
   late Future<List<FileSystemEntity>> _filesFuture;
   Map<String, bool> expandedDirs = {};
   String? currentDirectory;
-  double width = 170;
+  double width = 150;
 
   @override
   void initState() {
     super.initState();
+    width = widget.editorConfigService.config.uiFontSize * 11.0;
     if (widget.rootDir.isNotEmpty) {
       _filesFuture = _enumerateFiles(widget.rootDir);
     } else {
@@ -221,6 +222,10 @@ class _FileExplorerState extends State<FileExplorer> {
     return ListenableBuilder(
         listenable: widget.editorConfigService,
         builder: (context, child) {
+          width = width.clamp(
+              widget.editorConfigService.config.uiFontSize * 11.0,
+              MediaQuery.of(context).size.width - 200);
+
           return Align(
             alignment: Alignment.topLeft,
             child: Row(
@@ -363,7 +368,8 @@ class _FileExplorerState extends State<FileExplorer> {
                     onHorizontalDragUpdate: (details) {
                       setState(() {
                         width = (width + details.delta.dx).clamp(
-                            170.0, MediaQuery.of(context).size.width - 200);
+                            widget.editorConfigService.config.uiFontSize * 11.0,
+                            MediaQuery.of(context).size.width - 200);
                       });
                     },
                     child: Container(

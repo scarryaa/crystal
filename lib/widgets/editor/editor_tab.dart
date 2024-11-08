@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 class EditorTab extends StatelessWidget {
   static const double _kSpacing = 8.0;
   static const double _kHorizontalPadding = 16.0;
-  static const double _kStatusIndicatorSize = 8.0;
 
   final EditorState editor;
   final bool isActive;
@@ -81,8 +80,9 @@ class EditorTab extends StatelessWidget {
 
   Widget _buildStatusIndicator() {
     if (!editor.buffer.isDirty) {
-      return const SizedBox(
-          width: _kStatusIndicatorSize, height: _kStatusIndicatorSize);
+      return SizedBox(
+          width: editorConfigService.config.uiFontSize / 2,
+          height: editorConfigService.config.uiFontSize / 2);
     }
 
     final theme = editorConfigService.themeService.currentTheme;
@@ -91,8 +91,8 @@ class EditorTab extends StatelessWidget {
         : theme?.text ?? Colors.black54;
 
     return Container(
-      width: _kStatusIndicatorSize,
-      height: _kStatusIndicatorSize,
+      width: editorConfigService.config.uiFontSize / 2,
+      height: editorConfigService.config.uiFontSize / 2,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: color,
