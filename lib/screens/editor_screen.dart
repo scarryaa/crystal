@@ -16,7 +16,6 @@ import 'package:crystal/widgets/file_explorer/file_explorer.dart';
 import 'package:crystal/widgets/gutter/gutter.dart';
 import 'package:crystal/widgets/status_bar/status_bar.dart';
 import 'package:flutter/material.dart';
-import 'package:path/path.dart';
 import 'package:provider/provider.dart';
 
 class EditorScreen extends StatefulWidget {

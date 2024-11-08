@@ -58,7 +58,7 @@ class EditorInputHandler {
 
     state.handleDragUpdate(
         details.localPosition.dy + verticalScrollControllerOffset,
-        details.localPosition.dx,
+        details.localPosition.dx + horizontalScrollControllerOffset,
         editorPainter.measureLineWidth);
   }
 }
