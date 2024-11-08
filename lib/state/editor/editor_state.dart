@@ -185,9 +185,6 @@ class EditorState extends ChangeNotifier {
     } else {
       // Insert tab at cursor position
       insertChar('    ');
-      for (int i = 0; i < 3; i++) {
-        editorCursorManager.moveRight(buffer);
-      }
     }
 
     _buffer.incrementVersion();
