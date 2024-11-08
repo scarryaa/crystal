@@ -7,6 +7,7 @@ class EditorKeyboardHandler {
   VoidCallback updateCachedMaxLineWidth;
   VoidCallback scrollToCursor;
   VoidCallback openConfig;
+  VoidCallback openDefaultConfig;
 
   EditorState state;
   String searchTerm;
@@ -16,6 +17,7 @@ class EditorKeyboardHandler {
     required this.updateCachedMaxLineWidth,
     required this.scrollToCursor,
     required this.openConfig,
+    required this.openDefaultConfig,
     required this.state,
     required this.searchTerm,
   });
@@ -70,6 +72,11 @@ class EditorKeyboardHandler {
         case LogicalKeyboardKey.comma:
           if (isControlPressed) {
             openConfig();
+            return KeyEventResult.handled;
+          }
+        case LogicalKeyboardKey.less:
+          if (isControlPressed) {
+            openDefaultConfig();
             return KeyEventResult.handled;
           }
       }

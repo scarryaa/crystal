@@ -27,4 +27,9 @@ class ConfigPaths {
     await Directory(configDir).create(recursive: true);
     return path.join(configDir, 'editor_config.json');
   }
+
+  static Future<String> getDefaultConfigFilePath() async {
+    final configDir = await getConfigDir();
+    return path.join(configDir, 'editor_default_config.json');
+  }
 }

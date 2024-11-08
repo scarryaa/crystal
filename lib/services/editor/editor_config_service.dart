@@ -5,57 +5,79 @@ import 'package:crystal/models/editor/config/config_paths.dart';
 import 'package:crystal/models/editor/config/editor_config.dart';
 import 'package:crystal/services/editor/editor_theme_service.dart';
 import 'package:flutter/material.dart';
+import 'package:logging/logging.dart';
 
 class EditorConfigService extends ChangeNotifier {
   final EditorThemeService themeService;
   late final EditorConfig config;
+  final _logger = Logger('EditorConfigService');
+
+  static const Map<String, dynamic> _defaultConfig = {
+    'fontSize': 14.0,
+    'fontFamily': 'IBM Plex Mono',
+    'whitespaceIndicatorRadius': 1.0,
+    'theme': 'default-dark',
+  };
 
   EditorConfigService() : themeService = EditorThemeService() {
     _loadConfig();
+    saveDefaultConfig();
   }
 
   Future<void> _loadConfig() async {
     try {
-      final configPath = await ConfigPaths.getConfigFilePath();
-      final configFile = File(configPath);
-
-      if (await configFile.exists()) {
-        // Load from existing config file
-        final jsonString = await configFile.readAsString();
-        final configData = json.decode(jsonString);
-
-        config = EditorConfig(
-          fontSize: configData['fontSize']?.toDouble() ?? 14.0,
-          fontFamily: configData['fontFamily'] ?? 'IBM Plex Mono',
-          whitespaceIndicatorRadius:
-              configData['whitespaceIndicatorRadius']?.toDouble() ?? 1.0,
-        );
-
-        await themeService
-            .loadThemeFromJson(configData['theme'] ?? 'default-dark');
-      } else {
-        // Create default config
-        config = EditorConfig(
-          fontSize: 14.0,
-          fontFamily: 'IBM Plex Mono',
-          whitespaceIndicatorRadius: 1.0,
-        );
-
-        await themeService.loadThemeFromJson('default-dark');
-
-        // Save default config
-        await saveConfig();
-      }
+      final configFile = File(await ConfigPaths.getConfigFilePath());
+      config = await _loadConfigFromFile(configFile);
+      await _loadTheme();
     } catch (e) {
-      print('Error loading config: $e');
-      // Fallback to defaults
-      config = EditorConfig(
-        fontSize: 14.0,
-        fontFamily: 'IBM Plex Mono',
-        whitespaceIndicatorRadius: 1.0,
-      );
-      await themeService.loadThemeFromJson('default-dark');
+      _logger.warning('Error loading config: $e');
+      await _setDefaultConfig();
     }
+  }
+
+  Future<EditorConfig> _loadConfigFromFile(File configFile) async {
+    if (!await configFile.exists()) {
+      return _createDefaultConfig();
+    }
+
+    final jsonString = await configFile.readAsString();
+    final Map<String, dynamic> configData = json.decode(jsonString);
+
+    return EditorConfig(
+      fontSize: (configData['fontSize'] as num?)?.toDouble() ??
+          _defaultConfig['fontSize'] as double,
+      fontFamily: configData['fontFamily'] as String? ??
+          _defaultConfig['fontFamily'] as String,
+      whitespaceIndicatorRadius:
+          (configData['whitespaceIndicatorRadius'] as num?)?.toDouble() ??
+              _defaultConfig['whitespaceIndicatorRadius'] as double,
+    );
+  }
+
+  Future<EditorConfig> _createDefaultConfig() async {
+    final defaultConfig = EditorConfig(
+      fontSize: _defaultConfig['fontSize'] as double,
+      fontFamily: _defaultConfig['fontFamily'] as String,
+      whitespaceIndicatorRadius:
+          _defaultConfig['whitespaceIndicatorRadius'] as double,
+    );
+    config = defaultConfig;
+    await saveConfig();
+    return defaultConfig;
+  }
+
+  Future<void> _loadTheme() async {
+    await themeService.loadThemeFromJson(_defaultConfig['theme'] as String);
+  }
+
+  Future<void> _setDefaultConfig() async {
+    config = EditorConfig(
+      fontSize: _defaultConfig['fontSize'] as double,
+      fontFamily: _defaultConfig['fontFamily'] as String,
+      whitespaceIndicatorRadius:
+          _defaultConfig['whitespaceIndicatorRadius'] as double,
+    );
+    await themeService.loadThemeFromJson(_defaultConfig['theme'] as String);
   }
 
   Future<void> saveConfig() async {
@@ -68,10 +90,18 @@ class EditorConfigService extends ChangeNotifier {
         'whitespaceIndicatorRadius': config.whitespaceIndicatorRadius,
       };
 
-      final file = File(configPath);
-      await file.writeAsString(json.encode(configData));
+      await File(configPath).writeAsString(json.encode(configData));
     } catch (e) {
-      print('Error saving config: $e');
+      _logger.warning('Error saving config: $e');
+    }
+  }
+
+  Future<void> saveDefaultConfig() async {
+    try {
+      final configPath = await ConfigPaths.getDefaultConfigFilePath();
+      await File(configPath).writeAsString(json.encode(_defaultConfig));
+    } catch (e) {
+      _logger.warning('Error saving default config: $e');
     }
   }
 }

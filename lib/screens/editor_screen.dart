@@ -7,6 +7,7 @@ import 'package:crystal/models/editor/search_match.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
+import 'package:crystal/services/shortcut_handler.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/widgets/editor/editor_control_bar_view.dart';
 import 'package:crystal/widgets/editor/editor_tab_bar.dart';
@@ -15,7 +16,6 @@ import 'package:crystal/widgets/file_explorer/file_explorer.dart';
 import 'package:crystal/widgets/gutter/gutter.dart';
 import 'package:crystal/widgets/status_bar/status_bar.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 class EditorScreen extends StatefulWidget {
@@ -37,6 +37,7 @@ class EditorScreen extends StatefulWidget {
 class _EditorScreenState extends State<EditorScreen> {
   late final EditorLayoutService _editorLayoutService;
   late final EditorConfigService _editorConfigService;
+  late final ShortcutHandler _shortcutHandler;
   final ScrollController _gutterScrollController = ScrollController();
   final ScrollController _editorVerticalScrollController = ScrollController();
   final ScrollController _editorHorizontalScrollController = ScrollController();
@@ -88,6 +89,11 @@ class _EditorScreenState extends State<EditorScreen> {
         horizontalPadding: widget.horizontalPadding,
         verticalPaddingLines: widget.verticalPaddingLines,
         lineHeightMultiplier: widget.lineHeightMultipler);
+    _shortcutHandler = ShortcutHandler(
+      openSettings: _openSettings,
+      openDefaultSettings: _openDefaultSettings,
+    );
+
     _editorVerticalScrollController.addListener(_handleEditorScroll);
     _gutterScrollController.addListener(_handleGutterScroll);
     _editorConfigService.themeService.addListener(_onThemeChanged);
@@ -329,7 +335,7 @@ class _EditorScreenState extends State<EditorScreen> {
       }
     } catch (e) {
       // Handle invalid regex pattern
-      print('Invalid regex pattern: $e');
+      debugPrint('Invalid regex pattern: $e');
       return [];
     }
 
@@ -477,24 +483,16 @@ class _EditorScreenState extends State<EditorScreen> {
     await tapCallback(await ConfigPaths.getConfigFilePath());
   }
 
+  Future<void> _openDefaultSettings() async {
+    await tapCallback(await ConfigPaths.getDefaultConfigFilePath());
+  }
+
   @override
   Widget build(BuildContext context) {
     return Focus(
         autofocus: true,
-        onKeyEvent: (node, event) {
-          if (event is KeyDownEvent) {
-            final bool isControlPressed = Platform.isMacOS
-                ? HardwareKeyboard.instance.isMetaPressed
-                : HardwareKeyboard.instance.isControlPressed;
-
-            if (isControlPressed &&
-                event.logicalKey == LogicalKeyboardKey.comma) {
-              _openSettings();
-              return KeyEventResult.handled;
-            }
-          }
-          return KeyEventResult.ignored;
-        },
+        onKeyEvent: (node, event) =>
+            _shortcutHandler.handleKeyEvent(node, event),
         child: ChangeNotifierProvider.value(
           value: activeEditor,
           child: Consumer<EditorState?>(

@@ -64,6 +64,7 @@ class _EditorViewState extends State<EditorView> {
         updateCachedMaxLineWidth: _updateCachedMaxLineWidth,
         scrollToCursor: widget.scrollToCursor,
         openConfig: _openConfig,
+        openDefaultConfig: _openDefaultConfig,
         state: widget.state,
         searchTerm: widget.searchTerm);
     editorSyntaxHighlighter = EditorSyntaxHighlighter(
@@ -222,5 +223,10 @@ class _EditorViewState extends State<EditorView> {
   Future<void> _openConfig() async {
     final configPath = await ConfigPaths.getConfigFilePath();
     await widget.state.tapCallback(configPath);
+  }
+
+  Future<void> _openDefaultConfig() async {
+    final defaultConfigPath = await ConfigPaths.getDefaultConfigFilePath();
+    await widget.state.tapCallback(defaultConfigPath);
   }
 }
