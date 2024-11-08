@@ -16,6 +16,7 @@ import 'package:crystal/widgets/file_explorer/file_explorer.dart';
 import 'package:crystal/widgets/gutter/gutter.dart';
 import 'package:crystal/widgets/status_bar/status_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart';
 import 'package:provider/provider.dart';
 
 class EditorScreen extends StatefulWidget {
@@ -35,6 +36,7 @@ class EditorScreen extends StatefulWidget {
 }
 
 class _EditorScreenState extends State<EditorScreen> {
+  final editorViewKey = GlobalKey<EditorViewState>();
   late final EditorLayoutService _editorLayoutService;
   late final EditorConfigService _editorConfigService;
   late final ShortcutHandler _shortcutHandler;
@@ -73,12 +75,20 @@ class _EditorScreenState extends State<EditorScreen> {
   Future<void> tapCallback(String path) async {
     final editorIndex = _editors.indexWhere((editor) => editor.path == path);
     if (editorIndex != -1) {
+      // Switching to existing tab
       setState(() {
         activeEditorIndex = editorIndex;
       });
-    } else {
-      String content = await File(path).readAsString();
 
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (editorViewKey.currentState != null) {
+          editorViewKey.currentState!.updateCachedMaxLineWidth();
+          setState(() {});
+        }
+      });
+    } else {
+      // Opening newb
+      String content = await File(path).readAsString();
       final newEditor = EditorState(
         editorConfigService: _editorConfigService,
         editorLayoutService: _editorLayoutService,
@@ -86,12 +96,19 @@ class _EditorScreenState extends State<EditorScreen> {
         path: path,
         tapCallback: tapCallback,
       );
+
       setState(() {
         _editors.add(newEditor);
         activeEditorIndex = _editors.length - 1;
-
         _editors[activeEditorIndex].openFile(content);
         _onSearchTermChanged(_searchTerm);
+      });
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (editorViewKey.currentState != null) {
+          editorViewKey.currentState!.updateCachedMaxLineWidth();
+          setState(() {});
+        }
       });
     }
   }
@@ -235,6 +252,13 @@ class _EditorScreenState extends State<EditorScreen> {
           .jumpTo(activeEditor!.scrollState.horizontalOffset);
       _onSearchTermChanged(_searchTerm);
     });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (editorViewKey.currentState != null) {
+        editorViewKey.currentState!.updateCachedMaxLineWidth();
+        setState(() {});
+      }
+    });
   }
 
   void onEditorClosed(int index) {
@@ -244,8 +268,16 @@ class _EditorScreenState extends State<EditorScreen> {
       }
 
       _editors.removeAt(index);
+
       if (activeEditorIndex >= _editors.length) {
         activeEditorIndex = _editors.length - 1;
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (editorViewKey.currentState != null) {
+        editorViewKey.currentState!.updateCachedMaxLineWidth();
+        setState(() {});
       }
     });
   }
@@ -639,6 +671,7 @@ class _EditorScreenState extends State<EditorScreen> {
                                               Expanded(
                                                 child: _editors.isNotEmpty
                                                     ? EditorView(
+                                                        key: editorViewKey,
                                                         editorConfigService:
                                                             _editorConfigService,
                                                         editorLayoutService:

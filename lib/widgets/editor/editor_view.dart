@@ -51,10 +51,10 @@ class EditorView extends StatefulWidget {
   });
 
   @override
-  State<StatefulWidget> createState() => _EditorViewState();
+  State<StatefulWidget> createState() => EditorViewState();
 }
 
-class _EditorViewState extends State<EditorView> {
+class EditorViewState extends State<EditorView> {
   final FocusNode _focusNode = FocusNode();
   bool _isFocused = false;
   double _cachedMaxLineWidth = 0;
@@ -63,6 +63,8 @@ class _EditorViewState extends State<EditorView> {
   late final EditorSyntaxHighlighter editorSyntaxHighlighter;
   late final EditorKeyboardHandler editorKeyboardHandler;
   EditorPainter? editorPainter;
+
+  double get cachedMaxLineWidth => _cachedMaxLineWidth;
 
   @override
   void initState() {
@@ -85,7 +87,7 @@ class _EditorViewState extends State<EditorView> {
 
     editorKeyboardHandler = EditorKeyboardHandler(
       onSearchTermChanged: widget.onSearchTermChanged,
-      updateCachedMaxLineWidth: _updateCachedMaxLineWidth,
+      updateCachedMaxLineWidth: updateCachedMaxLineWidth,
       scrollToCursor: widget.scrollToCursor,
       openConfig: _openConfig,
       openDefaultConfig: _openDefaultConfig,
@@ -101,7 +103,7 @@ class _EditorViewState extends State<EditorView> {
     editorSyntaxHighlighter = EditorSyntaxHighlighter(
         editorConfigService: widget.editorConfigService,
         editorLayoutService: widget.editorLayoutService);
-    _updateCachedMaxLineWidth();
+    updateCachedMaxLineWidth();
     _startCaretBlinking();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -140,7 +142,7 @@ class _EditorViewState extends State<EditorView> {
     }
   }
 
-  void _updateCachedMaxLineWidth() {
+  void updateCachedMaxLineWidth() {
     _cachedMaxLineWidth = _maxLineWidth();
   }
 
