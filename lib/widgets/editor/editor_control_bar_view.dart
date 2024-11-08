@@ -46,6 +46,8 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
   bool _isReplaceActive = false;
   bool _searchHovered = false;
   bool _replaceHovered = false;
+  bool _replaceNextHovered = false;
+  bool _replaceAllHovered = false;
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _replaceController = TextEditingController();
 
@@ -84,7 +86,7 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
             _buildSearchToggle(),
           ])),
       if (_isSearchActive) _buildSearchPane(),
-      if (_isReplaceActive) _buildReplacePane(),
+      if (_isSearchActive && _isReplaceActive) _buildReplacePane(),
     ]);
   }
 
@@ -115,16 +117,24 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
             message: tooltip,
             child: GestureDetector(
               onTap: () => onChanged(!value),
-              child: Container(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
                 height: widget.editorConfigService.config.uiFontSize * 1.5,
                 width: widget.editorConfigService.config.uiFontSize * 1.5,
                 decoration: BoxDecoration(
                   color: value
                       ? widget.editorConfigService.themeService.currentTheme!
                           .primary
-                          .withOpacity(0.1)
+                          .withOpacity(0.2)
                       : Colors.transparent,
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                    color: value
+                        ? widget.editorConfigService.themeService.currentTheme!
+                            .primary
+                            .withOpacity(0.3)
+                        : Colors.transparent,
+                  ),
                 ),
                 child: Center(
                   child: DefaultTextStyle(
@@ -151,17 +161,26 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
     return MouseRegion(
       onEnter: onEnter,
       onExit: onExit,
+      cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: onPress,
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
           height: widget.editorConfigService.config.uiFontSize * 2,
           width: widget.editorConfigService.config.uiFontSize * 2,
           decoration: BoxDecoration(
             color: (hovered != null && hovered)
                 ? widget.editorConfigService.themeService.currentTheme!
                     .backgroundLight
+                    .withOpacity(0.2)
                 : Colors.transparent,
-            borderRadius: const BorderRadius.all(Radius.circular(4)),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color: (hovered != null && hovered)
+                  ? widget.editorConfigService.themeService.currentTheme!.border
+                      .withOpacity(0.3)
+                  : Colors.transparent,
+            ),
           ),
           child: Center(child: icon),
         ),
@@ -180,8 +199,13 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
       ),
       (_) => setState(() => _searchHovered = true),
       (_) => setState(() => _searchHovered = false),
-      _searchHovered,
-      () => setState(() => _isSearchActive = !_isSearchActive),
+      _searchHovered || _isSearchActive,
+      () => setState(() {
+        _isSearchActive = !_isSearchActive;
+        if (!_isSearchActive) {
+          _isReplaceActive = false;
+        }
+      }),
     );
   }
 
@@ -196,14 +220,37 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
       ),
       (_) => setState(() => _replaceHovered = true),
       (_) => setState(() => _replaceHovered = false),
-      _replaceHovered,
+      _replaceHovered || _isReplaceActive,
       () => setState(() => _isReplaceActive = !_isReplaceActive),
+    );
+  }
+
+  Widget _buildReplaceActionButton({
+    required String text,
+    required VoidCallback onPressed,
+    bool? hovered,
+    Function(dynamic)? onEnter,
+    Function(dynamic)? onExit,
+  }) {
+    return _buildToggleButton(
+      Text(
+        text,
+        style: TextStyle(
+          fontSize: widget.editorConfigService.config.uiFontSize,
+          fontWeight: FontWeight.w500,
+          color: widget.editorConfigService.themeService.currentTheme!.text,
+        ),
+      ),
+      onEnter,
+      onExit,
+      hovered,
+      onPressed,
     );
   }
 
   Widget _buildSearchPane() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(8.0, 0.0, 8.0, 4.0),
+      padding: const EdgeInsets.fromLTRB(6.0, 0.0, 6.0, 4.0),
       height: widget.editorConfigService.config.uiFontSize * 2,
       decoration: BoxDecoration(
         color: widget.editorConfigService.themeService.currentTheme!.background,
@@ -334,7 +381,7 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
 
   Widget _buildReplacePane() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+      padding: const EdgeInsets.fromLTRB(6.0, 0.0, 6.0, 5.0),
       height: widget.editorConfigService.config.uiFontSize * 2.0,
       decoration: BoxDecoration(
         color: widget.editorConfigService.themeService.currentTheme!.background,
@@ -385,33 +432,21 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
           ),
         ),
         const SizedBox(width: 8),
-        _buildToggleButton(
-          Text(
-            '1↓',
-            style: TextStyle(
-              fontSize: widget.editorConfigService.config.uiFontSize,
-              fontWeight: FontWeight.w500,
-              color: widget.editorConfigService.themeService.currentTheme!.text,
-            ),
-          ),
-          null,
-          null,
-          null,
-          () => widget.replaceNextMatch(_replaceController.value.text),
+        _buildReplaceActionButton(
+          text: '1↓',
+          onPressed: () =>
+              widget.replaceNextMatch(_replaceController.value.text),
+          hovered: _replaceNextHovered,
+          onEnter: (_) => setState(() => _replaceNextHovered = true),
+          onExit: (_) => setState(() => _replaceNextHovered = false),
         ),
-        _buildToggleButton(
-          Text(
-            'all',
-            style: TextStyle(
-              fontSize: widget.editorConfigService.config.uiFontSize,
-              fontWeight: FontWeight.w500,
-              color: widget.editorConfigService.themeService.currentTheme!.text,
-            ),
-          ),
-          null,
-          null,
-          null,
-          () => widget.replaceAllMatches(_replaceController.value.text),
+        _buildReplaceActionButton(
+          text: 'all',
+          onPressed: () =>
+              widget.replaceAllMatches(_replaceController.value.text),
+          hovered: _replaceAllHovered,
+          onEnter: (_) => setState(() => _replaceAllHovered = true),
+          onExit: (_) => setState(() => _replaceAllHovered = false),
         ),
       ]),
     );
