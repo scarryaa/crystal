@@ -4,6 +4,8 @@ class FileExplorerActionBar extends StatelessWidget {
   final VoidCallback? onCollapseAll;
   final VoidCallback? onExpandAll;
   final VoidCallback? onRefresh;
+  final VoidCallback? onNewFile;
+  final VoidCallback? onNewFolder;
   final Color textColor;
 
   const FileExplorerActionBar({
@@ -12,29 +14,49 @@ class FileExplorerActionBar extends StatelessWidget {
     this.onCollapseAll,
     this.onExpandAll,
     this.onRefresh,
+    this.onNewFile,
+    this.onNewFolder,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        _buildActionButton(
-          icon: Icons.unfold_less,
-          tooltip: 'Collapse All',
-          onPressed: onCollapseAll,
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: textColor.withOpacity(0.1),
+          ),
         ),
-        _buildActionButton(
-          icon: Icons.unfold_more,
-          tooltip: 'Expand All',
-          onPressed: onExpandAll,
-        ),
-        _buildActionButton(
-          icon: Icons.refresh,
-          tooltip: 'Refresh',
-          onPressed: onRefresh,
-        ),
-      ],
+      ),
+      child: Row(
+        children: [
+          _buildActionButton(
+            icon: Icons.note_add,
+            tooltip: 'New File',
+            onPressed: onNewFile,
+          ),
+          _buildActionButton(
+            icon: Icons.create_new_folder,
+            tooltip: 'New Folder',
+            onPressed: onNewFolder,
+          ),
+          _buildActionButton(
+            icon: Icons.unfold_less,
+            tooltip: 'Collapse All',
+            onPressed: onCollapseAll,
+          ),
+          _buildActionButton(
+            icon: Icons.unfold_more,
+            tooltip: 'Expand All',
+            onPressed: onExpandAll,
+          ),
+          _buildActionButton(
+            icon: Icons.refresh,
+            tooltip: 'Refresh',
+            onPressed: onRefresh,
+          ),
+        ],
+      ),
     );
   }
 

@@ -7,13 +7,15 @@ class AppLayout extends StatelessWidget {
   final EditorConfigService editorConfigService;
   final Function(String)? onDirectoryChanged;
   final Function()? onDirectoryRefresh;
+  final String? currentDirectory;
 
   const AppLayout({
     super.key,
     required this.child,
     required this.editorConfigService,
-    this.onDirectoryChanged,
-    this.onDirectoryRefresh,
+    required this.currentDirectory,
+    required this.onDirectoryChanged,
+    required this.onDirectoryRefresh,
   });
 
   @override
@@ -25,6 +27,7 @@ class AppLayout extends StatelessWidget {
             editorConfigService: editorConfigService,
             onDirectoryChanged: onDirectoryChanged,
             onDirectoryRefresh: onDirectoryRefresh,
+            currentDirectory: currentDirectory,
           ),
           Expanded(child: child),
         ],

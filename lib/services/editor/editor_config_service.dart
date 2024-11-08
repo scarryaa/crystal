@@ -20,6 +20,7 @@ class EditorConfigService extends ChangeNotifier {
     'whitespaceIndicatorRadius': 1.0,
     'theme': 'default-dark',
     'isFileExplorerVisible': true,
+    'currentDirectory': '',
   };
 
   EditorConfigService._() : themeService = EditorThemeService();
@@ -65,6 +66,8 @@ class EditorConfigService extends ChangeNotifier {
                 _defaultConfig['whitespaceIndicatorRadius'] as double,
         isFileExplorerVisible: configData['isFileExplorerVisible'] as bool? ??
             _defaultConfig['isFileExplorerVisible'] as bool,
+        currentDirectory: configData['currentDirectory'] as String? ??
+            _defaultConfig['currentDirectory'] as String,
       );
     } catch (e) {
       _logger.warning('Error parsing config file: $e');
@@ -100,6 +103,7 @@ class EditorConfigService extends ChangeNotifier {
         'theme': themeService.currentTheme!.name,
         'whitespaceIndicatorRadius': config.whitespaceIndicatorRadius,
         'isFileExplorerVisible': config.isFileExplorerVisible,
+        'currentDirectory': config.currentDirectory,
       };
 
       await File(configPath).writeAsString(json.encode(configData));

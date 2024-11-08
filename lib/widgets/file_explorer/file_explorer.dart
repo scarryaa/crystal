@@ -3,18 +3,23 @@ import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/widgets/file_explorer/file_explorer_action_bar.dart';
 import 'package:crystal/widgets/file_explorer/file_item.dart';
 import 'package:crystal/widgets/file_explorer/indent_painter.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 class FileExplorer extends StatefulWidget {
   final String rootDir;
   final Function(String path) tapCallback;
   final EditorConfigService editorConfigService;
+  final Function(String)? onDirectoryChanged;
+  final Function()? onDirectoryRefresh;
 
   const FileExplorer({
     super.key,
     required this.rootDir,
     required this.tapCallback,
     required this.editorConfigService,
+    required this.onDirectoryChanged,
+    required this.onDirectoryRefresh,
   });
 
   @override
@@ -26,12 +31,17 @@ class _FileExplorerState extends State<FileExplorer> {
   final ScrollController _horizontalController = ScrollController();
   late Future<List<FileSystemEntity>> _filesFuture;
   Map<String, bool> expandedDirs = {};
-  double width = 150;
+  String? currentDirectory;
+  double width = 170;
 
   @override
   void initState() {
     super.initState();
-    _filesFuture = _enumerateFiles(widget.rootDir);
+    if (widget.rootDir.isNotEmpty) {
+      _filesFuture = _enumerateFiles(widget.rootDir);
+    } else {
+      _filesFuture = Future.value(<FileSystemEntity>[]);
+    }
   }
 
   @override
@@ -66,6 +76,84 @@ class _FileExplorerState extends State<FileExplorer> {
         final subEntities = await _enumerateFiles(entity.path);
         await _expandAllRecursively(subEntities);
       }
+    }
+  }
+
+  Future<void> _createNewFolder() async {
+    final controller = TextEditingController();
+
+    final folderName = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create New Folder'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'Folder Name',
+            hintText: 'Enter folder name',
+          ),
+          onSubmitted: (value) => Navigator.pop(context, value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+
+    controller.dispose();
+
+    if (folderName != null && folderName.isNotEmpty) {
+      final newDir = Directory('${widget.rootDir}/$folderName');
+      await newDir.create();
+      setState(() {
+        _filesFuture = _enumerateFiles(widget.rootDir);
+      });
+    }
+  }
+
+  Future<void> _createNewFile() async {
+    final controller = TextEditingController();
+
+    final fileName = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create New File'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'File Name',
+            hintText: 'Enter file name',
+          ),
+          onSubmitted: (value) => Navigator.pop(context, value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+
+    controller.dispose();
+
+    if (fileName != null && fileName.isNotEmpty) {
+      final newFile = File('${widget.rootDir}/$fileName');
+      await newFile.create();
+      setState(() {
+        _filesFuture = _enumerateFiles(widget.rootDir);
+      });
     }
   }
 
@@ -134,121 +222,133 @@ class _FileExplorerState extends State<FileExplorer> {
       child: Row(
         children: [
           Container(
-            decoration: BoxDecoration(
-                border: Border(
-                    right: BorderSide(
-                        color: widget.editorConfigService.themeService
-                                    .currentTheme !=
-                                null
-                            ? widget.editorConfigService.themeService
-                                .currentTheme!.border
-                            : Colors.grey[400]!))),
-            child: Container(
-              color:
-                  widget.editorConfigService.themeService.currentTheme != null
-                      ? widget.editorConfigService.themeService.currentTheme!
-                          .background
-                      : Colors.white,
-              height: double.infinity,
-              width: width,
-              child: FutureBuilder<List<FileSystemEntity>>(
-                future: _filesFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: CircularProgressIndicator(),
-                    );
-                  } else if (snapshot.hasError) {
-                    return Center(
+            color: widget.editorConfigService.themeService.currentTheme != null
+                ? widget
+                    .editorConfigService.themeService.currentTheme!.background
+                : Colors.white,
+            height: double.infinity,
+            width: width,
+            child: FutureBuilder<List<FileSystemEntity>>(
+              future: _filesFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
+                } else if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Error: ${snapshot.error}',
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  );
+                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return Center(
+                    child: TextButton(
+                      onPressed: () async {
+                        String? selectedDirectory =
+                            await FilePicker.platform.getDirectoryPath();
+
+                        if (selectedDirectory != null) {
+                          setState(() {
+                            Directory.current = selectedDirectory;
+                            currentDirectory = selectedDirectory;
+                          });
+
+                          if (widget.onDirectoryChanged != null) {
+                            widget.onDirectoryChanged!(selectedDirectory);
+                          }
+
+                          if (widget.onDirectoryRefresh != null) {
+                            widget.onDirectoryRefresh!();
+                          }
+                        }
+                      },
                       child: Text(
-                        'Error: ${snapshot.error}',
-                        style: const TextStyle(color: Colors.red),
-                      ),
-                    );
-                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return const Center(
-                      child: Text(
-                        'No files found',
+                        'Select a Directory',
                         style: TextStyle(
-                          color: Colors.grey,
                           fontSize: 14,
+                          color: widget.editorConfigService.themeService
+                                  .currentTheme?.text ??
+                              Colors.grey,
                         ),
                       ),
-                    );
-                  }
+                    ),
+                  );
+                }
 
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      FileExplorerActionBar(
-                        textColor: widget.editorConfigService.themeService
-                                    .currentTheme !=
-                                null
-                            ? widget.editorConfigService.themeService
-                                .currentTheme!.text
-                            : Colors.black,
-                        onRefresh: () {
-                          setState(() {
-                            _filesFuture = _enumerateFiles(widget.rootDir);
-                          });
-                        },
-                        onExpandAll: () async {
-                          await _expandAllRecursively(snapshot.data!);
-                          setState(() {});
-                        },
-                        onCollapseAll: () {
-                          setState(() {
-                            expandedDirs.clear();
-                          });
-                        },
-                      ),
-                      Expanded(
-                        child: ScrollbarTheme(
-                          data: ScrollbarThemeData(
-                            thickness: WidgetStateProperty.all(8.0),
-                            radius: const Radius.circular(0),
-                            thumbColor: WidgetStateProperty.all(widget
-                                        .editorConfigService
-                                        .themeService
-                                        .currentTheme !=
-                                    null
-                                ? widget.editorConfigService.themeService
-                                    .currentTheme!.border
-                                    .withOpacity(0.65)
-                                : Colors.grey[400]!.withOpacity(0.65)),
-                          ),
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    FileExplorerActionBar(
+                      textColor: widget.editorConfigService.themeService
+                                  .currentTheme !=
+                              null
+                          ? widget.editorConfigService.themeService
+                              .currentTheme!.text
+                          : Colors.black,
+                      onRefresh: () {
+                        setState(() {
+                          _filesFuture = _enumerateFiles(widget.rootDir);
+                        });
+                      },
+                      onExpandAll: () async {
+                        await _expandAllRecursively(snapshot.data!);
+                        setState(() {});
+                      },
+                      onCollapseAll: () {
+                        setState(() {
+                          expandedDirs.clear();
+                        });
+                      },
+                      onNewFile: _createNewFile,
+                      onNewFolder: _createNewFolder,
+                    ),
+                    Expanded(
+                      child: ScrollbarTheme(
+                        data: ScrollbarThemeData(
+                          thickness: WidgetStateProperty.all(8.0),
+                          radius: const Radius.circular(0),
+                          thumbColor: WidgetStateProperty.all(widget
+                                      .editorConfigService
+                                      .themeService
+                                      .currentTheme !=
+                                  null
+                              ? widget.editorConfigService.themeService
+                                  .currentTheme!.border
+                                  .withOpacity(0.65)
+                              : Colors.grey[400]!.withOpacity(0.65)),
+                        ),
+                        child: Scrollbar(
+                          controller: _horizontalController,
+                          thickness: 8,
+                          notificationPredicate: (notification) =>
+                              notification.depth == 1,
                           child: Scrollbar(
-                            controller: _horizontalController,
+                            controller: _verticalController,
                             thickness: 8,
-                            notificationPredicate: (notification) =>
-                                notification.depth == 1,
-                            child: Scrollbar(
+                            child: SingleChildScrollView(
                               controller: _verticalController,
-                              thickness: 8,
                               child: SingleChildScrollView(
-                                controller: _verticalController,
-                                child: SingleChildScrollView(
-                                  controller: _horizontalController,
-                                  scrollDirection: Axis.horizontal,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      ...snapshot.data!.map((entity) =>
-                                          _buildFileTree(entity, 0)),
-                                      const SizedBox(height: 18),
-                                    ],
-                                  ),
+                                controller: _horizontalController,
+                                scrollDirection: Axis.horizontal,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    ...snapshot.data!.map(
+                                        (entity) => _buildFileTree(entity, 0)),
+                                    const SizedBox(height: 18),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ],
-                  );
-                },
-              ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
           MouseRegion(
@@ -257,11 +357,11 @@ class _FileExplorerState extends State<FileExplorer> {
               onHorizontalDragUpdate: (details) {
                 setState(() {
                   width = (width + details.delta.dx)
-                      .clamp(150.0, MediaQuery.of(context).size.width - 200);
+                      .clamp(170.0, MediaQuery.of(context).size.width - 200);
                 });
               },
               child: Container(
-                width: 1.5,
+                width: 1,
                 height: double.infinity,
                 color:
                     widget.editorConfigService.themeService.currentTheme != null

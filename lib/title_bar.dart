@@ -9,12 +9,14 @@ class TitleBar extends StatefulWidget {
   final EditorConfigService editorConfigService;
   final Function(String)? onDirectoryChanged;
   final Function()? onDirectoryRefresh;
+  final String? currentDirectory;
 
   const TitleBar({
     super.key,
     required this.editorConfigService,
-    this.onDirectoryChanged,
-    this.onDirectoryRefresh,
+    required this.onDirectoryChanged,
+    required this.onDirectoryRefresh,
+    required this.currentDirectory,
   });
 
   @override
@@ -22,7 +24,6 @@ class TitleBar extends StatefulWidget {
 }
 
 class _TitleBarState extends State<TitleBar> with WindowListener {
-  String currentDirectory = Directory.current.path;
   bool isHovering = false;
   bool isFullScreen = false;
 
@@ -53,18 +54,10 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
     String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
 
     if (selectedDirectory != null) {
-      setState(() {
-        Directory.current = selectedDirectory;
-        currentDirectory = selectedDirectory;
-      });
+      Directory.current = selectedDirectory;
 
-      if (widget.onDirectoryChanged != null) {
-        widget.onDirectoryChanged!(selectedDirectory);
-      }
-
-      if (widget.onDirectoryRefresh != null) {
-        widget.onDirectoryRefresh!();
-      }
+      widget.onDirectoryChanged?.call(selectedDirectory);
+      widget.onDirectoryRefresh?.call();
     }
   }
 
@@ -100,14 +93,16 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        currentDirectory.split('/').last,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: theme.text.withOpacity(0.7),
+                      if (widget.currentDirectory != null &&
+                          widget.currentDirectory!.isNotEmpty)
+                        Text(
+                          widget.currentDirectory!.split('/').last,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: theme.text.withOpacity(0.7),
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
                     ],
                   ),
                 ),

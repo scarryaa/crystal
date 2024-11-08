@@ -41,11 +41,34 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   String? currentDirectory;
   Key _editorKey = UniqueKey();
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadConfig();
+  }
+
+  Future<void> _loadConfig() async {
+    await widget.editorConfigService.loadConfig();
+
+    if (mounted) {
+      setState(() {
+        if (widget.editorConfigService.config.currentDirectory != null) {
+          currentDirectory = widget.editorConfigService.config.currentDirectory;
+        }
+        _isLoading = false;
+      });
+    }
+  }
 
   void _handleDirectoryChanged(String newPath) {
     setState(() {
       currentDirectory = newPath;
       _editorKey = UniqueKey();
+
+      widget.editorConfigService.config.currentDirectory = newPath;
+      widget.editorConfigService.saveConfig();
     });
   }
 
@@ -57,6 +80,16 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(),
+          ),
+        ),
+      );
+    }
+
     return MaterialApp(
       title: 'crystal',
       debugShowCheckedModeBanner: false,
@@ -69,12 +102,15 @@ class _MyAppState extends State<MyApp> {
         editorConfigService: widget.editorConfigService,
         onDirectoryChanged: _handleDirectoryChanged,
         onDirectoryRefresh: _handleDirectoryRefresh,
+        currentDirectory: currentDirectory,
         child: EditorScreen(
           key: _editorKey,
           lineHeightMultipler: 1.5,
           verticalPaddingLines: 5,
           horizontalPadding: 100,
           currentDirectory: currentDirectory,
+          onDirectoryChanged: _handleDirectoryChanged,
+          onDirectoryRefresh: _handleDirectoryRefresh,
         ),
       ),
     );
