@@ -1,10 +1,10 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:crystal/models/editor/config/config_paths.dart';
 import 'package:crystal/models/editor/search_match.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
+import 'package:crystal/services/editor/editor_keyboard_handler.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/state/editor/editor_syntax_highlighter.dart';
@@ -49,11 +49,19 @@ class _EditorViewState extends State<EditorView> {
   double _cachedMaxLineWidth = 0;
   Timer? _caretTimer;
   late final EditorSyntaxHighlighter editorSyntaxHighlighter;
+  late final EditorKeyboardHandler editorKeyboardHandler;
   EditorPainter? editorPainter;
 
   @override
   void initState() {
     super.initState();
+    editorKeyboardHandler = EditorKeyboardHandler(
+        onSearchTermChanged: widget.onSearchTermChanged,
+        updateCachedMaxLineWidth: _updateCachedMaxLineWidth,
+        scrollToCursor: widget.scrollToCursor,
+        openConfig: _openConfig,
+        state: widget.state,
+        searchTerm: widget.searchTerm);
     editorSyntaxHighlighter = EditorSyntaxHighlighter(
         editorConfigService: widget.editorConfigService,
         editorLayoutService: widget.editorLayoutService);
@@ -223,119 +231,7 @@ class _EditorViewState extends State<EditorView> {
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     _resetCaretBlink();
 
-    if (event is KeyDownEvent || event is KeyRepeatEvent) {
-      final bool isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
-      final bool isControlPressed =
-          HardwareKeyboard.instance.isControlPressed ||
-              HardwareKeyboard.instance.isMetaPressed;
-
-      // Special keys
-      if (widget.state.handleSpecialKeys(
-          isControlPressed, isShiftPressed, event.logicalKey)) {
-        widget.onSearchTermChanged(widget.searchTerm);
-        return KeyEventResult.handled;
-      }
-
-      // Ctrl shortcuts
-      switch (event.logicalKey) {
-        case LogicalKeyboardKey.keyC:
-          if (isControlPressed) {
-            widget.state.copy();
-            return KeyEventResult.handled;
-          }
-        case LogicalKeyboardKey.keyX:
-          if (isControlPressed) {
-            widget.state.cut();
-            _updateCachedMaxLineWidth();
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              widget.scrollToCursor();
-              widget.onSearchTermChanged(widget.searchTerm);
-            });
-            return KeyEventResult.handled;
-          }
-        case LogicalKeyboardKey.keyV:
-          if (isControlPressed) {
-            widget.state.paste();
-            _updateCachedMaxLineWidth();
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              widget.scrollToCursor();
-              widget.onSearchTermChanged(widget.searchTerm);
-            });
-            return KeyEventResult.handled;
-          }
-        case LogicalKeyboardKey.keyA:
-          if (isControlPressed) {
-            widget.state.selectAll();
-            widget.scrollToCursor();
-            return KeyEventResult.handled;
-          }
-        case LogicalKeyboardKey.comma:
-          if (isControlPressed) {
-            _openConfig();
-            return KeyEventResult.handled;
-          }
-      }
-
-      switch (event.logicalKey) {
-        case LogicalKeyboardKey.arrowDown:
-          widget.state.moveCursorDown(isShiftPressed);
-          widget.scrollToCursor();
-          return KeyEventResult.handled;
-        case LogicalKeyboardKey.arrowUp:
-          widget.state.moveCursorUp(isShiftPressed);
-          widget.scrollToCursor();
-          return KeyEventResult.handled;
-        case LogicalKeyboardKey.arrowLeft:
-          widget.state.moveCursorLeft(isShiftPressed);
-          widget.scrollToCursor();
-          return KeyEventResult.handled;
-        case LogicalKeyboardKey.arrowRight:
-          widget.state.moveCursorRight(isShiftPressed);
-          widget.scrollToCursor();
-          return KeyEventResult.handled;
-
-        case LogicalKeyboardKey.enter:
-          widget.state.insertNewLine();
-          _updateCachedMaxLineWidth();
-          widget.scrollToCursor();
-          widget.onSearchTermChanged(widget.searchTerm);
-          return KeyEventResult.handled;
-        case LogicalKeyboardKey.backspace:
-          widget.state.backspace();
-          _updateCachedMaxLineWidth();
-          widget.scrollToCursor();
-          widget.onSearchTermChanged(widget.searchTerm);
-          return KeyEventResult.handled;
-        case LogicalKeyboardKey.delete:
-          widget.state.delete();
-          _updateCachedMaxLineWidth();
-          widget.scrollToCursor();
-          widget.onSearchTermChanged(widget.searchTerm);
-          return KeyEventResult.handled;
-        case LogicalKeyboardKey.tab:
-          if (isShiftPressed) {
-            widget.state.backTab();
-          } else {
-            widget.state.insertTab();
-            _updateCachedMaxLineWidth();
-          }
-          widget.scrollToCursor();
-          widget.onSearchTermChanged(widget.searchTerm);
-          return KeyEventResult.handled;
-        default:
-          if (event.character != null &&
-              event.character!.length == 1 &&
-              event.logicalKey != LogicalKeyboardKey.escape) {
-            widget.state.insertChar(event.character!);
-            _updateCachedMaxLineWidth();
-            widget.scrollToCursor();
-            widget.onSearchTermChanged(widget.searchTerm);
-            return KeyEventResult.handled;
-          }
-      }
-    }
-
-    return KeyEventResult.ignored;
+    return editorKeyboardHandler.handleKeyEvent(node, event);
   }
 
   Future<void> _openConfig() async {
