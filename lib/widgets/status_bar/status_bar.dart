@@ -6,13 +6,13 @@ import 'package:provider/provider.dart';
 class StatusBar extends StatefulWidget {
   EditorConfigService editorConfigService;
   final VoidCallback? onFileExplorerToggle;
-  final bool isFileExplorerVisible;
+  final bool? isFileExplorerVisible;
 
   StatusBar({
     super.key,
     required this.editorConfigService,
     this.onFileExplorerToggle,
-    this.isFileExplorerVisible = true,
+    this.isFileExplorerVisible,
   });
 
   @override
@@ -20,8 +20,58 @@ class StatusBar extends StatefulWidget {
 }
 
 class _StatusBarState extends State<StatusBar> {
+  bool? _cachedFileExplorerVisible;
+
+  @override
+  void initState() {
+    super.initState();
+    _cachedFileExplorerVisible =
+        widget.editorConfigService.config.isFileExplorerVisible;
+    _loadConfig();
+  }
+
+  Future<void> _loadConfig() async {
+    if (!widget.editorConfigService.isLoaded) {
+      await widget.editorConfigService.loadConfig();
+      if (mounted) {
+        setState(() {});
+      }
+    }
+  }
+
+  void _handleFileExplorerToggle() {
+    if (widget.onFileExplorerToggle != null) {
+      widget.onFileExplorerToggle!();
+
+      final newState = !(_cachedFileExplorerVisible ?? true);
+      widget.editorConfigService.config.isFileExplorerVisible = newState;
+      widget.editorConfigService.saveConfig();
+
+      setState(() {
+        _cachedFileExplorerVisible = newState;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (!widget.editorConfigService.isLoaded) {
+      return Container(
+        height: 25,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: Colors.grey[300]!),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+
     final themeColor =
         widget.editorConfigService.themeService.currentTheme?.text ??
             Colors.black87;
@@ -41,15 +91,15 @@ class _StatusBarState extends State<StatusBar> {
         children: [
           MouseRegion(
             child: GestureDetector(
-              onTap: widget.onFileExplorerToggle,
+              onTap: _handleFileExplorerToggle,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8.0),
                 child: Row(
                   children: [
                     Icon(
-                      widget.isFileExplorerVisible
-                          ? Icons.folder_open
-                          : Icons.folder,
+                      widget.editorConfigService.config.isFileExplorerVisible
+                          ? Icons.folder
+                          : Icons.folder_open,
                       size: 16,
                       color: themeColor,
                     ),

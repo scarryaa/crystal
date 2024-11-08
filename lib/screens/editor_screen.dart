@@ -129,6 +129,7 @@ class _EditorScreenState extends State<EditorScreen> {
 
   Future<void> _initializeServices() async {
     _editorConfigService = await EditorConfigService.create();
+    _isFileExplorerVisible = _editorConfigService.config.isFileExplorerVisible;
 
     _editorLayoutService = EditorLayoutService(
       fontFamily: _editorConfigService.config.fontFamily,

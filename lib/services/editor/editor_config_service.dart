@@ -9,30 +9,37 @@ import 'package:logging/logging.dart';
 
 class EditorConfigService extends ChangeNotifier {
   final EditorThemeService themeService;
-  late final EditorConfig config;
+  late EditorConfig config;
   final _logger = Logger('EditorConfigService');
+  bool _isLoaded = false;
+  bool get isLoaded => _isLoaded;
 
   static const Map<String, dynamic> _defaultConfig = {
     'fontSize': 14.0,
     'fontFamily': 'IBM Plex Mono',
     'whitespaceIndicatorRadius': 1.0,
     'theme': 'default-dark',
+    'isFileExplorerVisible': true,
   };
 
   EditorConfigService._() : themeService = EditorThemeService();
 
   static Future<EditorConfigService> create() async {
     final service = EditorConfigService._();
-    await service._loadConfig();
+    await service.loadConfig();
     await service.saveDefaultConfig();
     return service;
   }
 
-  Future<void> _loadConfig() async {
+  Future<void> loadConfig() async {
+    if (_isLoaded) return;
+
     try {
       final configFile = File(await ConfigPaths.getConfigFilePath());
       config = await _loadConfigFromFile(configFile);
       await _loadTheme();
+      _isLoaded = true;
+      notifyListeners();
     } catch (e) {
       _logger.warning('Error loading config: $e');
       await _setDefaultConfig();
@@ -44,44 +51,44 @@ class EditorConfigService extends ChangeNotifier {
       return _createDefaultConfig();
     }
 
-    final jsonString = await configFile.readAsString();
-    final Map<String, dynamic> configData = json.decode(jsonString);
+    try {
+      final jsonString = await configFile.readAsString();
+      final Map<String, dynamic> configData = json.decode(jsonString);
 
-    return EditorConfig(
-      fontSize: (configData['fontSize'] as num?)?.toDouble() ??
-          _defaultConfig['fontSize'] as double,
-      fontFamily: configData['fontFamily'] as String? ??
-          _defaultConfig['fontFamily'] as String,
-      whitespaceIndicatorRadius:
-          (configData['whitespaceIndicatorRadius'] as num?)?.toDouble() ??
-              _defaultConfig['whitespaceIndicatorRadius'] as double,
-    );
+      return EditorConfig(
+        fontSize: (configData['fontSize'] as num?)?.toDouble() ??
+            _defaultConfig['fontSize'] as double,
+        fontFamily: configData['fontFamily'] as String? ??
+            _defaultConfig['fontFamily'] as String,
+        whitespaceIndicatorRadius:
+            (configData['whitespaceIndicatorRadius'] as num?)?.toDouble() ??
+                _defaultConfig['whitespaceIndicatorRadius'] as double,
+        isFileExplorerVisible: configData['isFileExplorerVisible'] as bool? ??
+            _defaultConfig['isFileExplorerVisible'] as bool,
+      );
+    } catch (e) {
+      _logger.warning('Error parsing config file: $e');
+      return _createDefaultConfig();
+    }
   }
 
-  Future<EditorConfig> _createDefaultConfig() async {
-    final defaultConfig = EditorConfig(
+  EditorConfig _createDefaultConfig() {
+    return EditorConfig(
       fontSize: _defaultConfig['fontSize'] as double,
       fontFamily: _defaultConfig['fontFamily'] as String,
       whitespaceIndicatorRadius:
           _defaultConfig['whitespaceIndicatorRadius'] as double,
+      isFileExplorerVisible: _defaultConfig['isFileExplorerVisible'] as bool,
     );
-    config = defaultConfig;
-    await saveConfig();
-    return defaultConfig;
-  }
-
-  Future<void> _loadTheme() async {
-    await themeService.loadThemeFromJson(_defaultConfig['theme'] as String);
   }
 
   Future<void> _setDefaultConfig() async {
-    config = EditorConfig(
-      fontSize: _defaultConfig['fontSize'] as double,
-      fontFamily: _defaultConfig['fontFamily'] as String,
-      whitespaceIndicatorRadius:
-          _defaultConfig['whitespaceIndicatorRadius'] as double,
-    );
-    await themeService.loadThemeFromJson(_defaultConfig['theme'] as String);
+    if (!_isLoaded) {
+      config = _createDefaultConfig();
+      await themeService.loadThemeFromJson(_defaultConfig['theme'] as String);
+      _isLoaded = true;
+      notifyListeners();
+    }
   }
 
   Future<void> saveConfig() async {
@@ -92,12 +99,17 @@ class EditorConfigService extends ChangeNotifier {
         'fontFamily': config.fontFamily,
         'theme': themeService.currentTheme!.name,
         'whitespaceIndicatorRadius': config.whitespaceIndicatorRadius,
+        'isFileExplorerVisible': config.isFileExplorerVisible,
       };
 
       await File(configPath).writeAsString(json.encode(configData));
     } catch (e) {
       _logger.warning('Error saving config: $e');
     }
+  }
+
+  Future<void> _loadTheme() async {
+    await themeService.loadThemeFromJson(_defaultConfig['theme'] as String);
   }
 
   Future<void> saveDefaultConfig() async {
