@@ -111,28 +111,31 @@ class EditorSelectionManager {
 
   List<Cursor> backTab(Buffer buffer, List<Cursor> cursors) {
     List<Cursor> newCursors = [];
+    for (int selIndex = 0; selIndex < _selections.length; selIndex++) {
+      Selection selection = _selections[selIndex];
+      Cursor cursor = cursors[selIndex];
 
-    for (int i = 0; i < _selections.length; i++) {
-      Selection selection = _selections[i];
-      Cursor cursor = cursors[i];
-
-      // Remove tab from each line in selection
       for (int line = selection.startLine; line <= selection.endLine; line++) {
         if (buffer.getLine(line).startsWith('    ')) {
           buffer.setLine(line, buffer.getLine(line).substring(4));
 
-          // Adjust selection and cursor columns
           if (line == selection.startLine) {
             selection = Selection(
                 startLine: selection.startLine,
                 endLine: selection.endLine,
                 startColumn: math.max(0, selection.startColumn - 4),
                 endColumn: math.max(0, selection.endColumn - 4),
-                anchorLine: selection.startLine,
-                anchorColumn: math.max(0, selection.startColumn - 4));
+                anchorLine: selection.anchorLine,
+                anchorColumn: math.max(0, selection.anchorColumn - 4));
+            _selections[selIndex] = selection;
           }
+
           if (line == cursor.line) {
             newCursors.add(Cursor(cursor.line, math.max(0, cursor.column - 4)));
+          }
+        } else {
+          if (line == cursor.line) {
+            newCursors.add(cursor);
           }
         }
       }
@@ -143,32 +146,31 @@ class EditorSelectionManager {
 
   List<Cursor> insertTab(Buffer buffer, List<Cursor> cursors) {
     List<Cursor> newCursors = [];
+    for (int selIndex = 0; selIndex < _selections.length; selIndex++) {
+      Selection selection = _selections[selIndex];
+      Cursor cursor = cursors[selIndex];
 
-    for (int i = 0; i < _selections.length; i++) {
-      Selection selection = _selections[i];
-      Cursor cursor = cursors[i];
+      for (int lineNum = selection.startLine;
+          lineNum <= selection.endLine;
+          lineNum++) {
+        buffer.setLine(lineNum, '    ${buffer.getLine(lineNum)}');
 
-      // Add tab to each line in selection
-      for (int i = selection.startLine; i <= selection.endLine; i++) {
-        buffer.setLine(i, '    ${buffer.getLine(i)}');
-
-        // Adjust selection and cursor columns
-        if (i == selection.startLine) {
+        if (lineNum == selection.startLine) {
           selection = Selection(
               startLine: selection.startLine,
               endLine: selection.endLine,
               startColumn: selection.startColumn + 4,
               endColumn: selection.endColumn + 4,
-              anchorColumn: selection.startColumn + 4,
-              anchorLine: selection.startLine);
+              anchorColumn: selection.anchorColumn + 4,
+              anchorLine: selection.anchorLine);
+          _selections[selIndex] = selection;
         }
 
-        if (i == cursor.line) {
+        if (lineNum == cursor.line) {
           newCursors.add(Cursor(cursor.line, cursor.column + 4));
         }
       }
     }
-
     return newCursors;
   }
 

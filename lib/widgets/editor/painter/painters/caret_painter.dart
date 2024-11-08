@@ -21,8 +21,13 @@ class CaretPainter extends EditorPainterBase {
     if (!editorState.showCaret) return;
 
     for (var cursor in editorState.editorCursorManager.cursors) {
+      if (cursor.line < 0 || cursor.line >= editorState.buffer.lineCount) {
+        continue; // Skip invalid cursor positions
+      }
+
       final line = editorState.buffer.getLine(cursor.line);
-      final textUpToCaret = line.substring(0, cursor.column);
+      final safeColumn = cursor.column.clamp(0, line.length);
+      final textUpToCaret = line.substring(0, safeColumn);
 
       _textPainter.text = TextSpan(
         text: textUpToCaret,

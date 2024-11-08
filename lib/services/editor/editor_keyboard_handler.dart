@@ -154,8 +154,8 @@ class EditorKeyboardHandler {
             getState().backTab();
           } else {
             getState().insertTab();
-            updateCachedMaxLineWidth();
           }
+          updateCachedMaxLineWidth();
           scrollToCursor();
           onSearchTermChanged(searchTerm);
           return KeyEventResult.handled;

@@ -193,7 +193,9 @@ class EditorState extends ChangeNotifier {
 
   void backTab() {
     if (editorSelectionManager.hasSelection()) {
-      editorSelectionManager.backTab(buffer, editorCursorManager.cursors);
+      var newCursors =
+          editorSelectionManager.backTab(buffer, editorCursorManager.cursors);
+      editorCursorManager.setAllCursors(newCursors);
     } else {
       editorCursorManager.backTab(_buffer);
     }

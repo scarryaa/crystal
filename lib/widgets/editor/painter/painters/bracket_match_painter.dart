@@ -36,7 +36,6 @@ class BracketMatchPainter extends EditorPainterBase {
       Canvas canvas, Size size, int firstVisibleLine, int lastVisibleLine) {
     final config = editorLayoutService.config;
     final theme = editorConfigService.themeService.currentTheme;
-
     _bracketPaint.color =
         theme?.primary.withOpacity(0.3) ?? Colors.blue.withOpacity(0.3);
 
@@ -46,16 +45,22 @@ class BracketMatchPainter extends EditorPainterBase {
       }
 
       final line = editorState.buffer.getLine(cursor.line);
+      if (line.isEmpty) continue; // Skip empty lines
 
       Position? matchingPosition;
       Position? bracketPosition;
 
-      final positions = [
-        if (cursor.column > 0) cursor.column - 1, // Before cursor
-        if (cursor.column < line.length) cursor.column, // At cursor
-      ];
+      final positions = <int>[];
+      if (cursor.column > 0 && cursor.column <= line.length) {
+        positions.add(cursor.column - 1); // Before cursor
+      }
+      if (cursor.column < line.length) {
+        positions.add(cursor.column); // At cursor
+      }
 
       for (final pos in positions) {
+        if (pos < 0 || pos >= line.length) continue;
+
         final char = line[pos];
         if (_isBracket(char)) {
           final potentialMatch = _findMatchingBracketPosition(
@@ -63,7 +68,6 @@ class BracketMatchPainter extends EditorPainterBase {
             pos,
             char,
           );
-
           if (potentialMatch != null) {
             bracketPosition = Position(line: cursor.line, column: pos);
             matchingPosition = potentialMatch;
@@ -73,24 +77,24 @@ class BracketMatchPainter extends EditorPainterBase {
       }
 
       if (bracketPosition != null && matchingPosition != null) {
+        // Draw bracket at cursor position
         final bracketRect = Rect.fromLTWH(
           config.charWidth * bracketPosition.column,
           bracketPosition.line * config.lineHeight,
           config.charWidth,
           config.lineHeight,
         );
-
         if (_isWithinBounds(bracketRect, size)) {
           canvas.drawRect(bracketRect, _bracketPaint);
         }
 
+        // Draw matching bracket
         final matchingRect = Rect.fromLTWH(
           config.charWidth * matchingPosition.column,
           matchingPosition.line * config.lineHeight,
           config.charWidth,
           config.lineHeight,
         );
-
         if (_isWithinBounds(matchingRect, size)) {
           canvas.drawRect(matchingRect, _bracketPaint);
         }
@@ -99,7 +103,10 @@ class BracketMatchPainter extends EditorPainterBase {
   }
 
   bool _isWithinBounds(Rect rect, Size size) {
-    return rect.left < size.width && rect.top < size.height;
+    return rect.left >= 0 &&
+        rect.top >= 0 &&
+        rect.right <= size.width &&
+        rect.bottom <= size.height;
   }
 
   Position? _findMatchingBracketPosition(

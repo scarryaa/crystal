@@ -183,7 +183,6 @@ class _EditorScreenState extends State<EditorScreen> {
 
     activeEditor!
         .updateHorizontalScrollOffset(_editorHorizontalScrollController.offset);
-    print(_editorHorizontalScrollController.offset);
   }
 
   void _handleGutterScroll() {
@@ -197,13 +196,15 @@ class _EditorScreenState extends State<EditorScreen> {
   void _scrollToCursor() {
     if (activeEditor == null) return;
 
-    final cursorLine = activeEditor!.editorCursorManager.cursors.last.line;
+    final cursor = activeEditor!.editorCursorManager.cursors.last;
+    final cursorLine = cursor.line;
     final lineHeight = _editorLayoutService.config.lineHeight;
     final viewportHeight =
         _editorVerticalScrollController.position.viewportDimension;
     final currentOffset = _editorVerticalScrollController.offset;
     final verticalPadding = _editorLayoutService.config.verticalPadding;
 
+    // Vertical scrolling
     final cursorY = cursorLine * lineHeight;
     if (cursorY < currentOffset + verticalPadding) {
       _editorVerticalScrollController.jumpTo(max(0, cursorY - verticalPadding));
@@ -213,9 +214,13 @@ class _EditorScreenState extends State<EditorScreen> {
           .jumpTo(cursorY + lineHeight - viewportHeight + verticalPadding);
     }
 
-    final cursorColumn = activeEditor!.editorCursorManager.cursors.last.column;
+    // Horizontal scrolling
+    final cursorColumn = cursor.column;
     final currentLine = activeEditor!.buffer.getLine(cursorLine);
-    final textBeforeCursor = currentLine.substring(0, cursorColumn);
+
+    final safeColumn = min(cursorColumn, currentLine.length);
+    final textBeforeCursor = currentLine.substring(0, safeColumn);
+
     final cursorX =
         textBeforeCursor.length * _editorLayoutService.config.charWidth;
     final viewportWidth =
@@ -234,6 +239,7 @@ class _EditorScreenState extends State<EditorScreen> {
           horizontalPadding);
     }
 
+    // Update editor offsets
     activeEditor!
         .updateVerticalScrollOffset(_editorVerticalScrollController.offset);
     activeEditor!
