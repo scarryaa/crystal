@@ -77,8 +77,7 @@ class _EditorScreenState extends State<EditorScreen> {
   @override
   void initState() {
     super.initState();
-    _editorConfigService = EditorConfigService(
-        fontSize: 14.0, fontFamily: 'IBM Plex Mono', theme: 'default-dark');
+    _editorConfigService = EditorConfigService();
     _editorLayoutService = EditorLayoutService(
         fontFamily: 'IBM Plex Mono',
         fontSize: 14.0,
