@@ -66,7 +66,6 @@ class _FileItemState extends State<FileItem> {
                       style: TextStyle(
                         fontSize: 14,
                         fontStyle: FontStyle.normal,
-                        fontFamily: 'IBM Plex Sans',
                         fontVariations: const [
                           FontVariation('wght', 400),
                         ],

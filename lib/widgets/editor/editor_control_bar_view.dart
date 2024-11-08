@@ -92,7 +92,6 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
     return Text(
       (path.isEmpty || path.substring(0, 6) == '__temp') ? 'untitled' : path,
       style: TextStyle(
-        fontFamily: 'IBM Plex Sans',
         fontSize: 14,
         color: widget.editorConfigService.themeService.currentTheme != null
             ? widget.editorConfigService.themeService.currentTheme!.text
@@ -283,7 +282,6 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
                 ),
                 style: TextStyle(
                   fontSize: 14,
-                  fontFamily: 'IBM Plex Sans',
                   color: widget
                       .editorConfigService.themeService.currentTheme!.text,
                 ),
@@ -374,7 +372,6 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
               ),
               style: TextStyle(
                 fontSize: 14,
-                fontFamily: 'IBM Plex Sans',
                 color:
                     widget.editorConfigService.themeService.currentTheme!.text,
               ),

@@ -23,6 +23,7 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^4.0.0
 
+
 flutter:
   uses-material-design: true
 
@@ -30,13 +31,16 @@ flutter:
     - assets/images/
     - assets/themes/
   fonts:
-      - family: IBM Plex Mono
-        fonts:
-          - asset: assets/fonts/IBMPlexMono-Regular.ttf
-          - asset: assets/fonts/IBMPlexMono-Bold.ttf
-            weight: 400
-      - family: IBM Plex Sans
-        fonts:
-          - asset: assets/fonts/IBMPlexSans-Regular.ttf
-          - asset: assets/fonts/IBMPlexSans-Bold.ttf
-            weight: 400
+    - family: IBM Plex Mono
+      fonts:
+        - asset: assets/fonts/IBMPlexMono-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/IBMPlexMono-Bold.ttf
+          weight: 700
+    - family: IBM Plex Sans
+      fonts:
+        - asset: assets/fonts/IBMPlexSans-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/IBMPlexSans-Bold.ttf
+          weight: 700
+
