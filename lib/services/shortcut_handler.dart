@@ -8,6 +8,7 @@ class ShortcutHandler {
   VoidCallback openDefaultSettings;
   VoidCallback closeTab;
   VoidCallback openNewTab;
+  VoidCallback requestEditorFocus;
   Future<void> Function() saveFileAs;
   Future<void> Function() saveFile;
 
@@ -16,6 +17,7 @@ class ShortcutHandler {
     required this.openDefaultSettings,
     required this.closeTab,
     required this.openNewTab,
+    required this.requestEditorFocus,
     required this.saveFileAs,
     required this.saveFile,
   });
@@ -47,6 +49,7 @@ class ShortcutHandler {
         case LogicalKeyboardKey.keyN:
           if (isControlPressed) {
             openNewTab();
+            requestEditorFocus();
             return KeyEventResult.handled;
           }
         case LogicalKeyboardKey.keyS:

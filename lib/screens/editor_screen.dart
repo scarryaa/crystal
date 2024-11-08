@@ -131,6 +131,12 @@ class _EditorScreenState extends State<EditorScreen> {
         }
         return Future<void>.value();
       },
+      requestEditorFocus: () {
+        // Request focus for the active editor
+        if (activeEditor != null) {
+          activeEditor!.requestFocus();
+        }
+      },
     );
 
     // Listeners
@@ -561,8 +567,8 @@ class _EditorScreenState extends State<EditorScreen> {
                                     activeEditorIndex: activeEditorIndex,
                                     onActiveEditorChanged:
                                         onActiveEditorChanged,
-                                    onEditorClosed: (_) =>
-                                        onEditorClosed(activeEditorIndex),
+                                    onEditorClosed: (index) =>
+                                        onEditorClosed(index),
                                     onReorder: onReorder,
                                   ),
                                 if (_editors.isNotEmpty)

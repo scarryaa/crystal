@@ -501,4 +501,8 @@ class EditorState extends ChangeNotifier {
 
     notifyListeners();
   }
+
+  void requestFocus() {
+    notifyListeners();
+  }
 }

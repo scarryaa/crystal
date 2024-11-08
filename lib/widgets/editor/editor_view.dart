@@ -89,6 +89,10 @@ class _EditorViewState extends State<EditorView> {
         editorLayoutService: widget.editorLayoutService);
     _updateCachedMaxLineWidth();
     _startCaretBlinking();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusNode.requestFocus();
+    });
   }
 
   @override
