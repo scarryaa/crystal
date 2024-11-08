@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/widgets/file_explorer/file_explorer_action_bar.dart';
 import 'package:crystal/widgets/file_explorer/file_item.dart';
@@ -37,7 +38,7 @@ class _FileExplorerState extends State<FileExplorer> {
   @override
   void initState() {
     super.initState();
-    width = widget.editorConfigService.config.uiFontSize * 11.0;
+    width = max(widget.editorConfigService.config.uiFontSize * 11.0, 170.0);
     if (widget.rootDir.isNotEmpty) {
       _filesFuture = _enumerateFiles(widget.rootDir);
     } else {
@@ -223,7 +224,7 @@ class _FileExplorerState extends State<FileExplorer> {
         listenable: widget.editorConfigService,
         builder: (context, child) {
           width = width.clamp(
-              widget.editorConfigService.config.uiFontSize * 11.0,
+              max(widget.editorConfigService.config.uiFontSize * 11.0, 170.0),
               MediaQuery.of(context).size.width - 200);
 
           return Align(

@@ -27,6 +27,7 @@ class Gutter extends StatefulWidget {
 
 class _GutterState extends State<Gutter> {
   EditorState get editorState => widget.editorState;
+
   double get gutterWidth {
     final lineCount = editorState.buffer.lineCount;
     final textPainter = TextPainter(
@@ -40,7 +41,9 @@ class _GutterState extends State<Gutter> {
       textDirection: TextDirection.ltr,
     );
     textPainter.layout();
-    return textPainter.width + 32.0; // Add padding (16.0 on each side)
+
+    editorState.setGutterWidth(textPainter.width + 32.0);
+    return textPainter.width + 32.0;
   }
 
   @override
@@ -55,7 +58,7 @@ class _GutterState extends State<Gutter> {
     return Consumer<EditorState>(
       builder: (context, editorState, child) {
         return Container(
-          width: gutterWidth, // Set explicit width
+          width: gutterWidth,
           color: widget
                   .editorConfigService.themeService.currentTheme?.background ??
               Colors.white,

@@ -38,6 +38,7 @@ class EditorState extends ChangeNotifier {
       EditorSelectionManager();
   final Future<void> Function(String) tapCallback;
   bool isPinned = false;
+  double _gutterWidth = 40;
 
   EditorState({
     required this.resetGutterScroll,
@@ -75,7 +76,11 @@ class EditorState extends ChangeNotifier {
   Buffer get buffer => _buffer;
 
   double getGutterWidth() {
-    return math.max((_buffer.lineCount.toString().length * 10.0) + 40.0, 48.0);
+    return _gutterWidth;
+  }
+
+  void setGutterWidth(double width) {
+    _gutterWidth = width;
   }
 
   void toggleCaret() {

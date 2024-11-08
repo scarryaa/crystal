@@ -161,8 +161,8 @@ class EditorViewState extends State<EditorView> {
       mediaQuery.size.width -
           widget.gutterWidth -
           (widget.editorConfigService.config.isFileExplorerVisible
-              ? 0
-              : 153), // File Explorer
+              ? widget.editorConfigService.config.fileExplorerWidth
+              : 0),
       _cachedMaxLineWidth + widget.editorLayoutService.config.horizontalPadding,
     );
     final height = math.max(

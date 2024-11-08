@@ -4,6 +4,7 @@ class EditorConfig {
   String fontFamily;
   double whitespaceIndicatorRadius;
   bool isFileExplorerVisible;
+  double fileExplorerWidth;
   String? currentDirectory;
 
   EditorConfig({
@@ -11,6 +12,7 @@ class EditorConfig {
     required this.uiFontSize,
     required this.fontFamily,
     required this.whitespaceIndicatorRadius,
+    required this.fileExplorerWidth,
     this.isFileExplorerVisible = true,
     this.currentDirectory = '',
   });

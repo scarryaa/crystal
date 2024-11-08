@@ -24,6 +24,7 @@ class EditorConfigService extends ChangeNotifier {
     'theme': 'default-dark',
     'isFileExplorerVisible': true,
     'currentDirectory': '',
+    'fileExplorerWidth': 170.0,
   };
 
   EditorConfigService._() : themeService = EditorThemeService();
@@ -91,6 +92,9 @@ class EditorConfigService extends ChangeNotifier {
         whitespaceIndicatorRadius:
             (configData['whitespaceIndicatorRadius'] as num?)?.toDouble() ??
                 _defaultConfig['whitespaceIndicatorRadius'] as double,
+        fileExplorerWidth:
+            (configData['fileExplorerWidth'] as num?)?.toDouble() ??
+                _defaultConfig['fileExplorerWidth'] as double,
         isFileExplorerVisible: configData['isFileExplorerVisible'] as bool? ??
             _defaultConfig['isFileExplorerVisible'] as bool,
         currentDirectory: configData['currentDirectory'] as String? ??
@@ -109,6 +113,7 @@ class EditorConfigService extends ChangeNotifier {
       fontFamily: _defaultConfig['fontFamily'] as String,
       whitespaceIndicatorRadius:
           _defaultConfig['whitespaceIndicatorRadius'] as double,
+      fileExplorerWidth: (_defaultConfig['uiFontSize'] as double) * 11.0,
       isFileExplorerVisible: _defaultConfig['isFileExplorerVisible'] as bool,
     );
   }
@@ -133,6 +138,7 @@ class EditorConfigService extends ChangeNotifier {
         'whitespaceIndicatorRadius': config.whitespaceIndicatorRadius,
         'isFileExplorerVisible': config.isFileExplorerVisible,
         'currentDirectory': config.currentDirectory,
+        'fileExplorerWidth': config.fileExplorerWidth,
       };
 
       const encoder = JsonEncoder.withIndent('  ');
