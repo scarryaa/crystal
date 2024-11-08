@@ -1,7 +1,3 @@
-import 'dart:io';
-import 'dart:math' as math;
-import 'dart:ui';
-
 import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/editor/command.dart';
@@ -39,6 +35,7 @@ class EditorState extends ChangeNotifier {
   final Future<void> Function(String) tapCallback;
   bool isPinned = false;
   double _gutterWidth = 40;
+  String? relativePath = '';
 
   EditorState({
     required this.resetGutterScroll,
@@ -46,6 +43,7 @@ class EditorState extends ChangeNotifier {
     required this.editorConfigService,
     required this.tapCallback,
     String? path,
+    this.relativePath,
   }) : path = path ?? generateUniqueTempPath();
 
   void executeCommand(Command command) {

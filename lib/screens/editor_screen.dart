@@ -82,45 +82,50 @@ class _EditorScreenState extends State<EditorScreen> {
       _editors[activeEditorIndex].openFile('');
       _onSearchTermChanged(_searchTerm);
     });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (editorViewKey.currentState != null) {
+        editorViewKey.currentState!.updateCachedMaxLineWidth();
+        setState(() {});
+      }
+    });
+  }
+
+  String getRelativePath(String fullPath, String rootDir) {
+    if (!fullPath.startsWith(rootDir)) {
+      return fullPath;
+    }
+
+    String relativePath = fullPath.substring(rootDir.length);
+    if (relativePath.startsWith(Platform.pathSeparator)) {
+      relativePath = relativePath.substring(1);
+    }
+
+    return relativePath;
   }
 
   Future<void> tapCallback(String path) async {
+    final relativePath = getRelativePath(path, widget.currentDirectory ?? '');
+
     final editorIndex = _editors.indexWhere((editor) => editor.path == path);
     if (editorIndex != -1) {
-      // Switching to existing tab
       setState(() {
         activeEditorIndex = editorIndex;
       });
-
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (editorViewKey.currentState != null) {
-          editorViewKey.currentState!.updateCachedMaxLineWidth();
-          setState(() {});
-        }
-      });
     } else {
-      // Opening newb
       String content = await File(path).readAsString();
       final newEditor = EditorState(
         editorConfigService: _editorConfigService,
         editorLayoutService: _editorLayoutService,
         resetGutterScroll: _resetGutterScroll,
         path: path,
+        relativePath: relativePath,
         tapCallback: tapCallback,
       );
-
       setState(() {
         _editors.add(newEditor);
         activeEditorIndex = _editors.length - 1;
         _editors[activeEditorIndex].openFile(content);
-        _onSearchTermChanged(_searchTerm);
-      });
-
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (editorViewKey.currentState != null) {
-          editorViewKey.currentState!.updateCachedMaxLineWidth();
-          setState(() {});
-        }
       });
     }
   }
@@ -650,7 +655,9 @@ class _EditorScreenState extends State<EditorScreen> {
                                         EditorControlBarView(
                                           editorConfigService:
                                               _editorConfigService,
-                                          filePath: activeEditor!.path,
+                                          filePath:
+                                              activeEditor!.relativePath ??
+                                                  activeEditor!.path,
                                           searchTermChanged:
                                               _onSearchTermChanged,
                                           nextSearchTerm: _nextSearchTerm,
