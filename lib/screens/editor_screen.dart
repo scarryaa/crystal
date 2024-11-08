@@ -89,9 +89,11 @@ class _EditorScreenState extends State<EditorScreen> {
         horizontalPadding: widget.horizontalPadding,
         verticalPaddingLines: widget.verticalPaddingLines,
         lineHeightMultiplier: widget.lineHeightMultipler);
+
     _shortcutHandler = ShortcutHandler(
       openSettings: _openSettings,
       openDefaultSettings: _openDefaultSettings,
+      closeTab: () => onEditorClosed(activeEditorIndex),
     );
 
     _editorVerticalScrollController.addListener(_handleEditorScroll);
@@ -188,7 +190,7 @@ class _EditorScreenState extends State<EditorScreen> {
 
   void onEditorClosed(int index) {
     setState(() {
-      if (_editors[index].isPinned) {
+      if (_editors.isEmpty || _editors[index].isPinned) {
         return;
       }
 
@@ -521,7 +523,8 @@ class _EditorScreenState extends State<EditorScreen> {
                                     activeEditorIndex: activeEditorIndex,
                                     onActiveEditorChanged:
                                         onActiveEditorChanged,
-                                    onEditorClosed: onEditorClosed,
+                                    onEditorClosed: (_) =>
+                                        onEditorClosed(activeEditorIndex),
                                     onReorder: onReorder,
                                   ),
                                 if (_editors.isNotEmpty)
@@ -581,6 +584,10 @@ class _EditorScreenState extends State<EditorScreen> {
                                                       _updateSearchMatches,
                                                   scrollToCursor:
                                                       _scrollToCursor,
+                                                  onEditorClosed:
+                                                      onEditorClosed,
+                                                  activeEditorIndex: () =>
+                                                      activeEditorIndex,
                                                   gutterWidth: gutterWidth!,
                                                   verticalScrollController:
                                                       _editorVerticalScrollController,

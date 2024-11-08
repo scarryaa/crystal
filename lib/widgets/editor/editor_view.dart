@@ -20,10 +20,12 @@ class EditorView extends StatefulWidget {
   final ScrollController horizontalScrollController;
   final double gutterWidth;
   final VoidCallback scrollToCursor;
+  final Function(int index) onEditorClosed;
   final Function(String newTerm) onSearchTermChanged;
   final String searchTerm;
   final int currentSearchTermMatch;
   final List<SearchMatch> searchTermMatches;
+  final Function activeEditorIndex;
 
   const EditorView({
     super.key,
@@ -32,12 +34,14 @@ class EditorView extends StatefulWidget {
     required this.verticalScrollController,
     required this.horizontalScrollController,
     required this.scrollToCursor,
+    required this.onEditorClosed,
     required this.searchTerm,
     required this.searchTermMatches,
     required this.onSearchTermChanged,
     required this.currentSearchTermMatch,
     required this.editorLayoutService,
     required this.editorConfigService,
+    required this.activeEditorIndex,
   });
 
   @override
@@ -66,7 +70,10 @@ class _EditorViewState extends State<EditorView> {
         openConfig: _openConfig,
         openDefaultConfig: _openDefaultConfig,
         state: widget.state,
-        searchTerm: widget.searchTerm);
+        searchTerm: widget.searchTerm,
+        activeEditorIndex: () => widget.activeEditorIndex(),
+        onEditorClosed: widget.onEditorClosed);
+
     editorSyntaxHighlighter = EditorSyntaxHighlighter(
         editorConfigService: widget.editorConfigService,
         editorLayoutService: widget.editorLayoutService);

@@ -4,22 +4,26 @@ import 'package:flutter/services.dart';
 
 class EditorKeyboardHandler {
   Function(String searchTerm) onSearchTermChanged;
+  Function(int) onEditorClosed;
   VoidCallback updateCachedMaxLineWidth;
   VoidCallback scrollToCursor;
   VoidCallback openConfig;
   VoidCallback openDefaultConfig;
 
+  final Function() activeEditorIndex;
   EditorState state;
   String searchTerm;
 
   EditorKeyboardHandler({
     required this.onSearchTermChanged,
+    required this.onEditorClosed,
     required this.updateCachedMaxLineWidth,
     required this.scrollToCursor,
     required this.openConfig,
     required this.openDefaultConfig,
     required this.state,
     required this.searchTerm,
+    required this.activeEditorIndex,
   });
 
   KeyEventResult handleKeyEvent(FocusNode node, KeyEvent event) {
@@ -77,6 +81,11 @@ class EditorKeyboardHandler {
         case LogicalKeyboardKey.less:
           if (isControlPressed) {
             openDefaultConfig();
+            return KeyEventResult.handled;
+          }
+        case LogicalKeyboardKey.keyW:
+          if (isControlPressed) {
+            onEditorClosed(activeEditorIndex());
             return KeyEventResult.handled;
           }
       }
