@@ -6,6 +6,12 @@ import 'package:window_manager/window_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final editorConfigService = await EditorConfigService.create();
+
+  runApp(MyApp(editorConfigService: editorConfigService));
+}
+
+Future<void> setupWindow() async {
   await windowManager.ensureInitialized();
 
   WindowOptions windowOptions = const WindowOptions(
@@ -20,10 +26,6 @@ void main() async {
     await windowManager.show();
     await windowManager.focus();
   });
-
-  final editorConfigService = await EditorConfigService.create();
-
-  runApp(MyApp(editorConfigService: editorConfigService));
 }
 
 class MyApp extends StatefulWidget {
@@ -42,24 +44,33 @@ class _MyAppState extends State<MyApp> {
   String? currentDirectory;
   Key _editorKey = UniqueKey();
   bool _isLoading = true;
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _loadConfig();
+    if (!_isInitialized) {
+      _initialize();
+    }
+  }
+
+  Future<void> _initialize() async {
+    await setupWindow();
+    await _loadConfig();
+    _isInitialized = true;
   }
 
   Future<void> _loadConfig() async {
+    if (!mounted) return;
+
     await widget.editorConfigService.loadConfig();
 
-    if (mounted) {
-      setState(() {
-        if (widget.editorConfigService.config.currentDirectory != null) {
-          currentDirectory = widget.editorConfigService.config.currentDirectory;
-        }
-        _isLoading = false;
-      });
-    }
+    setState(() {
+      if (widget.editorConfigService.config.currentDirectory != null) {
+        currentDirectory = widget.editorConfigService.config.currentDirectory;
+      }
+      _isLoading = false;
+    });
   }
 
   void _handleDirectoryChanged(String newPath) {
