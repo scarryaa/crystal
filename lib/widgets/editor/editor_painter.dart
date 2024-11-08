@@ -30,8 +30,7 @@ class EditorPainter extends CustomPainter {
   late final SearchPainter searchPainter;
   late final SelectionPainter selectionPainter;
   final BracketMatchPainter bracketMatchPainter;
-
-  // Remove the static list of highlighted lines
+  final bool isFocused;
   final Set<int> _currentHighlightedLines = {};
 
   EditorPainter({
@@ -43,6 +42,7 @@ class EditorPainter extends CustomPainter {
     required this.currentSearchTermMatch,
     required this.editorLayoutService,
     required this.editorConfigService,
+    required this.isFocused,
   })  : backgroundPainter = BackgroundPainter(
             backgroundColor:
                 editorConfigService.themeService.currentTheme != null
@@ -135,8 +135,10 @@ class EditorPainter extends CustomPainter {
         firstVisibleLine: firstVisibleLine, lastVisibleLine: lastVisibleLine);
 
     // Draw caret
-    caretPainter.paint(canvas, size,
-        firstVisibleLine: firstVisibleLine, lastVisibleLine: lastVisibleLine);
+    if (editorState.showCaret && isFocused) {
+      caretPainter.paint(canvas, size,
+          firstVisibleLine: firstVisibleLine, lastVisibleLine: lastVisibleLine);
+    }
   }
 
   void _highlightCurrentLine(Canvas canvas, Size size, int lineNumber) {
@@ -169,6 +171,7 @@ class EditorPainter extends CustomPainter {
         editorState.scrollState.verticalOffset !=
             oldDelegate.editorState.scrollState.verticalOffset ||
         editorState.showCaret != oldDelegate.editorState.showCaret ||
+        isFocused != oldDelegate.isFocused ||
         editorState.cursorShape != oldDelegate.editorState.cursorShape ||
         searchTerm != oldDelegate.searchTerm ||
         currentSearchTermMatch != oldDelegate.currentSearchTermMatch;

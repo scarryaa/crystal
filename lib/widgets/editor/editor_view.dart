@@ -56,6 +56,7 @@ class EditorView extends StatefulWidget {
 
 class _EditorViewState extends State<EditorView> {
   final FocusNode _focusNode = FocusNode();
+  bool _isFocused = false;
   double _cachedMaxLineWidth = 0;
   Timer? _caretTimer;
   late final EditorInputHandler editorInputHandler;
@@ -66,6 +67,19 @@ class _EditorViewState extends State<EditorView> {
   @override
   void initState() {
     super.initState();
+
+    _focusNode.addListener(() {
+      setState(() {
+        _isFocused = _focusNode.hasFocus;
+        if (!_isFocused) {
+          widget.state.showCaret = false;
+          _stopCaretBlinking();
+        } else {
+          _startCaretBlinking();
+        }
+      });
+    });
+
     editorInputHandler = EditorInputHandler(
         resetCaretBlink: _resetCaretBlink, requestFocus: requestFocus);
 
@@ -162,6 +176,7 @@ class _EditorViewState extends State<EditorView> {
       searchTermMatches: widget.searchTermMatches,
       currentSearchTermMatch: widget.currentSearchTermMatch,
       viewportHeight: MediaQuery.of(context).size.height,
+      isFocused: _isFocused,
     );
     widget.state.scrollState
         .updateViewportHeight(MediaQuery.of(context).size.height);
