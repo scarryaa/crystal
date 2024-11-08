@@ -3,7 +3,6 @@ import 'package:crystal/state/editor/editor_state.dart';
 import 'package:flutter/material.dart';
 
 class EditorTab extends StatelessWidget {
-  static const double _kIconSize = 16.0;
   static const double _kSpacing = 8.0;
   static const double _kHorizontalPadding = 16.0;
   static const double _kStatusIndicatorSize = 8.0;
@@ -125,7 +124,7 @@ class EditorTab extends StatelessWidget {
                 padding: const EdgeInsets.all(2),
                 child: Icon(
                   isPinned ? Icons.push_pin : Icons.close,
-                  size: _kIconSize,
+                  size: editorConfigService.config.uiFontSize,
                   color: color,
                 ),
               ),
@@ -140,62 +139,69 @@ class EditorTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = editorConfigService.themeService.currentTheme;
 
-    return Semantics(
-      // TODO add tab index?
-      label:
-          '${editor.path.isEmpty ? "untitled" : editor.path.split('/').last} tab',
-      selected: isActive,
-      button: true,
-      child: InkWell(
-        onTap: onTap,
-        child: GestureDetector(
-          onTertiaryTapDown: (_) => onClose(),
-          onSecondaryTapDown: (details) => _showContextMenu(context, details),
-          child: Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: _kHorizontalPadding),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              border: Border(
-                right: BorderSide(
-                  color: theme?.border ?? Colors.grey[200]!,
-                ),
-                bottom: BorderSide(
-                  color: isActive
-                      ? Colors.transparent
-                      : theme?.border ?? Colors.grey[200]!,
-                ),
-              ),
-              color: isActive
-                  ? theme?.background ?? Colors.white
-                  : theme?.backgroundLight ?? Colors.grey[50],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildStatusIndicator(),
-                const SizedBox(width: _kSpacing),
-                Flexible(
-                  child: Text(
-                    (editor.path.isEmpty ||
-                            editor.path.substring(0, 6) == '__temp')
-                        ? 'untitled'
-                        : editor.path.split('/').last,
-                    style: TextStyle(
-                      color: isActive
-                          ? theme?.primary ?? Colors.blue
-                          : theme?.text ?? Colors.black87,
+    return ListenableBuilder(
+        listenable: editorConfigService,
+        builder: (context, child) {
+          return Semantics(
+            // TODO add tab index?
+            label:
+                '${editor.path.isEmpty ? "untitled" : editor.path.split('/').last} tab',
+            selected: isActive,
+            button: true,
+            child: InkWell(
+              onTap: onTap,
+              child: GestureDetector(
+                onTertiaryTapDown: (_) => onClose(),
+                onSecondaryTapDown: (details) =>
+                    _showContextMenu(context, details),
+                child: Container(
+                  height: editorConfigService.config.uiFontSize * 2.5,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: _kHorizontalPadding),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    border: Border(
+                      right: BorderSide(
+                        color: theme?.border ?? Colors.grey[200]!,
+                      ),
+                      bottom: BorderSide(
+                        color: isActive
+                            ? Colors.transparent
+                            : theme?.border ?? Colors.grey[200]!,
+                      ),
                     ),
-                    overflow: TextOverflow.ellipsis,
+                    color: isActive
+                        ? theme?.background ?? Colors.white
+                        : theme?.backgroundLight ?? Colors.grey[50],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildStatusIndicator(),
+                      const SizedBox(width: _kSpacing),
+                      Flexible(
+                        child: Text(
+                          (editor.path.isEmpty ||
+                                  editor.path.substring(0, 6) == '__temp')
+                              ? 'untitled'
+                              : editor.path.split('/').last,
+                          style: TextStyle(
+                            color: isActive
+                                ? theme?.primary ?? Colors.blue
+                                : theme?.text ?? Colors.black87,
+                            fontSize: editorConfigService.config.uiFontSize,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: _kSpacing),
+                      _buildActionButton(),
+                    ],
                   ),
                 ),
-                const SizedBox(width: _kSpacing),
-                _buildActionButton(),
-              ],
+              ),
             ),
-          ),
-        ),
-      ),
-    );
+          );
+        });
   }
 }

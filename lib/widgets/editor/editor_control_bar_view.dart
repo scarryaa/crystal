@@ -92,7 +92,7 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
     return Text(
       (path.isEmpty || path.substring(0, 6) == '__temp') ? 'untitled' : path,
       style: TextStyle(
-        fontSize: 14,
+        fontSize: widget.editorConfigService.config.uiFontSize,
         color: widget.editorConfigService.themeService.currentTheme != null
             ? widget.editorConfigService.themeService.currentTheme!.text
             : Colors.black87,
@@ -129,7 +129,7 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
                 child: Center(
                   child: DefaultTextStyle(
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: widget.editorConfigService.config.uiFontSize,
                       fontWeight: FontWeight.w500,
                       color: value
                           ? widget.editorConfigService.themeService
@@ -176,7 +176,7 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
         color: _isSearchActive
             ? widget.editorConfigService.themeService.currentTheme!.primary
             : widget.editorConfigService.themeService.currentTheme!.text,
-        size: 16,
+        size: widget.editorConfigService.config.uiFontSize,
       ),
       (_) => setState(() => _searchHovered = true),
       (_) => setState(() => _searchHovered = false),
@@ -192,7 +192,7 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
         color: _isReplaceActive
             ? widget.editorConfigService.themeService.currentTheme!.primary
             : widget.editorConfigService.themeService.currentTheme!.text,
-        size: 16,
+        size: widget.editorConfigService.config.uiFontSize,
       ),
       (_) => setState(() => _replaceHovered = true),
       (_) => setState(() => _replaceHovered = false),
@@ -281,7 +281,7 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
                   ),
                 ),
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: widget.editorConfigService.config.uiFontSize,
                   color: widget
                       .editorConfigService.themeService.currentTheme!.text,
                 ),
@@ -292,6 +292,7 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
           _buildToggleButton(
               Icon(
                 Icons.arrow_left,
+                size: widget.editorConfigService.config.uiFontSize,
                 color:
                     widget.editorConfigService.themeService.currentTheme!.text,
               ),
@@ -301,6 +302,7 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
               widget.previousSearchTerm),
           _buildToggleButton(
               Icon(
+                size: widget.editorConfigService.config.uiFontSize,
                 Icons.arrow_right,
                 color:
                     widget.editorConfigService.themeService.currentTheme!.text,
@@ -323,6 +325,7 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
       '$currentSearchTermMatch/$totalSearchTermMatches',
       style: TextStyle(
         color: widget.editorConfigService.themeService.currentTheme!.text,
+        fontSize: widget.editorConfigService.config.uiFontSize,
       ),
     );
   }
@@ -371,7 +374,7 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
                 ),
               ),
               style: TextStyle(
-                fontSize: 14,
+                fontSize: widget.editorConfigService.config.uiFontSize,
                 color:
                     widget.editorConfigService.themeService.currentTheme!.text,
               ),
@@ -383,7 +386,7 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
           Text(
             '1↓',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: widget.editorConfigService.config.uiFontSize,
               fontWeight: FontWeight.w500,
               color: widget.editorConfigService.themeService.currentTheme!.text,
             ),
@@ -397,7 +400,7 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
           Text(
             'all',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: widget.editorConfigService.config.uiFontSize,
               fontWeight: FontWeight.w500,
               color: widget.editorConfigService.themeService.currentTheme!.text,
             ),

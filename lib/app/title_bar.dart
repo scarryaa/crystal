@@ -65,54 +65,60 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
   Widget build(BuildContext context) {
     final theme = widget.editorConfigService.themeService.currentTheme!;
 
-    return GestureDetector(
-      onPanStart: (details) {
-        windowManager.startDragging();
-      },
-      child: Container(
-        height: 28,
-        color: theme.titleBar,
-        child: Row(
-          children: [
-            if (Platform.isMacOS && !isFullScreen) const SizedBox(width: 70),
-            const SizedBox(width: 6),
-            MouseRegion(
-              onEnter: (_) => setState(() => isHovering = true),
-              onExit: (_) => setState(() => isHovering = false),
-              cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                onTap: _pickDirectory,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: isHovering
-                        ? theme.text.withOpacity(0.1)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (widget.currentDirectory != null &&
-                          widget.currentDirectory!.isNotEmpty)
-                        Text(
-                          widget.currentDirectory!.split('/').last,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: theme.text.withOpacity(0.7),
-                          ),
-                          overflow: TextOverflow.ellipsis,
+    return ListenableBuilder(
+        listenable: widget.editorConfigService,
+        builder: (context, child) {
+          return GestureDetector(
+            onPanStart: (details) {
+              windowManager.startDragging();
+            },
+            child: Container(
+              height: widget.editorConfigService.config.uiFontSize * 2.0,
+              color: theme.titleBar,
+              child: Row(
+                children: [
+                  if (Platform.isMacOS && !isFullScreen)
+                    const SizedBox(width: 70),
+                  const SizedBox(width: 6),
+                  MouseRegion(
+                    onEnter: (_) => setState(() => isHovering = true),
+                    onExit: (_) => setState(() => isHovering = false),
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
+                      onTap: _pickDirectory,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: isHovering
+                              ? theme.text.withOpacity(0.1)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(4),
                         ),
-                    ],
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (widget.currentDirectory != null &&
+                                widget.currentDirectory!.isNotEmpty)
+                              Text(
+                                widget.currentDirectory!.split('/').last,
+                                style: TextStyle(
+                                  fontSize: widget
+                                      .editorConfigService.config.uiFontSize,
+                                  color: theme.text.withOpacity(0.7),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  const Spacer(),
+                ],
               ),
             ),
-            const Spacer(),
-          ],
-        ),
-      ),
-    );
+          );
+        });
   }
 
   @override

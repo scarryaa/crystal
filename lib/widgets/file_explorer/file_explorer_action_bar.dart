@@ -1,3 +1,4 @@
+import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:flutter/material.dart';
 
 class FileExplorerActionBar extends StatelessWidget {
@@ -7,10 +8,12 @@ class FileExplorerActionBar extends StatelessWidget {
   final VoidCallback? onNewFile;
   final VoidCallback? onNewFolder;
   final Color textColor;
+  final EditorConfigService editorConfigService;
 
   const FileExplorerActionBar({
     super.key,
     required this.textColor,
+    required this.editorConfigService,
     this.onCollapseAll,
     this.onExpandAll,
     this.onRefresh,
@@ -68,7 +71,7 @@ class FileExplorerActionBar extends StatelessWidget {
     return IconButton(
       icon: Icon(icon),
       color: textColor,
-      iconSize: 16.0,
+      iconSize: editorConfigService.config.uiFontSize,
       tooltip: tooltip,
       onPressed: onPressed,
       splashRadius: 20.0,

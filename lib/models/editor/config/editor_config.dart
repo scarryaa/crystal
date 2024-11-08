@@ -1,5 +1,6 @@
 class EditorConfig {
   double fontSize;
+  double uiFontSize;
   String fontFamily;
   double whitespaceIndicatorRadius;
   bool isFileExplorerVisible;
@@ -7,6 +8,7 @@ class EditorConfig {
 
   EditorConfig({
     required this.fontSize,
+    required this.uiFontSize,
     required this.fontFamily,
     required this.whitespaceIndicatorRadius,
     this.isFileExplorerVisible = true,

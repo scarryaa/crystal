@@ -55,81 +55,91 @@ class _StatusBarState extends State<StatusBar> {
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.editorConfigService.isLoaded) {
-      return Container(
-        height: 25,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: Colors.grey[300]!),
-        ),
-        child: const Center(
-          child: SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
-      );
-    }
-
-    final themeColor =
-        widget.editorConfigService.themeService.currentTheme?.text ??
-            Colors.black87;
-
-    return Container(
-      height: 25,
-      decoration: BoxDecoration(
-        color: widget.editorConfigService.themeService.currentTheme != null
-            ? widget.editorConfigService.themeService.currentTheme!.background
-            : Colors.white,
-        border: Border.all(
-            color: widget.editorConfigService.themeService.currentTheme != null
-                ? widget.editorConfigService.themeService.currentTheme!.border
-                : Colors.grey[300]!),
-      ),
-      child: Row(
-        children: [
-          MouseRegion(
-            child: GestureDetector(
-              onTap: _handleFileExplorerToggle,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                child: Row(
-                  children: [
-                    Icon(
-                      widget.editorConfigService.config.isFileExplorerVisible
-                          ? Icons.folder
-                          : Icons.folder_open,
-                      size: 16,
-                      color: themeColor,
-                    ),
-                    const SizedBox(width: 4),
-                  ],
+    return ListenableBuilder(
+        listenable: widget.editorConfigService,
+        builder: (context, child) {
+          if (!widget.editorConfigService.isLoaded) {
+            return Container(
+              height: 25,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: const Center(
+                child: SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               ),
-            ),
-          ),
-          const Spacer(),
-          Consumer<EditorState?>(
-            builder: (context, state, child) {
-              if (state == null) return const SizedBox();
+            );
+          }
 
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                child: Text(
-                  state.editorCursorManager.cursors.length > 1
-                      ? '${state.editorCursorManager.cursors.length} cursors'
-                      : '${state.editorCursorManager.cursors.first.line + 1}:${state.editorCursorManager.cursors.first.column + 1}',
-                  style: TextStyle(
-                    color: themeColor,
-                    fontSize: 12,
+          final themeColor =
+              widget.editorConfigService.themeService.currentTheme?.text ??
+                  Colors.black87;
+
+          return Container(
+            height: widget.editorConfigService.config.uiFontSize * 1.8,
+            decoration: BoxDecoration(
+              color:
+                  widget.editorConfigService.themeService.currentTheme != null
+                      ? widget.editorConfigService.themeService.currentTheme!
+                          .background
+                      : Colors.white,
+              border: Border.all(
+                  color: widget.editorConfigService.themeService.currentTheme !=
+                          null
+                      ? widget
+                          .editorConfigService.themeService.currentTheme!.border
+                      : Colors.grey[300]!),
+            ),
+            child: Row(
+              children: [
+                MouseRegion(
+                  child: GestureDetector(
+                    onTap: _handleFileExplorerToggle,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Row(
+                        children: [
+                          Icon(
+                            widget.editorConfigService.config
+                                    .isFileExplorerVisible
+                                ? Icons.folder
+                                : Icons.folder_open,
+                            size: 16,
+                            color: themeColor,
+                          ),
+                          const SizedBox(width: 4),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
+                const Spacer(),
+                Consumer<EditorState?>(
+                  builder: (context, state, child) {
+                    if (state == null) return const SizedBox();
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Text(
+                        state.editorCursorManager.cursors.length > 1
+                            ? '${state.editorCursorManager.cursors.length} cursors'
+                            : '${state.editorCursorManager.cursors.first.line + 1}:${state.editorCursorManager.cursors.first.column + 1}',
+                        style: TextStyle(
+                          color: themeColor,
+                          fontSize:
+                              widget.editorConfigService.config.uiFontSize,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          );
+        });
   }
 }

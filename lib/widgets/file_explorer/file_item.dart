@@ -8,6 +8,7 @@ class FileItem extends StatefulWidget {
   int level;
   Color textColor;
   Color highlightColor;
+  final double fontSize;
 
   FileItem({
     super.key,
@@ -15,6 +16,7 @@ class FileItem extends StatefulWidget {
     required this.expanded,
     required this.textColor,
     required this.highlightColor,
+    required this.fontSize,
     this.level = 0,
     this.isDirectory = false,
     this.onTap,
@@ -64,7 +66,7 @@ class _FileItemState extends State<FileItem> {
                     child: Text(
                       widget.fileName,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: widget.fontSize,
                         fontStyle: FontStyle.normal,
                         fontVariations: const [
                           FontVariation('wght', 400),

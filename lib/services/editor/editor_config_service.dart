@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -8,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 
 class EditorConfigService extends ChangeNotifier {
+  StreamSubscription<FileSystemEvent>? _configFileWatcher;
   final EditorThemeService themeService;
   late EditorConfig config;
   final _logger = Logger('EditorConfigService');
@@ -16,6 +18,7 @@ class EditorConfigService extends ChangeNotifier {
 
   static const Map<String, dynamic> _defaultConfig = {
     'fontSize': 14.0,
+    'uiFontSize': 14.0,
     'fontFamily': 'IBM Plex Mono',
     'whitespaceIndicatorRadius': 1.0,
     'theme': 'default-dark',
@@ -29,12 +32,17 @@ class EditorConfigService extends ChangeNotifier {
     final service = EditorConfigService._();
     await service.loadConfig();
     await service.saveDefaultConfig();
+    await service._watchConfigFile();
     return service;
   }
 
-  Future<void> loadConfig() async {
-    if (_isLoaded) return;
+  @override
+  void dispose() {
+    _configFileWatcher?.cancel();
+    super.dispose();
+  }
 
+  Future<void> loadConfig() async {
     try {
       final configFile = File(await ConfigPaths.getConfigFilePath());
       config = await _loadConfigFromFile(configFile);
@@ -43,8 +51,25 @@ class EditorConfigService extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       _logger.warning('Error loading config: $e');
-      await _setDefaultConfig();
+      if (!_isLoaded) {
+        await _setDefaultConfig();
+      }
     }
+  }
+
+  Future<void> _watchConfigFile() async {
+    final configPath = await ConfigPaths.getConfigFilePath();
+    _configFileWatcher?.cancel();
+
+    _configFileWatcher = File(configPath)
+        .watch(events: FileSystemEvent.modify)
+        .listen((FileSystemEvent event) {
+      if (event.type == FileSystemEvent.modify) {
+        Future.delayed(const Duration(milliseconds: 100), () async {
+          await loadConfig();
+        });
+      }
+    });
   }
 
   Future<EditorConfig> _loadConfigFromFile(File configFile) async {
@@ -59,6 +84,8 @@ class EditorConfigService extends ChangeNotifier {
       return EditorConfig(
         fontSize: (configData['fontSize'] as num?)?.toDouble() ??
             _defaultConfig['fontSize'] as double,
+        uiFontSize: (configData['uiFontSize'] as num?)?.toDouble() ??
+            _defaultConfig['uiFontSize'] as double,
         fontFamily: configData['fontFamily'] as String? ??
             _defaultConfig['fontFamily'] as String,
         whitespaceIndicatorRadius:
@@ -78,6 +105,7 @@ class EditorConfigService extends ChangeNotifier {
   EditorConfig _createDefaultConfig() {
     return EditorConfig(
       fontSize: _defaultConfig['fontSize'] as double,
+      uiFontSize: _defaultConfig['uiFontSize'] as double,
       fontFamily: _defaultConfig['fontFamily'] as String,
       whitespaceIndicatorRadius:
           _defaultConfig['whitespaceIndicatorRadius'] as double,
@@ -99,6 +127,7 @@ class EditorConfigService extends ChangeNotifier {
       final configPath = await ConfigPaths.getConfigFilePath();
       final configData = {
         'fontSize': config.fontSize,
+        'uiFontSize': config.uiFontSize,
         'fontFamily': config.fontFamily,
         'theme': themeService.currentTheme!.name,
         'whitespaceIndicatorRadius': config.whitespaceIndicatorRadius,

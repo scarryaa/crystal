@@ -85,6 +85,13 @@ class _AppState extends State<App> {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
         fontFamily: 'IBM Plex Sans',
+        iconTheme: IconThemeData(
+          size: widget.editorConfigService.config.uiFontSize,
+          color: widget.editorConfigService.themeService.currentTheme != null
+              ? widget.editorConfigService.themeService.currentTheme!.primary
+              : Colors.blue,
+          opacity: 1.0,
+        ),
         textTheme: const TextTheme(
           displayLarge: TextStyle(
             fontFamily: 'IBM Plex Sans',
