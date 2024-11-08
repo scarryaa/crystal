@@ -3,6 +3,7 @@
   "primary": "#2196F3",
   "background": "#FAFAFA",
   "backgroundLight": "#F5F5F5",
+  "titleBar": "#F0F0F0",
   "border": "#E0E0E0",
   "text": "#212121",
   "textLight": "#757575"

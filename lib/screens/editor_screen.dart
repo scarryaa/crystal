@@ -22,12 +22,14 @@ class EditorScreen extends StatefulWidget {
   final double horizontalPadding;
   final int verticalPaddingLines;
   final double lineHeightMultipler;
+  final String? currentDirectory;
 
   const EditorScreen({
     super.key,
     required this.horizontalPadding,
     required this.verticalPaddingLines,
     required this.lineHeightMultipler,
+    required this.currentDirectory,
   });
 
   @override
@@ -608,7 +610,7 @@ class _EditorScreenState extends State<EditorScreen> {
                               children: [
                                 FileExplorer(
                                   editorConfigService: _editorConfigService,
-                                  rootDir: '',
+                                  rootDir: widget.currentDirectory ?? '',
                                   tapCallback: tapCallback,
                                 ),
                                 Expanded(

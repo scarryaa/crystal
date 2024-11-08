@@ -8,6 +8,7 @@ class EditorTheme {
   final Color border;
   final Color text;
   final Color textLight;
+  final Color titleBar;
   late final Color whitespaceIndicatorColor;
   late final Color currentLineHighlight;
   late final Color indentLineColor;
@@ -17,6 +18,7 @@ class EditorTheme {
     required this.primary,
     required this.background,
     required this.backgroundLight,
+    required this.titleBar,
     required this.border,
     required this.text,
     required this.textLight,
@@ -32,6 +34,7 @@ class EditorTheme {
       primary: _colorFromHex(json['primary'] as String),
       background: _colorFromHex(json['background'] as String),
       backgroundLight: _colorFromHex(json['backgroundLight'] as String),
+      titleBar: _colorFromHex(json['titleBar'] as String),
       border: _colorFromHex(json['border'] as String),
       text: _colorFromHex(json['text'] as String),
       textLight: _colorFromHex(json['textLight'] as String),
