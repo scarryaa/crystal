@@ -12,6 +12,8 @@ class GutterPainter extends CustomPainter {
   final EditorLayoutService editorLayoutService;
   final EditorConfigService editorConfigService;
   final Set<int> _currentHighlightedLines = {};
+  final double horizontalPadding = 16.0;
+  late final double _gutterWidth;
 
   final TextStyle _defaultStyle;
   final TextStyle _highlightStyle;
@@ -34,7 +36,27 @@ class GutterPainter extends CustomPainter {
           fontSize: editorConfigService.config.fontSize,
           fontFamily: editorConfigService.config.fontFamily,
         ),
-        super(repaint: editorState);
+        super(repaint: editorState) {
+    _gutterWidth = _calculateGutterWidth();
+  }
+
+  double _calculateGutterWidth() {
+    final lineCount = editorState.buffer.lineCount;
+    final maxLineNumberWidth = _getTextWidth(
+      lineCount.toString(),
+      _defaultStyle,
+    );
+    return maxLineNumberWidth + (horizontalPadding * 2);
+  }
+
+  double _getTextWidth(String text, TextStyle style) {
+    final textPainter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    return textPainter.width;
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -78,7 +100,8 @@ class GutterPainter extends CustomPainter {
       Canvas canvas, Size size, int firstVisibleLine, int lastVisibleLine) {
     final textPainter = TextPainter(
       textDirection: TextDirection.ltr,
-      textAlign: TextAlign.left,
+      textAlign: TextAlign.right,
+      maxLines: 1,
       textHeightBehavior: const TextHeightBehavior(
         applyHeightToFirstAscent: false,
         applyHeightToLastDescent: false,
@@ -88,6 +111,7 @@ class GutterPainter extends CustomPainter {
         fontFamily: editorConfigService.config.fontFamily,
         height: 1.0,
         forceStrutHeight: true,
+        leadingDistribution: TextLeadingDistribution.even,
       ),
     );
 
@@ -107,9 +131,9 @@ class GutterPainter extends CustomPainter {
         style: style,
       );
 
-      textPainter.layout();
+      textPainter.layout(maxWidth: _gutterWidth - (horizontalPadding * 2));
 
-      final xOffset = size.width / 2 - textPainter.width;
+      final xOffset = size.width - textPainter.width - horizontalPadding;
       final yOffset = i * editorLayoutService.config.lineHeight +
           (editorLayoutService.config.lineHeight - textPainter.height) / 2;
 
@@ -140,6 +164,8 @@ class GutterPainter extends CustomPainter {
     return editorState.buffer.lineCount !=
             oldDelegate.editorState.buffer.lineCount ||
         editorState.editorCursorManager.cursors !=
-            oldDelegate.editorState.editorCursorManager.cursors;
+            oldDelegate.editorState.editorCursorManager.cursors ||
+        editorConfigService.config.fontSize !=
+            oldDelegate.editorConfigService.config.fontSize;
   }
 }

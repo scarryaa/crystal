@@ -27,60 +27,75 @@ class Gutter extends StatefulWidget {
 
 class _GutterState extends State<Gutter> {
   EditorState get editorState => widget.editorState;
-  double get gutterWidth => editorState.getGutterWidth();
+  double get gutterWidth {
+    final lineCount = editorState.buffer.lineCount;
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: lineCount.toString(),
+        style: TextStyle(
+          fontSize: widget.editorConfigService.config.fontSize,
+          fontFamily: widget.editorConfigService.config.fontFamily,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    return textPainter.width + 32.0; // Add padding (16.0 on each side)
+  }
 
   @override
   Widget build(BuildContext context) {
     double height = max(
-        MediaQuery.of(context).size.height,
-        (editorState.buffer.lineCount *
-                widget.editorLayoutService.config.lineHeight) +
-            widget.editorLayoutService.config.verticalPadding);
+      MediaQuery.of(context).size.height,
+      (editorState.buffer.lineCount *
+              widget.editorLayoutService.config.lineHeight) +
+          widget.editorLayoutService.config.verticalPadding,
+    );
 
     return Consumer<EditorState>(
       builder: (context, editorState, child) {
         return Container(
-            color: widget.editorConfigService.themeService.currentTheme != null
-                ? widget
-                    .editorConfigService.themeService.currentTheme!.background
-                : Colors.white,
-            child: ScrollConfiguration(
-                behavior: const ScrollBehavior().copyWith(scrollbars: false),
-                child: GestureDetector(
-                    onTapDown: _handleGutterTap,
-                    onPanStart: _handleGutterDragStart,
-                    onPanUpdate: _handleGutterDrag,
-                    child: SingleChildScrollView(
-                      controller: widget.verticalScrollController,
-                      child: Align(
-                        alignment: Alignment.topCenter,
-                        child: CustomPaint(
-                            painter: GutterPainter(
-                              textColor: widget.editorConfigService.themeService
-                                          .currentTheme !=
-                                      null
-                                  ? widget.editorConfigService.themeService
-                                      .currentTheme!.textLight
-                                  : Colors.grey,
-                              highlightColor: widget.editorConfigService
-                                          .themeService.currentTheme !=
-                                      null
-                                  ? widget.editorConfigService.themeService
-                                      .currentTheme!.primary
-                                  : Colors.blue,
-                              editorConfigService: widget.editorConfigService,
-                              editorLayoutService: widget.editorLayoutService,
-                              editorState: editorState,
-                              verticalOffset:
-                                  widget.verticalScrollController.hasClients
-                                      ? widget.verticalScrollController.offset
-                                      : 0,
-                              viewportHeight:
-                                  MediaQuery.of(context).size.height,
-                            ),
-                            size: Size(gutterWidth, height)),
+          width: gutterWidth, // Set explicit width
+          color: widget
+                  .editorConfigService.themeService.currentTheme?.background ??
+              Colors.white,
+          child: ScrollConfiguration(
+            behavior: const ScrollBehavior().copyWith(scrollbars: false),
+            child: GestureDetector(
+              onTapDown: _handleGutterTap,
+              onPanStart: _handleGutterDragStart,
+              onPanUpdate: _handleGutterDrag,
+              child: SingleChildScrollView(
+                controller: widget.verticalScrollController,
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: SizedBox(
+                    width: gutterWidth,
+                    height: height,
+                    child: CustomPaint(
+                      painter: GutterPainter(
+                        textColor: widget.editorConfigService.themeService
+                                .currentTheme?.textLight ??
+                            Colors.grey,
+                        highlightColor: widget.editorConfigService.themeService
+                                .currentTheme?.primary ??
+                            Colors.blue,
+                        editorConfigService: widget.editorConfigService,
+                        editorLayoutService: widget.editorLayoutService,
+                        editorState: editorState,
+                        verticalOffset:
+                            widget.verticalScrollController.hasClients
+                                ? widget.verticalScrollController.offset
+                                : 0,
+                        viewportHeight: MediaQuery.of(context).size.height,
                       ),
-                    ))));
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
       },
     );
   }
