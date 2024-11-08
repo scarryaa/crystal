@@ -333,7 +333,8 @@ class EditorState extends ChangeNotifier {
     double currentWidth = 0;
 
     for (int i = 0; i < lineText.length; i++) {
-      double charWidth = measureLineWidth(lineText[i]);
+      double charWidth =
+          editorLayoutService.config.charWidth * lineText[i].length;
       if (currentWidth + (charWidth / 2) > x) break;
       currentWidth += charWidth;
       targetColumn = i + 1;
@@ -384,7 +385,8 @@ class EditorState extends ChangeNotifier {
     double currentWidth = 0;
 
     for (int i = 0; i < lineText.length; i++) {
-      double charWidth = measureLineWidth(lineText[i]);
+      double charWidth =
+          editorLayoutService.config.charWidth * lineText[i].length;
       if (currentWidth + (charWidth / 2) > x) break;
       currentWidth += charWidth;
       targetColumn = i + 1;
