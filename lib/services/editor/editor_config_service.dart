@@ -135,22 +135,24 @@ class EditorConfigService extends ChangeNotifier {
         'currentDirectory': config.currentDirectory,
       };
 
-      await File(configPath).writeAsString(json.encode(configData));
+      const encoder = JsonEncoder.withIndent('  ');
+      await File(configPath).writeAsString(encoder.convert(configData));
     } catch (e) {
       _logger.warning('Error saving config: $e');
     }
   }
 
-  Future<void> _loadTheme() async {
-    await themeService.loadThemeFromJson(_defaultConfig['theme'] as String);
-  }
-
   Future<void> saveDefaultConfig() async {
     try {
       final configPath = await ConfigPaths.getDefaultConfigFilePath();
-      await File(configPath).writeAsString(json.encode(_defaultConfig));
+      const encoder = JsonEncoder.withIndent('  ');
+      await File(configPath).writeAsString(encoder.convert(_defaultConfig));
     } catch (e) {
       _logger.warning('Error saving default config: $e');
     }
+  }
+
+  Future<void> _loadTheme() async {
+    await themeService.loadThemeFromJson(_defaultConfig['theme'] as String);
   }
 }
