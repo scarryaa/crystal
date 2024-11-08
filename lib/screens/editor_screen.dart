@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:crystal/models/cursor.dart';
+import 'package:crystal/models/editor/config/config_paths.dart';
 import 'package:crystal/models/editor/search_match.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
@@ -14,6 +15,7 @@ import 'package:crystal/widgets/file_explorer/file_explorer.dart';
 import 'package:crystal/widgets/gutter/gutter.dart';
 import 'package:crystal/widgets/status_bar/status_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 class EditorScreen extends StatefulWidget {
@@ -60,10 +62,12 @@ class _EditorScreenState extends State<EditorScreen> {
       String content = await File(path).readAsString();
 
       final newEditor = EditorState(
-          editorConfigService: _editorConfigService,
-          editorLayoutService: _editorLayoutService,
-          resetGutterScroll: _resetGutterScroll,
-          path: path);
+        editorConfigService: _editorConfigService,
+        editorLayoutService: _editorLayoutService,
+        resetGutterScroll: _resetGutterScroll,
+        path: path,
+        tapCallback: tapCallback,
+      );
       setState(() {
         _editors.add(newEditor);
         activeEditorIndex = _editors.length - 1;
@@ -469,128 +473,151 @@ class _EditorScreenState extends State<EditorScreen> {
     super.dispose();
   }
 
+  Future<void> _openSettings() async {
+    await tapCallback(await ConfigPaths.getConfigFilePath());
+  }
+
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: activeEditor,
-      child: Consumer<EditorState?>(
-        builder: (context, state, _) {
-          final gutterWidth = state?.getGutterWidth();
+    return Focus(
+        autofocus: true,
+        onKeyEvent: (node, event) {
+          if (event is KeyDownEvent) {
+            final bool isControlPressed = Platform.isMacOS
+                ? HardwareKeyboard.instance.isMetaPressed
+                : HardwareKeyboard.instance.isControlPressed;
 
-          return Material(
-            child: Column(
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      FileExplorer(
-                        editorConfigService: _editorConfigService,
-                        rootDir: '',
-                        tapCallback: tapCallback,
-                      ),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            if (_editors.isNotEmpty)
-                              EditorTabBar(
-                                onPin: onPin,
-                                editorConfigService: _editorConfigService,
-                                editors: _editors,
-                                activeEditorIndex: activeEditorIndex,
-                                onActiveEditorChanged: onActiveEditorChanged,
-                                onEditorClosed: onEditorClosed,
-                                onReorder: onReorder,
-                              ),
-                            if (_editors.isNotEmpty)
-                              EditorControlBarView(
-                                editorConfigService: _editorConfigService,
-                                filePath: activeEditor!.path,
-                                searchTermChanged: _onSearchTermChanged,
-                                nextSearchTerm: _nextSearchTerm,
-                                previousSearchTerm: _previousSearchTerm,
-                                currentSearchTermMatch: _currentSearchTermMatch,
-                                totalSearchTermMatches:
-                                    _searchTermMatches.length,
-                                isCaseSensitiveActive: _caseSensitiveActive,
-                                isRegexActive: _regexActive,
-                                isWholeWordActive: _wholeWordActive,
-                                toggleRegex: _toggleRegex,
-                                toggleWholeWord: _toggleWholeWord,
-                                toggleCaseSensitive: _toggleCaseSensitive,
-                                replaceNextMatch: _replaceNextMatch,
-                                replaceAllMatches: _replaceAllMatches,
-                              ),
-                            Expanded(
-                              child: Container(
-                                color: _editorConfigService
-                                            .themeService.currentTheme !=
-                                        null
-                                    ? _editorConfigService
-                                        .themeService.currentTheme!.background
-                                    : Colors.white,
-                                child: Row(
-                                  children: [
-                                    if (_editors.isNotEmpty)
-                                      Gutter(
-                                        editorConfigService:
-                                            _editorConfigService,
-                                        editorLayoutService:
-                                            _editorLayoutService,
-                                        editorState: state!,
-                                        verticalScrollController:
-                                            _gutterScrollController,
-                                      ),
-                                    Expanded(
-                                      child: _editors.isNotEmpty
-                                          ? EditorView(
-                                              editorConfigService:
-                                                  _editorConfigService,
-                                              editorLayoutService:
-                                                  _editorLayoutService,
-                                              state: state!,
-                                              searchTerm: _searchTerm,
-                                              searchTermMatches:
-                                                  _searchTermMatches,
-                                              currentSearchTermMatch:
-                                                  _currentSearchTermMatch,
-                                              onSearchTermChanged:
-                                                  _updateSearchMatches,
-                                              scrollToCursor: _scrollToCursor,
-                                              gutterWidth: gutterWidth!,
-                                              verticalScrollController:
-                                                  _editorVerticalScrollController,
-                                              horizontalScrollController:
-                                                  _editorHorizontalScrollController,
-                                            )
-                                          : Container(
-                                              color: _editorConfigService
-                                                          .themeService
-                                                          .currentTheme !=
-                                                      null
-                                                  ? _editorConfigService
-                                                      .themeService
-                                                      .currentTheme!
-                                                      .background
-                                                  : Colors.white),
-                                    )
-                                  ],
-                                ),
-                              ),
-                            )
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                StatusBar(
-                  editorConfigService: _editorConfigService,
-                ),
-              ],
-            ),
-          );
+            if (isControlPressed &&
+                event.logicalKey == LogicalKeyboardKey.comma) {
+              _openSettings();
+              return KeyEventResult.handled;
+            }
+          }
+          return KeyEventResult.ignored;
         },
-      ),
-    );
+        child: ChangeNotifierProvider.value(
+          value: activeEditor,
+          child: Consumer<EditorState?>(
+            builder: (context, state, _) {
+              final gutterWidth = state?.getGutterWidth();
+
+              return Material(
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          FileExplorer(
+                            editorConfigService: _editorConfigService,
+                            rootDir: '',
+                            tapCallback: tapCallback,
+                          ),
+                          Expanded(
+                            child: Column(
+                              children: [
+                                if (_editors.isNotEmpty)
+                                  EditorTabBar(
+                                    onPin: onPin,
+                                    editorConfigService: _editorConfigService,
+                                    editors: _editors,
+                                    activeEditorIndex: activeEditorIndex,
+                                    onActiveEditorChanged:
+                                        onActiveEditorChanged,
+                                    onEditorClosed: onEditorClosed,
+                                    onReorder: onReorder,
+                                  ),
+                                if (_editors.isNotEmpty)
+                                  EditorControlBarView(
+                                    editorConfigService: _editorConfigService,
+                                    filePath: activeEditor!.path,
+                                    searchTermChanged: _onSearchTermChanged,
+                                    nextSearchTerm: _nextSearchTerm,
+                                    previousSearchTerm: _previousSearchTerm,
+                                    currentSearchTermMatch:
+                                        _currentSearchTermMatch,
+                                    totalSearchTermMatches:
+                                        _searchTermMatches.length,
+                                    isCaseSensitiveActive: _caseSensitiveActive,
+                                    isRegexActive: _regexActive,
+                                    isWholeWordActive: _wholeWordActive,
+                                    toggleRegex: _toggleRegex,
+                                    toggleWholeWord: _toggleWholeWord,
+                                    toggleCaseSensitive: _toggleCaseSensitive,
+                                    replaceNextMatch: _replaceNextMatch,
+                                    replaceAllMatches: _replaceAllMatches,
+                                  ),
+                                Expanded(
+                                  child: Container(
+                                    color: _editorConfigService
+                                                .themeService.currentTheme !=
+                                            null
+                                        ? _editorConfigService.themeService
+                                            .currentTheme!.background
+                                        : Colors.white,
+                                    child: Row(
+                                      children: [
+                                        if (_editors.isNotEmpty)
+                                          Gutter(
+                                            editorConfigService:
+                                                _editorConfigService,
+                                            editorLayoutService:
+                                                _editorLayoutService,
+                                            editorState: state!,
+                                            verticalScrollController:
+                                                _gutterScrollController,
+                                          ),
+                                        Expanded(
+                                          child: _editors.isNotEmpty
+                                              ? EditorView(
+                                                  editorConfigService:
+                                                      _editorConfigService,
+                                                  editorLayoutService:
+                                                      _editorLayoutService,
+                                                  state: state!,
+                                                  searchTerm: _searchTerm,
+                                                  searchTermMatches:
+                                                      _searchTermMatches,
+                                                  currentSearchTermMatch:
+                                                      _currentSearchTermMatch,
+                                                  onSearchTermChanged:
+                                                      _updateSearchMatches,
+                                                  scrollToCursor:
+                                                      _scrollToCursor,
+                                                  gutterWidth: gutterWidth!,
+                                                  verticalScrollController:
+                                                      _editorVerticalScrollController,
+                                                  horizontalScrollController:
+                                                      _editorHorizontalScrollController,
+                                                )
+                                              : Container(
+                                                  color: _editorConfigService
+                                                              .themeService
+                                                              .currentTheme !=
+                                                          null
+                                                      ? _editorConfigService
+                                                          .themeService
+                                                          .currentTheme!
+                                                          .background
+                                                      : Colors.white),
+                                        )
+                                      ],
+                                    ),
+                                  ),
+                                )
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    StatusBar(
+                      editorConfigService: _editorConfigService,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ));
   }
 }

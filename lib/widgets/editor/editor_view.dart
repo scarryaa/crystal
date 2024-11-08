@@ -271,7 +271,7 @@ class _EditorViewState extends State<EditorView> {
           }
         case LogicalKeyboardKey.comma:
           if (isControlPressed) {
-            _openConfig(); // Add this method
+            _openConfig();
             return KeyEventResult.handled;
           }
       }
@@ -340,29 +340,6 @@ class _EditorViewState extends State<EditorView> {
 
   Future<void> _openConfig() async {
     final configPath = await ConfigPaths.getConfigFilePath();
-
-    // Read the config file content
-    try {
-      final File configFile = File(configPath);
-      if (await configFile.exists()) {
-        final content = await configFile.readAsString();
-        widget.state.openFile(content);
-      } else {
-        // Create default config if it doesn't exist
-        const defaultConfig = '''{
-  "theme": "default-dark",
-  "fontSize": 14,
-  "fontFamily": "IBM Plex Mono",
-  "whitespaceIndicatorRadius": 1.0,
-}''';
-        await configFile.writeAsString(defaultConfig);
-        widget.state.openFile(defaultConfig);
-      }
-
-      // Update the state's file path
-      widget.state.path = configPath;
-    } catch (e) {
-      print('Error opening config file: $e');
-    }
+    await widget.state.tapCallback(configPath);
   }
 }

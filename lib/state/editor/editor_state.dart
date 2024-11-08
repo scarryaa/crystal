@@ -30,12 +30,14 @@ class EditorState extends ChangeNotifier {
   final EditorCursorManager editorCursorManager = EditorCursorManager();
   final EditorSelectionManager editorSelectionManager =
       EditorSelectionManager();
+  final Future<void> Function(String) tapCallback;
   bool isPinned = false;
 
   EditorState({
     required this.resetGutterScroll,
     required this.editorLayoutService,
     required this.editorConfigService,
+    required this.tapCallback,
     this.path = '',
   });
 
