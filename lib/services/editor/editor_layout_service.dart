@@ -6,7 +6,6 @@ class EditorLayoutService {
   final TextMeasurer _textMeasurer;
   late EditorLayoutConfig _editorLayoutConfig;
 
-  // Private constructor
   EditorLayoutService._({
     required double horizontalPadding,
     required int verticalPaddingLines,

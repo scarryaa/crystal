@@ -12,6 +12,11 @@ class FileService {
     file.writeAsStringSync(content);
   }
 
+  static String readFile(String path) {
+    File file = File(path);
+    return file.readAsStringSync();
+  }
+
   String getRelativePath(String fullPath, String rootDir) {
     if (!fullPath.startsWith(rootDir)) {
       return fullPath;

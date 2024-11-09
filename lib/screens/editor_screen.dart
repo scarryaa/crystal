@@ -204,7 +204,16 @@ class _EditorScreenState extends State<EditorScreen> {
     );
 
     if (mounted) {
-      setState(() {});
+      setState(() {
+        for (int i = 0; i < _editors.length; i++) {
+          if (_editors[i].path.endsWith('editor_config.json')) {
+            //r Reload the settings file if it is open
+            _editors[i]
+                .buffer
+                .setContent(FileService.readFile(_editors[i].path));
+          }
+        }
+      });
     }
   }
 
