@@ -100,9 +100,7 @@ class _EditorScreenState extends State<EditorScreen> {
 
     final editorIndex = _editors.indexWhere((editor) => editor.path == path);
     if (editorIndex != -1) {
-      setState(() {
-        activeEditorIndex = editorIndex;
-      });
+      onActiveEditorChanged(editorIndex);
     } else {
       String content = await File(path).readAsString();
       final newEditor = EditorState(
