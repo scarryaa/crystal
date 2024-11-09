@@ -365,6 +365,18 @@ class EditorState extends ChangeNotifier {
     notifyListeners();
   }
 
+  List<Selection> getCurrentSelections() {
+    return editorSelectionManager.selections.toList();
+  }
+
+  void restoreSelections(List<Selection> selections) {
+    editorSelectionManager.clearAll();
+    for (var selection in selections) {
+      editorSelectionManager.addSelection(selection);
+    }
+    notifyListeners();
+  }
+
   void handleDragStart(double dy, double dx,
       Function(String line) measureLineWidth, bool isAltPressed) {
     handleTap(dy, dx, measureLineWidth, isAltPressed);

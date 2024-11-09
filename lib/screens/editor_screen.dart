@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:crystal/models/editor/config/config_paths.dart';
+import 'package:crystal/models/selection.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/services/editor/editor_scroll_manager.dart';
@@ -117,7 +118,7 @@ class _EditorScreenState extends State<EditorScreen> {
         _editors[activeEditorIndex].openFile(content);
       });
     }
-    searchService.onSearchTermChanged(searchService.searchTerm, activeEditor);
+    searchService.updateSearchMatches(searchService.searchTerm, activeEditor);
   }
 
   @override
@@ -220,7 +221,7 @@ class _EditorScreenState extends State<EditorScreen> {
           .jumpTo(activeEditor!.scrollState.verticalOffset);
       editorScrollManager.editorHorizontalScrollController
           .jumpTo(activeEditor!.scrollState.horizontalOffset);
-      searchService.onSearchTermChanged(searchService.searchTerm, activeEditor);
+      searchService.updateSearchMatches(searchService.searchTerm, activeEditor);
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
