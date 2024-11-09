@@ -162,6 +162,9 @@ class _EditorScreenState extends State<EditorScreen> {
       fontFamily: _editorConfigService.config.fontFamily,
       lineHeightMultiplier: widget.lineHeightMultipler,
     );
+    EditorLayoutService.instance.updateFontSize(
+        _editorConfigService.config.fontSize,
+        _editorConfigService.config.fontFamily);
 
     _editorConfigService.addListener(_onConfigChanged);
 
