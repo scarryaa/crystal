@@ -1,9 +1,9 @@
 import 'dart:io';
-import 'dart:math';
 
 import 'package:crystal/models/editor/config/config_paths.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
+import 'package:crystal/services/editor/editor_scroll_manager.dart';
 import 'package:crystal/services/search_service.dart';
 import 'package:crystal/services/shortcut_handler.dart';
 import 'package:crystal/state/editor/editor_state.dart';
@@ -45,11 +45,9 @@ class _EditorScreenState extends State<EditorScreen> {
   late final EditorConfigService _editorConfigService;
   late final ShortcutHandler _shortcutHandler;
   late final Future<void> _initializationFuture;
-  final ScrollController _gutterScrollController = ScrollController();
-  final ScrollController _editorVerticalScrollController = ScrollController();
-  final ScrollController _editorHorizontalScrollController = ScrollController();
   final List<EditorState> _editors = [];
   late SearchService searchService;
+  late EditorScrollManager editorScrollManager;
 
   int activeEditorIndex = 0;
   EditorState? get activeEditor =>
@@ -65,7 +63,7 @@ class _EditorScreenState extends State<EditorScreen> {
     final newEditor = EditorState(
       editorConfigService: _editorConfigService,
       editorLayoutService: _editorLayoutService,
-      resetGutterScroll: _resetGutterScroll,
+      resetGutterScroll: editorScrollManager.resetGutterScroll,
       tapCallback: tapCallback,
     );
 
@@ -110,7 +108,7 @@ class _EditorScreenState extends State<EditorScreen> {
       final newEditor = EditorState(
         editorConfigService: _editorConfigService,
         editorLayoutService: _editorLayoutService,
-        resetGutterScroll: _resetGutterScroll,
+        resetGutterScroll: editorScrollManager.resetGutterScroll,
         path: path,
         relativePath: relativePath,
         tapCallback: tapCallback,
@@ -129,6 +127,42 @@ class _EditorScreenState extends State<EditorScreen> {
     super.initState();
     _initializationFuture = _initializeServices();
     searchService = SearchService(scrollToCursor: _scrollToCursor);
+    editorScrollManager = EditorScrollManager();
+
+    // Scroll Listeners
+    editorScrollManager.initListeners(
+      onEditorScroll: _handleEditorScroll,
+      onGutterScroll: _handleGutterScroll,
+    );
+  }
+
+  void _handleEditorScroll() {
+    if (editorScrollManager.gutterScrollController.offset !=
+        editorScrollManager.editorVerticalScrollController.offset) {
+      editorScrollManager.gutterScrollController
+          .jumpTo(editorScrollManager.editorVerticalScrollController.offset);
+      activeEditor?.updateVerticalScrollOffset(
+          editorScrollManager.editorVerticalScrollController.offset);
+    }
+    activeEditor?.updateHorizontalScrollOffset(
+        editorScrollManager.editorHorizontalScrollController.offset);
+  }
+
+  void _handleGutterScroll() {
+    if (editorScrollManager.editorVerticalScrollController.offset !=
+        editorScrollManager.gutterScrollController.offset) {
+      editorScrollManager.editorVerticalScrollController
+          .jumpTo(editorScrollManager.gutterScrollController.offset);
+      activeEditor?.updateVerticalScrollOffset(
+          editorScrollManager.gutterScrollController.offset);
+    }
+  }
+
+  void _scrollToCursor() {
+    editorScrollManager.scrollToCursor(
+      activeEditor: activeEditor,
+      layoutService: _editorLayoutService,
+    );
   }
 
   Future<void> _initializeServices() async {
@@ -173,12 +207,6 @@ class _EditorScreenState extends State<EditorScreen> {
         }
       },
     );
-
-    // Listeners
-    _editorVerticalScrollController.addListener(_handleEditorScroll);
-    _editorHorizontalScrollController.addListener(_handleEditorScroll);
-    _gutterScrollController.addListener(_handleGutterScroll);
-    _editorConfigService.themeService.addListener(_onThemeChanged);
   }
 
   void _onThemeChanged() {
@@ -187,89 +215,12 @@ class _EditorScreenState extends State<EditorScreen> {
     }
   }
 
-  void _handleEditorScroll() {
-    if (_gutterScrollController.offset !=
-        _editorVerticalScrollController.offset) {
-      _gutterScrollController.jumpTo(_editorVerticalScrollController.offset);
-      activeEditor!
-          .updateVerticalScrollOffset(_editorVerticalScrollController.offset);
-    }
-
-    activeEditor!
-        .updateHorizontalScrollOffset(_editorHorizontalScrollController.offset);
-  }
-
-  void _handleGutterScroll() {
-    if (_editorVerticalScrollController.offset !=
-        _gutterScrollController.offset) {
-      _editorVerticalScrollController.jumpTo(_gutterScrollController.offset);
-      activeEditor!.updateVerticalScrollOffset(_gutterScrollController.offset);
-    }
-  }
-
-  void _scrollToCursor() {
-    if (activeEditor == null) return;
-
-    final cursor = activeEditor!.editorCursorManager.cursors.last;
-    final cursorLine = cursor.line;
-    final lineHeight = _editorLayoutService.config.lineHeight;
-    final viewportHeight =
-        _editorVerticalScrollController.position.viewportDimension;
-    final currentOffset = _editorVerticalScrollController.offset;
-    final verticalPadding = _editorLayoutService.config.verticalPadding;
-
-    // Vertical scrolling
-    final cursorY = cursorLine * lineHeight;
-    if (cursorY < currentOffset + verticalPadding) {
-      _editorVerticalScrollController.jumpTo(max(0, cursorY - verticalPadding));
-    } else if (cursorY + lineHeight >
-        currentOffset + viewportHeight - verticalPadding) {
-      _editorVerticalScrollController
-          .jumpTo(cursorY + lineHeight - viewportHeight + verticalPadding);
-    }
-
-    // Horizontal scrolling
-    final cursorColumn = cursor.column;
-    final currentLine = activeEditor!.buffer.getLine(cursorLine);
-
-    final safeColumn = min(cursorColumn, currentLine.length);
-    final textBeforeCursor = currentLine.substring(0, safeColumn);
-
-    final cursorX =
-        textBeforeCursor.length * _editorLayoutService.config.charWidth;
-    final viewportWidth =
-        _editorHorizontalScrollController.position.viewportDimension;
-    final currentHorizontalOffset = _editorHorizontalScrollController.offset;
-    final horizontalPadding = _editorLayoutService.config.horizontalPadding;
-
-    if (cursorX < currentHorizontalOffset + horizontalPadding) {
-      _editorHorizontalScrollController
-          .jumpTo(max(0, cursorX - horizontalPadding));
-    } else if (cursorX + _editorLayoutService.config.charWidth >
-        currentHorizontalOffset + viewportWidth - horizontalPadding) {
-      _editorHorizontalScrollController.jumpTo(cursorX +
-          _editorLayoutService.config.charWidth -
-          viewportWidth +
-          horizontalPadding);
-    }
-
-    // Update editor offsets
-    activeEditor!
-        .updateVerticalScrollOffset(_editorVerticalScrollController.offset);
-    activeEditor!
-        .updateHorizontalScrollOffset(_editorHorizontalScrollController.offset);
-  }
-
-  void _resetGutterScroll() {
-    if (_gutterScrollController.hasClients) _gutterScrollController.jumpTo(0);
-  }
-
   void onActiveEditorChanged(int index) {
     setState(() {
       activeEditorIndex = index;
-      _editorVerticalScrollController
+      editorScrollManager.editorVerticalScrollController
           .jumpTo(activeEditor!.scrollState.verticalOffset);
-      _editorHorizontalScrollController
+      editorScrollManager.editorHorizontalScrollController
           .jumpTo(activeEditor!.scrollState.horizontalOffset);
       searchService.onSearchTermChanged(searchService.searchTerm, activeEditor);
     });
@@ -357,11 +308,11 @@ class _EditorScreenState extends State<EditorScreen> {
 
   @override
   void dispose() {
-    _gutterScrollController.removeListener(_handleEditorScroll);
-    _gutterScrollController.removeListener(_handleGutterScroll);
-    _gutterScrollController.dispose();
-    _editorVerticalScrollController.dispose();
-    _editorHorizontalScrollController.dispose();
+    editorScrollManager.removeListeners(
+      onEditorScroll: _handleEditorScroll,
+      onGutterScroll: _handleGutterScroll,
+    );
+    editorScrollManager.dispose();
     _editorConfigService.themeService.removeListener(_onThemeChanged);
     super.dispose();
   }
@@ -491,7 +442,8 @@ class _EditorScreenState extends State<EditorScreen> {
                                                       _editorLayoutService,
                                                   editorState: state!,
                                                   verticalScrollController:
-                                                      _gutterScrollController,
+                                                      editorScrollManager
+                                                          .gutterScrollController,
                                                 ),
                                               Expanded(
                                                 child: _editors.isNotEmpty
@@ -542,9 +494,11 @@ class _EditorScreenState extends State<EditorScreen> {
                                                         gutterWidth:
                                                             gutterWidth!,
                                                         verticalScrollController:
-                                                            _editorVerticalScrollController,
+                                                            editorScrollManager
+                                                                .editorVerticalScrollController,
                                                         horizontalScrollController:
-                                                            _editorHorizontalScrollController,
+                                                            editorScrollManager
+                                                                .editorHorizontalScrollController,
                                                       )
                                                     : Container(
                                                         color: _editorConfigService
