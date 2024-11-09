@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:crystal/app/app.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
+import 'package:crystal/services/file_service.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:window_manager/window_manager.dart';
@@ -25,7 +26,11 @@ void main() {
     }
 
     final editorConfigService = await EditorConfigService.create();
-    runApp(App(editorConfigService: editorConfigService));
+    final fileService = FileService();
+    runApp(App(
+      editorConfigService: editorConfigService,
+      fileService: fileService,
+    ));
   }, (error, stack) {
     log.severe('Uncaught error', error, stack);
   });

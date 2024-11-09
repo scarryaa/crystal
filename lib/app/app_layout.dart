@@ -1,5 +1,6 @@
 import 'package:crystal/app/title_bar.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
+import 'package:crystal/services/file_service.dart';
 import 'package:flutter/material.dart';
 
 class AppLayout extends StatelessWidget {
@@ -7,13 +8,13 @@ class AppLayout extends StatelessWidget {
   final EditorConfigService editorConfigService;
   final Function(String)? onDirectoryChanged;
   final Function()? onDirectoryRefresh;
-  final String? currentDirectory;
+  final FileService fileService;
 
   const AppLayout({
     super.key,
     required this.child,
     required this.editorConfigService,
-    required this.currentDirectory,
+    required this.fileService,
     required this.onDirectoryChanged,
     required this.onDirectoryRefresh,
   });
@@ -27,7 +28,7 @@ class AppLayout extends StatelessWidget {
             editorConfigService: editorConfigService,
             onDirectoryChanged: onDirectoryChanged,
             onDirectoryRefresh: onDirectoryRefresh,
-            currentDirectory: currentDirectory,
+            fileService: fileService,
           ),
           Expanded(child: child),
         ],

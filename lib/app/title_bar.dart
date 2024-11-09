@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:crystal/services/editor/editor_config_service.dart';
+import 'package:crystal/services/file_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
@@ -9,14 +10,14 @@ class TitleBar extends StatefulWidget {
   final EditorConfigService editorConfigService;
   final Function(String)? onDirectoryChanged;
   final Function()? onDirectoryRefresh;
-  final String? currentDirectory;
+  final FileService fileService;
 
   const TitleBar({
     super.key,
     required this.editorConfigService,
     required this.onDirectoryChanged,
     required this.onDirectoryRefresh,
-    required this.currentDirectory,
+    required this.fileService,
   });
 
   @override
@@ -97,10 +98,11 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (widget.currentDirectory != null &&
-                                widget.currentDirectory!.isNotEmpty)
+                            if (widget.fileService.rootDirectory.isNotEmpty)
                               Text(
-                                widget.currentDirectory!.split('/').last,
+                                widget.fileService.rootDirectory
+                                    .split('/')
+                                    .last,
                                 style: TextStyle(
                                   fontSize: widget
                                       .editorConfigService.config.uiFontSize,

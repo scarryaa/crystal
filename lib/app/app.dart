@@ -2,15 +2,18 @@ import 'package:crystal/app/app_layout.dart';
 import 'package:crystal/main.dart';
 import 'package:crystal/screens/editor_screen.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
+import 'package:crystal/services/file_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class App extends StatefulWidget {
   final EditorConfigService editorConfigService;
+  final FileService fileService;
 
   const App({
     super.key,
     required this.editorConfigService,
+    required this.fileService,
   });
 
   @override
@@ -18,7 +21,6 @@ class App extends StatefulWidget {
 }
 
 class _AppState extends State<App> {
-  String? currentDirectory;
   Key _editorKey = UniqueKey();
   bool _isLoading = true;
   bool _isInitialized = false;
@@ -44,7 +46,8 @@ class _AppState extends State<App> {
 
     setState(() {
       if (widget.editorConfigService.config.currentDirectory != null) {
-        currentDirectory = widget.editorConfigService.config.currentDirectory;
+        widget.fileService.rootDirectory =
+            widget.editorConfigService.config.currentDirectory ?? '';
       }
       _isLoading = false;
     });
@@ -52,7 +55,7 @@ class _AppState extends State<App> {
 
   void _handleDirectoryChanged(String newPath) {
     setState(() {
-      currentDirectory = newPath;
+      widget.fileService.setRootDirectory(newPath);
       _editorKey = UniqueKey();
 
       widget.editorConfigService.config.currentDirectory = newPath;
@@ -211,13 +214,13 @@ class _AppState extends State<App> {
         editorConfigService: widget.editorConfigService,
         onDirectoryChanged: _handleDirectoryChanged,
         onDirectoryRefresh: _handleDirectoryRefresh,
-        currentDirectory: currentDirectory,
+        fileService: widget.fileService,
         child: EditorScreen(
           key: _editorKey,
           lineHeightMultipler: 1.5,
           verticalPaddingLines: 5,
           horizontalPadding: 100,
-          currentDirectory: currentDirectory,
+          fileService: widget.fileService,
           onDirectoryChanged: _handleDirectoryChanged,
           onDirectoryRefresh: _handleDirectoryRefresh,
         ),

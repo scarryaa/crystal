@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math';
 import 'package:crystal/services/editor/editor_config_service.dart';
+import 'package:crystal/services/file_service.dart';
 import 'package:crystal/widgets/file_explorer/file_explorer_action_bar.dart';
 import 'package:crystal/widgets/file_explorer/file_item.dart';
 import 'package:crystal/widgets/file_explorer/indent_painter.dart';
@@ -8,7 +9,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 class FileExplorer extends StatefulWidget {
-  final String rootDir;
+  final FileService fileService;
   final Function(String path) tapCallback;
   final EditorConfigService editorConfigService;
   final Function(String)? onDirectoryChanged;
@@ -16,7 +17,7 @@ class FileExplorer extends StatefulWidget {
 
   const FileExplorer({
     super.key,
-    required this.rootDir,
+    required this.fileService,
     required this.tapCallback,
     required this.editorConfigService,
     required this.onDirectoryChanged,
@@ -39,8 +40,8 @@ class _FileExplorerState extends State<FileExplorer> {
   void initState() {
     super.initState();
     width = max(widget.editorConfigService.config.uiFontSize * 11.0, 170.0);
-    if (widget.rootDir.isNotEmpty) {
-      _filesFuture = _enumerateFiles(widget.rootDir);
+    if (widget.fileService.rootDirectory.isNotEmpty) {
+      _filesFuture = _enumerateFiles(widget.fileService.rootDirectory);
     } else {
       _filesFuture = Future.value(<FileSystemEntity>[]);
     }
@@ -112,10 +113,11 @@ class _FileExplorerState extends State<FileExplorer> {
     controller.dispose();
 
     if (folderName != null && folderName.isNotEmpty) {
-      final newDir = Directory('${widget.rootDir}/$folderName');
+      final newDir =
+          Directory('${widget.fileService.rootDirectory}/$folderName');
       await newDir.create();
       setState(() {
-        _filesFuture = _enumerateFiles(widget.rootDir);
+        _filesFuture = _enumerateFiles(widget.fileService.rootDirectory);
       });
     }
   }
@@ -151,10 +153,10 @@ class _FileExplorerState extends State<FileExplorer> {
     controller.dispose();
 
     if (fileName != null && fileName.isNotEmpty) {
-      final newFile = File('${widget.rootDir}/$fileName');
+      final newFile = File('${widget.fileService.rootDirectory}/$fileName');
       await newFile.create();
       setState(() {
-        _filesFuture = _enumerateFiles(widget.rootDir);
+        _filesFuture = _enumerateFiles(widget.fileService.rootDirectory);
       });
     }
   }
@@ -300,7 +302,8 @@ class _FileExplorerState extends State<FileExplorer> {
                             editorConfigService: widget.editorConfigService,
                             onRefresh: () {
                               setState(() {
-                                _filesFuture = _enumerateFiles(widget.rootDir);
+                                _filesFuture = _enumerateFiles(
+                                    widget.fileService.rootDirectory);
                               });
                             },
                             onExpandAll: () async {

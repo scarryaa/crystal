@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:crystal/models/editor/config/config_paths.dart';
 import 'package:crystal/models/editor/config/editor_config.dart';
+import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/services/editor/editor_theme_service.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
@@ -27,7 +28,22 @@ class EditorConfigService extends ChangeNotifier {
     'fileExplorerWidth': 170.0,
   };
 
-  EditorConfigService._() : themeService = EditorThemeService();
+  EditorConfigService._() : themeService = EditorThemeService() {
+    EditorLayoutService(
+      horizontalPadding: 16.0,
+      verticalPaddingLines: 2,
+      fontSize: _defaultConfig['fontSize'] as double,
+      fontFamily: _defaultConfig['fontFamily'] as String,
+      lineHeightMultiplier: 1.5,
+    );
+  }
+
+  void updateLayoutService() {
+    EditorLayoutService.instance.updateFontSize(
+      config.fontSize,
+      config.fontFamily,
+    );
+  }
 
   static Future<EditorConfigService> create() async {
     final service = EditorConfigService._();

@@ -248,6 +248,9 @@ class EditorState extends ChangeNotifier {
       case LogicalKeyboardKey.add:
         if (isControlPressed) {
           editorConfigService.config.fontSize += 2.0;
+          editorLayoutService.updateFontSize(
+              editorConfigService.config.fontSize,
+              editorConfigService.config.fontFamily);
           editorLayoutService.config.lineHeight =
               editorConfigService.config.fontSize *
                   editorLayoutService.config.lineHeightMultiplier;
@@ -259,6 +262,10 @@ class EditorState extends ChangeNotifier {
         if (isControlPressed) {
           if (editorConfigService.config.fontSize > 8.0) {
             editorConfigService.config.fontSize -= 2.0;
+            editorLayoutService.updateFontSize(
+                editorConfigService.config.fontSize,
+                editorConfigService.config.fontFamily);
+
             editorLayoutService.config.lineHeight =
                 editorConfigService.config.fontSize *
                     editorLayoutService.config.lineHeightMultiplier;

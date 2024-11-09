@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:crystal/models/editor/config/config_paths.dart';
-import 'package:crystal/models/selection.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/services/editor/editor_scroll_manager.dart';
+import 'package:crystal/services/file_service.dart';
 import 'package:crystal/services/search_service.dart';
 import 'package:crystal/services/shortcut_handler.dart';
 import 'package:crystal/state/editor/editor_state.dart';
@@ -21,18 +21,18 @@ class EditorScreen extends StatefulWidget {
   final double horizontalPadding;
   final int verticalPaddingLines;
   final double lineHeightMultipler;
-  final String? currentDirectory;
   final Function(String)? onDirectoryChanged;
   final Function()? onDirectoryRefresh;
+  final FileService fileService;
 
   const EditorScreen({
     super.key,
     required this.horizontalPadding,
     required this.verticalPaddingLines,
     required this.lineHeightMultipler,
-    required this.currentDirectory,
     required this.onDirectoryChanged,
     required this.onDirectoryRefresh,
+    required this.fileService,
   });
 
   @override
@@ -42,7 +42,6 @@ class EditorScreen extends StatefulWidget {
 class _EditorScreenState extends State<EditorScreen> {
   bool _isFileExplorerVisible = true;
   final editorViewKey = GlobalKey<EditorViewState>();
-  late final EditorLayoutService _editorLayoutService;
   late final EditorConfigService _editorConfigService;
   late final ShortcutHandler _shortcutHandler;
   late final Future<void> _initializationFuture;
@@ -63,7 +62,7 @@ class _EditorScreenState extends State<EditorScreen> {
   void openNewTab() {
     final newEditor = EditorState(
       editorConfigService: _editorConfigService,
-      editorLayoutService: _editorLayoutService,
+      editorLayoutService: EditorLayoutService.instance,
       resetGutterScroll: editorScrollManager.resetGutterScroll,
       tapCallback: tapCallback,
     );
@@ -83,21 +82,9 @@ class _EditorScreenState extends State<EditorScreen> {
     });
   }
 
-  String getRelativePath(String fullPath, String rootDir) {
-    if (!fullPath.startsWith(rootDir)) {
-      return fullPath;
-    }
-
-    String relativePath = fullPath.substring(rootDir.length);
-    if (relativePath.startsWith(Platform.pathSeparator)) {
-      relativePath = relativePath.substring(1);
-    }
-
-    return relativePath;
-  }
-
   Future<void> tapCallback(String path) async {
-    final relativePath = getRelativePath(path, widget.currentDirectory ?? '');
+    final relativePath = widget.fileService
+        .getRelativePath(path, widget.fileService.rootDirectory);
 
     final editorIndex = _editors.indexWhere((editor) => editor.path == path);
     if (editorIndex != -1) {
@@ -106,7 +93,7 @@ class _EditorScreenState extends State<EditorScreen> {
       String content = await File(path).readAsString();
       final newEditor = EditorState(
         editorConfigService: _editorConfigService,
-        editorLayoutService: _editorLayoutService,
+        editorLayoutService: EditorLayoutService.instance,
         resetGutterScroll: editorScrollManager.resetGutterScroll,
         path: path,
         relativePath: relativePath,
@@ -160,7 +147,7 @@ class _EditorScreenState extends State<EditorScreen> {
   void _scrollToCursor() {
     editorScrollManager.scrollToCursor(
       activeEditor: activeEditor,
-      layoutService: _editorLayoutService,
+      layoutService: EditorLayoutService.instance,
     );
   }
 
@@ -168,13 +155,15 @@ class _EditorScreenState extends State<EditorScreen> {
     _editorConfigService = await EditorConfigService.create();
     _isFileExplorerVisible = _editorConfigService.config.isFileExplorerVisible;
 
-    _editorLayoutService = EditorLayoutService(
-      fontFamily: _editorConfigService.config.fontFamily,
-      fontSize: _editorConfigService.config.fontSize,
+    EditorLayoutService(
       horizontalPadding: widget.horizontalPadding,
       verticalPaddingLines: widget.verticalPaddingLines,
+      fontSize: _editorConfigService.config.fontSize,
+      fontFamily: _editorConfigService.config.fontFamily,
       lineHeightMultiplier: widget.lineHeightMultipler,
     );
+
+    _editorConfigService.addListener(_onConfigChanged);
 
     _shortcutHandler = ShortcutHandler(
       openSettings: _openSettings,
@@ -206,6 +195,17 @@ class _EditorScreenState extends State<EditorScreen> {
         }
       },
     );
+  }
+
+  void _onConfigChanged() {
+    EditorLayoutService.instance.updateFontSize(
+      _editorConfigService.config.fontSize,
+      _editorConfigService.config.fontFamily,
+    );
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _onThemeChanged() {
@@ -313,6 +313,7 @@ class _EditorScreenState extends State<EditorScreen> {
     );
     editorScrollManager.dispose();
     _editorConfigService.themeService.removeListener(_onThemeChanged);
+    _editorConfigService.removeListener(_onConfigChanged);
     super.dispose();
   }
 
@@ -356,7 +357,7 @@ class _EditorScreenState extends State<EditorScreen> {
                                 if (_isFileExplorerVisible)
                                   FileExplorer(
                                     editorConfigService: _editorConfigService,
-                                    rootDir: widget.currentDirectory ?? '',
+                                    fileService: widget.fileService,
                                     tapCallback: tapCallback,
                                     onDirectoryChanged:
                                         widget.onDirectoryChanged,
@@ -438,7 +439,8 @@ class _EditorScreenState extends State<EditorScreen> {
                                                   editorConfigService:
                                                       _editorConfigService,
                                                   editorLayoutService:
-                                                      _editorLayoutService,
+                                                      EditorLayoutService
+                                                          .instance,
                                                   editorState: state!,
                                                   verticalScrollController:
                                                       editorScrollManager
@@ -451,7 +453,8 @@ class _EditorScreenState extends State<EditorScreen> {
                                                         editorConfigService:
                                                             _editorConfigService,
                                                         editorLayoutService:
-                                                            _editorLayoutService,
+                                                            EditorLayoutService
+                                                                .instance,
                                                         state: state!,
                                                         searchTerm:
                                                             searchService
