@@ -120,6 +120,8 @@ class _EditorScreenState extends State<EditorScreen> {
         activeEditorIndex = _editors.length - 1;
         _editors[activeEditorIndex].openFile(content);
       });
+
+      searchService.onSearchTermChanged(searchService.searchTerm, activeEditor);
     }
   }
 
