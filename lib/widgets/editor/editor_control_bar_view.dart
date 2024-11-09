@@ -204,6 +204,11 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
         _isSearchActive = !_isSearchActive;
         if (!_isSearchActive) {
           _isReplaceActive = false;
+          widget.searchTermChanged('');
+        } else {
+          if (_searchController.text.isNotEmpty) {
+            widget.searchTermChanged(_searchController.text);
+          }
         }
       }),
     );
