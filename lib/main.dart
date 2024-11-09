@@ -1,35 +1,54 @@
+import 'dart:async';
+
 import 'package:crystal/app/app.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:flutter/material.dart';
+import 'package:logging/logging.dart';
 import 'package:window_manager/window_manager.dart';
 
-void main() async {
-  // Ensure Flutter is initialized
-  WidgetsFlutterBinding.ensureInitialized();
+bool isWindowInitialized = false;
+final log = Logger('MainApp');
 
-  // Initialize window settings
-  await setupWindow();
+void main() {
+  Logger.root.level = Level.ALL;
+  Logger.root.onRecord.listen((record) {
+    debugPrint('${record.level.name}: ${record.time}: ${record.message}');
+  });
 
-  // Initialize editor config service
-  final editorConfigService = await EditorConfigService.create();
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    await windowManager.ensureInitialized();
 
-  runApp(App(editorConfigService: editorConfigService));
+    if (!isWindowInitialized) {
+      await setupWindow();
+      isWindowInitialized = true;
+    }
+
+    final editorConfigService = await EditorConfigService.create();
+    runApp(App(editorConfigService: editorConfigService));
+  }, (error, stack) {
+    log.severe('Uncaught error', error, stack);
+  });
 }
 
 Future<void> setupWindow() async {
-  await windowManager.ensureInitialized();
-
-  WindowOptions windowOptions = const WindowOptions(
+  const windowOptions = WindowOptions(
     size: Size(1280, 720),
     center: true,
     backgroundColor: Colors.transparent,
     skipTaskbar: false,
     titleBarStyle: TitleBarStyle.hidden,
-    title: 'Crystal Editor',
+    title: 'crystal',
   );
 
-  await windowManager.waitUntilReadyToShow(windowOptions, () async {
-    await windowManager.show();
-    await windowManager.focus();
-  });
+  await windowManager.setSize(windowOptions.size ?? const Size(1280, 720));
+  await windowManager.center();
+  await windowManager.setBackgroundColor(Colors.transparent);
+  await windowManager.setSkipTaskbar(windowOptions.skipTaskbar ?? false);
+  await windowManager
+      .setTitleBarStyle(windowOptions.titleBarStyle ?? TitleBarStyle.hidden);
+  await windowManager.setTitle(windowOptions.title ?? 'crystal');
+
+  await windowManager.show();
+  await windowManager.focus();
 }
