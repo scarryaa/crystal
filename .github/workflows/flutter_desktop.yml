@@ -86,7 +86,11 @@ jobs:
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build libgtk-3-dev
+          sudo apt-get install -y ninja-build libgtk-3-dev fuse libfuse2
+          # Configure FUSE
+          sudo modprobe fuse
+          sudo groupadd fuse || true
+          sudo usermod -a -G fuse $USER
       
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -122,18 +126,26 @@ jobs:
           Type=Application
           Categories=Development;
           EOL
+          
+          # Make desktop file executable
+          chmod +x AppDir/crystal.desktop
+          # Move desktop file to correct location
+          cp AppDir/crystal.desktop AppDir/usr/share/applications/crystal.desktop
       
       - name: Build AppImage
         run: |
           wget -O appimagetool "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
           chmod +x appimagetool
-          ./appimagetool AppDir
+          # Extract AppImage contents since FUSE might still have issues in CI
+          ./appimagetool --appimage-extract
+          # Use extracted AppImage contents to build
+          ./squashfs-root/AppRun AppDir
       
       - name: Upload Linux Build
         uses: actions/upload-artifact@v3
         with:
           name: linux-build
-          path: crystal*.AppImage
+          path: Crystal*.AppImage
 
   test-and-analyze:
     runs-on: ubuntu-latest
@@ -176,7 +188,7 @@ jobs:
           mkdir -p release
           cp windows-build/crystal.exe release/crystal-${{ github.run_number }}.exe
           cp macos-build/crystal.zip release/crystal-${{ github.run_number }}.zip
-          cp linux-build/crystal.AppImage release/crystal-${{ github.run_number }}.AppImage
+          cp linux-build/Crystal*.AppImage release/crystal-${{ github.run_number }}.AppImage
         
       - name: Create Release
         uses: softprops/action-gh-release@v1
