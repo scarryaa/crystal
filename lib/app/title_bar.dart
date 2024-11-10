@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:crystal/app/window_button.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/file_service.dart';
 import 'package:file_picker/file_picker.dart';
@@ -27,28 +28,31 @@ class TitleBar extends StatefulWidget {
 class _TitleBarState extends State<TitleBar> with WindowListener {
   bool isHovering = false;
   bool isFullScreen = false;
+  bool isMaximized = false;
 
   @override
   void initState() {
     super.initState();
-    _initializeFullScreenListener();
+    _initializeWindowListeners();
   }
 
-  Future<void> _initializeFullScreenListener() async {
+  Future<void> _initializeWindowListeners() async {
     if (Platform.isMacOS) {
       isFullScreen = await windowManager.isFullScreen();
-      windowManager.addListener(this);
+    } else if (Platform.isWindows || Platform.isLinux) {
+      isMaximized = await windowManager.isMaximized();
     }
+    windowManager.addListener(this);
   }
 
   @override
-  void onWindowEnterFullScreen() {
-    setState(() => isFullScreen = true);
+  void onWindowMaximize() {
+    setState(() => isMaximized = true);
   }
 
   @override
-  void onWindowLeaveFullScreen() {
-    setState(() => isFullScreen = false);
+  void onWindowUnmaximize() {
+    setState(() => isMaximized = false);
   }
 
   Future<void> _pickDirectory() async {
@@ -62,6 +66,37 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
     }
   }
 
+  Widget _buildWindowButtons() {
+    if (!Platform.isWindows && !Platform.isLinux) return const SizedBox();
+
+    return Row(
+      children: [
+        WindowButton(
+          icon: Icons.remove,
+          onPressed: () async => await windowManager.minimize(),
+          color: widget.editorConfigService.themeService.currentTheme!.text,
+        ),
+        WindowButton(
+          icon: isMaximized ? Icons.crop_square : Icons.crop_square_outlined,
+          onPressed: () async {
+            if (isMaximized) {
+              await windowManager.unmaximize();
+            } else {
+              await windowManager.maximize();
+            }
+          },
+          color: widget.editorConfigService.themeService.currentTheme!.text,
+        ),
+        WindowButton(
+          icon: Icons.close,
+          onPressed: () async => await windowManager.close(),
+          color: widget.editorConfigService.themeService.currentTheme!.text,
+          isClose: true,
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -71,10 +106,20 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
         ]),
         builder: (context, child) {
           final theme = widget.editorConfigService.themeService.currentTheme!;
+
           return GestureDetector(
             onPanStart: (details) {
               windowManager.startDragging();
             },
+            onDoubleTap: Platform.isWindows || Platform.isLinux
+                ? () async {
+                    if (isMaximized) {
+                      await windowManager.unmaximize();
+                    } else {
+                      await windowManager.maximize();
+                    }
+                  }
+                : null,
             child: Container(
               height: widget.editorConfigService.config.uiFontSize * 2.0,
               color: theme.titleBar,
@@ -118,6 +163,7 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
                     ),
                   ),
                   const Spacer(),
+                  _buildWindowButtons(),
                 ],
               ),
             ),
@@ -127,9 +173,7 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
 
   @override
   void dispose() {
-    if (Platform.isMacOS) {
-      windowManager.removeListener(this);
-    }
+    windowManager.removeListener(this);
     super.dispose();
   }
 }
