@@ -169,7 +169,7 @@ class IndentationPainter extends EditorPainterBase {
     final paint = Paint()
       ..color = theme != null
           ? isCurrentIndent
-              ? theme.indentLineColor.withOpacity(0.8)
+              ? theme.indentLineColor.withOpacity(0.4)
               : theme.indentLineColor
           : Colors.black.withOpacity(isCurrentIndent ? 0.4 : 0.2)
       ..strokeWidth = isCurrentIndent ? 2.0 : 1.0;
