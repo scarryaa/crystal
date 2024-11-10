@@ -113,7 +113,7 @@ jobs:
           mkdir -p AppDir/usr/bin
           mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
           cp -r build/linux/x64/release/bundle/* AppDir/usr/bin/
-          cp assets/images/logo/crystal-logo.png AppDir/usr/share/icons/hicolor/256x256/apps/crystal.png
+          cp assets/images/logo/crystal-logo.png AppDir/crystal.png
           chmod +x AppDir/usr/bin/crystal
       
       - name: Create desktop file
@@ -122,7 +122,7 @@ jobs:
           [Desktop Entry]
           Name=Crystal
           Exec=crystal
-          Icon=crystal
+          Icon=crystal.png
           Type=Application
           Categories=Development;
           EOL
