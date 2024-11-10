@@ -130,6 +130,7 @@ jobs:
           # Make desktop file executable
           chmod +x AppDir/crystal.desktop
           # Move desktop file to correct location
+          mkdir -p AppDir/usr/share/applications
           cp AppDir/crystal.desktop AppDir/usr/share/applications/crystal.desktop
       
       - name: Build AppImage
