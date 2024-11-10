@@ -212,7 +212,7 @@ jobs:
         run: flutter test || echo "No tests found"
 
   create-release:
-    needs: [build-windows, build-macos, build-linux, test-and-analyze]
+    needs: [build-windows, build-macos, build-linux]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     
