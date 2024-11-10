@@ -205,16 +205,18 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Download all artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4  
         with:
           path: downloaded-artifacts
+          pattern: "*-build"  
+          merge-multiple: true
       
       - name: Debug Artifacts
         run: |
           echo "Current directory contents:"
           ls -la
-          echo "\nDownloaded artifacts directory contents:"
-          ls -la downloaded-artifacts || echo "downloaded-artifacts directory not found"
+          echo "Downloaded artifacts directory contents:"
+          ls -la downloaded-artifacts
       
       - name: Prepare Release Files
         run: |
@@ -223,21 +225,26 @@ jobs:
             VERSION="v${{ github.run_number }}"
           fi
           
-          echo "Creating release directory..."
           mkdir -p release
           
-          echo "Looking for build artifacts..."
           if [ -d "downloaded-artifacts" ]; then
-            find downloaded-artifacts -type f \( -name "*.zip" -o -name "*.AppImage" \) -exec cp {} release/ \;
+            echo "Found downloaded-artifacts directory"
+            echo "Contents of downloaded-artifacts:"
+            ls -la downloaded-artifacts/
+            
+            # Copy all zip files and AppImages to release directory
+            find downloaded-artifacts -type f \( -name "*.zip" -o -name "*.AppImage" \) -exec cp -v {} release/ \;
           else
             echo "Error: downloaded-artifacts directory not found!"
+            pwd
+            ls -la
             exit 1
           fi
           
           echo "Files in release directory:"
           ls -la release/
           
-          # If no files were copied, error out
+          # Verify files were copied
           if [ -z "$(ls -A release/)" ]; then
             echo "Error: No artifacts found to release!"
             exit 1
