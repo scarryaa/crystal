@@ -268,9 +268,18 @@ class _EditorScreenState extends State<EditorScreen> {
 
       if (activeEditorIndex >= _editors.length) {
         activeEditorIndex = _editors.length - 1;
+
+        // Reset scroll positions for the new active editor
+        if (activeEditor != null) {
+          editorScrollManager.editorVerticalScrollController
+              .jumpTo(activeEditor!.scrollState.verticalOffset);
+          editorScrollManager.editorHorizontalScrollController
+              .jumpTo(activeEditor!.scrollState.horizontalOffset);
+        }
       }
     });
 
+    // Force a rebuild of the editor view
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (editorViewKey.currentState != null) {
         editorViewKey.currentState!.updateCachedMaxLineWidth();
