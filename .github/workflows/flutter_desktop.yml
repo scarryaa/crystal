@@ -105,28 +105,26 @@ jobs:
         run: flutter build linux
       
       - name: Install AppImage Tools
-        if: runner.os == 'Linux'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y appimage-tools
+          wget -O appimagetool "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
+          chmod +x appimagetool
+          sudo mv appimagetool /usr/local/bin/
 
       - name: Create AppImage
-        if: runner.os == 'Linux'
         run: |
           mkdir -p AppDir
           cp -r build/linux/x64/release/bundle/* AppDir/
-          appimagetool AppDir/ crystal.AppImage  
+          /usr/local/bin/appimagetool AppDir/ crystal.AppImage
 
       - name: Make Linux Executable
-        if: runner.os == 'Linux'
-        run: chmod +x crystal.AppImage  
+        run: chmod +x crystal.AppImage
         shell: bash
 
       - name: Upload Linux Build
         uses: actions/upload-artifact@v3
         with:
           name: linux-build
-          path: crystal.AppImage  
+          path: crystal.AppImage
 
   test-and-analyze:
     runs-on: ubuntu-latest
