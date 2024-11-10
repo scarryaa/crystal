@@ -64,11 +64,13 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
 
   @override
   Widget build(BuildContext context) {
-    final theme = widget.editorConfigService.themeService.currentTheme!;
-
     return ListenableBuilder(
-        listenable: widget.editorConfigService,
+        listenable: Listenable.merge([
+          widget.editorConfigService,
+          widget.editorConfigService.themeService,
+        ]),
         builder: (context, child) {
+          final theme = widget.editorConfigService.themeService.currentTheme!;
           return GestureDetector(
             onPanStart: (details) {
               windowManager.startDragging();

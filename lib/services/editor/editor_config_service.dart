@@ -108,6 +108,8 @@ class EditorConfigService extends ChangeNotifier {
         whitespaceIndicatorRadius:
             (configData['whitespaceIndicatorRadius'] as num?)?.toDouble() ??
                 _defaultConfig['whitespaceIndicatorRadius'] as double,
+        theme: (configData['theme'] as String?)?.toString() ??
+            _defaultConfig['theme'] as String,
         fileExplorerWidth:
             (configData['fileExplorerWidth'] as num?)?.toDouble() ??
                 _defaultConfig['fileExplorerWidth'] as double,
@@ -127,6 +129,7 @@ class EditorConfigService extends ChangeNotifier {
       fontSize: _defaultConfig['fontSize'] as double,
       uiFontSize: _defaultConfig['uiFontSize'] as double,
       fontFamily: _defaultConfig['fontFamily'] as String,
+      theme: _defaultConfig['theme'] as String,
       whitespaceIndicatorRadius:
           _defaultConfig['whitespaceIndicatorRadius'] as double,
       fileExplorerWidth: (_defaultConfig['uiFontSize'] as double) * 11.0,
@@ -175,6 +178,7 @@ class EditorConfigService extends ChangeNotifier {
   }
 
   Future<void> _loadTheme() async {
-    await themeService.loadThemeFromJson(_defaultConfig['theme'] as String);
+    await themeService
+        .loadThemeFromJson(config.theme ?? _defaultConfig['theme'] as String);
   }
 }
