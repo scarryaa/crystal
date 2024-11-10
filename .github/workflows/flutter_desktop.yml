@@ -137,7 +137,19 @@ jobs:
           cp -r build/linux/x64/release/bundle/* AppDir/usr/bin/
           cp assets/images/logo/crystal-logo.png AppDir/crystal.png
           chmod +x AppDir/usr/bin/crystal
-      
+  
+      - name: Create AppRun file
+        run: |
+          cat > AppDir/AppRun << EOL
+          #!/bin/sh
+          SELF=\$(readlink -f "\$0")
+          HERE=\${SELF%/*}
+          export PATH="\${HERE}/usr/bin/:\${PATH}"
+          export LD_LIBRARY_PATH="\${HERE}/usr/lib/:\${LD_LIBRARY_PATH}"
+          exec "\${HERE}/usr/bin/crystal" "\$@"
+          EOL
+          chmod +x AppDir/AppRun
+  
       - name: Create desktop file
         run: |
           cat > AppDir/crystal.desktop << EOL
