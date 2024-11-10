@@ -1,6 +1,7 @@
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
 
 class EditorTab extends StatelessWidget {
   static const double _kSpacing = 8.0;
@@ -135,6 +136,13 @@ class EditorTab extends StatelessWidget {
     );
   }
 
+  String _getDisplayName() {
+    if (editor.path.isEmpty || editor.path.substring(0, 6) == '__temp') {
+      return 'untitled';
+    }
+    return p.basename(editor.path);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = editorConfigService.themeService.currentTheme;
@@ -144,8 +152,7 @@ class EditorTab extends StatelessWidget {
         builder: (context, child) {
           return Semantics(
             // TODO add tab index?
-            label:
-                '${editor.path.isEmpty ? "untitled" : editor.path.split('/').last} tab',
+            label: '${_getDisplayName()} tab',
             selected: isActive,
             button: true,
             child: InkWell(
@@ -181,10 +188,7 @@ class EditorTab extends StatelessWidget {
                       const SizedBox(width: _kSpacing),
                       Flexible(
                         child: Text(
-                          (editor.path.isEmpty ||
-                                  editor.path.substring(0, 6) == '__temp')
-                              ? 'untitled'
-                              : editor.path.split('/').last,
+                          _getDisplayName(),
                           style: TextStyle(
                             color: isActive
                                 ? theme?.primary ?? Colors.blue

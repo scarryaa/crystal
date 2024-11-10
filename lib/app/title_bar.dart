@@ -148,7 +148,7 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
                             if (widget.fileService.rootDirectory.isNotEmpty)
                               Text(
                                 widget.fileService.rootDirectory
-                                    .split('/')
+                                    .split(Platform.pathSeparator)
                                     .last,
                                 style: TextStyle(
                                   fontSize: widget
