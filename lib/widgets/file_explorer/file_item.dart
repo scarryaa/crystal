@@ -4,13 +4,13 @@ class FileItem extends StatefulWidget {
   final bool isDirectory;
   final String fileName;
   final VoidCallback? onTap;
-  bool expanded;
-  int level;
-  Color textColor;
-  Color highlightColor;
+  final bool expanded;
+  final int level;
+  final Color textColor;
+  final Color highlightColor;
   final double fontSize;
 
-  FileItem({
+  const FileItem({
     super.key,
     required this.fileName,
     required this.expanded,

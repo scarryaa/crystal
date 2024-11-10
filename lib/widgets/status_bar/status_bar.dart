@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class StatusBar extends StatefulWidget {
-  EditorConfigService editorConfigService;
+  final EditorConfigService editorConfigService;
   final VoidCallback? onFileExplorerToggle;
   final bool? isFileExplorerVisible;
 
-  StatusBar({
+  const StatusBar({
     super.key,
     required this.editorConfigService,
     this.onFileExplorerToggle,
