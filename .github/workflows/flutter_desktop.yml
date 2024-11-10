@@ -15,33 +15,41 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
+ build-windows:
+  runs-on: windows-latest
+  
+  steps:
+    - uses: actions/checkout@v4
     
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: ${{ env.FLUTTER_CHANNEL }}
-          cache: true
-      
-      - name: Install dependencies
-        run: flutter pub get
-      
-      - name: Enable Windows build
-        run: flutter config --enable-windows-desktop
-      
-      - name: Build Windows
-        run: flutter build windows
-      
-      - name: Upload Windows Build
-        uses: actions/upload-artifact@v3
-        with:
-          name: windows-build
-          path: build/windows/x64/runner/Release/crystal.exe
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ env.FLUTTER_VERSION }}
+        channel: ${{ env.FLUTTER_CHANNEL }}
+        cache: true
+    
+    - name: Install dependencies
+      run: flutter pub get
+    
+    - name: Enable Windows build
+      run: flutter config --enable-windows-desktop
+    
+    - name: Build Windows
+      run: flutter build windows
+    
+    - name: Create Windows Release Package
+      run: |
+        mkdir windows-package
+        # Copy the entire release folder which contains all required DLLs
+        xcopy /E /I "build\windows\x64\runner\Release\*" "windows-package"
+        # Create zip archive
+        Compress-Archive -Path windows-package\* -DestinationPath crystal-windows.zip
+    
+    - name: Upload Windows Build
+      uses: actions/upload-artifact@v3
+      with:
+        name: windows-build
+        path: crystal-windows.zip
 
   build-macos:
     runs-on: macos-latest
@@ -187,8 +195,8 @@ jobs:
       - name: Prepare Release Files
         run: |
           mkdir -p release
-          cp windows-build/crystal.exe release/crystal-${{ github.run_number }}.exe
-          cp macos-build/crystal.zip release/crystal-${{ github.run_number }}.zip
+          cp windows-build/crystal-windows.zip release/crystal-windows-${{ github.run_number }}.zip
+          cp macos-build/crystal.zip release/crystal-macos-${{ github.run_number }}.zip
           cp linux-build/Crystal*.AppImage release/crystal-${{ github.run_number }}.AppImage
         
       - name: Create Release
@@ -199,8 +207,8 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            release/crystal-${{ github.run_number }}.exe
-            release/crystal-${{ github.run_number }}.zip
+            release/crystal-windows-${{ github.run_number }}.zip
+            release/crystal-macos-${{ github.run_number }}.zip
             release/crystal-${{ github.run_number }}.AppImage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
