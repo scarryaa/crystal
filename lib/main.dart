@@ -66,4 +66,3 @@ Future<void> setupWindow() async {
   await windowManager.show();
   await windowManager.focus();
 }
-

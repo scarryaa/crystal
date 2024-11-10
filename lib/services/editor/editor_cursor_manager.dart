@@ -7,6 +7,8 @@ class EditorCursorManager {
   List<Cursor> _cursors = [];
   List<Cursor> get cursors => _cursors;
 
+  bool get hasCursors => cursors.isNotEmpty;
+
   void addCursor(Cursor cursor) {
     _cursors.add(cursor);
   }

@@ -12,6 +12,7 @@ class EditorTheme {
   late final Color whitespaceIndicatorColor;
   late final Color currentLineHighlight;
   late final Color indentLineColor;
+  final Color indentGuideActive;
 
   EditorTheme({
     required this.name,
@@ -22,6 +23,7 @@ class EditorTheme {
     required this.border,
     required this.text,
     required this.textLight,
+    this.indentGuideActive = const Color(0xFF4B4B4B),
   }) {
     whitespaceIndicatorColor = text.withOpacity(0.5);
     currentLineHighlight = primary.withOpacity(0.1);

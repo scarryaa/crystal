@@ -174,6 +174,8 @@ class EditorPainter extends CustomPainter {
         isFocused != oldDelegate.isFocused ||
         editorState.cursorShape != oldDelegate.editorState.cursorShape ||
         searchTerm != oldDelegate.searchTerm ||
-        currentSearchTermMatch != oldDelegate.currentSearchTermMatch;
+        currentSearchTermMatch != oldDelegate.currentSearchTermMatch ||
+        oldDelegate.editorState.editorCursorManager.cursors !=
+            editorState.editorCursorManager.cursors;
   }
 }

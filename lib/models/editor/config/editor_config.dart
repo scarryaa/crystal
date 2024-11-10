@@ -9,6 +9,7 @@ class EditorConfig {
   double fileExplorerWidth;
   String theme;
   String? currentDirectory;
+  double tabWidth;
 
   EditorConfig({
     required this.fontSize,
@@ -18,6 +19,7 @@ class EditorConfig {
     required this.whitespaceIndicatorRadius,
     required this.fileExplorerWidth,
     required this.theme,
+    required this.tabWidth,
     this.isFileExplorerVisible = true,
     this.isFileExplorerOnLeft = true,
     this.currentDirectory = '',

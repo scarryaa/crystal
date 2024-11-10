@@ -28,6 +28,7 @@ class EditorConfigService extends ChangeNotifier {
     'isFileExplorerOnLeft': true,
     'currentDirectory': '',
     'fileExplorerWidth': 170.0,
+    'tabWidth': 4.0, // Add this line
   };
 
   EditorConfigService._() : themeService = EditorThemeService() {
@@ -123,6 +124,9 @@ class EditorConfigService extends ChangeNotifier {
             _defaultConfig['isFileExplorerOnLeft'] as bool,
         currentDirectory: configData['currentDirectory'] as String? ??
             _defaultConfig['currentDirectory'] as String,
+        tabWidth:
+            (configData['tabWidth'] as num?)?.toDouble() ?? // Add this line
+                _defaultConfig['tabWidth'] as double,
       );
     } catch (e) {
       _logger.warning('Error parsing config file: $e');
@@ -142,6 +146,8 @@ class EditorConfigService extends ChangeNotifier {
       fileExplorerWidth: (_defaultConfig['uiFontSize'] as double) * 11.0,
       isFileExplorerVisible: _defaultConfig['isFileExplorerVisible'] as bool,
       isFileExplorerOnLeft: _defaultConfig['isFileExplorerOnLeft'] as bool,
+      currentDirectory: _defaultConfig['currentDirectory'] as String,
+      tabWidth: _defaultConfig['tabWidth'] as double, // Add this line
     );
   }
 
@@ -161,13 +167,14 @@ class EditorConfigService extends ChangeNotifier {
         'fontSize': config.fontSize,
         'uiFontSize': config.uiFontSize,
         'fontFamily': config.fontFamily,
-        'uiFontFamily': config.uiFontFamily, // Add this line
+        'uiFontFamily': config.uiFontFamily,
         'theme': themeService.currentTheme!.name,
         'whitespaceIndicatorRadius': config.whitespaceIndicatorRadius,
         'isFileExplorerVisible': config.isFileExplorerVisible,
         'isFileExplorerOnLeft': config.isFileExplorerOnLeft,
         'currentDirectory': config.currentDirectory,
         'fileExplorerWidth': config.fileExplorerWidth,
+        'tabWidth': config.tabWidth, // Add this line
       };
 
       const encoder = JsonEncoder.withIndent('  ');
