@@ -41,7 +41,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: windows-build
-          path: build/windows/x64/runner/Release/
+          path: build/windows/x64/runner/Release/crystal.exe
 
   build-macos:
     runs-on: macos-latest
@@ -65,11 +65,17 @@ jobs:
       - name: Build macOS
         run: flutter build macos
       
+      - name: Create macOS Archive
+        if: runner.os == 'macOS'
+        run: |
+          cd build/macos/Build/Products/Release
+          zip -r crystal.zip *.app
+          
       - name: Upload macOS Build
         uses: actions/upload-artifact@v3
         with:
           name: macos-build
-          path: build/macos/Build/Products/Release/
+          path: build/macos/Build/Products/Release/crystal.zip
 
   build-linux:
     runs-on: ubuntu-latest
@@ -98,11 +104,29 @@ jobs:
       - name: Build Linux
         run: flutter build linux
       
+      - name: Install AppImage Tools
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y appimage-tools
+
+      - name: Create AppImage
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p AppDir
+          cp -r build/linux/x64/release/bundle/* AppDir/
+          appimagetool AppDir/ crystal.AppImage  
+
+      - name: Make Linux Executable
+        if: runner.os == 'Linux'
+        run: chmod +x crystal.AppImage  
+        shell: bash
+
       - name: Upload Linux Build
         uses: actions/upload-artifact@v3
         with:
           name: linux-build
-          path: build/linux/x64/release/bundle/
+          path: crystal.AppImage  
 
   test-and-analyze:
     runs-on: ubuntu-latest
@@ -140,6 +164,13 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v3
       
+      - name: Prepare Release Files
+        run: |
+          mkdir -p release
+          cp windows-build/crystal.exe release/crystal-${{ github.run_number }}.exe
+          cp macos-build/crystal.zip release/crystal-${{ github.run_number }}.zip
+          cp linux-build/crystal.AppImage release/crystal-${{ github.run_number }}.AppImage
+        
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
@@ -148,8 +179,8 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            windows-build/**
-            macos-build/**
-            linux-build/**
+            release/crystal-${{ github.run_number }}.exe
+            release/crystal-${{ github.run_number }}.zip
+            release/crystal-${{ github.run_number }}.AppImage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
