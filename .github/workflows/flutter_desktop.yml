@@ -196,35 +196,40 @@ jobs:
         run: flutter test || echo "No tests found"
 
   create-release:
-    needs: [build-windows, build-macos, build-linux]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
-    
-    steps:
-      - uses: actions/checkout@v4
+      needs: [build-windows, build-macos, build-linux]
+      runs-on: ubuntu-latest
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
       
-      - name: Download all artifacts
-        uses: actions/download-artifact@v3
-      
-      - name: Prepare Release Files
-        run: |
-          VERSION="${{ github.ref_name }}"
-          if [[ ! $VERSION == v* ]]; then
-            VERSION="v${{ github.run_number }}"
-          fi
-          
-          mkdir -p release
-          find . -name "*.zip" -o -name "*.AppImage" | while read file; do
-            mv "$file" release/
-          done
-      
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ github.ref_name == 'main' && format('v{0}', github.run_number) || github.ref_name }}
-          name: Release ${{ github.ref_name == 'main' && github.run_number || github.ref_name }}
-          draft: false
-          prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
-          files: release/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      steps:
+        - uses: actions/checkout@v4
+        
+        - name: Download all artifacts
+          uses: actions/download-artifact@v3
+          with:
+            path: artifacts
+        
+        - name: Prepare Release Files
+          run: |
+            VERSION="${{ github.ref_name }}"
+            if [[ ! $VERSION == v* ]]; then
+              VERSION="v${{ github.run_number }}"
+            fi
+            
+            mkdir -p release
+            # Move all build artifacts to release directory
+            find artifacts -type f \( -name "*.zip" -o -name "*.AppImage" \) -exec mv {} release/ \;
+            
+            # List files to verify
+            echo "Files to be released:"
+            ls -la release/
+        
+        - name: Create Release
+          uses: softprops/action-gh-release@v1
+          with:
+            tag_name: ${{ github.ref_name == 'main' && format('v{0}', github.run_number) || github.ref_name }}
+            name: Release ${{ github.ref_name == 'main' && github.run_number || github.ref_name }}
+            draft: false
+            prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
+            files: release/*
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
