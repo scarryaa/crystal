@@ -98,6 +98,7 @@ jobs:
           path: '*.zip'
           retention-days: 5
 
+
   build-linux:
     runs-on: ubuntu-latest
     
@@ -107,8 +108,11 @@ jobs:
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build libgtk-3-dev fuse libfuse2 \
-            libjsoncpp25 libsecret-1-0 libasound2
+          sudo apt-get install -y ninja-build libgtk-3-dev fuse libfuse2
+          # Configure FUSE
+          sudo modprobe fuse
+          sudo groupadd fuse || true
+          sudo usermod -a -G fuse $USER
       
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -124,67 +128,47 @@ jobs:
         run: flutter config --enable-linux-desktop
       
       - name: Build Linux
-        run: flutter build linux --release
+        run: flutter build linux
       
       - name: Setup AppDir
         run: |
-          VERSION="${{ github.ref_name }}"
-          if [[ ! $VERSION == v* ]]; then
-            VERSION="v${{ github.run_number }}"
-          fi
-          PACKAGE_NAME="${{ env.APP_NAME }}-linux-$VERSION"
-          
-          mkdir -p AppDir/{usr/{bin,lib,share/{applications,icons/hicolor/256x256/apps}},opt/${{ env.APP_NAME }}}
-          cp -r build/linux/x64/release/bundle/* AppDir/opt/${{ env.APP_NAME }}/
-          cp assets/images/logo/crystal-logo.png AppDir/usr/share/icons/hicolor/256x256/apps/${{ env.APP_NAME }}.png
-          
-          # Create wrapper script
-          cat > AppDir/usr/bin/${{ env.APP_NAME }} << 'EOL'
-          #!/bin/bash
-          exec /opt/${{ env.APP_NAME }}/${{ env.APP_NAME }} "$@"
-          EOL
-          chmod +x AppDir/usr/bin/${{ env.APP_NAME }}
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+          cp -r build/linux/x64/release/bundle/* AppDir/usr/bin/
+          cp assets/images/logo/crystal-logo.png AppDir/crystal.png
+          chmod +x AppDir/usr/bin/crystal
       
       - name: Create desktop file
         run: |
-          cat > AppDir/usr/share/applications/${{ env.APP_NAME }}.desktop << EOL
+          cat > AppDir/crystal.desktop << EOL
           [Desktop Entry]
           Name=Crystal
-          Exec=${{ env.APP_NAME }}
-          Icon=${{ env.APP_NAME }}
+          Exec=crystal
+          Icon=crystal
           Type=Application
           Categories=Development;
           EOL
+          
+          # Make desktop file executable
+          chmod +x AppDir/crystal.desktop
+          # Move desktop file to correct location
+          mkdir -p AppDir/usr/share/applications
+          cp AppDir/crystal.desktop AppDir/usr/share/applications/crystal.desktop
       
       - name: Build AppImage
         run: |
-          VERSION="${{ github.ref_name }}"
-          if [[ ! $VERSION == v* ]]; then
-            VERSION="v${{ github.run_number }}"
-          fi
-          PACKAGE_NAME="${{ env.APP_NAME }}-linux-$VERSION"
-          
-          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
-          chmod +x appimagetool-x86_64.AppImage
-          
-          # Create AppRun
-          cat > AppDir/AppRun << 'EOL'
-          #!/bin/bash
-          HERE="$(dirname "$(readlink -f "${0}")")"
-          export PATH="${HERE}/usr/bin:${PATH}"
-          export LD_LIBRARY_PATH="${HERE}/usr/lib:${LD_LIBRARY_PATH}"
-          exec "${HERE}/usr/bin/${{ env.APP_NAME }}" "$@"
-          EOL
-          chmod +x AppDir/AppRun
-          
-          ARCH=x86_64 ./appimagetool-x86_64.AppImage AppDir "$PACKAGE_NAME.AppImage"
+          wget -O appimagetool "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
+          chmod +x appimagetool
+          # Extract AppImage contents since FUSE might still have issues in CI
+          ./appimagetool --appimage-extract
+          # Use extracted AppImage contents to build
+          ./squashfs-root/AppRun AppDir
       
       - name: Upload Linux Build
         uses: actions/upload-artifact@v3
         with:
           name: linux-build
-          path: '*.AppImage'
-          retention-days: 5
+          path: Crystal*.AppImage
 
   test-and-analyze:
     runs-on: ubuntu-latest
@@ -212,7 +196,7 @@ jobs:
         run: flutter test || echo "No tests found"
 
   create-release:
-    needs: [build-windows, build-macos, build-linux]
+    needs: [build-windows, build-macos, build-linux, test-and-analyze]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     
