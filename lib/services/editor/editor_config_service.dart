@@ -21,6 +21,7 @@ class EditorConfigService extends ChangeNotifier {
     'fontSize': 14.0,
     'uiFontSize': 14.0,
     'fontFamily': 'IBM Plex Mono',
+    'uiFontFamily': 'IBM Plex Sans',
     'whitespaceIndicatorRadius': 1.0,
     'theme': 'default-dark',
     'isFileExplorerVisible': true,
@@ -106,6 +107,8 @@ class EditorConfigService extends ChangeNotifier {
             _defaultConfig['uiFontSize'] as double,
         fontFamily: configData['fontFamily'] as String? ??
             _defaultConfig['fontFamily'] as String,
+        uiFontFamily: configData['uiFontFamily'] as String? ??
+            _defaultConfig['uiFontFamily'] as String,
         whitespaceIndicatorRadius:
             (configData['whitespaceIndicatorRadius'] as num?)?.toDouble() ??
                 _defaultConfig['whitespaceIndicatorRadius'] as double,
@@ -132,6 +135,7 @@ class EditorConfigService extends ChangeNotifier {
       fontSize: _defaultConfig['fontSize'] as double,
       uiFontSize: _defaultConfig['uiFontSize'] as double,
       fontFamily: _defaultConfig['fontFamily'] as String,
+      uiFontFamily: _defaultConfig['uiFontFamily'] as String,
       theme: _defaultConfig['theme'] as String,
       whitespaceIndicatorRadius:
           _defaultConfig['whitespaceIndicatorRadius'] as double,
@@ -157,6 +161,7 @@ class EditorConfigService extends ChangeNotifier {
         'fontSize': config.fontSize,
         'uiFontSize': config.uiFontSize,
         'fontFamily': config.fontFamily,
+        'uiFontFamily': config.uiFontFamily, // Add this line
         'theme': themeService.currentTheme!.name,
         'whitespaceIndicatorRadius': config.whitespaceIndicatorRadius,
         'isFileExplorerVisible': config.isFileExplorerVisible,

@@ -81,150 +81,156 @@ class _AppState extends State<App> {
       );
     }
 
-    return MaterialApp(
-      title: 'crystal',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-        fontFamily: 'IBM Plex Sans',
-        iconTheme: IconThemeData(
-          size: widget.editorConfigService.config.uiFontSize,
-          color: widget.editorConfigService.themeService.currentTheme != null
-              ? widget.editorConfigService.themeService.currentTheme!.primary
-              : Colors.blue,
-          opacity: 1.0,
-        ),
-        textTheme: const TextTheme(
-          displayLarge: TextStyle(
-            fontFamily: 'IBM Plex Sans',
-            fontSize: 57,
-            fontWeight: FontWeight.w400,
-          ),
-          displayMedium: TextStyle(
-            fontFamily: 'IBM Plex Sans',
-            fontSize: 45,
-            fontWeight: FontWeight.w400,
-          ),
-          displaySmall: TextStyle(
-            fontFamily: 'IBM Plex Sans',
-            fontSize: 36,
-            fontWeight: FontWeight.w400,
-          ),
-          headlineLarge: TextStyle(
-            fontFamily: 'IBM Plex Sans',
-            fontSize: 32,
-            fontWeight: FontWeight.w400,
-          ),
-          headlineMedium: TextStyle(
-            fontFamily: 'IBM Plex Sans',
-            fontSize: 28,
-            fontWeight: FontWeight.w400,
-          ),
-          headlineSmall: TextStyle(
-            fontFamily: 'IBM Plex Sans',
-            fontSize: 24,
-            fontWeight: FontWeight.w400,
-          ),
-          titleLarge: TextStyle(
-            fontFamily: 'IBM Plex Sans',
-            fontSize: 22,
-            fontWeight: FontWeight.w400,
-          ),
-          titleMedium: TextStyle(
-            fontFamily: 'IBM Plex Sans',
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
-          titleSmall: TextStyle(
-            fontFamily: 'IBM Plex Sans',
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-          bodyLarge: TextStyle(
-            fontFamily: 'IBM Plex Sans',
-            fontSize: 16,
-            fontWeight: FontWeight.w400,
-          ),
-          bodyMedium: TextStyle(
-            fontFamily: 'IBM Plex Sans',
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
-          ),
-          bodySmall: TextStyle(
-            fontFamily: 'IBM Plex Sans',
-            fontSize: 12,
-            fontWeight: FontWeight.w400,
-          ),
-          labelLarge: TextStyle(
-            fontFamily: 'IBM Plex Sans',
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-          labelMedium: TextStyle(
-            fontFamily: 'IBM Plex Sans',
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-          labelSmall: TextStyle(
-            fontFamily: 'IBM Plex Sans',
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        typography: Typography.material2021(
-          platform: defaultTargetPlatform,
-          black: Typography.blackMountainView.copyWith(
-            bodyLarge: const TextStyle(
-              fontFamily: 'IBM Plex Sans',
-              fontSize: 16,
-              fontWeight: FontWeight.w400,
+    return ListenableBuilder(
+        listenable: widget.editorConfigService,
+        builder: (context, builder) {
+          return MaterialApp(
+            title: 'crystal',
+            debugShowCheckedModeBanner: false,
+            theme: ThemeData(
+              colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+              useMaterial3: true,
+              fontFamily: widget.editorConfigService.config.uiFontFamily,
+              iconTheme: IconThemeData(
+                size: widget.editorConfigService.config.uiFontSize,
+                color:
+                    widget.editorConfigService.themeService.currentTheme != null
+                        ? widget.editorConfigService.themeService.currentTheme!
+                            .primary
+                        : Colors.blue,
+                opacity: 1.0,
+              ),
+              textTheme: TextTheme(
+                displayLarge: TextStyle(
+                  fontFamily: widget.editorConfigService.config.uiFontFamily,
+                  fontSize: 57,
+                  fontWeight: FontWeight.w400,
+                ),
+                displayMedium: TextStyle(
+                  fontFamily: widget.editorConfigService.config.uiFontFamily,
+                  fontSize: 45,
+                  fontWeight: FontWeight.w400,
+                ),
+                displaySmall: TextStyle(
+                  fontFamily: widget.editorConfigService.config.uiFontFamily,
+                  fontSize: 36,
+                  fontWeight: FontWeight.w400,
+                ),
+                headlineLarge: TextStyle(
+                  fontFamily: widget.editorConfigService.config.uiFontFamily,
+                  fontSize: 32,
+                  fontWeight: FontWeight.w400,
+                ),
+                headlineMedium: TextStyle(
+                  fontFamily: widget.editorConfigService.config.uiFontFamily,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w400,
+                ),
+                headlineSmall: TextStyle(
+                  fontFamily: widget.editorConfigService.config.uiFontFamily,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w400,
+                ),
+                titleLarge: TextStyle(
+                  fontFamily: widget.editorConfigService.config.uiFontFamily,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w400,
+                ),
+                titleMedium: TextStyle(
+                  fontFamily: widget.editorConfigService.config.uiFontFamily,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+                titleSmall: TextStyle(
+                  fontFamily: widget.editorConfigService.config.uiFontFamily,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                bodyLarge: TextStyle(
+                  fontFamily: widget.editorConfigService.config.uiFontFamily,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                ),
+                bodyMedium: TextStyle(
+                  fontFamily: widget.editorConfigService.config.uiFontFamily,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                ),
+                bodySmall: TextStyle(
+                  fontFamily: widget.editorConfigService.config.uiFontFamily,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                ),
+                labelLarge: TextStyle(
+                  fontFamily: widget.editorConfigService.config.uiFontFamily,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                labelMedium: TextStyle(
+                  fontFamily: widget.editorConfigService.config.uiFontFamily,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+                labelSmall: TextStyle(
+                  fontFamily: widget.editorConfigService.config.uiFontFamily,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              typography: Typography.material2021(
+                platform: defaultTargetPlatform,
+                black: Typography.blackMountainView.copyWith(
+                  bodyLarge: TextStyle(
+                    fontFamily: widget.editorConfigService.config.uiFontFamily,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                  ),
+                  bodyMedium: TextStyle(
+                    fontFamily: widget.editorConfigService.config.uiFontFamily,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                  ),
+                  bodySmall: TextStyle(
+                    fontFamily: widget.editorConfigService.config.uiFontFamily,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                white: Typography.whiteMountainView.copyWith(
+                  bodyLarge: TextStyle(
+                    fontFamily: widget.editorConfigService.config.uiFontFamily,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                  ),
+                  bodyMedium: TextStyle(
+                    fontFamily: widget.editorConfigService.config.uiFontFamily,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                  ),
+                  bodySmall: TextStyle(
+                    fontFamily: widget.editorConfigService.config.uiFontFamily,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ),
             ),
-            bodyMedium: const TextStyle(
-              fontFamily: 'IBM Plex Sans',
-              fontSize: 14,
-              fontWeight: FontWeight.w400,
+            home: AppLayout(
+              editorConfigService: widget.editorConfigService,
+              onDirectoryChanged: _handleDirectoryChanged,
+              onDirectoryRefresh: _handleDirectoryRefresh,
+              fileService: widget.fileService,
+              child: EditorScreen(
+                key: _editorKey,
+                lineHeightMultipler: 1.5,
+                verticalPaddingLines: 5,
+                horizontalPadding: 100,
+                fileService: widget.fileService,
+                onDirectoryChanged: _handleDirectoryChanged,
+                onDirectoryRefresh: _handleDirectoryRefresh,
+              ),
             ),
-            bodySmall: const TextStyle(
-              fontFamily: 'IBM Plex Sans',
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-          white: Typography.whiteMountainView.copyWith(
-            bodyLarge: const TextStyle(
-              fontFamily: 'IBM Plex Sans',
-              fontSize: 16,
-              fontWeight: FontWeight.w400,
-            ),
-            bodyMedium: const TextStyle(
-              fontFamily: 'IBM Plex Sans',
-              fontSize: 14,
-              fontWeight: FontWeight.w400,
-            ),
-            bodySmall: const TextStyle(
-              fontFamily: 'IBM Plex Sans',
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-        ),
-      ),
-      home: AppLayout(
-        editorConfigService: widget.editorConfigService,
-        onDirectoryChanged: _handleDirectoryChanged,
-        onDirectoryRefresh: _handleDirectoryRefresh,
-        fileService: widget.fileService,
-        child: EditorScreen(
-          key: _editorKey,
-          lineHeightMultipler: 1.5,
-          verticalPaddingLines: 5,
-          horizontalPadding: 100,
-          fileService: widget.fileService,
-          onDirectoryChanged: _handleDirectoryChanged,
-          onDirectoryRefresh: _handleDirectoryRefresh,
-        ),
-      ),
-    );
+          );
+        });
   }
 }

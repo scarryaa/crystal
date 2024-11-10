@@ -2,6 +2,7 @@ class EditorConfig {
   double fontSize;
   double uiFontSize;
   String fontFamily;
+  String uiFontFamily;
   double whitespaceIndicatorRadius;
   bool isFileExplorerVisible;
   bool isFileExplorerOnLeft;
@@ -13,6 +14,7 @@ class EditorConfig {
     required this.fontSize,
     required this.uiFontSize,
     required this.fontFamily,
+    required this.uiFontFamily,
     required this.whitespaceIndicatorRadius,
     required this.fileExplorerWidth,
     required this.theme,
