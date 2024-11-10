@@ -24,6 +24,7 @@ class EditorConfigService extends ChangeNotifier {
     'whitespaceIndicatorRadius': 1.0,
     'theme': 'default-dark',
     'isFileExplorerVisible': true,
+    'isFileExplorerOnLeft': true,
     'currentDirectory': '',
     'fileExplorerWidth': 170.0,
   };
@@ -82,7 +83,7 @@ class EditorConfigService extends ChangeNotifier {
         .watch(events: FileSystemEvent.modify)
         .listen((FileSystemEvent event) {
       if (event.type == FileSystemEvent.modify) {
-        Future.delayed(const Duration(milliseconds: 100), () async {
+        Future.delayed(const Duration(milliseconds: 1), () async {
           await loadConfig();
         });
       }
@@ -115,6 +116,8 @@ class EditorConfigService extends ChangeNotifier {
                 _defaultConfig['fileExplorerWidth'] as double,
         isFileExplorerVisible: configData['isFileExplorerVisible'] as bool? ??
             _defaultConfig['isFileExplorerVisible'] as bool,
+        isFileExplorerOnLeft: configData['isFileExplorerOnLeft'] as bool? ??
+            _defaultConfig['isFileExplorerOnLeft'] as bool,
         currentDirectory: configData['currentDirectory'] as String? ??
             _defaultConfig['currentDirectory'] as String,
       );
@@ -134,6 +137,7 @@ class EditorConfigService extends ChangeNotifier {
           _defaultConfig['whitespaceIndicatorRadius'] as double,
       fileExplorerWidth: (_defaultConfig['uiFontSize'] as double) * 11.0,
       isFileExplorerVisible: _defaultConfig['isFileExplorerVisible'] as bool,
+      isFileExplorerOnLeft: _defaultConfig['isFileExplorerOnLeft'] as bool,
     );
   }
 
@@ -156,6 +160,7 @@ class EditorConfigService extends ChangeNotifier {
         'theme': themeService.currentTheme!.name,
         'whitespaceIndicatorRadius': config.whitespaceIndicatorRadius,
         'isFileExplorerVisible': config.isFileExplorerVisible,
+        'isFileExplorerOnLeft': config.isFileExplorerOnLeft,
         'currentDirectory': config.currentDirectory,
         'fileExplorerWidth': config.fileExplorerWidth,
       };
@@ -178,7 +183,6 @@ class EditorConfigService extends ChangeNotifier {
   }
 
   Future<void> _loadTheme() async {
-    await themeService
-        .loadThemeFromJson(config.theme ?? _defaultConfig['theme'] as String);
+    await themeService.loadThemeFromJson(config.theme);
   }
 }

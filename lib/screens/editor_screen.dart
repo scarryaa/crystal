@@ -151,6 +151,20 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
+  Widget _buildFileExplorer() {
+    if (_isFileExplorerVisible) {
+      return FileExplorer(
+        editorConfigService: _editorConfigService,
+        fileService: widget.fileService,
+        tapCallback: tapCallback,
+        onDirectoryChanged: widget.onDirectoryChanged,
+        onDirectoryRefresh: widget.onDirectoryRefresh,
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
   Future<void> _initializeServices() async {
     _editorConfigService = await EditorConfigService.create();
     _isFileExplorerVisible = _editorConfigService.config.isFileExplorerVisible;
@@ -350,202 +364,225 @@ class _EditorScreenState extends State<EditorScreen> {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
 
-          return Focus(
-              autofocus: true,
-              onKeyEvent: (node, event) =>
-                  _shortcutHandler.handleKeyEvent(node, event),
-              child: ChangeNotifierProvider.value(
-                value: activeEditor,
-                child: Consumer<EditorState?>(
-                  builder: (context, state, _) {
-                    final gutterWidth = state?.getGutterWidth();
+          return ListenableBuilder(
+              listenable: _editorConfigService,
+              builder: (context, child) {
+                bool isFileExplorerOnLeft =
+                    _editorConfigService.config.isFileExplorerOnLeft;
 
-                    return Material(
-                      child: Column(
-                        children: [
-                          Expanded(
-                            child: Row(
+                return Focus(
+                    autofocus: true,
+                    onKeyEvent: (node, event) =>
+                        _shortcutHandler.handleKeyEvent(node, event),
+                    child: ChangeNotifierProvider.value(
+                      value: activeEditor,
+                      child: Consumer<EditorState?>(
+                        builder: (context, state, _) {
+                          final gutterWidth = state?.getGutterWidth();
+
+                          return Material(
+                            child: Column(
                               children: [
-                                if (_isFileExplorerVisible)
-                                  FileExplorer(
-                                    editorConfigService: _editorConfigService,
-                                    fileService: widget.fileService,
-                                    tapCallback: tapCallback,
-                                    onDirectoryChanged:
-                                        widget.onDirectoryChanged,
-                                    onDirectoryRefresh:
-                                        widget.onDirectoryRefresh,
-                                  ),
                                 Expanded(
-                                  child: Column(
+                                  child: Row(
                                     children: [
-                                      if (_editors.isNotEmpty)
-                                        EditorTabBar(
-                                          onPin: onPin,
-                                          editorConfigService:
-                                              _editorConfigService,
-                                          editors: _editors,
-                                          activeEditorIndex: activeEditorIndex,
-                                          onActiveEditorChanged:
-                                              onActiveEditorChanged,
-                                          onEditorClosed: (index) =>
-                                              onEditorClosed(index),
-                                          onReorder: onReorder,
-                                        ),
-                                      if (_editors.isNotEmpty)
-                                        EditorControlBarView(
-                                          editorConfigService:
-                                              _editorConfigService,
-                                          filePath:
-                                              activeEditor!.relativePath ??
-                                                  activeEditor!.path,
-                                          searchTermChanged: (newTerm) =>
-                                              searchService.onSearchTermChanged(
-                                                  newTerm, activeEditor),
-                                          nextSearchTerm: () => searchService
-                                              .nextSearchTerm(activeEditor),
-                                          previousSearchTerm: () =>
-                                              searchService.previousSearchTerm(
-                                                  activeEditor),
-                                          currentSearchTermMatch: searchService
-                                              .currentSearchTermMatch,
-                                          totalSearchTermMatches: searchService
-                                              .searchTermMatches.length,
-                                          isCaseSensitiveActive:
-                                              searchService.caseSensitiveActive,
-                                          isRegexActive:
-                                              searchService.regexActive,
-                                          isWholeWordActive:
-                                              searchService.wholeWordActive,
-                                          toggleRegex: (active) =>
-                                              searchService.toggleRegex(
-                                                  active, activeEditor),
-                                          toggleWholeWord: (active) =>
-                                              searchService.toggleWholeWord(
-                                                  active, activeEditor),
-                                          toggleCaseSensitive: (active) =>
-                                              searchService.toggleCaseSensitive(
-                                                  active, activeEditor),
-                                          replaceNextMatch: (newTerm) =>
-                                              searchService.replaceNextMatch(
-                                                  newTerm, activeEditor),
-                                          replaceAllMatches: (newTerm) =>
-                                              searchService.replaceAllMatches(
-                                                  newTerm, activeEditor),
-                                        ),
+                                      if (isFileExplorerOnLeft)
+                                        _buildFileExplorer(),
                                       Expanded(
-                                        child: Container(
-                                          color:
-                                              _editorConfigService.themeService
-                                                          .currentTheme !=
-                                                      null
-                                                  ? _editorConfigService
-                                                      .themeService
-                                                      .currentTheme!
-                                                      .background
-                                                  : Colors.white,
-                                          child: Row(
-                                            children: [
-                                              if (_editors.isNotEmpty)
-                                                Gutter(
-                                                  editorConfigService:
-                                                      _editorConfigService,
-                                                  editorLayoutService:
-                                                      EditorLayoutService
-                                                          .instance,
-                                                  editorState: state!,
-                                                  verticalScrollController:
-                                                      editorScrollManager
-                                                          .gutterScrollController,
-                                                ),
-                                              Expanded(
-                                                child: _editors.isNotEmpty
-                                                    ? EditorView(
-                                                        key: editorViewKey,
+                                        child: Column(
+                                          children: [
+                                            if (_editors.isNotEmpty)
+                                              EditorTabBar(
+                                                onPin: onPin,
+                                                editorConfigService:
+                                                    _editorConfigService,
+                                                editors: _editors,
+                                                activeEditorIndex:
+                                                    activeEditorIndex,
+                                                onActiveEditorChanged:
+                                                    onActiveEditorChanged,
+                                                onEditorClosed: (index) =>
+                                                    onEditorClosed(index),
+                                                onReorder: onReorder,
+                                              ),
+                                            if (_editors.isNotEmpty)
+                                              EditorControlBarView(
+                                                editorConfigService:
+                                                    _editorConfigService,
+                                                filePath: activeEditor!
+                                                        .relativePath ??
+                                                    activeEditor!.path,
+                                                searchTermChanged: (newTerm) =>
+                                                    searchService
+                                                        .onSearchTermChanged(
+                                                            newTerm,
+                                                            activeEditor),
+                                                nextSearchTerm: () =>
+                                                    searchService
+                                                        .nextSearchTerm(
+                                                            activeEditor),
+                                                previousSearchTerm: () =>
+                                                    searchService
+                                                        .previousSearchTerm(
+                                                            activeEditor),
+                                                currentSearchTermMatch:
+                                                    searchService
+                                                        .currentSearchTermMatch,
+                                                totalSearchTermMatches:
+                                                    searchService
+                                                        .searchTermMatches
+                                                        .length,
+                                                isCaseSensitiveActive:
+                                                    searchService
+                                                        .caseSensitiveActive,
+                                                isRegexActive:
+                                                    searchService.regexActive,
+                                                isWholeWordActive: searchService
+                                                    .wholeWordActive,
+                                                toggleRegex: (active) =>
+                                                    searchService.toggleRegex(
+                                                        active, activeEditor),
+                                                toggleWholeWord: (active) =>
+                                                    searchService
+                                                        .toggleWholeWord(active,
+                                                            activeEditor),
+                                                toggleCaseSensitive: (active) =>
+                                                    searchService
+                                                        .toggleCaseSensitive(
+                                                            active,
+                                                            activeEditor),
+                                                replaceNextMatch: (newTerm) =>
+                                                    searchService
+                                                        .replaceNextMatch(
+                                                            newTerm,
+                                                            activeEditor),
+                                                replaceAllMatches: (newTerm) =>
+                                                    searchService
+                                                        .replaceAllMatches(
+                                                            newTerm,
+                                                            activeEditor),
+                                              ),
+                                            Expanded(
+                                              child: Container(
+                                                color:
+                                                    _editorConfigService
+                                                                .themeService
+                                                                .currentTheme !=
+                                                            null
+                                                        ? _editorConfigService
+                                                            .themeService
+                                                            .currentTheme!
+                                                            .background
+                                                        : Colors.white,
+                                                child: Row(
+                                                  children: [
+                                                    if (_editors.isNotEmpty)
+                                                      Gutter(
                                                         editorConfigService:
                                                             _editorConfigService,
                                                         editorLayoutService:
                                                             EditorLayoutService
                                                                 .instance,
-                                                        state: state!,
-                                                        searchTerm:
-                                                            searchService
-                                                                .searchTerm,
-                                                        searchTermMatches:
-                                                            searchService
-                                                                .searchTermMatches,
-                                                        currentSearchTermMatch:
-                                                            searchService
-                                                                .currentSearchTermMatch,
-                                                        onSearchTermChanged:
-                                                            (newTerm) => searchService
-                                                                .updateSearchMatches(
-                                                                    newTerm,
-                                                                    activeEditor),
-                                                        scrollToCursor:
-                                                            _scrollToCursor,
-                                                        onEditorClosed:
-                                                            onEditorClosed,
-                                                        saveFileAs: activeEditor !=
-                                                                null
-                                                            ? () => activeEditor!
-                                                                .saveFileAs(
-                                                                    activeEditor!
-                                                                        .path)
-                                                            : () => Future<
-                                                                void>.value(),
-                                                        saveFile: activeEditor !=
-                                                                null
-                                                            ? () => activeEditor!
-                                                                .saveFile(
-                                                                    activeEditor!
-                                                                        .path)
-                                                            : () => Future<
-                                                                void>.value(),
-                                                        openNewTab: openNewTab,
-                                                        activeEditorIndex: () =>
-                                                            activeEditorIndex,
-                                                        gutterWidth:
-                                                            gutterWidth!,
+                                                        editorState: state!,
                                                         verticalScrollController:
                                                             editorScrollManager
-                                                                .editorVerticalScrollController,
-                                                        horizontalScrollController:
-                                                            editorScrollManager
-                                                                .editorHorizontalScrollController,
-                                                      )
-                                                    : Container(
-                                                        color: _editorConfigService
-                                                                    .themeService
-                                                                    .currentTheme !=
-                                                                null
-                                                            ? _editorConfigService
-                                                                .themeService
-                                                                .currentTheme!
-                                                                .background
-                                                            : Colors.white),
-                                              )
-                                            ],
-                                          ),
+                                                                .gutterScrollController,
+                                                      ),
+                                                    Expanded(
+                                                      child: _editors.isNotEmpty
+                                                          ? EditorView(
+                                                              key:
+                                                                  editorViewKey,
+                                                              editorConfigService:
+                                                                  _editorConfigService,
+                                                              editorLayoutService:
+                                                                  EditorLayoutService
+                                                                      .instance,
+                                                              state: state!,
+                                                              searchTerm:
+                                                                  searchService
+                                                                      .searchTerm,
+                                                              searchTermMatches:
+                                                                  searchService
+                                                                      .searchTermMatches,
+                                                              currentSearchTermMatch:
+                                                                  searchService
+                                                                      .currentSearchTermMatch,
+                                                              onSearchTermChanged:
+                                                                  (newTerm) => searchService
+                                                                      .updateSearchMatches(
+                                                                          newTerm,
+                                                                          activeEditor),
+                                                              scrollToCursor:
+                                                                  _scrollToCursor,
+                                                              onEditorClosed:
+                                                                  onEditorClosed,
+                                                              saveFileAs: activeEditor !=
+                                                                      null
+                                                                  ? () => activeEditor!
+                                                                      .saveFileAs(
+                                                                          activeEditor!
+                                                                              .path)
+                                                                  : () => Future<
+                                                                      void>.value(),
+                                                              saveFile: activeEditor !=
+                                                                      null
+                                                                  ? () => activeEditor!
+                                                                      .saveFile(
+                                                                          activeEditor!
+                                                                              .path)
+                                                                  : () => Future<
+                                                                      void>.value(),
+                                                              openNewTab:
+                                                                  openNewTab,
+                                                              activeEditorIndex:
+                                                                  () =>
+                                                                      activeEditorIndex,
+                                                              gutterWidth:
+                                                                  gutterWidth!,
+                                                              verticalScrollController:
+                                                                  editorScrollManager
+                                                                      .editorVerticalScrollController,
+                                                              horizontalScrollController:
+                                                                  editorScrollManager
+                                                                      .editorHorizontalScrollController,
+                                                            )
+                                                          : Container(
+                                                              color: _editorConfigService
+                                                                          .themeService
+                                                                          .currentTheme !=
+                                                                      null
+                                                                  ? _editorConfigService
+                                                                      .themeService
+                                                                      .currentTheme!
+                                                                      .background
+                                                                  : Colors
+                                                                      .white),
+                                                    )
+                                                  ],
+                                                ),
+                                              ),
+                                            )
+                                          ],
                                         ),
-                                      )
+                                      ),
+                                      if (!isFileExplorerOnLeft)
+                                        _buildFileExplorer(),
                                     ],
                                   ),
                                 ),
+                                StatusBar(
+                                  editorConfigService: _editorConfigService,
+                                  onFileExplorerToggle: _toggleFileExplorer,
+                                  isFileExplorerVisible: _isFileExplorerVisible,
+                                ),
                               ],
                             ),
-                          ),
-                          StatusBar(
-                            editorConfigService: _editorConfigService,
-                            onFileExplorerToggle: _toggleFileExplorer,
-                            isFileExplorerVisible: _isFileExplorerVisible,
-                          ),
-                        ],
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
-              ));
+                    ));
+              });
         });
   }
 }

@@ -161,6 +161,28 @@ class _FileExplorerState extends State<FileExplorer> {
     }
   }
 
+  Widget _buildResizeHandle() {
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeColumn,
+      child: GestureDetector(
+        onHorizontalDragUpdate: (details) {
+          setState(() {
+            width = (width + details.delta.dx).clamp(
+                widget.editorConfigService.config.uiFontSize * 11.0,
+                MediaQuery.of(context).size.width - 200);
+          });
+        },
+        child: Container(
+          width: 1,
+          height: double.infinity,
+          color: widget.editorConfigService.themeService.currentTheme != null
+              ? widget.editorConfigService.themeService.currentTheme!.border
+              : Colors.transparent,
+        ),
+      ),
+    );
+  }
+
   Widget _buildFileTree(FileSystemEntity entity, int depth) {
     final fileName = entity.path.split(Platform.pathSeparator).last;
     final isDirectory = entity is Directory;
@@ -233,6 +255,8 @@ class _FileExplorerState extends State<FileExplorer> {
             alignment: Alignment.topLeft,
             child: Row(
               children: [
+                if (!widget.editorConfigService.config.isFileExplorerOnLeft)
+                  _buildResizeHandle(),
                 Container(
                   color: widget.editorConfigService.themeService.currentTheme !=
                           null
@@ -366,29 +390,8 @@ class _FileExplorerState extends State<FileExplorer> {
                     },
                   ),
                 ),
-                MouseRegion(
-                  cursor: SystemMouseCursors.resizeColumn,
-                  child: GestureDetector(
-                    onHorizontalDragUpdate: (details) {
-                      setState(() {
-                        width = (width + details.delta.dx).clamp(
-                            widget.editorConfigService.config.uiFontSize * 11.0,
-                            MediaQuery.of(context).size.width - 200);
-                      });
-                    },
-                    child: Container(
-                      width: 1,
-                      height: double.infinity,
-                      color:
-                          widget.editorConfigService.themeService
-                                      .currentTheme !=
-                                  null
-                              ? widget.editorConfigService.themeService
-                                  .currentTheme!.border
-                              : Colors.transparent,
-                    ),
-                  ),
-                )
+                if (widget.editorConfigService.config.isFileExplorerOnLeft)
+                  _buildResizeHandle(),
               ],
             ),
           );

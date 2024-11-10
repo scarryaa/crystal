@@ -185,70 +185,78 @@ class EditorViewState extends State<EditorView> {
     widget.state.scrollState
         .updateViewportHeight(MediaQuery.of(context).size.height);
 
-    return Container(
-        color: widget.editorConfigService.themeService.currentTheme != null
-            ? widget.editorConfigService.themeService.currentTheme!.background
-            : Colors.white,
-        child: Focus(
-          focusNode: _focusNode,
-          onKeyEvent: _handleKeyEvent,
-          autofocus: true,
-          child: GestureDetector(
-              onTapDown: (details) => editorInputHandler.handleTap(
-                  details,
-                  widget.verticalScrollController.offset,
-                  widget.horizontalScrollController.offset,
-                  editorPainter,
-                  widget.state),
-              onPanStart: (details) => editorInputHandler.handleDragStart(
-                  details,
-                  widget.verticalScrollController.offset,
-                  widget.horizontalScrollController.offset,
-                  editorPainter,
-                  widget.state),
-              onPanUpdate: (details) => editorInputHandler.handleDragUpdate(
-                  details,
-                  widget.verticalScrollController.offset,
-                  widget.horizontalScrollController.offset,
-                  editorPainter,
-                  widget.state),
-              child: ScrollbarTheme(
-                  data: ScrollbarThemeData(
-                    thumbColor: WidgetStateProperty.all(
-                        widget.editorConfigService.themeService.currentTheme !=
-                                null
-                            ? widget.editorConfigService.themeService
-                                .currentTheme!.border
-                                .withOpacity(0.65)
-                            : Colors.grey[600]!.withOpacity(0.65)),
-                  ),
-                  child: Scrollbar(
-                      controller: widget.verticalScrollController,
-                      thickness: 10,
-                      radius: const Radius.circular(0),
-                      child: Scrollbar(
-                        controller: widget.horizontalScrollController,
-                        thickness: 10,
-                        radius: const Radius.circular(0),
-                        notificationPredicate: (notification) =>
-                            notification.depth == 1,
-                        child: ScrollConfiguration(
-                          behavior: const ScrollBehavior()
-                              .copyWith(scrollbars: false),
-                          child: SingleChildScrollView(
-                            controller: widget.verticalScrollController,
-                            child: SingleChildScrollView(
-                              controller: widget.horizontalScrollController,
-                              scrollDirection: Axis.horizontal,
-                              child: CustomPaint(
-                                painter: editorPainter,
-                                size: Size(width, height),
-                              ),
-                            ),
-                          ),
+    return ListenableBuilder(
+        listenable: widget.editorConfigService.themeService,
+        builder: (context, _) {
+          return Container(
+              color: widget.editorConfigService.themeService.currentTheme
+                      ?.background ??
+                  Colors.white,
+              child: Focus(
+                focusNode: _focusNode,
+                onKeyEvent: _handleKeyEvent,
+                autofocus: true,
+                child: GestureDetector(
+                    onTapDown: (details) => editorInputHandler.handleTap(
+                        details,
+                        widget.verticalScrollController.offset,
+                        widget.horizontalScrollController.offset,
+                        editorPainter,
+                        widget.state),
+                    onPanStart: (details) => editorInputHandler.handleDragStart(
+                        details,
+                        widget.verticalScrollController.offset,
+                        widget.horizontalScrollController.offset,
+                        editorPainter,
+                        widget.state),
+                    onPanUpdate: (details) =>
+                        editorInputHandler.handleDragUpdate(
+                            details,
+                            widget.verticalScrollController.offset,
+                            widget.horizontalScrollController.offset,
+                            editorPainter,
+                            widget.state),
+                    child: ScrollbarTheme(
+                        data: ScrollbarThemeData(
+                          thumbColor: WidgetStateProperty.all(widget
+                                      .editorConfigService
+                                      .themeService
+                                      .currentTheme !=
+                                  null
+                              ? widget.editorConfigService.themeService
+                                  .currentTheme!.border
+                                  .withOpacity(0.65)
+                              : Colors.grey[600]!.withOpacity(0.65)),
                         ),
-                      )))),
-        ));
+                        child: Scrollbar(
+                            controller: widget.verticalScrollController,
+                            thickness: 10,
+                            radius: const Radius.circular(0),
+                            child: Scrollbar(
+                              controller: widget.horizontalScrollController,
+                              thickness: 10,
+                              radius: const Radius.circular(0),
+                              notificationPredicate: (notification) =>
+                                  notification.depth == 1,
+                              child: ScrollConfiguration(
+                                behavior: const ScrollBehavior()
+                                    .copyWith(scrollbars: false),
+                                child: SingleChildScrollView(
+                                  controller: widget.verticalScrollController,
+                                  child: SingleChildScrollView(
+                                    controller:
+                                        widget.horizontalScrollController,
+                                    scrollDirection: Axis.horizontal,
+                                    child: CustomPaint(
+                                      painter: editorPainter,
+                                      size: Size(width, height),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            )))),
+              ));
+        });
   }
 
   void requestFocus() {

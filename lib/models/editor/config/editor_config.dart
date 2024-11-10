@@ -4,6 +4,7 @@ class EditorConfig {
   String fontFamily;
   double whitespaceIndicatorRadius;
   bool isFileExplorerVisible;
+  bool isFileExplorerOnLeft;
   double fileExplorerWidth;
   String theme;
   String? currentDirectory;
@@ -16,6 +17,7 @@ class EditorConfig {
     required this.fileExplorerWidth,
     required this.theme,
     this.isFileExplorerVisible = true,
+    this.isFileExplorerOnLeft = true,
     this.currentDirectory = '',
   });
 }
