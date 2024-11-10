@@ -122,7 +122,7 @@ jobs:
           [Desktop Entry]
           Name=Crystal
           Exec=crystal
-          Icon=crystal.png
+          Icon=crystal
           Type=Application
           Categories=Development;
           EOL
