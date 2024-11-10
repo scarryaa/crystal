@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:crystal/app/app.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
@@ -18,11 +19,19 @@ void main() {
 
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
-    await windowManager.ensureInitialized();
 
-    if (!isWindowInitialized) {
-      await setupWindow();
-      isWindowInitialized = true;
+    if (Platform.isWindows) {
+      await windowManager.ensureInitialized();
+      await windowManager.waitUntilReadyToShow();
+      await windowManager.setSize(const Size(1280, 720));
+      await windowManager.center();
+      await windowManager.show();
+    } else {
+      await windowManager.ensureInitialized();
+      if (!isWindowInitialized) {
+        await setupWindow();
+        isWindowInitialized = true;
+      }
     }
 
     final editorConfigService = await EditorConfigService.create();
@@ -57,3 +66,4 @@ Future<void> setupWindow() async {
   await windowManager.show();
   await windowManager.focus();
 }
+
