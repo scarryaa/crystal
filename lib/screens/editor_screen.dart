@@ -499,6 +499,7 @@ class _EditorScreenState extends State<EditorScreen> {
                                   splitViewIndex: splitViewIndex,
                                   onSplitClose: (index) =>
                                       _editorTabManager.closeSplitView(index),
+                                  editorTabManager: _editorTabManager,
                                 ),
                               ),
                             ],

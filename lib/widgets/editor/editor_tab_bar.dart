@@ -1,5 +1,6 @@
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
+import 'package:crystal/services/editor/editor_tab_manager.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/widgets/editor/editor_tab.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +17,7 @@ class EditorTabBar extends StatefulWidget {
   final VoidCallback onSplitVertical;
   final Function(int) onSplitClose;
   final EditorConfigService editorConfigService;
+  final EditorTabManager editorTabManager;
   final int splitViewIndex;
 
   const EditorTabBar({
@@ -31,6 +33,7 @@ class EditorTabBar extends StatefulWidget {
     required this.onNewTab,
     required this.onSplitClose,
     required this.editorConfigService,
+    required this.editorTabManager,
     required this.splitViewIndex,
   });
 
@@ -102,6 +105,11 @@ class _EditorTabBarState extends State<EditorTabBar> {
   }
 
   Widget _buildSplitButtons() {
+    // Only show split controls if this is the active split view
+    if (widget.splitViewIndex != widget.editorTabManager.activeSplitViewIndex) {
+      return const SizedBox.shrink();
+    }
+
     final theme = widget.editorConfigService.themeService.currentTheme;
     final iconColor = theme?.text ?? Colors.black;
 
