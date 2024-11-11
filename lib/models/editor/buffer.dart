@@ -8,6 +8,7 @@ class Buffer {
   List<String> get lines => _lines;
   int get lineCount => _lines.length;
   bool get isEmpty => _lines.isEmpty;
+  String get content => _lines.join('\n');
 
   int getLineLength(int lineNumber) => _lines[lineNumber].length;
 

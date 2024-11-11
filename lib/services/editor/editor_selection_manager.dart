@@ -6,11 +6,15 @@ import 'package:crystal/models/selection.dart';
 import 'package:flutter/material.dart';
 
 class EditorSelectionManager {
-  final List<Selection> _selections = [];
+  List<Selection> _selections = [];
   List<Selection> get selections => _selections;
 
   bool hasSelection() {
     return _selections.isNotEmpty;
+  }
+
+  void setAllSelections(List<Selection> selections) {
+    _selections = selections;
   }
 
   void startIndividualSelection(Cursor cursor) {
