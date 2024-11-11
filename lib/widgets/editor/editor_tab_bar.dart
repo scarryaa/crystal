@@ -92,10 +92,11 @@ class _EditorTabBarState extends State<EditorTabBar> {
   }
 
   void _handleEditorClosed(int index) {
+    final willBeEmpty = widget.editors.length - 1 <= 0;
+
     widget.onEditorClosed(index);
 
-    // Close split if no more tabs
-    if (widget.editors.length <= 1 && widget.splitViewIndex > 0) {
+    if (willBeEmpty && widget.splitViewIndex > 0) {
       widget.onSplitClose(widget.splitViewIndex);
     }
   }

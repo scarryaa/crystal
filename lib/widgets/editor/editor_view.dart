@@ -195,6 +195,7 @@ class EditorViewState extends State<EditorView> {
                 onKeyEvent: _handleKeyEvent,
                 autofocus: true,
                 child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
                     onTapDown: (details) => editorInputHandler.handleTap(
                         details,
                         widget.verticalScrollController.offset,
