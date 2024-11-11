@@ -23,7 +23,6 @@ class EditorView extends StatefulWidget {
   final Future<void> Function() saveFileAs;
   final Future<void> Function() saveFile;
   final VoidCallback openNewTab;
-  final VoidCallback focusSplitView;
   final Function(String newTerm) onSearchTermChanged;
   final String searchTerm;
   final int currentSearchTermMatch;
@@ -47,7 +46,6 @@ class EditorView extends StatefulWidget {
     required this.editorLayoutService,
     required this.editorConfigService,
     required this.activeEditorIndex,
-    required this.focusSplitView,
   });
 
   @override
@@ -204,15 +202,12 @@ class EditorViewState extends State<EditorView> {
                         widget.horizontalScrollController.offset,
                         editorPainter,
                         widget.state),
-                    onPanStart: (details) {
-                      widget.focusSplitView();
-                      editorInputHandler.handleDragStart(
-                          details,
-                          widget.verticalScrollController.offset,
-                          widget.horizontalScrollController.offset,
-                          editorPainter,
-                          widget.state);
-                    },
+                    onPanStart: (details) => editorInputHandler.handleDragStart(
+                        details,
+                        widget.verticalScrollController.offset,
+                        widget.horizontalScrollController.offset,
+                        editorPainter,
+                        widget.state),
                     onPanUpdate: (details) =>
                         editorInputHandler.handleDragUpdate(
                             details,

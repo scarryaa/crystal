@@ -16,6 +16,7 @@ import 'package:crystal/widgets/editor/editor_view.dart';
 import 'package:crystal/widgets/file_explorer/file_explorer.dart';
 import 'package:crystal/widgets/gutter/gutter.dart';
 import 'package:crystal/widgets/status_bar/status_bar.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -447,11 +448,49 @@ class _EditorScreenState extends State<EditorScreen> {
     return Consumer<EditorState?>(
       builder: (context, state, _) {
         return MouseRegion(
-            cursor: SystemMouseCursors.text,
             child: Listener(
-                behavior: HitTestBehavior.translucent,
+                behavior: HitTestBehavior.opaque,
                 onPointerDown: (_) {
                   _editorTabManager.focusSplitView(splitViewIndex);
+                  if (_editorTabManager
+                          .splitViews[splitViewIndex].activeEditorIndex >=
+                      0) {
+                    onActiveEditorChanged(
+                        _editorTabManager
+                            .splitViews[splitViewIndex].activeEditorIndex,
+                        splitViewIndex);
+                  }
+                },
+                onPointerPanZoomStart: (_) {
+                  _editorTabManager.focusSplitView(splitViewIndex);
+                  if (_editorTabManager
+                          .splitViews[splitViewIndex].activeEditorIndex >=
+                      0) {
+                    onActiveEditorChanged(
+                        _editorTabManager
+                            .splitViews[splitViewIndex].activeEditorIndex,
+                        splitViewIndex);
+                  }
+                },
+                onPointerPanZoomUpdate: (_) {
+                  _editorTabManager.focusSplitView(splitViewIndex);
+                  if (_editorTabManager
+                          .splitViews[splitViewIndex].activeEditorIndex >=
+                      0) {
+                    onActiveEditorChanged(
+                        _editorTabManager
+                            .splitViews[splitViewIndex].activeEditorIndex,
+                        splitViewIndex);
+                  }
+                },
+                onPointerMove: (event) {
+                  if (event.kind == PointerDeviceKind.touch || event.down) {
+                    _editorTabManager.focusSplitView(splitViewIndex);
+                    onActiveEditorChanged(
+                        _editorTabManager
+                            .splitViews[splitViewIndex].activeEditorIndex,
+                        splitViewIndex);
+                  }
                 },
                 child: Container(
                     decoration: BoxDecoration(
@@ -582,9 +621,6 @@ class _EditorScreenState extends State<EditorScreen> {
                                               .editorVerticalScrollController,
                                           horizontalScrollController: scrollManager
                                               .editorHorizontalScrollController,
-                                          focusSplitView: () =>
-                                              _editorTabManager.focusSplitView(
-                                                  splitViewIndex),
                                         )
                                       : Container(
                                           color: _editorConfigService

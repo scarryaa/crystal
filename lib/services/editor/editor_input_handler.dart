@@ -37,6 +37,7 @@ class EditorInputHandler {
       double horizontalScrollControllerOffset,
       EditorPainter? editorPainter,
       EditorState state) {
+    requestFocus();
     if (editorPainter == null) return;
 
     bool isAltPressed = HardwareKeyboard.instance.isAltPressed;
@@ -54,6 +55,8 @@ class EditorInputHandler {
       double horizontalScrollControllerOffset,
       EditorPainter? editorPainter,
       EditorState state) {
+    requestFocus();
+
     if (editorPainter == null) return;
 
     state.handleDragUpdate(
