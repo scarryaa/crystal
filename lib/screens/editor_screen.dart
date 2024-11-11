@@ -104,6 +104,8 @@ class _EditorScreenState extends State<EditorScreen> {
     }
     searchService.updateSearchMatches(
         searchService.searchTerm, _editorTabManager.activeEditor);
+    WidgetsBinding.instance.addPostFrameCallback(
+        (_) => editorViewKey.currentState!.updateCachedMaxLineWidth());
   }
 
   @override
@@ -226,7 +228,7 @@ class _EditorScreenState extends State<EditorScreen> {
         for (int i = 0; i < _editorTabManager.editors.length; i++) {
           if (_editorTabManager.editors[i].path
               .endsWith('editor_config.json')) {
-            //r Reload the settings file if it is open
+            // Reload the settings file if it is open
             _editorTabManager.editors[i].buffer.setContent(
                 FileService.readFile(_editorTabManager.editors[i].path));
           }

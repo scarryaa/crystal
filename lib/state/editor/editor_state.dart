@@ -448,7 +448,6 @@ class EditorState extends ChangeNotifier {
   }
 
   void moveCursorLeft(bool isShiftPressed) {
-    // TODO revise this?
     if (!editorSelectionManager.hasSelection() && isShiftPressed) {
       startSelection();
     }
