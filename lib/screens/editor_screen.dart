@@ -582,6 +582,9 @@ class _EditorScreenState extends State<EditorScreen> {
                                               .editorVerticalScrollController,
                                           horizontalScrollController: scrollManager
                                               .editorHorizontalScrollController,
+                                          focusSplitView: () =>
+                                              _editorTabManager.focusSplitView(
+                                                  splitViewIndex),
                                         )
                                       : Container(
                                           color: _editorConfigService
