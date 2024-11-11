@@ -172,6 +172,7 @@ class _EditorScreenState extends State<EditorScreen> {
     EditorLayoutService(
       horizontalPadding: widget.horizontalPadding,
       verticalPaddingLines: widget.verticalPaddingLines,
+      gutterWidth: 40,
       fontSize: _editorConfigService.config.fontSize,
       fontFamily: _editorConfigService.config.fontFamily,
       lineHeightMultiplier: widget.lineHeightMultipler,
@@ -387,7 +388,8 @@ class _EditorScreenState extends State<EditorScreen> {
                       value: activeEditor,
                       child: Consumer<EditorState?>(
                         builder: (context, state, _) {
-                          final gutterWidth = state?.getGutterWidth();
+                          final gutterWidth =
+                              EditorLayoutService.instance.config.gutterWidth;
 
                           return Material(
                             child: Column(
@@ -547,8 +549,6 @@ class _EditorScreenState extends State<EditorScreen> {
                                                               activeEditorIndex:
                                                                   () =>
                                                                       activeEditorIndex,
-                                                              gutterWidth:
-                                                                  gutterWidth!,
                                                               verticalScrollController:
                                                                   editorScrollManager
                                                                       .editorVerticalScrollController,

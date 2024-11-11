@@ -34,7 +34,6 @@ class EditorState extends ChangeNotifier {
       EditorSelectionManager();
   final Future<void> Function(String) tapCallback;
   bool isPinned = false;
-  double _gutterWidth = 40;
   String? relativePath = '';
 
   EditorState({
@@ -72,14 +71,6 @@ class EditorState extends ChangeNotifier {
   }
 
   Buffer get buffer => _buffer;
-
-  double getGutterWidth() {
-    return _gutterWidth;
-  }
-
-  void setGutterWidth(double width) {
-    _gutterWidth = width;
-  }
 
   void toggleCaret() {
     showCaret = !showCaret;

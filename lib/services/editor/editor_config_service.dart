@@ -28,13 +28,14 @@ class EditorConfigService extends ChangeNotifier {
     'isFileExplorerOnLeft': true,
     'currentDirectory': '',
     'fileExplorerWidth': 170.0,
-    'tabWidth': 4.0, // Add this line
+    'tabWidth': 4.0,
   };
 
   EditorConfigService._() : themeService = EditorThemeService() {
     EditorLayoutService(
       horizontalPadding: 16.0,
       verticalPaddingLines: 2,
+      gutterWidth: 40,
       fontSize: _defaultConfig['fontSize'] as double,
       fontFamily: _defaultConfig['fontFamily'] as String,
       lineHeightMultiplier: 1.5,

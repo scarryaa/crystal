@@ -9,6 +9,7 @@ class EditorLayoutService {
   EditorLayoutService._({
     required double horizontalPadding,
     required int verticalPaddingLines,
+    required double gutterWidth,
     required double fontSize,
     required String fontFamily,
     required double lineHeightMultiplier,
@@ -16,6 +17,7 @@ class EditorLayoutService {
     _updateConfig(
       horizontalPadding: horizontalPadding,
       verticalPaddingLines: verticalPaddingLines,
+      gutterWidth: gutterWidth,
       fontSize: fontSize,
       fontFamily: fontFamily,
       lineHeightMultiplier: lineHeightMultiplier,
@@ -25,6 +27,7 @@ class EditorLayoutService {
   factory EditorLayoutService({
     required double horizontalPadding,
     required int verticalPaddingLines,
+    required double gutterWidth,
     required double fontSize,
     required String fontFamily,
     required double lineHeightMultiplier,
@@ -32,6 +35,7 @@ class EditorLayoutService {
     _instance ??= EditorLayoutService._(
       horizontalPadding: horizontalPadding,
       verticalPaddingLines: verticalPaddingLines,
+      gutterWidth: gutterWidth,
       fontSize: fontSize,
       fontFamily: fontFamily,
       lineHeightMultiplier: lineHeightMultiplier,
@@ -50,6 +54,7 @@ class EditorLayoutService {
     _updateConfig(
       horizontalPadding: _editorLayoutConfig.horizontalPadding,
       verticalPaddingLines: _editorLayoutConfig.verticalPaddingLines,
+      gutterWidth: _editorLayoutConfig.gutterWidth,
       fontSize: newFontSize,
       fontFamily: fontFamily,
       lineHeightMultiplier: _editorLayoutConfig.lineHeightMultiplier,
@@ -59,6 +64,7 @@ class EditorLayoutService {
   void _updateConfig({
     required double horizontalPadding,
     required int verticalPaddingLines,
+    required double gutterWidth,
     required double fontSize,
     required String fontFamily,
     required double lineHeightMultiplier,
@@ -66,6 +72,7 @@ class EditorLayoutService {
     _editorLayoutConfig = EditorLayoutConfig(
       charWidth: _textMeasurer.measureTextWidth('w', fontFamily, fontSize),
       fontSize: fontSize,
+      gutterWidth: gutterWidth,
       horizontalPadding: horizontalPadding,
       verticalPaddingLines: verticalPaddingLines,
       lineHeightMultiplier: lineHeightMultiplier,

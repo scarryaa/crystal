@@ -42,7 +42,7 @@ class _GutterState extends State<Gutter> {
     );
     textPainter.layout();
 
-    editorState.setGutterWidth(textPainter.width + 32.0);
+    EditorLayoutService.instance.config.gutterWidth = textPainter.width + 32.0;
     return textPainter.width + 32.0;
   }
 

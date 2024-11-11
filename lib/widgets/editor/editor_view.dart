@@ -18,7 +18,6 @@ class EditorView extends StatefulWidget {
   final EditorState state;
   final ScrollController verticalScrollController;
   final ScrollController horizontalScrollController;
-  final double gutterWidth;
   final VoidCallback scrollToCursor;
   final Function(int index) onEditorClosed;
   final Future<void> Function() saveFileAs;
@@ -33,7 +32,6 @@ class EditorView extends StatefulWidget {
   const EditorView({
     super.key,
     required this.state,
-    required this.gutterWidth,
     required this.verticalScrollController,
     required this.horizontalScrollController,
     required this.scrollToCursor,
@@ -159,7 +157,7 @@ class EditorViewState extends State<EditorView> {
     final mediaQuery = MediaQuery.of(context);
     final width = math.max(
       mediaQuery.size.width -
-          widget.gutterWidth -
+          widget.editorLayoutService.config.gutterWidth -
           (widget.editorConfigService.config.isFileExplorerVisible
               ? widget.editorConfigService.config.fileExplorerWidth
               : 0),
