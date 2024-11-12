@@ -94,6 +94,7 @@ class EditorViewState extends State<EditorView> {
       onEditorClosed: widget.onEditorClosed,
       saveFileAs: widget.saveFileAs,
       saveFile: widget.saveFile,
+      updateSingleLineWidth: updateSingleLineWidth,
     );
 
     editorSyntaxHighlighter = EditorSyntaxHighlighter(
@@ -105,6 +106,28 @@ class EditorViewState extends State<EditorView> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
     });
+  }
+
+  void updateSingleLineWidth(int lineIndex) {
+    if (editorPainter == null ||
+        lineIndex < 0 ||
+        lineIndex >= widget.state.buffer.lines.length) {
+      return;
+    }
+
+    final line = widget.state.buffer.lines[lineIndex];
+    final lineWidth = editorPainter!.measureLineWidth(line);
+
+    // If this line's new width is less than the cached max width,
+    // we need to recalculate in case this was the longest line
+    if (lineWidth < _cachedMaxLineWidth) {
+      updateCachedMaxLineWidth();
+    } else {
+      // If this line is longer than the cached max, update the cached max
+      _cachedMaxLineWidth = lineWidth;
+    }
+
+    setState(() {});
   }
 
   @override

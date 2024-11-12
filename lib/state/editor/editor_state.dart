@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/editor/command.dart';
@@ -44,6 +46,66 @@ class EditorState extends ChangeNotifier {
     String? path,
     this.relativePath,
   }) : path = path ?? generateUniqueTempPath();
+
+  int getCursorLine() {
+    // Return the line number of the first cursor
+    if (editorCursorManager.cursors.isEmpty) {
+      return 0;
+    }
+    return editorCursorManager.cursors.first.line;
+  }
+
+  TextRange getSelectedLineRange() {
+    if (!editorSelectionManager.hasSelection()) {
+      // If no selection, return range containing only current line
+      int currentLine = getCursorLine();
+      return TextRange(start: currentLine, end: currentLine);
+    }
+
+    // Get all selections and find min/max lines
+    var selections = editorSelectionManager.selections;
+    int minLine = _buffer.lineCount;
+    int maxLine = 0;
+
+    for (var selection in selections) {
+      minLine = min(minLine, min(selection.startLine, selection.endLine));
+      maxLine = max(maxLine, max(selection.startLine, selection.endLine));
+    }
+
+    return TextRange(start: minLine, end: maxLine);
+  }
+
+  int getLastPastedLineCount() {
+    // Get the last command from undo stack
+    if (_undoStack.isEmpty) {
+      return 0;
+    }
+
+    Command lastCommand = _undoStack.last;
+    if (lastCommand is TextInsertCommand) {
+      // Count newlines in inserted text
+      return '\n'.allMatches(lastCommand.text).length + 1;
+    }
+    return 0;
+  }
+
+  bool isLineJoinOperation() {
+    // Check if next delete/backspace will join lines
+    if (editorSelectionManager.hasSelection()) {
+      return false;
+    }
+
+    for (var cursor in editorCursorManager.cursors) {
+      // Check if cursor is at start of line (for delete)
+      // or end of line (for backspace)
+      if ((cursor.column == 0 && cursor.line > 0) ||
+          (cursor.column == _buffer.getLineLength(cursor.line) &&
+              cursor.line < _buffer.lineCount - 1)) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   void executeCommand(Command command) {
     command.execute();
@@ -361,6 +423,10 @@ class EditorState extends ChangeNotifier {
       clearSelection();
     }
     notifyListeners();
+  }
+
+  bool hasSelection() {
+    return editorSelectionManager.hasSelection();
   }
 
   List<Selection> getCurrentSelections() {

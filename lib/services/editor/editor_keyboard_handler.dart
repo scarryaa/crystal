@@ -12,6 +12,7 @@ class EditorKeyboardHandler {
   VoidCallback openConfig;
   VoidCallback openDefaultConfig;
   VoidCallback openNewTab;
+  Function(int lineIndex) updateSingleLineWidth;
 
   final EditorState Function() getState;
   final Function() activeEditorIndex;
@@ -30,6 +31,7 @@ class EditorKeyboardHandler {
     required this.getState,
     required this.searchTerm,
     required this.activeEditorIndex,
+    required this.updateSingleLineWidth,
   });
 
   KeyEventResult handleKeyEvent(FocusNode node, KeyEvent event) {
@@ -55,8 +57,14 @@ class EditorKeyboardHandler {
           }
         case LogicalKeyboardKey.keyX:
           if (isControlPressed) {
+            final affectedLines = getState().getSelectedLineRange();
             getState().cut();
-            updateCachedMaxLineWidth();
+            // Update only affected lines
+            for (int line = affectedLines.start;
+                line <= affectedLines.end;
+                line++) {
+              updateSingleLineWidth(line);
+            }
             WidgetsBinding.instance.addPostFrameCallback((_) {
               scrollToCursor();
               onSearchTermChanged(searchTerm);
@@ -65,8 +73,15 @@ class EditorKeyboardHandler {
           }
         case LogicalKeyboardKey.keyV:
           if (isControlPressed) {
+            final cursorLine = getState().getCursorLine();
             getState().paste();
-            updateCachedMaxLineWidth();
+            // Update from paste position to end of pasted content
+            final pastedLines = getState().getLastPastedLineCount();
+            for (int line = cursorLine;
+                line < cursorLine + pastedLines;
+                line++) {
+              updateSingleLineWidth(line);
+            }
             WidgetsBinding.instance.addPostFrameCallback((_) {
               scrollToCursor();
               onSearchTermChanged(searchTerm);
@@ -132,30 +147,63 @@ class EditorKeyboardHandler {
           return KeyEventResult.handled;
 
         case LogicalKeyboardKey.enter:
+          final currentLine = getState().getCursorLine();
           getState().insertNewLine();
-          updateCachedMaxLineWidth();
+          // Update current and next line
+          updateSingleLineWidth(currentLine);
+          updateSingleLineWidth(currentLine + 1);
           scrollToCursor();
           onSearchTermChanged(searchTerm);
           return KeyEventResult.handled;
         case LogicalKeyboardKey.backspace:
-          getState().backspace();
-          updateCachedMaxLineWidth();
-          scrollToCursor();
-          onSearchTermChanged(searchTerm);
-          return KeyEventResult.handled;
         case LogicalKeyboardKey.delete:
-          getState().delete();
-          updateCachedMaxLineWidth();
+          final currentLine = getState().getCursorLine();
+          final hasSelection = getState().hasSelection();
+
+          if (hasSelection) {
+            // Get the line range before deleting
+            final affectedLines = getState().getSelectedLineRange();
+
+            if (event.logicalKey == LogicalKeyboardKey.backspace) {
+              getState().backspace();
+            } else {
+              getState().delete();
+            }
+
+            // Update all affected lines
+            for (int line = affectedLines.start;
+                line <= affectedLines.end;
+                line++) {
+              updateSingleLineWidth(line);
+            }
+          } else {
+            if (getState().isLineJoinOperation()) {
+              // If operation will join lines, update both lines
+              updateSingleLineWidth(currentLine);
+              updateSingleLineWidth(currentLine + 1);
+            } else {
+              // Otherwise just update current line
+              updateSingleLineWidth(currentLine);
+            }
+
+            if (event.logicalKey == LogicalKeyboardKey.backspace) {
+              getState().backspace();
+            } else {
+              getState().delete();
+            }
+          }
+
           scrollToCursor();
           onSearchTermChanged(searchTerm);
           return KeyEventResult.handled;
         case LogicalKeyboardKey.tab:
+          final currentLine = getState().getCursorLine();
           if (isShiftPressed) {
             getState().backTab();
           } else {
             getState().insertTab();
           }
-          updateCachedMaxLineWidth();
+          updateSingleLineWidth(currentLine);
           scrollToCursor();
           onSearchTermChanged(searchTerm);
           return KeyEventResult.handled;
@@ -163,8 +211,9 @@ class EditorKeyboardHandler {
           if (event.character != null &&
               event.character!.length == 1 &&
               event.logicalKey != LogicalKeyboardKey.escape) {
+            final currentLine = getState().getCursorLine();
             getState().insertChar(event.character!);
-            updateCachedMaxLineWidth();
+            updateSingleLineWidth(currentLine);
             scrollToCursor();
             onSearchTermChanged(searchTerm);
             return KeyEventResult.handled;

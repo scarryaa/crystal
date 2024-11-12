@@ -181,10 +181,4 @@ class _EditorTabBarState extends State<EditorTabBar> {
       },
     );
   }
-
-  @override
-  void dispose() {
-    widget.tabBarScrollController.dispose();
-    super.dispose();
-  }
 }

@@ -56,7 +56,7 @@ class _EditorScreenState extends State<EditorScreen> {
   final Map<String, ScrollController> _tabBarScrollControllers = {};
 
   ScrollController _getTabBarScrollController(int row, int col) {
-    final String key = 'tabBar_${row}_${col}';
+    final String key = 'tabBar_${row}_$col';
     if (!_tabBarScrollControllers.containsKey(key)) {
       _tabBarScrollControllers[key] = ScrollController();
     }
@@ -515,6 +515,9 @@ class _EditorScreenState extends State<EditorScreen> {
   void dispose() {
     for (final scrollManager in _scrollManagers.values) {
       scrollManager.dispose();
+    }
+    for (final scrollController in _tabBarScrollControllers.values) {
+      scrollController.dispose();
     }
     _scrollManagers.clear();
     _editorConfigService.themeService.removeListener(_onThemeChanged);
