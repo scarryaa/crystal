@@ -12,6 +12,10 @@ class EditorTabManager extends ChangeNotifier {
   ];
   int activeRow = 0;
   int activeCol = 0;
+  final List<List<double>> _horizontalSizes = [
+    [1.0]
+  ];
+  final List<double> _verticalSizes = [1.0];
 
   List<List<SplitView>> get horizontalSplits => _splitViews;
   SplitView get activeSplitView => _splitViews[activeRow][activeCol];
@@ -28,6 +32,14 @@ class EditorTabManager extends ChangeNotifier {
     newSplitView.activeEditorIndex = 0;
 
     _splitViews.add([newSplitView]);
+
+    // Update sizes
+    final newSize = 1.0 / _splitViews.length;
+    _verticalSizes.clear();
+    for (var i = 0; i < _splitViews.length; i++) {
+      _verticalSizes.add(newSize);
+    }
+
     activeRow = _splitViews.length - 1;
     activeCol = 0;
 
@@ -43,9 +55,46 @@ class EditorTabManager extends ChangeNotifier {
     newSplitView.activeEditorIndex = 0;
 
     _splitViews[activeRow].add(newSplitView);
+
+    // Update sizes
+    final newSize = 1.0 / _splitViews[activeRow].length;
+    _horizontalSizes[activeRow].clear();
+    for (var i = 0; i < _splitViews[activeRow].length; i++) {
+      _horizontalSizes[activeRow].add(newSize);
+    }
+
     activeCol = _splitViews[activeRow].length - 1;
 
     notifyListeners();
+  }
+
+  void updateHorizontalSizes(int row, List<double> sizes) {
+    if (row < _horizontalSizes.length) {
+      _horizontalSizes[row] = sizes;
+      notifyListeners();
+    }
+  }
+
+  void updateVerticalSizes(List<double> sizes) {
+    _verticalSizes.clear();
+    _verticalSizes.addAll(sizes);
+    notifyListeners();
+  }
+
+  List<double> getHorizontalSizes(int row) {
+    if (row >= horizontalSplits.length || horizontalSplits[row].isEmpty) {
+      return [];
+    }
+    return List.filled(
+        horizontalSplits[row].length, 1.0 / horizontalSplits[row].length);
+  }
+
+  List<double> getVerticalSizes() {
+    if (_verticalSizes.isEmpty || horizontalSplits.isEmpty) {
+      return List.filled(
+          horizontalSplits.length, 1.0 / horizontalSplits.length);
+    }
+    return List.from(_verticalSizes);
   }
 
   void closeEditor(int index, {int? row, int? col}) {

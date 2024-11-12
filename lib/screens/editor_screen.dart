@@ -13,6 +13,7 @@ import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/widgets/editor/editor_control_bar_view.dart';
 import 'package:crystal/widgets/editor/editor_tab_bar.dart';
 import 'package:crystal/widgets/editor/editor_view.dart';
+import 'package:crystal/widgets/editor/resizable_split_container.dart';
 import 'package:crystal/widgets/file_explorer/file_explorer.dart';
 import 'package:crystal/widgets/gutter/gutter.dart';
 import 'package:crystal/widgets/status_bar/status_bar.dart';
@@ -486,35 +487,60 @@ class _EditorScreenState extends State<EditorScreen> {
                         children: [
                           if (isFileExplorerOnLeft) _buildFileExplorer(),
                           Expanded(
-                            child: Column(
-                              children: [
-                                for (int row = 0;
-                                    row <
-                                        _editorTabManager
-                                            .horizontalSplits.length;
-                                    row++)
-                                  Expanded(
-                                    child: Row(
-                                      children: [
-                                        for (int col = 0;
-                                            col <
-                                                _editorTabManager
-                                                    .horizontalSplits[row]
-                                                    .length;
-                                            col++)
-                                          Expanded(
-                                            child: _buildEditorSection(
-                                              _editorTabManager
-                                                  .horizontalSplits[row][col],
-                                              row,
-                                              col,
-                                            ),
-                                          ),
-                                      ],
+                            child: _editorTabManager.horizontalSplits.isEmpty
+                                ? Container()
+                                : ResizableSplitContainer(
+                                    direction: Axis.vertical,
+                                    initialSizes: List.generate(
+                                      _editorTabManager.horizontalSplits.length,
+                                      (index) =>
+                                          1.0 /
+                                          _editorTabManager
+                                              .horizontalSplits.length,
+                                    ),
+                                    onSizesChanged: (sizes) => _editorTabManager
+                                        .updateVerticalSizes(sizes),
+                                    editorConfigService: _editorConfigService,
+                                    children: List.generate(
+                                      _editorTabManager.horizontalSplits.length,
+                                      (row) {
+                                        return _editorTabManager
+                                                .horizontalSplits[row].isEmpty
+                                            ? Container()
+                                            : ResizableSplitContainer(
+                                                direction: Axis.horizontal,
+                                                initialSizes: List.generate(
+                                                  _editorTabManager
+                                                      .horizontalSplits[row]
+                                                      .length,
+                                                  (index) =>
+                                                      1.0 /
+                                                      _editorTabManager
+                                                          .horizontalSplits[row]
+                                                          .length,
+                                                ),
+                                                onSizesChanged: (sizes) =>
+                                                    _editorTabManager
+                                                        .updateHorizontalSizes(
+                                                            row, sizes),
+                                                editorConfigService:
+                                                    _editorConfigService,
+                                                children: List.generate(
+                                                  _editorTabManager
+                                                      .horizontalSplits[row]
+                                                      .length,
+                                                  (col) => _buildEditorSection(
+                                                    _editorTabManager
+                                                            .horizontalSplits[
+                                                        row][col],
+                                                    row,
+                                                    col,
+                                                  ),
+                                                ),
+                                              );
+                                      },
                                     ),
                                   ),
-                              ],
-                            ),
                           ),
                           if (!isFileExplorerOnLeft) _buildFileExplorer(),
                         ],
@@ -599,22 +625,6 @@ class _EditorScreenState extends State<EditorScreen> {
                   color: _editorConfigService
                           .themeService.currentTheme?.background ??
                       Colors.white,
-                  border: Border(
-                    left: col > 0
-                        ? BorderSide(
-                            color: _editorConfigService
-                                    .themeService.currentTheme?.border ??
-                                Colors.grey,
-                          )
-                        : BorderSide.none,
-                    top: row > 0
-                        ? BorderSide(
-                            color: _editorConfigService
-                                    .themeService.currentTheme?.border ??
-                                Colors.grey,
-                          )
-                        : BorderSide.none,
-                  ),
                 ),
                 child: Column(
                   children: [
