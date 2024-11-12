@@ -94,9 +94,36 @@ class EditorTabManager extends ChangeNotifier {
     }
 
     targetView.editors.removeAt(index);
-    if (targetView.activeEditorIndex >= targetView.editors.length) {
-      targetView.activeEditorIndex = targetView.editors.length - 1;
+
+    if (targetView.editors.isEmpty) {
+      if (splitViewIndex == 0 ||
+          (splitViewIndex == null && targetView == _splitViews[0])) {
+        if (_splitViews.length > 1) {
+          // If there are other splits, make the next split the primary one
+          _splitViews.removeAt(0);
+        }
+      } else {
+        // For other split views, remove them when empty
+        int indexToRemove = _splitViews.indexOf(targetView);
+        if (indexToRemove != -1) {
+          _splitViews.removeAt(indexToRemove);
+        }
+      }
+    } else {
+      if (targetView.activeEditorIndex >= targetView.editors.length) {
+        targetView.activeEditorIndex = targetView.editors.length - 1;
+      }
     }
+
+    if (_splitViews.isEmpty) {
+      _splitViews.add(SplitView());
+    }
+
+    // Update active split view index if it's out of bounds
+    if (activeSplitViewIndex >= _splitViews.length) {
+      activeSplitViewIndex = _splitViews.length - 1;
+    }
+
     notifyListeners();
   }
 
