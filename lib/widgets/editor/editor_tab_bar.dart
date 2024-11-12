@@ -87,13 +87,7 @@ class _EditorTabBarState extends State<EditorTabBar> {
   }
 
   void _handleEditorClosed(int index) {
-    final willBeEmpty = widget.editors.length - 1 <= 0;
-
     widget.onEditorClosed(index);
-
-    if (willBeEmpty && (widget.row > 0 || widget.col > 0)) {
-      widget.onSplitClose();
-    }
   }
 
   Widget _buildSplitButtons() {

@@ -48,23 +48,69 @@ class EditorTabManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  void closeEditor(int index, {int? row, int? col}) {
+    final targetRow = row ?? activeRow;
+    final targetCol = col ?? activeCol;
+    final targetView = _splitViews[targetRow][targetCol];
+
+    // Early return conditions
+    if (targetView.editors.isEmpty ||
+        targetView.editors[index].isPinned ||
+        index >= targetView.editors.length) {
+      return;
+    }
+
+    targetView.editors.removeAt(index);
+
+    // Adjust active editor index
+    if (targetView.editors.isEmpty) {
+      // If this is the last split view, don't close it
+      if (_splitViews.length == 1 && _splitViews[0].length == 1) {
+        targetView.activeEditorIndex = -1;
+      } else {
+        // Let closeSplitView handle the cleanup
+        closeSplitView(targetRow, targetCol);
+        return;
+      }
+    } else {
+      // Adjust active editor index for remaining editors
+      if (targetView.activeEditorIndex >= targetView.editors.length) {
+        targetView.activeEditorIndex = targetView.editors.length - 1;
+      } else if (targetView.activeEditorIndex == index) {
+        targetView.activeEditorIndex =
+            index.clamp(0, targetView.editors.length - 1);
+      }
+    }
+
+    notifyListeners();
+  }
+
   void closeSplitView(int row, int col) {
     // Don't close if it's the last split view
-    if (_splitViews.length <= 1 && _splitViews[0].length <= 1) return;
+    if (_splitViews.length == 1 && _splitViews[0].length == 1) {
+      return;
+    }
+
+    // Validate indices
+    if (row >= _splitViews.length || col >= _splitViews[row].length) {
+      return;
+    }
 
     onSplitViewClosed?.call(row, col);
 
-    if (row >= _splitViews.length || col >= _splitViews[row].length) return;
     _splitViews[row].removeAt(col);
 
-    // If row becomes empty and it's not the last row, remove it
-    if (_splitViews[row].isEmpty && _splitViews.length > 1) {
-      _splitViews.removeAt(row);
-    } else if (_splitViews[row].isEmpty) {
-      _splitViews[row].add(SplitView());
+    // Remove empty row if needed
+    if (_splitViews[row].isEmpty) {
+      if (_splitViews.length > 1) {
+        _splitViews.removeAt(row);
+      } else {
+        // Keep at least one split view
+        _splitViews[row].add(SplitView());
+      }
     }
 
-    // Adjust active indices to ensure they're valid
+    // Adjust active indices
     activeRow = activeRow.clamp(0, _splitViews.length - 1);
     activeCol = activeCol.clamp(0, _splitViews[activeRow].length - 1);
 
@@ -118,33 +164,6 @@ class EditorTabManager extends ChangeNotifier {
 
     if (row != null && col != null) {
       focusSplitView(row, col);
-    }
-
-    notifyListeners();
-  }
-
-  void closeEditor(int index, {int? row, int? col}) {
-    final targetRow = row ?? activeRow;
-    final targetCol = col ?? activeCol;
-    final targetView = _splitViews[targetRow][targetCol];
-
-    if (targetView.editors.isEmpty || targetView.editors[index].isPinned) {
-      return;
-    }
-
-    targetView.editors.removeAt(index);
-
-    // Only call closeSplitView if there are no editors left
-    if (targetView.editors.isEmpty) {
-      closeSplitView(targetRow, targetCol);
-    } else {
-      if (targetView.activeEditorIndex >= targetView.editors.length) {
-        targetView.activeEditorIndex = targetView.editors.length - 1;
-      } else if (targetView.activeEditorIndex == index) {
-        // If we closed the active editor, select the next one
-        targetView.activeEditorIndex =
-            index.clamp(0, targetView.editors.length - 1);
-      }
     }
 
     notifyListeners();

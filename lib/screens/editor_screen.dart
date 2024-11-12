@@ -391,24 +391,39 @@ class _EditorScreenState extends State<EditorScreen> {
   void onEditorClosed(int index, {int? row, int? col}) {
     final targetRow = row ?? _editorTabManager.activeRow;
     final targetCol = col ?? _editorTabManager.activeCol;
+
+    // Early validation
+    if (targetRow >= _editorTabManager.horizontalSplits.length ||
+        targetCol >= _editorTabManager.horizontalSplits[targetRow].length) {
+      return;
+    }
+
     final scrollManager = _getScrollManager(targetRow, targetCol);
     final editorKey = _getEditorViewKey(getSplitIndex(targetRow, targetCol));
 
     setState(() {
+      final verticalOffset =
+          _editorTabManager.activeEditor?.scrollState.verticalOffset ?? 0.0;
+      final horizontalOffset =
+          _editorTabManager.activeEditor?.scrollState.horizontalOffset ?? 0.0;
+
+      _editorTabManager.closeEditor(
+        index,
+        row: targetRow,
+        col: targetCol,
+      );
+
+      // Only update scroll positions if there's still an active editor
       if (_editorTabManager.activeEditor != null) {
-        scrollManager.editorVerticalScrollController.jumpTo(
-          _editorTabManager.activeEditor!.scrollState.verticalOffset,
-        );
-        scrollManager.editorHorizontalScrollController.jumpTo(
-          _editorTabManager.activeEditor!.scrollState.horizontalOffset,
-        );
+        scrollManager.editorVerticalScrollController.jumpTo(verticalOffset);
+        scrollManager.editorHorizontalScrollController.jumpTo(horizontalOffset);
       }
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (editorKey.currentState != null) {
+      if (editorKey.currentState != null && mounted) {
         editorKey.currentState!.updateCachedMaxLineWidth();
-        setState(() {});
+        if (mounted) setState(() {});
       }
     });
   }
