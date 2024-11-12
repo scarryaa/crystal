@@ -11,10 +11,10 @@ Crystal aims to be a lightweight yet powerful code editor.
 - Syntax Highlighting (basic)
 - Search and Replace
 - Multi-Cursor Editing
+- Split Views
 
 ### Planned Features
 - Multiple Themes
-- Split View
 - Integrated Terminal
 - Git Integration
 - Extensions

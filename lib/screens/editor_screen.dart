@@ -710,13 +710,13 @@ class _EditorScreenState extends State<EditorScreen> {
                               ),
                             Expanded(
                               child: splitView.editors.isNotEmpty &&
-                                      state != null
+                                      splitView.activeEditor != null
                                   ? EditorView(
                                       key: editorViewKey,
                                       editorConfigService: _editorConfigService,
                                       editorLayoutService:
                                           EditorLayoutService.instance,
-                                      state: state,
+                                      state: splitView.activeEditor!,
                                       searchTerm: searchService.searchTerm,
                                       searchTermMatches:
                                           searchService.searchTermMatches,
@@ -724,14 +724,16 @@ class _EditorScreenState extends State<EditorScreen> {
                                           searchService.currentSearchTermMatch,
                                       onSearchTermChanged: (newTerm) =>
                                           searchService.updateSearchMatches(
-                                              newTerm, state),
+                                              newTerm, splitView.activeEditor),
                                       scrollToCursor: () =>
                                           _scrollToCursor(row, col),
                                       onEditorClosed: onEditorClosed,
-                                      saveFileAs: () =>
-                                          state.saveFileAs(state.path),
-                                      saveFile: () =>
-                                          state.saveFile(state.path),
+                                      saveFileAs: () => splitView.activeEditor!
+                                          .saveFileAs(
+                                              splitView.activeEditor!.path),
+                                      saveFile: () => splitView.activeEditor!
+                                          .saveFile(
+                                              splitView.activeEditor!.path),
                                       openNewTab: openNewTab,
                                       activeEditorIndex: () =>
                                           splitView.activeEditorIndex,
