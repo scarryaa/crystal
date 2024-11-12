@@ -196,12 +196,15 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
   }
 
   void _showFileMenu(BuildContext context) {
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final Offset offset = button.localToGlobal(Offset.zero);
     final theme = widget.editorConfigService.themeService.currentTheme!;
 
     showMenu(
       context: context,
-      position: RelativeRect.fromLTRB(
-          0, widget.editorConfigService.config.uiFontSize * 2.0, 0, 0),
+      position: RelativeRect.fromLTRB(offset.dx,
+          offset.dy + widget.editorConfigService.config.uiFontSize * 2.0, 0, 0),
+      color: theme.titleBar,
       items: [
         PopupMenuItem(
           child: Text(
@@ -236,12 +239,15 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
   }
 
   void _showEditMenu(BuildContext context) {
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final Offset offset = button.localToGlobal(Offset.zero);
     final theme = widget.editorConfigService.themeService.currentTheme!;
 
     showMenu(
       context: context,
-      position: RelativeRect.fromLTRB(
-          60, widget.editorConfigService.config.uiFontSize * 2.0, 0, 0),
+      position: RelativeRect.fromLTRB(offset.dx,
+          offset.dy + widget.editorConfigService.config.uiFontSize * 2.0, 0, 0),
+      color: theme.titleBar,
       items: [
         PopupMenuItem(
           child: Text(
@@ -274,12 +280,15 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
   }
 
   void _showViewMenu(BuildContext context) {
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final Offset offset = button.localToGlobal(Offset.zero);
     final theme = widget.editorConfigService.themeService.currentTheme!;
 
     showMenu(
       context: context,
-      position: RelativeRect.fromLTRB(
-          120, widget.editorConfigService.config.uiFontSize * 2.0, 0, 0),
+      position: RelativeRect.fromLTRB(offset.dx,
+          offset.dy + widget.editorConfigService.config.uiFontSize * 2.0, 0, 0),
+      color: theme.titleBar,
       items: [
         PopupMenuItem(
           child: Text(
