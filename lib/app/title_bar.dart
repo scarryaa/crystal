@@ -196,15 +196,15 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
   }
 
   void _showFileMenu(BuildContext context) {
-    final RenderBox button = context.findRenderObject() as RenderBox;
-    final Offset offset = button.localToGlobal(Offset.zero);
     final theme = widget.editorConfigService.themeService.currentTheme!;
 
     showMenu(
       context: context,
-      position: RelativeRect.fromLTRB(offset.dx,
-          offset.dy + widget.editorConfigService.config.uiFontSize * 2.0, 0, 0),
       color: theme.titleBar,
+      position: RelativeRect.fromRect(
+        _getButtonPosition(context, 'File'),
+        Offset.zero & MediaQuery.of(context).size,
+      ),
       items: [
         PopupMenuItem(
           child: Text(
@@ -239,15 +239,15 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
   }
 
   void _showEditMenu(BuildContext context) {
-    final RenderBox button = context.findRenderObject() as RenderBox;
-    final Offset offset = button.localToGlobal(Offset.zero);
     final theme = widget.editorConfigService.themeService.currentTheme!;
 
     showMenu(
       context: context,
-      position: RelativeRect.fromLTRB(offset.dx,
-          offset.dy + widget.editorConfigService.config.uiFontSize * 2.0, 0, 0),
       color: theme.titleBar,
+      position: RelativeRect.fromRect(
+        _getButtonPosition(context, 'Edit'),
+        Offset.zero & MediaQuery.of(context).size,
+      ),
       items: [
         PopupMenuItem(
           child: Text(
@@ -280,15 +280,15 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
   }
 
   void _showViewMenu(BuildContext context) {
-    final RenderBox button = context.findRenderObject() as RenderBox;
-    final Offset offset = button.localToGlobal(Offset.zero);
     final theme = widget.editorConfigService.themeService.currentTheme!;
 
     showMenu(
       context: context,
-      position: RelativeRect.fromLTRB(offset.dx,
-          offset.dy + widget.editorConfigService.config.uiFontSize * 2.0, 0, 0),
       color: theme.titleBar,
+      position: RelativeRect.fromRect(
+        _getButtonPosition(context, 'View'),
+        Offset.zero & MediaQuery.of(context).size,
+      ),
       items: [
         PopupMenuItem(
           child: Text(
@@ -314,6 +314,19 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
         ),
       ],
     );
+  }
+
+  Rect _getButtonPosition(BuildContext context, String buttonText) {
+    final RenderBox overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final buttonPosition = button.localToGlobal(Offset.zero, ancestor: overlay);
+
+    return Rect.fromLTWH(
+        buttonPosition.dx,
+        buttonPosition.dy + widget.editorConfigService.config.uiFontSize * 2.0,
+        button.size.width,
+        button.size.height);
   }
 
   Future<void> _checkForUpdates(BuildContext context) async {
