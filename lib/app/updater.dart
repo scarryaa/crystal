@@ -36,13 +36,13 @@ Future<void> performUpdate() async {
     final downloadedFile = await _downloadFile(updateInfo.downloadUrl!);
 
     // Backup current installation
-    await _backupCurrentInstallation(installDir);
+    await backupCurrentInstallation(installDir);
 
     try {
       if (Platform.isLinux) {
         await _updateAppImage(downloadedFile, installDir);
       } else {
-        await _updateFromZip(downloadedFile, installDir);
+        await updateFromZip(downloadedFile, installDir);
       }
 
       // Clean up backup after successful update
@@ -71,18 +71,16 @@ Future<void> launchUpdater() async {
   final String executablePath = Platform.resolvedExecutable;
   try {
     if (Platform.isMacOS) {
-      final process =
-          await Process.start('open', ['-a', executablePath, '--update']);
-      await process.exitCode; // Wait for completion
+      await Process.start('open', ['-a', executablePath, '--update'],
+          mode: ProcessStartMode.detached);
     } else if (Platform.isWindows || Platform.isLinux) {
-      final process = await Process.start(
+      await Process.start(
         executablePath,
         ['--update'],
         mode: ProcessStartMode.detached,
       );
-      await process.exitCode; // Wait for completion
     }
-    // Only exit after update is complete
+    // Exit immediately without waiting
     exit(0);
   } catch (e) {
     log.severe('Failed to launch updater: $e');
@@ -106,7 +104,7 @@ Future<String> _getInstallDirectory() async {
   }
 }
 
-Future<void> _backupCurrentInstallation(String installDir) async {
+Future<void> backupCurrentInstallation(String installDir) async {
   try {
     final backupDir = Directory('${installDir}_backup');
     if (await backupDir.exists()) {
@@ -174,7 +172,7 @@ Future<File> _downloadFile(String url) async {
   }
 }
 
-Future<void> _updateFromZip(File zipFile, String installDir) async {
+Future<void> updateFromZip(File zipFile, String installDir) async {
   try {
     log.info('Starting zip extraction to: $installDir');
     final bytes = await zipFile.readAsBytes();
@@ -360,14 +358,14 @@ Future<void> updateFromGithub(String repo, String tag) async {
     log.info('Downloading update from: $downloadUrl');
 
     // Backup current installation
-    await _backupCurrentInstallation(directory);
+    await backupCurrentInstallation(directory);
 
     try {
       // Update based on platform
       if (Platform.isLinux) {
         await _updateAppImage(downloadedFile, directory);
       } else {
-        await _updateFromZip(downloadedFile, directory);
+        await updateFromZip(downloadedFile, directory);
       }
     } catch (e) {
       // Restore backup if update fails
@@ -385,14 +383,14 @@ Future<void> updateFromGithub(String repo, String tag) async {
 Future<void> launchApp() async {
   try {
     final String executablePath = Platform.resolvedExecutable;
-
     if (Platform.isMacOS) {
-      await Process.run('open', ['-a', executablePath]);
+      await Process.start('open', ['-a', executablePath],
+          mode: ProcessStartMode.detached);
     } else if (Platform.isWindows) {
-      await Process.run(executablePath, [], runInShell: true);
+      await Process.start(executablePath, [], mode: ProcessStartMode.detached);
     } else if (Platform.isLinux) {
       await Process.run('chmod', ['+x', executablePath]);
-      await Process.run(executablePath, []);
+      await Process.start(executablePath, [], mode: ProcessStartMode.detached);
     }
   } catch (e) {
     log.severe('Failed to launch app: $e');
