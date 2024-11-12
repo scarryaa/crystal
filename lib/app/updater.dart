@@ -70,17 +70,20 @@ Future<void> performUpdate() async {
 Future<void> launchUpdater() async {
   final String executablePath = Platform.resolvedExecutable;
   try {
-    if (Platform.isMacOS) {
-      await Process.start('open', ['-a', executablePath, '--update'],
-          mode: ProcessStartMode.detached);
-    } else if (Platform.isWindows || Platform.isLinux) {
-      await Process.start(
-        executablePath,
-        ['--update'],
-        mode: ProcessStartMode.detached,
-      );
+    if (Platform.isLinux || Platform.isMacOS) {
+      await Process.run('chmod', ['+x', executablePath]);
     }
-    // Exit immediately without waiting
+
+    if (Platform.isMacOS) {
+      final appPath = Directory(executablePath).parent.parent.parent.path;
+      await Process.start('open', [appPath, '--args', '--update'],
+          mode: ProcessStartMode.detached);
+    } else {
+      final result = await Process.run(executablePath, ['--update']);
+      if (result.exitCode != 0) {
+        throw Exception('Failed to start updater: ${result.stderr}');
+      }
+    }
     exit(0);
   } catch (e) {
     log.severe('Failed to launch updater: $e');
@@ -237,6 +240,8 @@ Future<UpdateInfo> checkForUpdates(String repo) async {
 
     final latestVersion = _cleanVersionString(versionResponse.body.trim());
     final currentVersion = _cleanVersionString(await _getCurrentVersion());
+    print(latestVersion);
+    print(currentVersion);
 
     if (_compareVersions(latestVersion, currentVersion) > 0) {
       final platform = Platform.isWindows
