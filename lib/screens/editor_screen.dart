@@ -592,6 +592,13 @@ class _EditorScreenState extends State<EditorScreen> {
                                 Colors.grey,
                           )
                         : BorderSide.none,
+                    top: row > 0
+                        ? BorderSide(
+                            color: _editorConfigService
+                                    .themeService.currentTheme?.border ??
+                                Colors.grey,
+                          )
+                        : BorderSide.none,
                   ),
                 ),
                 child: Column(
