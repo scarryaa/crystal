@@ -28,12 +28,12 @@ class EditorTabManager extends ChangeNotifier {
       resetGutterScroll: activeEditor!.resetGutterScroll,
     );
 
-    // Copy the content and cursor state
+    // Copy the content and initial cursor/selection state
     newEditor.openFile(activeEditor!.buffer.content);
     newEditor.editorCursorManager
-        .setAllCursors(activeEditor!.editorCursorManager.cursors);
-    newEditor.editorSelectionManager
-        .setAllSelections(activeEditor!.editorSelectionManager.selections);
+        .setAllCursors(List.from(activeEditor!.editorCursorManager.cursors));
+    newEditor.editorSelectionManager.setAllSelections(
+        List.from(activeEditor!.editorSelectionManager.selections));
 
     // Add the editor to new split view
     newSplitView.editors.add(newEditor);

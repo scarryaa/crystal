@@ -407,15 +407,10 @@ class _EditorScreenState extends State<EditorScreen> {
                                     i < _editorTabManager.splitViews.length;
                                     i++)
                                   Expanded(
-                                    child: ChangeNotifierProvider.value(
-                                      value: _editorTabManager
-                                          .splitViews[i].activeEditor,
-                                      child: Builder(
-                                        builder: (context) =>
-                                            _buildEditorSection(
-                                          _editorTabManager.splitViews[i],
-                                          i,
-                                        ),
+                                    child: Builder(
+                                      builder: (context) => _buildEditorSection(
+                                        _editorTabManager.splitViews[i],
+                                        i,
                                       ),
                                     ),
                                   ),
@@ -445,198 +440,214 @@ class _EditorScreenState extends State<EditorScreen> {
     final scrollManager = _getScrollManager(splitViewIndex);
     final editorViewKey = _getEditorViewKey(splitViewIndex);
 
-    return Consumer<EditorState?>(
-      builder: (context, state, _) {
-        return MouseRegion(
-            child: Listener(
-                behavior: HitTestBehavior.opaque,
-                onPointerDown: (_) {
-                  _editorTabManager.focusSplitView(splitViewIndex);
-                  if (_editorTabManager
-                          .splitViews[splitViewIndex].activeEditorIndex >=
-                      0) {
-                    onActiveEditorChanged(
-                        _editorTabManager
-                            .splitViews[splitViewIndex].activeEditorIndex,
-                        splitViewIndex);
-                  }
-                },
-                onPointerPanZoomStart: (_) {
-                  _editorTabManager.focusSplitView(splitViewIndex);
-                  if (_editorTabManager
-                          .splitViews[splitViewIndex].activeEditorIndex >=
-                      0) {
-                    onActiveEditorChanged(
-                        _editorTabManager
-                            .splitViews[splitViewIndex].activeEditorIndex,
-                        splitViewIndex);
-                  }
-                },
-                onPointerPanZoomUpdate: (_) {
-                  _editorTabManager.focusSplitView(splitViewIndex);
-                  if (_editorTabManager
-                          .splitViews[splitViewIndex].activeEditorIndex >=
-                      0) {
-                    onActiveEditorChanged(
-                        _editorTabManager
-                            .splitViews[splitViewIndex].activeEditorIndex,
-                        splitViewIndex);
-                  }
-                },
-                onPointerMove: (event) {
-                  if (event.kind == PointerDeviceKind.touch || event.down) {
-                    _editorTabManager.focusSplitView(splitViewIndex);
-                    onActiveEditorChanged(
-                        _editorTabManager
-                            .splitViews[splitViewIndex].activeEditorIndex,
-                        splitViewIndex);
-                  }
-                },
-                child: Container(
-                    decoration: BoxDecoration(
-                      color: _editorConfigService
-                              .themeService.currentTheme?.background ??
-                          Colors.white,
-                      border: Border(
-                        left: splitViewIndex > 0
-                            ? BorderSide(
-                                color: _editorConfigService
-                                        .themeService.currentTheme?.border ??
-                                    Colors.grey,
-                              )
-                            : BorderSide.none,
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        if (splitView.editors.isNotEmpty)
-                          Row(
-                            children: [
-                              Expanded(
-                                child: EditorTabBar(
-                                  onPin: (index) => _editorTabManager.togglePin(
-                                      index,
-                                      splitViewIndex: splitViewIndex),
-                                  editorConfigService: _editorConfigService,
-                                  editors: splitView.editors,
-                                  activeEditorIndex:
-                                      splitView.activeEditorIndex,
-                                  onActiveEditorChanged: (index) =>
-                                      onActiveEditorChanged(
-                                          index, splitViewIndex),
-                                  onEditorClosed: (index) =>
-                                      onEditorClosed(index, splitViewIndex),
-                                  onReorder: (oldIndex, newIndex) =>
-                                      _editorTabManager.reorderEditor(
-                                          oldIndex, newIndex,
-                                          splitViewIndex: splitViewIndex),
-                                  onNewTab: () => openNewTab(splitViewIndex),
-                                  onSplitHorizontal: () => _editorTabManager
-                                      .addSplitView(vertical: false),
-                                  onSplitVertical: () =>
-                                      _editorTabManager.addSplitView(),
-                                  splitViewIndex: splitViewIndex,
-                                  onSplitClose: (index) =>
-                                      _editorTabManager.closeSplitView(index),
-                                  editorTabManager: _editorTabManager,
-                                ),
-                              ),
-                            ],
-                          ),
-                        if (splitView.editors.isNotEmpty)
-                          EditorControlBarView(
-                            editorConfigService: _editorConfigService,
-                            filePath: state?.relativePath ?? state?.path ?? '',
-                            searchTermChanged: (newTerm) => searchService
-                                .onSearchTermChanged(newTerm, state),
-                            nextSearchTerm: () =>
-                                searchService.nextSearchTerm(state),
-                            previousSearchTerm: () =>
-                                searchService.previousSearchTerm(state),
-                            currentSearchTermMatch:
-                                searchService.currentSearchTermMatch,
-                            totalSearchTermMatches:
-                                searchService.searchTermMatches.length,
-                            isCaseSensitiveActive:
-                                searchService.caseSensitiveActive,
-                            isRegexActive: searchService.regexActive,
-                            isWholeWordActive: searchService.wholeWordActive,
-                            toggleRegex: (active) =>
-                                searchService.toggleRegex(active, state),
-                            toggleWholeWord: (active) =>
-                                searchService.toggleWholeWord(active, state),
-                            toggleCaseSensitive: (active) => searchService
-                                .toggleCaseSensitive(active, state),
-                            replaceNextMatch: (newTerm) =>
-                                searchService.replaceNextMatch(newTerm, state),
-                            replaceAllMatches: (newTerm) =>
-                                searchService.replaceAllMatches(newTerm, state),
-                          ),
-                        Expanded(
-                          child: Container(
-                            color: _editorConfigService
-                                    .themeService.currentTheme?.background ??
-                                Colors.white,
-                            child: Row(
-                              children: [
-                                if (splitView.editors.isNotEmpty &&
-                                    state != null)
-                                  Gutter(
-                                    editorConfigService: _editorConfigService,
-                                    editorLayoutService:
-                                        EditorLayoutService.instance,
-                                    editorState: state,
-                                    verticalScrollController:
-                                        scrollManager.gutterScrollController,
-                                  ),
-                                Expanded(
-                                  child: splitView.editors.isNotEmpty &&
-                                          state != null
-                                      ? EditorView(
-                                          key: editorViewKey,
-                                          editorConfigService:
-                                              _editorConfigService,
-                                          editorLayoutService:
-                                              EditorLayoutService.instance,
-                                          state: state,
-                                          searchTerm: searchService.searchTerm,
-                                          searchTermMatches:
-                                              searchService.searchTermMatches,
-                                          currentSearchTermMatch: searchService
-                                              .currentSearchTermMatch,
-                                          onSearchTermChanged: (newTerm) =>
-                                              searchService.updateSearchMatches(
-                                                  newTerm, state),
-                                          scrollToCursor: () =>
-                                              _scrollToCursor(splitViewIndex),
-                                          onEditorClosed: onEditorClosed,
-                                          saveFileAs: () =>
-                                              state.saveFileAs(state.path),
-                                          saveFile: () =>
-                                              state.saveFile(state.path),
-                                          openNewTab: openNewTab,
-                                          activeEditorIndex: () =>
-                                              splitView.activeEditorIndex,
-                                          verticalScrollController: scrollManager
-                                              .editorVerticalScrollController,
-                                          horizontalScrollController: scrollManager
-                                              .editorHorizontalScrollController,
-                                        )
-                                      : Container(
-                                          color: _editorConfigService
-                                                  .themeService
-                                                  .currentTheme
-                                                  ?.background ??
-                                              Colors.white,
-                                        ),
-                                ),
-                              ],
-                            ),
+    return MultiProvider(
+        providers: [
+          ChangeNotifierProvider<EditorState?>.value(
+            value: splitView.activeEditor,
+          ),
+        ],
+        child: Consumer<EditorState?>(
+          builder: (context, state, _) {
+            return MouseRegion(
+                child: Listener(
+                    behavior: HitTestBehavior.opaque,
+                    onPointerDown: (_) {
+                      _editorTabManager.focusSplitView(splitViewIndex);
+                      if (_editorTabManager
+                              .splitViews[splitViewIndex].activeEditorIndex >=
+                          0) {
+                        onActiveEditorChanged(
+                            _editorTabManager
+                                .splitViews[splitViewIndex].activeEditorIndex,
+                            splitViewIndex);
+                      }
+                    },
+                    onPointerPanZoomStart: (_) {
+                      _editorTabManager.focusSplitView(splitViewIndex);
+                      if (_editorTabManager
+                              .splitViews[splitViewIndex].activeEditorIndex >=
+                          0) {
+                        onActiveEditorChanged(
+                            _editorTabManager
+                                .splitViews[splitViewIndex].activeEditorIndex,
+                            splitViewIndex);
+                      }
+                    },
+                    onPointerPanZoomUpdate: (_) {
+                      _editorTabManager.focusSplitView(splitViewIndex);
+                      if (_editorTabManager
+                              .splitViews[splitViewIndex].activeEditorIndex >=
+                          0) {
+                        onActiveEditorChanged(
+                            _editorTabManager
+                                .splitViews[splitViewIndex].activeEditorIndex,
+                            splitViewIndex);
+                      }
+                    },
+                    onPointerMove: (event) {
+                      if (event.kind == PointerDeviceKind.touch || event.down) {
+                        _editorTabManager.focusSplitView(splitViewIndex);
+                        onActiveEditorChanged(
+                            _editorTabManager
+                                .splitViews[splitViewIndex].activeEditorIndex,
+                            splitViewIndex);
+                      }
+                    },
+                    child: Container(
+                        decoration: BoxDecoration(
+                          color: _editorConfigService
+                                  .themeService.currentTheme?.background ??
+                              Colors.white,
+                          border: Border(
+                            left: splitViewIndex > 0
+                                ? BorderSide(
+                                    color: _editorConfigService.themeService
+                                            .currentTheme?.border ??
+                                        Colors.grey,
+                                  )
+                                : BorderSide.none,
                           ),
                         ),
-                      ],
-                    ))));
-      },
-    );
+                        child: Column(
+                          children: [
+                            if (splitView.editors.isNotEmpty)
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: EditorTabBar(
+                                      onPin: (index) =>
+                                          _editorTabManager.togglePin(index,
+                                              splitViewIndex: splitViewIndex),
+                                      editorConfigService: _editorConfigService,
+                                      editors: splitView.editors,
+                                      activeEditorIndex:
+                                          splitView.activeEditorIndex,
+                                      onActiveEditorChanged: (index) =>
+                                          onActiveEditorChanged(
+                                              index, splitViewIndex),
+                                      onEditorClosed: (index) =>
+                                          onEditorClosed(index, splitViewIndex),
+                                      onReorder: (oldIndex, newIndex) =>
+                                          _editorTabManager.reorderEditor(
+                                              oldIndex, newIndex,
+                                              splitViewIndex: splitViewIndex),
+                                      onNewTab: () =>
+                                          openNewTab(splitViewIndex),
+                                      onSplitHorizontal: () => _editorTabManager
+                                          .addSplitView(vertical: false),
+                                      onSplitVertical: () =>
+                                          _editorTabManager.addSplitView(),
+                                      splitViewIndex: splitViewIndex,
+                                      onSplitClose: (index) => _editorTabManager
+                                          .closeSplitView(index),
+                                      editorTabManager: _editorTabManager,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            if (splitView.editors.isNotEmpty)
+                              EditorControlBarView(
+                                editorConfigService: _editorConfigService,
+                                filePath:
+                                    state?.relativePath ?? state?.path ?? '',
+                                searchTermChanged: (newTerm) => searchService
+                                    .onSearchTermChanged(newTerm, state),
+                                nextSearchTerm: () =>
+                                    searchService.nextSearchTerm(state),
+                                previousSearchTerm: () =>
+                                    searchService.previousSearchTerm(state),
+                                currentSearchTermMatch:
+                                    searchService.currentSearchTermMatch,
+                                totalSearchTermMatches:
+                                    searchService.searchTermMatches.length,
+                                isCaseSensitiveActive:
+                                    searchService.caseSensitiveActive,
+                                isRegexActive: searchService.regexActive,
+                                isWholeWordActive:
+                                    searchService.wholeWordActive,
+                                toggleRegex: (active) =>
+                                    searchService.toggleRegex(active, state),
+                                toggleWholeWord: (active) => searchService
+                                    .toggleWholeWord(active, state),
+                                toggleCaseSensitive: (active) => searchService
+                                    .toggleCaseSensitive(active, state),
+                                replaceNextMatch: (newTerm) => searchService
+                                    .replaceNextMatch(newTerm, state),
+                                replaceAllMatches: (newTerm) => searchService
+                                    .replaceAllMatches(newTerm, state),
+                              ),
+                            Expanded(
+                              child: Container(
+                                color: _editorConfigService.themeService
+                                        .currentTheme?.background ??
+                                    Colors.white,
+                                child: Row(
+                                  children: [
+                                    if (splitView.editors.isNotEmpty &&
+                                        state != null)
+                                      Gutter(
+                                        editorConfigService:
+                                            _editorConfigService,
+                                        editorLayoutService:
+                                            EditorLayoutService.instance,
+                                        editorState: state,
+                                        verticalScrollController: scrollManager
+                                            .gutterScrollController,
+                                      ),
+                                    Expanded(
+                                      child: splitView.editors.isNotEmpty &&
+                                              state != null
+                                          ? EditorView(
+                                              key: editorViewKey,
+                                              editorConfigService:
+                                                  _editorConfigService,
+                                              editorLayoutService:
+                                                  EditorLayoutService.instance,
+                                              state: state,
+                                              searchTerm:
+                                                  searchService.searchTerm,
+                                              searchTermMatches: searchService
+                                                  .searchTermMatches,
+                                              currentSearchTermMatch:
+                                                  searchService
+                                                      .currentSearchTermMatch,
+                                              onSearchTermChanged: (newTerm) =>
+                                                  searchService
+                                                      .updateSearchMatches(
+                                                          newTerm, state),
+                                              scrollToCursor: () =>
+                                                  _scrollToCursor(
+                                                      splitViewIndex),
+                                              onEditorClosed: onEditorClosed,
+                                              saveFileAs: () =>
+                                                  state.saveFileAs(state.path),
+                                              saveFile: () =>
+                                                  state.saveFile(state.path),
+                                              openNewTab: openNewTab,
+                                              activeEditorIndex: () =>
+                                                  splitView.activeEditorIndex,
+                                              verticalScrollController:
+                                                  scrollManager
+                                                      .editorVerticalScrollController,
+                                              horizontalScrollController:
+                                                  scrollManager
+                                                      .editorHorizontalScrollController,
+                                            )
+                                          : Container(
+                                              color: _editorConfigService
+                                                      .themeService
+                                                      .currentTheme
+                                                      ?.background ??
+                                                  Colors.white,
+                                            ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ))));
+          },
+        ));
   }
 }
