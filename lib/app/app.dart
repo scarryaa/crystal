@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:crystal/app/app_layout.dart';
 import 'package:crystal/app/menu_bar.dart';
 import 'package:crystal/main.dart';
@@ -213,17 +215,19 @@ class _AppState extends State<App> {
             ),
             home: Column(
               children: [
-                AppMenuBar(
-                  onDirectoryChanged: _handleDirectoryChanged,
-                  fileService: widget.fileService,
-                  editorConfigService: widget.editorConfigService,
-                  editorKey: _editorKey,
-                ),
+                if (Platform.isMacOS)
+                  AppMenuBar(
+                    onDirectoryChanged: _handleDirectoryChanged,
+                    fileService: widget.fileService,
+                    editorConfigService: widget.editorConfigService,
+                    editorKey: _editorKey,
+                  ),
                 Expanded(
                   child: AppLayout(
                     editorConfigService: widget.editorConfigService,
                     onDirectoryChanged: _handleDirectoryChanged,
                     fileService: widget.fileService,
+                    editorKey: _editorKey,
                     child: EditorScreen(
                       key: _editorKey,
                       lineHeightMultipler: 1.5,

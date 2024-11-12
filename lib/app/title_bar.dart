@@ -1,6 +1,9 @@
 import 'dart:io';
+import 'dart:math' as math;
 
+import 'package:crystal/app/updater.dart';
 import 'package:crystal/app/window_button.dart';
+import 'package:crystal/screens/editor_screen.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/file_service.dart';
 import 'package:file_picker/file_picker.dart';
@@ -11,12 +14,14 @@ class TitleBar extends StatefulWidget {
   final EditorConfigService editorConfigService;
   final Function(String)? onDirectoryChanged;
   final FileService fileService;
+  final GlobalKey<EditorScreenState> editorKey;
 
   const TitleBar({
     super.key,
     required this.editorConfigService,
     required this.onDirectoryChanged,
     required this.fileService,
+    required this.editorKey,
   });
 
   @override
@@ -125,6 +130,7 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
                   if (Platform.isMacOS && !isFullScreen)
                     const SizedBox(width: 70),
                   const SizedBox(width: 6),
+                  // Directory Button
                   MouseRegion(
                     onEnter: (_) => setState(() => isHovering = true),
                     onExit: (_) => setState(() => isHovering = false),
@@ -159,6 +165,27 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
                       ),
                     ),
                   ),
+                  // Menu Items
+                  if (Platform.isWindows || Platform.isLinux)
+                    Row(
+                      children: [
+                        TextButton(
+                          onPressed: () => _showFileMenu(context),
+                          child:
+                              Text('File', style: TextStyle(color: theme.text)),
+                        ),
+                        TextButton(
+                          onPressed: () => _showEditMenu(context),
+                          child:
+                              Text('Edit', style: TextStyle(color: theme.text)),
+                        ),
+                        TextButton(
+                          onPressed: () => _showViewMenu(context),
+                          child:
+                              Text('View', style: TextStyle(color: theme.text)),
+                        ),
+                      ],
+                    ),
                   const Spacer(),
                   _buildWindowButtons(),
                 ],
@@ -166,6 +193,167 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
             ),
           );
         });
+  }
+
+  void _showFileMenu(BuildContext context) {
+    final theme = widget.editorConfigService.themeService.currentTheme!;
+
+    showMenu(
+      context: context,
+      position: RelativeRect.fromLTRB(
+          0, widget.editorConfigService.config.uiFontSize * 2.0, 0, 0),
+      items: [
+        PopupMenuItem(
+          child: Text(
+            'Open Directory...',
+            style: TextStyle(color: theme.text),
+          ),
+          onTap: () async {
+            final selectedDirectory =
+                await FilePicker.platform.getDirectoryPath();
+            if (selectedDirectory != null) {
+              widget.onDirectoryChanged?.call(selectedDirectory);
+            }
+          },
+        ),
+        PopupMenuItem(
+          child: Text(
+            'Check for Updates...',
+            style: TextStyle(color: theme.text),
+          ),
+          onTap: () => _checkForUpdates(context),
+        ),
+        if (Platform.isWindows || Platform.isLinux)
+          PopupMenuItem(
+            child: Text(
+              'Exit',
+              style: TextStyle(color: theme.text),
+            ),
+            onTap: () => exit(0),
+          ),
+      ],
+    );
+  }
+
+  void _showEditMenu(BuildContext context) {
+    final theme = widget.editorConfigService.themeService.currentTheme!;
+
+    showMenu(
+      context: context,
+      position: RelativeRect.fromLTRB(
+          60, widget.editorConfigService.config.uiFontSize * 2.0, 0, 0),
+      items: [
+        PopupMenuItem(
+          child: Text(
+            'Undo',
+            style: TextStyle(color: theme.text),
+          ),
+          onTap: () {
+            final editorState = widget.editorKey.currentState;
+            if (editorState != null) {
+              final activeEditor = editorState.editorTabManager.activeEditor;
+              activeEditor?.undo();
+            }
+          },
+        ),
+        PopupMenuItem(
+          child: Text(
+            'Redo',
+            style: TextStyle(color: theme.text),
+          ),
+          onTap: () {
+            final editorState = widget.editorKey.currentState;
+            if (editorState != null) {
+              final activeEditor = editorState.editorTabManager.activeEditor;
+              activeEditor?.redo();
+            }
+          },
+        ),
+      ],
+    );
+  }
+
+  void _showViewMenu(BuildContext context) {
+    final theme = widget.editorConfigService.themeService.currentTheme!;
+
+    showMenu(
+      context: context,
+      position: RelativeRect.fromLTRB(
+          120, widget.editorConfigService.config.uiFontSize * 2.0, 0, 0),
+      items: [
+        PopupMenuItem(
+          child: Text(
+            'Increase Font Size',
+            style: TextStyle(color: theme.text),
+          ),
+          onTap: () {
+            var config = widget.editorConfigService.config;
+            config.fontSize += 2;
+            widget.editorConfigService.saveConfig();
+          },
+        ),
+        PopupMenuItem(
+          child: Text(
+            'Decrease Font Size',
+            style: TextStyle(color: theme.text),
+          ),
+          onTap: () {
+            var config = widget.editorConfigService.config;
+            config.uiFontSize = math.max(8, config.uiFontSize - 2);
+            widget.editorConfigService.saveConfig();
+          },
+        ),
+      ],
+    );
+  }
+
+  Future<void> _checkForUpdates(BuildContext context) async {
+    try {
+      final updateInfo = await checkForUpdates('scarryaa/crystal');
+
+      if (!context.mounted) return;
+
+      if (updateInfo.hasUpdate) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Update Available'),
+            content: Text(
+                'A new version ${updateInfo.version} is available. Would you like to update now?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Later'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await launchUpdater();
+                },
+                child: const Text('Update Now'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('No Updates Available'),
+            content: const Text('You are using the latest version.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      // Show error dialog
+    }
   }
 
   @override

@@ -1,4 +1,5 @@
 import 'package:crystal/app/title_bar.dart';
+import 'package:crystal/screens/editor_screen.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/file_service.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ class AppLayout extends StatelessWidget {
   final EditorConfigService editorConfigService;
   final Function(String)? onDirectoryChanged;
   final FileService fileService;
+  final GlobalKey<EditorScreenState> editorKey;
 
   const AppLayout({
     super.key,
@@ -15,6 +17,7 @@ class AppLayout extends StatelessWidget {
     required this.editorConfigService,
     required this.fileService,
     required this.onDirectoryChanged,
+    required this.editorKey,
   });
 
   @override
@@ -26,6 +29,7 @@ class AppLayout extends StatelessWidget {
             editorConfigService: editorConfigService,
             onDirectoryChanged: onDirectoryChanged,
             fileService: fileService,
+            editorKey: editorKey,
           ),
           Expanded(child: child),
         ],
