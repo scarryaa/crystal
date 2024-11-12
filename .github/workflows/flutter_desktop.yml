@@ -2,25 +2,25 @@ name: Flutter Desktop Build
 
 permissions:
   contents: write
-  id-token: write 
+  id-token: write
 
 env:
   FLUTTER_VERSION: '3.24.4'
   FLUTTER_CHANNEL: 'stable'
   APP_NAME: 'crystal'
+  APP_VERSION: '0.1.0-beta.1' 
 
 on:
   push:
     branches: [ "main" ]
     tags:
-      - 'v*'
+      - 'v*.*.*'  
   pull_request:
     branches: [ "main" ]
 
 jobs:
   build-windows:
     runs-on: windows-latest
-    
     steps:
       - uses: actions/checkout@v4
       
@@ -30,26 +30,23 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: ${{ env.FLUTTER_CHANNEL }}
           cache: true
-      
+
       - name: Install dependencies
         run: flutter pub get
-      
+
       - name: Enable Windows build
         run: flutter config --enable-windows-desktop
-      
+
       - name: Build Windows
         run: flutter build windows --release
-      
+
       - name: Create Windows Release Package
         run: |
-          $VERSION = "${{ github.ref_name }}"
-          if ($VERSION -notmatch '^v') { $VERSION = "v${{ github.run_number }}" }
+          $VERSION = "${{ github.ref_type == 'tag' && github.ref_name || format('v{0}.0.0', github.run_number) }}"
           $PACKAGE_NAME = "${{ env.APP_NAME }}-windows-$VERSION"
-          
           mkdir windows-package
           xcopy /E /I "build\windows\x64\runner\Release\*" "windows-package"
           Compress-Archive -Path windows-package\* -DestinationPath "$PACKAGE_NAME.zip"
-      
 
       - name: Upload Windows Build
         uses: actions/upload-artifact@v4
@@ -82,11 +79,11 @@ jobs:
       
       - name: Create macOS Archive
         run: |
-          VERSION="${{ github.ref_name }}"
-          if [[ ! $VERSION == v* ]]; then
-            VERSION="v${{ github.run_number }}"
-          fi
+          VERSION="${{ github.ref_type == 'tag' && github.ref_name || format('v{0}.0.0', github.run_number) }}"
           PACKAGE_NAME="${{ env.APP_NAME }}-macos-$VERSION"
+          
+          # Create version.txt inside the app bundle
+          echo "$VERSION" > "build/macos/Build/Products/Release/${{ env.APP_NAME }}.app/Contents/version.txt"
           
           cd build/macos/Build/Products/Release
           ditto -c -k --keepParent *.app "$PACKAGE_NAME.zip"
@@ -132,12 +129,19 @@ jobs:
       
       - name: Setup AppDir
         run: |
+          VERSION="${{ github.ref_type == 'tag' && github.ref_name || format('v{0}.0.0', github.run_number) }}"
           mkdir -p AppDir/usr/bin
           mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+          
+          # Copy application files
           cp -r build/linux/x64/release/bundle/* AppDir/usr/bin/
           cp assets/images/logo/crystal-logo.png AppDir/crystal.png
+          
+          # Create version.txt
+          echo "$VERSION" > AppDir/usr/bin/version.txt
+          
           chmod +x AppDir/usr/bin/crystal
-  
+ 
       - name: Create AppRun file
         run: |
           cat > AppDir/AppRun << EOL
@@ -169,18 +173,19 @@ jobs:
       
       - name: Build AppImage
         run: |
+          VERSION="${{ github.ref_type == 'tag' && github.ref_name || format('v{0}.0.0', github.run_number) }}"
           wget -O appimagetool "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
           chmod +x appimagetool
-          # Extract AppImage contents since FUSE might still have issues in CI
           ./appimagetool --appimage-extract
-          # Use extracted AppImage contents to build
-          ./squashfs-root/AppRun AppDir
+          
+          # Build AppImage with version in filename
+          ./squashfs-root/AppRun AppDir -n -u "gh-releases-zsync|scarryaa|crystal|latest|Crystal-*-x86_64.AppImage.zsync" "${{ env.APP_NAME }}-linux-$VERSION.AppImage"
       
       - name: Upload Linux Build
         uses: actions/upload-artifact@v4
         with:
           name: linux-build
-          path: Crystal*.AppImage
+          path: ${{ env.APP_NAME }}-linux-*.AppImage
           if-no-files-found: error
 
   test-and-analyze:
@@ -209,63 +214,39 @@ jobs:
     needs: [build-windows, build-macos, build-linux]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
-    
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Download all artifacts
-        uses: actions/download-artifact@v4  
+        uses: actions/download-artifact@v4
         with:
           path: downloaded-artifacts
-          pattern: "*-build"  
+          pattern: "*-build"
           merge-multiple: true
-      
-      - name: Debug Artifacts
+
+      - name: Generate version.json
         run: |
-          echo "Current directory contents:"
-          ls -la
-          echo "Downloaded artifacts directory contents:"
-          ls -la downloaded-artifacts
-      
-      - name: Prepare Release Files
-        run: |
-          VERSION="${{ github.ref_name }}"
-          if [[ ! $VERSION == v* ]]; then
-            VERSION="v${{ github.run_number }}"
-          fi
-          
-          mkdir -p release
-          
-          if [ -d "downloaded-artifacts" ]; then
-            echo "Found downloaded-artifacts directory"
-            echo "Contents of downloaded-artifacts:"
-            ls -la downloaded-artifacts/
-            
-            # Copy all zip files and AppImages to release directory
-            find downloaded-artifacts -type f \( -name "*.zip" -o -name "*.AppImage" \) -exec cp -v {} release/ \;
-          else
-            echo "Error: downloaded-artifacts directory not found!"
-            pwd
-            ls -la
-            exit 1
-          fi
-          
-          echo "Files in release directory:"
-          ls -la release/
-          
-          # Verify files were copied
-          if [ -z "$(ls -A release/)" ]; then
-            echo "Error: No artifacts found to release!"
-            exit 1
-          fi
-      
+          VERSION="${{ github.ref_type == 'tag' && github.ref_name || format('v{0}.0.0', github.run_number) }}"
+          echo "{
+            \"version\": \"$VERSION\",
+            \"assets\": {
+              \"windows\": \"${{ env.APP_NAME }}-windows-$VERSION.zip\",
+              \"macos\": \"${{ env.APP_NAME }}-macos-$VERSION.zip\",
+              \"linux\": \"${{ env.APP_NAME }}-linux-$VERSION.AppImage\"
+            }
+          }" > release/version.json
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref_name == 'main' && format('v{0}', github.run_number) || github.ref_name }}
-          name: Release ${{ github.ref_name == 'main' && github.run_number || github.ref_name }}
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}.0.0', github.run_number) }}
+          name: Release ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}.0.0', github.run_number) }}
           draft: false
           prerelease: false
-          files: release/*
+          files: |
+            release/*
+            release/version.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
