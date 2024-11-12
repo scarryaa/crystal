@@ -44,8 +44,15 @@ jobs:
         run: |
           $VERSION = "${{ github.ref_type == 'tag' && github.ref_name || env.APP_VERSION }}"
           $PACKAGE_NAME = "${{ env.APP_NAME }}-windows-$VERSION"
+          
+          # Create version.txt file
+          New-Item -Path "build\windows\x64\runner\Release\version.txt" -ItemType "file" -Value "$VERSION"
+          
+          # Create package directory and copy files
           mkdir windows-package
           xcopy /E /I "build\windows\x64\runner\Release\*" "windows-package"
+          
+          # Create ZIP archive
           Compress-Archive -Path windows-package\* -DestinationPath "$PACKAGE_NAME.zip"
 
       - name: Upload Windows Build
