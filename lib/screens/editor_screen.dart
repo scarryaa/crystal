@@ -44,7 +44,7 @@ class EditorScreen extends StatefulWidget {
 }
 
 class _EditorScreenState extends State<EditorScreen> {
-  final GlobalKey _tabBarKey = GlobalKey();
+  final Map<String, GlobalKey> _tabBarKeys = {};
   bool _isFileExplorerVisible = true;
   final Map<int, GlobalKey<EditorViewState>> _editorViewKeys = {};
   late final EditorConfigService _editorConfigService;
@@ -53,22 +53,40 @@ class _EditorScreenState extends State<EditorScreen> {
   late final Future<void> _initializationFuture;
   late SearchService searchService;
   final Map<int, EditorScrollManager> _scrollManagers = {};
-  final ScrollController _tabBarScrollController = ScrollController();
+  final Map<String, ScrollController> _tabBarScrollControllers = {};
+
+  ScrollController _getTabBarScrollController(int row, int col) {
+    final String key = 'tabBar_${row}_${col}';
+    if (!_tabBarScrollControllers.containsKey(key)) {
+      _tabBarScrollControllers[key] = ScrollController();
+    }
+    return _tabBarScrollControllers[key]!;
+  }
+
+  GlobalKey _getTabBarKey(int row, int col) {
+    final String keyId = 'tabBar_${row}_$col';
+    return _tabBarKeys.putIfAbsent(keyId, () => GlobalKey());
+  }
 
   void scrollToTab(int index) {
     if (!mounted) return;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final row = _editorTabManager.activeRow;
+      final col = _editorTabManager.activeCol;
       final splitView =
           _editorTabManager.horizontalSplits[_editorTabManager.activeRow]
               [_editorTabManager.activeCol];
 
       if (index < 0 || index >= splitView.editors.length) return;
 
-      final tabBarContext = _tabBarKey.currentContext;
+      final tabBarKey = _getTabBarKey(
+          _editorTabManager.activeRow, _editorTabManager.activeCol);
+      final tabBarContext = tabBarKey.currentContext;
       if (tabBarContext == null) return;
 
-      final double maxScroll = _tabBarScrollController.position.maxScrollExtent;
+      final scrollController = _getTabBarScrollController(row, col);
+      final double maxScroll = scrollController.position.maxScrollExtent;
 
       double totalWidth = 0;
       for (int i = 0; i < index; i++) {
@@ -79,7 +97,7 @@ class _EditorScreenState extends State<EditorScreen> {
 
       final double constrainedScroll = totalWidth.clamp(0.0, maxScroll);
 
-      _tabBarScrollController.animateTo(
+      scrollController.animateTo(
         constrainedScroll,
         duration: const Duration(milliseconds: 1),
         curve: Curves.easeInOut,
@@ -617,6 +635,8 @@ class _EditorScreenState extends State<EditorScreen> {
   Widget _buildEditorSection(SplitView splitView, int row, int col) {
     final scrollManager = _getScrollManager(row, col);
     final editorViewKey = _getEditorViewKey(getSplitIndex(row, col));
+    final tabBarKey = _getTabBarKey(row, col);
+    final tabBarScrollController = _getTabBarScrollController(row, col);
 
     return MultiProvider(
       providers: [
@@ -686,7 +706,7 @@ class _EditorScreenState extends State<EditorScreen> {
                         children: [
                           Expanded(
                             child: EditorTabBar(
-                              key: _tabBarKey,
+                              tabScrollKey: tabBarKey,
                               onPin: (index) => _editorTabManager.togglePin(
                                 index,
                                 row: row,
@@ -723,7 +743,7 @@ class _EditorScreenState extends State<EditorScreen> {
                               onSplitClose: () =>
                                   _editorTabManager.closeSplitView(row, col),
                               editorTabManager: _editorTabManager,
-                              tabBarScrollController: _tabBarScrollController,
+                              tabBarScrollController: tabBarScrollController,
                             ),
                           ),
                         ],

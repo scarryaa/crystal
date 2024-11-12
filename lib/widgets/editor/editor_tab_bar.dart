@@ -20,10 +20,12 @@ class EditorTabBar extends StatefulWidget {
   final EditorTabManager editorTabManager;
   final int row;
   final int col;
+  final GlobalKey tabScrollKey;
   final ScrollController tabBarScrollController;
 
   const EditorTabBar({
     super.key,
+    required this.tabScrollKey,
     required this.editors,
     required this.activeEditorIndex,
     required this.onActiveEditorChanged,
@@ -132,6 +134,7 @@ class _EditorTabBarState extends State<EditorTabBar> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
+      key: widget.tabScrollKey,
       listenable: widget.editorConfigService,
       builder: (context, child) {
         return Container(
