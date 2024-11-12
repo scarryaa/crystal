@@ -113,22 +113,22 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   Future<void> tapCallback(String path, {int? row, int? col}) async {
-    // First check if file is already open in any split
-    for (int r = 0; r < _editorTabManager.horizontalSplits.length; r++) {
-      for (int c = 0; c < _editorTabManager.horizontalSplits[r].length; c++) {
-        final editorIndex = _editorTabManager.horizontalSplits[r][c].editors
-            .indexWhere((editor) => editor.path == path);
-        if (editorIndex != -1) {
-          _editorTabManager.focusSplitView(r, c);
-          onActiveEditorChanged(editorIndex, row: r, col: c);
-          return;
-        }
-      }
-    }
-
-    // If file is not open, create new editor in the currently focused split
     final targetRow = row ?? _editorTabManager.activeRow;
     final targetCol = col ?? _editorTabManager.activeCol;
+
+    // Check if file is already open in the current split
+    final editorIndex = _editorTabManager
+        .horizontalSplits[targetRow][targetCol].editors
+        .indexWhere((editor) => editor.path == path);
+
+    if (editorIndex != -1) {
+      // File is already open in current split, just focus it
+      _editorTabManager.focusSplitView(targetRow, targetCol);
+      onActiveEditorChanged(editorIndex, row: targetRow, col: targetCol);
+      return;
+    }
+
+    // File is not open in current split, create new editor
     final scrollManager = _getScrollManager(targetRow, targetCol);
     final editorKey = _getEditorViewKey(getSplitIndex(targetRow, targetCol));
 
