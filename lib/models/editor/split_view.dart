@@ -11,4 +11,6 @@ class SplitView {
 
   EditorState? get activeEditor =>
       editors.isEmpty ? null : editors[activeEditorIndex];
+
+  EditorState operator [](int index) => editors[index];
 }

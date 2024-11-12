@@ -3,91 +3,130 @@ import 'package:crystal/state/editor/editor_state.dart';
 import 'package:flutter/material.dart';
 
 class EditorTabManager extends ChangeNotifier {
-  final List<SplitView> _splitViews = [SplitView()];
-  int activeSplitViewIndex = 0;
+  final Function(int, int)? onSplitViewClosed;
 
-  SplitView get activeSplitView => _splitViews[activeSplitViewIndex];
-  List<SplitView> get splitViews => _splitViews;
+  EditorTabManager({this.onSplitViewClosed});
+
+  final List<List<SplitView>> _splitViews = [
+    [SplitView()]
+  ];
+  int activeRow = 0;
+  int activeCol = 0;
+
+  List<List<SplitView>> get horizontalSplits => _splitViews;
+  SplitView get activeSplitView => _splitViews[activeRow][activeCol];
 
   EditorState? get activeEditor => activeSplitView.activeEditor;
   List<EditorState> get editors => activeSplitView.editors;
 
-  void addSplitView({bool vertical = true}) {
+  void addHorizontalSplit() {
     if (activeEditor == null) return;
 
-    // Create new split view
     final newSplitView = SplitView();
-
-    // Create a new editor with copied state
-    final newEditor = EditorState(
-      editorConfigService: activeEditor!.editorConfigService,
-      editorLayoutService: activeEditor!.editorLayoutService,
-      path: activeEditor!.path,
-      relativePath: activeEditor!.relativePath,
-      tapCallback: activeEditor!.tapCallback,
-      resetGutterScroll: activeEditor!.resetGutterScroll,
-    );
-
-    // Copy the content and initial cursor/selection state
-    newEditor.openFile(activeEditor!.buffer.content);
-    newEditor.editorCursorManager
-        .setAllCursors(List.from(activeEditor!.editorCursorManager.cursors));
-    newEditor.editorSelectionManager.setAllSelections(
-        List.from(activeEditor!.editorSelectionManager.selections));
-
-    // Add the editor to new split view
+    final newEditor = _copyEditorState(activeEditor!);
     newSplitView.editors.add(newEditor);
     newSplitView.activeEditorIndex = 0;
 
-    // Add the split view
-    _splitViews.add(newSplitView);
-    activeSplitViewIndex = _splitViews.length - 1;
+    _splitViews.add([newSplitView]);
+    activeRow = _splitViews.length - 1;
+    activeCol = 0;
 
     notifyListeners();
   }
 
-  void closeSplitView(int index) {
-    if (_splitViews.length <= 1) return;
-    _splitViews.removeAt(index);
-    if (activeSplitViewIndex >= _splitViews.length) {
-      activeSplitViewIndex = _splitViews.length - 1;
+  void addVerticalSplit() {
+    if (activeEditor == null) return;
+
+    final newSplitView = SplitView();
+    final newEditor = _copyEditorState(activeEditor!);
+    newSplitView.editors.add(newEditor);
+    newSplitView.activeEditorIndex = 0;
+
+    _splitViews[activeRow].add(newSplitView);
+    activeCol = _splitViews[activeRow].length - 1;
+
+    notifyListeners();
+  }
+
+  void closeSplitView(int row, int col) {
+    // Don't close if it's the last split view
+    if (_splitViews.length <= 1 && _splitViews[0].length <= 1) return;
+
+    onSplitViewClosed?.call(row, col);
+
+    if (row >= _splitViews.length || col >= _splitViews[row].length) return;
+    _splitViews[row].removeAt(col);
+
+    // If row becomes empty and it's not the last row, remove it
+    if (_splitViews[row].isEmpty && _splitViews.length > 1) {
+      _splitViews.removeAt(row);
+    } else if (_splitViews[row].isEmpty) {
+      _splitViews[row].add(SplitView());
     }
+
+    // Adjust active indices to ensure they're valid
+    activeRow = activeRow.clamp(0, _splitViews.length - 1);
+    activeCol = activeCol.clamp(0, _splitViews[activeRow].length - 1);
+
     notifyListeners();
   }
 
-  void setActiveSplitView(int index) {
-    if (index >= 0 && index < _splitViews.length) {
-      activeSplitViewIndex = index;
+  EditorState _copyEditorState(EditorState source) {
+    final newEditor = EditorState(
+      editorConfigService: source.editorConfigService,
+      editorLayoutService: source.editorLayoutService,
+      path: source.path,
+      relativePath: source.relativePath,
+      tapCallback: source.tapCallback,
+      resetGutterScroll: source.resetGutterScroll,
+    );
+
+    newEditor.openFile(source.buffer.content);
+    newEditor.editorCursorManager
+        .setAllCursors(List.from(source.editorCursorManager.cursors));
+    newEditor.editorSelectionManager
+        .setAllSelections(List.from(source.editorSelectionManager.selections));
+
+    return newEditor;
+  }
+
+  void focusSplitView(int row, int col) {
+    if (row >= 0 &&
+        row < _splitViews.length &&
+        col >= 0 &&
+        col < _splitViews[row].length) {
+      activeRow = row;
+      activeCol = col;
       notifyListeners();
     }
   }
 
-  void addEditor(EditorState editor, {int? splitViewIndex}) {
-    final targetView = splitViewIndex != null
-        ? _splitViews[splitViewIndex]
-        : _splitViews[activeSplitViewIndex];
+  void addEditor(EditorState editor, {int? row, int? col}) {
+    final targetRow = row ?? activeRow;
+    final targetCol = col ?? activeCol;
 
+    if (targetRow < 0 ||
+        targetRow >= _splitViews.length ||
+        targetCol < 0 ||
+        targetCol >= _splitViews[targetRow].length) {
+      return;
+    }
+
+    final targetView = _splitViews[targetRow][targetCol];
     targetView.editors.add(editor);
     targetView.activeEditorIndex = targetView.editors.length - 1;
 
-    // Focus the split view that received the new editor
-    if (splitViewIndex != null) {
-      activeSplitViewIndex = splitViewIndex;
+    if (row != null && col != null) {
+      focusSplitView(row, col);
     }
 
     notifyListeners();
   }
 
-  void focusSplitView(int index) {
-    if (index >= 0 && index < _splitViews.length) {
-      activeSplitViewIndex = index;
-      notifyListeners();
-    }
-  }
-
-  void closeEditor(int index, {int? splitViewIndex}) {
-    final targetView =
-        splitViewIndex != null ? _splitViews[splitViewIndex] : activeSplitView;
+  void closeEditor(int index, {int? row, int? col}) {
+    final targetRow = row ?? activeRow;
+    final targetCol = col ?? activeCol;
+    final targetView = _splitViews[targetRow][targetCol];
 
     if (targetView.editors.isEmpty || targetView.editors[index].isPinned) {
       return;
@@ -95,51 +134,43 @@ class EditorTabManager extends ChangeNotifier {
 
     targetView.editors.removeAt(index);
 
+    // Only call closeSplitView if there are no editors left
     if (targetView.editors.isEmpty) {
-      if (splitViewIndex == 0 ||
-          (splitViewIndex == null && targetView == _splitViews[0])) {
-        if (_splitViews.length > 1) {
-          // If there are other splits, make the next split the primary one
-          _splitViews.removeAt(0);
-        }
-      } else {
-        // For other split views, remove them when empty
-        int indexToRemove = _splitViews.indexOf(targetView);
-        if (indexToRemove != -1) {
-          _splitViews.removeAt(indexToRemove);
-        }
-      }
+      closeSplitView(targetRow, targetCol);
     } else {
       if (targetView.activeEditorIndex >= targetView.editors.length) {
         targetView.activeEditorIndex = targetView.editors.length - 1;
+      } else if (targetView.activeEditorIndex == index) {
+        // If we closed the active editor, select the next one
+        targetView.activeEditorIndex =
+            index.clamp(0, targetView.editors.length - 1);
       }
-    }
-
-    if (_splitViews.isEmpty) {
-      _splitViews.add(SplitView());
-    }
-
-    // Update active split view index if it's out of bounds
-    if (activeSplitViewIndex >= _splitViews.length) {
-      activeSplitViewIndex = _splitViews.length - 1;
     }
 
     notifyListeners();
   }
 
-  void setActiveEditor(int index, {int? splitViewIndex}) {
-    final targetView =
-        splitViewIndex != null ? _splitViews[splitViewIndex] : activeSplitView;
+  void setActiveEditor(int index, {int? row, int? col}) {
+    final targetRow = row ?? activeRow;
+    final targetCol = col ?? activeCol;
 
+    // Validate indices first
+    if (targetRow >= _splitViews.length ||
+        targetCol >= _splitViews[targetRow].length) {
+      return;
+    }
+
+    final targetView = _splitViews[targetRow][targetCol];
     if (index >= 0 && index < targetView.editors.length) {
       targetView.activeEditorIndex = index;
       notifyListeners();
     }
   }
 
-  void reorderEditor(int oldIndex, int newIndex, {int? splitViewIndex}) {
-    final targetView =
-        splitViewIndex != null ? _splitViews[splitViewIndex] : activeSplitView;
+  void reorderEditor(int oldIndex, int newIndex, {int? row, int? col}) {
+    final targetRow = row ?? activeRow;
+    final targetCol = col ?? activeCol;
+    final targetView = _splitViews[targetRow][targetCol];
 
     final movingEditor = targetView.editors[oldIndex];
     final pinnedCount = targetView.editors.where((e) => e.isPinned).length;
@@ -168,12 +199,14 @@ class EditorTabManager extends ChangeNotifier {
         targetView.activeEditorIndex >= newIndex) {
       targetView.activeEditorIndex++;
     }
+
     notifyListeners();
   }
 
-  void togglePin(int index, {int? splitViewIndex}) {
-    final targetView =
-        splitViewIndex != null ? _splitViews[splitViewIndex] : activeSplitView;
+  void togglePin(int index, {int? row, int? col}) {
+    final targetRow = row ?? activeRow;
+    final targetCol = col ?? activeCol;
+    final targetView = _splitViews[targetRow][targetCol];
 
     targetView.editors[index].isPinned = !targetView.editors[index].isPinned;
 
@@ -187,6 +220,7 @@ class EditorTabManager extends ChangeNotifier {
         }
       }
     }
+
     notifyListeners();
   }
 }

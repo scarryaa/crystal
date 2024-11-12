@@ -15,10 +15,11 @@ class EditorTabBar extends StatefulWidget {
   final Function() onNewTab;
   final VoidCallback onSplitHorizontal;
   final VoidCallback onSplitVertical;
-  final Function(int) onSplitClose;
+  final Function() onSplitClose;
   final EditorConfigService editorConfigService;
   final EditorTabManager editorTabManager;
-  final int splitViewIndex;
+  final int row;
+  final int col;
 
   const EditorTabBar({
     super.key,
@@ -34,7 +35,8 @@ class EditorTabBar extends StatefulWidget {
     required this.onSplitClose,
     required this.editorConfigService,
     required this.editorTabManager,
-    required this.splitViewIndex,
+    required this.row,
+    required this.col,
   });
 
   @override
@@ -57,13 +59,8 @@ class _EditorTabBarState extends State<EditorTabBar> {
         resetGutterScroll: activeEditor.resetGutterScroll,
       );
 
-      // Copy the content
       newEditor.openFile(activeEditor.buffer.content);
-
-      // Call split with the new editor
       widget.onSplitVertical();
-
-      // Open the copied editor in the new split
       widget.onActiveEditorChanged(widget.activeEditorIndex);
     }
   }
@@ -83,13 +80,8 @@ class _EditorTabBarState extends State<EditorTabBar> {
         resetGutterScroll: activeEditor.resetGutterScroll,
       );
 
-      // Copy the content
       newEditor.openFile(activeEditor.buffer.content);
-
-      // Call split with the new editor
       widget.onSplitHorizontal();
-
-      // Open the copied editor in the new split
       widget.onActiveEditorChanged(widget.activeEditorIndex);
     }
   }
@@ -99,14 +91,15 @@ class _EditorTabBarState extends State<EditorTabBar> {
 
     widget.onEditorClosed(index);
 
-    if (willBeEmpty && widget.splitViewIndex > 0) {
-      widget.onSplitClose(widget.splitViewIndex);
+    if (willBeEmpty && (widget.row > 0 || widget.col > 0)) {
+      widget.onSplitClose();
     }
   }
 
   Widget _buildSplitButtons() {
     // Only show split controls if this is the active split view
-    if (widget.splitViewIndex != widget.editorTabManager.activeSplitViewIndex) {
+    if (widget.row != widget.editorTabManager.activeRow ||
+        widget.col != widget.editorTabManager.activeCol) {
       return const SizedBox.shrink();
     }
 
