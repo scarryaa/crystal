@@ -25,7 +25,7 @@ Future<void> performUpdate() async {
     log.info('Starting update process...');
 
     final installDir = await _getInstallDirectory();
-    final updateInfo = await checkForUpdates('your-username/your-repo');
+    final updateInfo = await checkForUpdates('scarryaa/crystal');
 
     if (!updateInfo.hasUpdate || updateInfo.downloadUrl == null) {
       log.info('No update available');

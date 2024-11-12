@@ -215,7 +215,10 @@ class EditorViewState extends State<EditorView> {
                   Colors.white,
               child: Focus(
                 focusNode: _focusNode,
-                onKeyEvent: _handleKeyEvent,
+                onKeyEvent: (node, event) {
+                  _handleKeyEventAsync(node, event);
+                  return KeyEventResult.handled;
+                },
                 autofocus: true,
                 child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
@@ -285,9 +288,13 @@ class EditorViewState extends State<EditorView> {
     _focusNode.requestFocus();
   }
 
-  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+  Future<void> _handleKeyEventAsync(FocusNode node, KeyEvent event) async {
+    await _handleKeyEvent(node, event);
+  }
+
+  Future<KeyEventResult> _handleKeyEvent(FocusNode node, KeyEvent event) async {
     _resetCaretBlink();
-    return editorKeyboardHandler.handleKeyEvent(node, event);
+    return await editorKeyboardHandler.handleKeyEvent(node, event);
   }
 
   Future<void> _openConfig() async {

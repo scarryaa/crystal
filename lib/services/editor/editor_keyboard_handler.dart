@@ -34,7 +34,7 @@ class EditorKeyboardHandler {
     required this.updateSingleLineWidth,
   });
 
-  KeyEventResult handleKeyEvent(FocusNode node, KeyEvent event) {
+  Future<KeyEventResult> handleKeyEvent(FocusNode node, KeyEvent event) async {
     if (event is KeyDownEvent || event is KeyRepeatEvent) {
       final bool isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
       final bool isControlPressed =
@@ -42,7 +42,7 @@ class EditorKeyboardHandler {
               HardwareKeyboard.instance.isMetaPressed;
 
       // Special keys
-      if (getState().handleSpecialKeys(
+      if (await getState().handleSpecialKeys(
           isControlPressed, isShiftPressed, event.logicalKey)) {
         onSearchTermChanged(searchTerm);
         return KeyEventResult.handled;

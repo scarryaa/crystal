@@ -7,7 +7,6 @@ class AppLayout extends StatelessWidget {
   final Widget child;
   final EditorConfigService editorConfigService;
   final Function(String)? onDirectoryChanged;
-  final Function()? onDirectoryRefresh;
   final FileService fileService;
 
   const AppLayout({
@@ -16,7 +15,6 @@ class AppLayout extends StatelessWidget {
     required this.editorConfigService,
     required this.fileService,
     required this.onDirectoryChanged,
-    required this.onDirectoryRefresh,
   });
 
   @override
@@ -27,7 +25,6 @@ class AppLayout extends StatelessWidget {
           TitleBar(
             editorConfigService: editorConfigService,
             onDirectoryChanged: onDirectoryChanged,
-            onDirectoryRefresh: onDirectoryRefresh,
             fileService: fileService,
           ),
           Expanded(child: child),

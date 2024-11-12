@@ -121,7 +121,9 @@ void main(List<String> arguments) {
 
     // Normal app startup
     final editorConfigService = await EditorConfigService.create();
-    final fileService = FileService();
+    final fileService = FileService(
+      configService: editorConfigService,
+    );
     runApp(App(
       editorConfigService: editorConfigService,
       fileService: fileService,

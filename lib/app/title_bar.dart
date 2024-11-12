@@ -10,14 +10,12 @@ import 'package:window_manager/window_manager.dart';
 class TitleBar extends StatefulWidget {
   final EditorConfigService editorConfigService;
   final Function(String)? onDirectoryChanged;
-  final Function()? onDirectoryRefresh;
   final FileService fileService;
 
   const TitleBar({
     super.key,
     required this.editorConfigService,
     required this.onDirectoryChanged,
-    required this.onDirectoryRefresh,
     required this.fileService,
   });
 
@@ -62,7 +60,6 @@ class _TitleBarState extends State<TitleBar> with WindowListener {
       Directory.current = selectedDirectory;
 
       widget.onDirectoryChanged?.call(selectedDirectory);
-      widget.onDirectoryRefresh?.call();
     }
   }
 

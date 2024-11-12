@@ -13,7 +13,6 @@ class FileExplorer extends StatefulWidget {
   final Function(String path) tapCallback;
   final EditorConfigService editorConfigService;
   final Function(String)? onDirectoryChanged;
-  final Function()? onDirectoryRefresh;
 
   const FileExplorer({
     super.key,
@@ -21,7 +20,6 @@ class FileExplorer extends StatefulWidget {
     required this.tapCallback,
     required this.editorConfigService,
     required this.onDirectoryChanged,
-    required this.onDirectoryRefresh,
   });
 
   @override
@@ -31,7 +29,6 @@ class FileExplorer extends StatefulWidget {
 class _FileExplorerState extends State<FileExplorer> {
   final ScrollController _verticalController = ScrollController();
   final ScrollController _horizontalController = ScrollController();
-  late Future<List<FileSystemEntity>> _filesFuture;
   Map<String, bool> expandedDirs = {};
   String? currentDirectory;
   double width = 150;
@@ -40,11 +37,6 @@ class _FileExplorerState extends State<FileExplorer> {
   void initState() {
     super.initState();
     width = max(widget.editorConfigService.config.uiFontSize * 11.0, 170.0);
-    if (widget.fileService.rootDirectory.isNotEmpty) {
-      _filesFuture = _enumerateFiles(widget.fileService.rootDirectory);
-    } else {
-      _filesFuture = Future.value(<FileSystemEntity>[]);
-    }
   }
 
   @override
@@ -117,7 +109,8 @@ class _FileExplorerState extends State<FileExplorer> {
           Directory('${widget.fileService.rootDirectory}/$folderName');
       await newDir.create();
       setState(() {
-        _filesFuture = _enumerateFiles(widget.fileService.rootDirectory);
+        widget.fileService.filesFuture =
+            widget.fileService.enumerateFiles(widget.fileService.rootDirectory);
       });
     }
   }
@@ -156,7 +149,8 @@ class _FileExplorerState extends State<FileExplorer> {
       final newFile = File('${widget.fileService.rootDirectory}/$fileName');
       await newFile.create();
       setState(() {
-        _filesFuture = _enumerateFiles(widget.fileService.rootDirectory);
+        widget.fileService.filesFuture =
+            widget.fileService.enumerateFiles(widget.fileService.rootDirectory);
       });
     }
   }
@@ -266,7 +260,7 @@ class _FileExplorerState extends State<FileExplorer> {
                   height: double.infinity,
                   width: width,
                   child: FutureBuilder<List<FileSystemEntity>>(
-                    future: _filesFuture,
+                    future: widget.fileService.filesFuture,
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(
@@ -295,10 +289,6 @@ class _FileExplorerState extends State<FileExplorer> {
                                 if (widget.onDirectoryChanged != null) {
                                   widget.onDirectoryChanged!(selectedDirectory);
                                 }
-
-                                if (widget.onDirectoryRefresh != null) {
-                                  widget.onDirectoryRefresh!();
-                                }
                               }
                             },
                             child: Text(
@@ -326,8 +316,9 @@ class _FileExplorerState extends State<FileExplorer> {
                             editorConfigService: widget.editorConfigService,
                             onRefresh: () {
                               setState(() {
-                                _filesFuture = _enumerateFiles(
-                                    widget.fileService.rootDirectory);
+                                widget.fileService.filesFuture =
+                                    widget.fileService.enumerateFiles(
+                                        widget.fileService.rootDirectory);
                               });
                             },
                             onExpandAll: () async {

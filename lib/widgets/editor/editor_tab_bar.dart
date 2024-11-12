@@ -1,6 +1,7 @@
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/services/editor/editor_tab_manager.dart';
+import 'package:crystal/services/file_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/widgets/editor/editor_tab.dart';
 import 'package:flutter/material.dart';
@@ -21,6 +22,8 @@ class EditorTabBar extends StatefulWidget {
   final int row;
   final int col;
   final GlobalKey tabScrollKey;
+  final FileService fileService;
+  final Function(String)? onDirectoryChanged;
   final ScrollController tabBarScrollController;
 
   const EditorTabBar({
@@ -41,6 +44,8 @@ class EditorTabBar extends StatefulWidget {
     required this.row,
     required this.col,
     required this.tabBarScrollController,
+    required this.fileService,
+    required this.onDirectoryChanged,
   });
 
   @override
@@ -61,6 +66,8 @@ class _EditorTabBarState extends State<EditorTabBar> {
         relativePath: activeEditor.relativePath,
         tapCallback: activeEditor.tapCallback,
         resetGutterScroll: activeEditor.resetGutterScroll,
+        fileService: widget.fileService,
+        onDirectoryChanged: widget.onDirectoryChanged,
       );
 
       newEditor.openFile(activeEditor.buffer.content);
@@ -82,6 +89,8 @@ class _EditorTabBarState extends State<EditorTabBar> {
         relativePath: activeEditor.relativePath,
         tapCallback: activeEditor.tapCallback,
         resetGutterScroll: activeEditor.resetGutterScroll,
+        fileService: widget.fileService,
+        onDirectoryChanged: widget.onDirectoryChanged,
       );
 
       newEditor.openFile(activeEditor.buffer.content);

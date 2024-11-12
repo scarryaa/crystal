@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math';
 
 import 'package:crystal/models/cursor.dart';
@@ -16,6 +17,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
+import 'package:window_manager/window_manager.dart';
 
 class EditorState extends ChangeNotifier {
   final String id = UniqueKey().toString();
@@ -34,6 +36,8 @@ class EditorState extends ChangeNotifier {
   final EditorCursorManager editorCursorManager = EditorCursorManager();
   final EditorSelectionManager editorSelectionManager =
       EditorSelectionManager();
+  final Function(String)? onDirectoryChanged;
+  final FileService fileService;
   final Future<void> Function(String) tapCallback;
   bool isPinned = false;
   String? relativePath = '';
@@ -42,7 +46,9 @@ class EditorState extends ChangeNotifier {
     required this.resetGutterScroll,
     required this.editorLayoutService,
     required this.editorConfigService,
+    required this.onDirectoryChanged,
     required this.tapCallback,
+    required this.fileService,
     String? path,
     this.relativePath,
   }) : path = path ?? generateUniqueTempPath();
@@ -295,8 +301,8 @@ class EditorState extends ChangeNotifier {
     }
   }
 
-  bool handleSpecialKeys(
-      bool isControlPressed, bool isShiftPressed, LogicalKeyboardKey key) {
+  Future<bool> handleSpecialKeys(bool isControlPressed, bool isShiftPressed,
+      LogicalKeyboardKey key) async {
     switch (key) {
       case LogicalKeyboardKey.add:
         if (isControlPressed) {
@@ -336,6 +342,27 @@ class EditorState extends ChangeNotifier {
 
         if (isControlPressed) {
           undo();
+          return true;
+        }
+      case LogicalKeyboardKey.keyQ:
+        if (isControlPressed) {
+          // TODO check for unsaved files
+          exit(0);
+        }
+      case LogicalKeyboardKey.keyO:
+        if (isControlPressed) {
+          String? selectedDirectory =
+              await FilePicker.platform.getDirectoryPath();
+
+          if (onDirectoryChanged != null) {
+            onDirectoryChanged!(selectedDirectory ?? fileService.rootDirectory);
+          }
+          return true;
+        }
+      case LogicalKeyboardKey.keyF:
+        if (isControlPressed) {
+          await windowManager
+              .setFullScreen(!await windowManager.isFullScreen());
           return true;
         }
     }

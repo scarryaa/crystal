@@ -1,11 +1,18 @@
 import 'package:crystal/models/editor/split_view.dart';
+import 'package:crystal/services/file_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:flutter/material.dart';
 
 class EditorTabManager extends ChangeNotifier {
   final Function(int, int)? onSplitViewClosed;
+  final FileService fileService;
+  final Function(String)? onDirectoryChanged;
 
-  EditorTabManager({this.onSplitViewClosed});
+  EditorTabManager({
+    this.onSplitViewClosed,
+    required this.fileService,
+    required this.onDirectoryChanged,
+  });
 
   final List<List<SplitView>> _splitViews = [
     [SplitView()]
@@ -175,6 +182,8 @@ class EditorTabManager extends ChangeNotifier {
       relativePath: source.relativePath,
       tapCallback: source.tapCallback,
       resetGutterScroll: source.resetGutterScroll,
+      fileService: fileService,
+      onDirectoryChanged: onDirectoryChanged,
     );
 
     newEditor.openFile(source.buffer.content);

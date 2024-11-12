@@ -26,7 +26,6 @@ class EditorScreen extends StatefulWidget {
   final int verticalPaddingLines;
   final double lineHeightMultipler;
   final Function(String)? onDirectoryChanged;
-  final Function()? onDirectoryRefresh;
   final FileService fileService;
 
   const EditorScreen({
@@ -35,20 +34,19 @@ class EditorScreen extends StatefulWidget {
     required this.verticalPaddingLines,
     required this.lineHeightMultipler,
     required this.onDirectoryChanged,
-    required this.onDirectoryRefresh,
     required this.fileService,
   });
 
   @override
-  State<StatefulWidget> createState() => _EditorScreenState();
+  State<StatefulWidget> createState() => EditorScreenState();
 }
 
-class _EditorScreenState extends State<EditorScreen> {
+class EditorScreenState extends State<EditorScreen> {
   final Map<String, GlobalKey> _tabBarKeys = {};
   bool _isFileExplorerVisible = true;
   final Map<int, GlobalKey<EditorViewState>> _editorViewKeys = {};
   late final EditorConfigService _editorConfigService;
-  late final EditorTabManager _editorTabManager;
+  late final EditorTabManager editorTabManager;
   late final ShortcutHandler _shortcutHandler;
   late final Future<void> _initializationFuture;
   late SearchService searchService;
@@ -72,16 +70,16 @@ class _EditorScreenState extends State<EditorScreen> {
     if (!mounted) return;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final row = _editorTabManager.activeRow;
-      final col = _editorTabManager.activeCol;
+      final row = editorTabManager.activeRow;
+      final col = editorTabManager.activeCol;
       final splitView =
-          _editorTabManager.horizontalSplits[_editorTabManager.activeRow]
-              [_editorTabManager.activeCol];
+          editorTabManager.horizontalSplits[editorTabManager.activeRow]
+              [editorTabManager.activeCol];
 
       if (index < 0 || index >= splitView.editors.length) return;
 
-      final tabBarKey = _getTabBarKey(
-          _editorTabManager.activeRow, _editorTabManager.activeCol);
+      final tabBarKey =
+          _getTabBarKey(editorTabManager.activeRow, editorTabManager.activeCol);
       final tabBarContext = tabBarKey.currentContext;
       if (tabBarContext == null) return;
 
@@ -145,26 +143,28 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   void openNewTab({int? row, int? col}) {
-    final targetRow = row ?? _editorTabManager.activeRow;
-    final targetCol = col ?? _editorTabManager.activeCol;
+    final targetRow = row ?? editorTabManager.activeRow;
+    final targetCol = col ?? editorTabManager.activeCol;
     final scrollManager = _getScrollManager(targetRow, targetCol);
 
     // Focus the target split view first
-    _editorTabManager.focusSplitView(targetRow, targetCol);
+    editorTabManager.focusSplitView(targetRow, targetCol);
 
     final newEditor = EditorState(
       editorConfigService: _editorConfigService,
       editorLayoutService: EditorLayoutService.instance,
       resetGutterScroll: () => scrollManager.resetGutterScroll(),
       tapCallback: tapCallback,
+      onDirectoryChanged: widget.onDirectoryChanged,
+      fileService: widget.fileService,
     );
 
-    _editorTabManager.addEditor(newEditor, row: targetRow, col: targetCol);
+    editorTabManager.addEditor(newEditor, row: targetRow, col: targetCol);
 
     setState(() {
-      _editorTabManager.activeEditor!.openFile('');
+      editorTabManager.activeEditor!.openFile('');
       searchService.onSearchTermChanged(
-          searchService.searchTerm, _editorTabManager.activeEditor);
+          searchService.searchTerm, editorTabManager.activeEditor);
     });
 
     final editorKey = _getEditorViewKey(getSplitIndex(targetRow, targetCol));
@@ -177,17 +177,17 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   Future<void> tapCallback(String path, {int? row, int? col}) async {
-    final targetRow = row ?? _editorTabManager.activeRow;
-    final targetCol = col ?? _editorTabManager.activeCol;
+    final targetRow = row ?? editorTabManager.activeRow;
+    final targetCol = col ?? editorTabManager.activeCol;
 
     // Check if file is already open in the current split
-    final editorIndex = _editorTabManager
+    final editorIndex = editorTabManager
         .horizontalSplits[targetRow][targetCol].editors
         .indexWhere((editor) => editor.path == path);
 
     if (editorIndex != -1) {
       // File is already open in current split, just focus it
-      _editorTabManager.focusSplitView(targetRow, targetCol);
+      editorTabManager.focusSplitView(targetRow, targetCol);
       onActiveEditorChanged(editorIndex, row: targetRow, col: targetCol);
       scrollToTab(editorIndex);
       return;
@@ -208,24 +208,26 @@ class _EditorScreenState extends State<EditorScreen> {
       path: path,
       relativePath: relativePath,
       tapCallback: tapCallback,
+      onDirectoryChanged: widget.onDirectoryChanged,
+      fileService: widget.fileService,
     );
 
-    _editorTabManager.focusSplitView(targetRow, targetCol);
+    editorTabManager.focusSplitView(targetRow, targetCol);
 
     setState(() {
-      _editorTabManager.addEditor(newEditor, row: targetRow, col: targetCol);
-      _editorTabManager.activeEditor!.openFile(content);
+      editorTabManager.addEditor(newEditor, row: targetRow, col: targetCol);
+      editorTabManager.activeEditor!.openFile(content);
     });
 
     searchService.updateSearchMatches(
       searchService.searchTerm,
-      _editorTabManager.activeEditor,
+      editorTabManager.activeEditor,
     );
 
     // Get the new editor's index after adding it
-    final newEditorIndex = _editorTabManager
-            .horizontalSplits[targetRow][targetCol].editors.length -
-        1;
+    final newEditorIndex =
+        editorTabManager.horizontalSplits[targetRow][targetCol].editors.length -
+            1;
     scrollToTab(newEditorIndex);
 
     WidgetsBinding.instance.addPostFrameCallback(
@@ -235,14 +237,16 @@ class _EditorScreenState extends State<EditorScreen> {
   @override
   void initState() {
     super.initState();
-    _editorTabManager = EditorTabManager(
+    editorTabManager = EditorTabManager(
       onSplitViewClosed: _cleanupScrollManager,
+      onDirectoryChanged: widget.onDirectoryChanged,
+      fileService: widget.fileService,
     );
     _initializationFuture = _initializeServices();
     searchService = SearchService(
       scrollToCursor: () => _scrollToCursor(
-        _editorTabManager.activeRow,
-        _editorTabManager.activeCol,
+        editorTabManager.activeRow,
+        editorTabManager.activeCol,
       ),
     );
 
@@ -259,8 +263,8 @@ class _EditorScreenState extends State<EditorScreen> {
 
     // Remap remaining scroll managers
     final newScrollManagers = <int, EditorScrollManager>{};
-    for (int r = 0; r < _editorTabManager.horizontalSplits.length; r++) {
-      for (int c = 0; c < _editorTabManager.horizontalSplits[r].length; c++) {
+    for (int r = 0; r < editorTabManager.horizontalSplits.length; r++) {
+      for (int c = 0; c < editorTabManager.horizontalSplits[r].length; c++) {
         final oldIndex = getSplitIndex(r, c);
         final newIndex = getSplitIndex(r, c);
         if (_scrollManagers.containsKey(oldIndex)) {
@@ -275,14 +279,14 @@ class _EditorScreenState extends State<EditorScreen> {
 
   void _handleEditorScroll(int row, int col) {
     // Validate indices before accessing splits
-    if (row >= _editorTabManager.horizontalSplits.length ||
-        col >= _editorTabManager.horizontalSplits[row].length) {
+    if (row >= editorTabManager.horizontalSplits.length ||
+        col >= editorTabManager.horizontalSplits[row].length) {
       return;
     }
 
     final scrollManager = _getScrollManager(row, col);
     final activeEditor =
-        _editorTabManager.horizontalSplits[row][col].activeEditor;
+        editorTabManager.horizontalSplits[row][col].activeEditor;
 
     if (activeEditor == null) return;
 
@@ -300,14 +304,14 @@ class _EditorScreenState extends State<EditorScreen> {
 
   void _handleGutterScroll(int row, int col) {
     // Validate indices before accessing splits
-    if (row >= _editorTabManager.horizontalSplits.length ||
-        col >= _editorTabManager.horizontalSplits[row].length) {
+    if (row >= editorTabManager.horizontalSplits.length ||
+        col >= editorTabManager.horizontalSplits[row].length) {
       return;
     }
 
     final scrollManager = _getScrollManager(row, col);
     final activeEditor =
-        _editorTabManager.horizontalSplits[row][col].activeEditor;
+        editorTabManager.horizontalSplits[row][col].activeEditor;
 
     if (activeEditor == null) return;
 
@@ -322,14 +326,14 @@ class _EditorScreenState extends State<EditorScreen> {
 
   void _scrollToCursor(int row, int col) {
     // Validate indices before proceeding
-    if (row >= _editorTabManager.horizontalSplits.length ||
-        col >= _editorTabManager.horizontalSplits[row].length) {
+    if (row >= editorTabManager.horizontalSplits.length ||
+        col >= editorTabManager.horizontalSplits[row].length) {
       return;
     }
 
     final scrollManager = _getScrollManager(row, col);
     final activeEditor =
-        _editorTabManager.horizontalSplits[row][col].activeEditor;
+        editorTabManager.horizontalSplits[row][col].activeEditor;
 
     if (activeEditor == null) return;
 
@@ -346,7 +350,6 @@ class _EditorScreenState extends State<EditorScreen> {
         fileService: widget.fileService,
         tapCallback: tapCallback,
         onDirectoryChanged: widget.onDirectoryChanged,
-        onDirectoryRefresh: widget.onDirectoryRefresh,
       );
     }
 
@@ -376,30 +379,30 @@ class _EditorScreenState extends State<EditorScreen> {
       openSettings: _openSettings,
       openDefaultSettings: _openDefaultSettings,
       closeTab: () {
-        if (_editorTabManager.activeSplitView.activeEditorIndex >= 0) {
-          onEditorClosed(_editorTabManager.activeSplitView.activeEditorIndex);
+        if (editorTabManager.activeSplitView.activeEditorIndex >= 0) {
+          onEditorClosed(editorTabManager.activeSplitView.activeEditorIndex);
         }
       },
       openNewTab: () {
         openNewTab();
       },
       saveFile: () async {
-        if (_editorTabManager.activeEditor != null) {
-          await _editorTabManager.activeEditor!
-              .saveFile(_editorTabManager.activeEditor!.path);
+        if (editorTabManager.activeEditor != null) {
+          await editorTabManager.activeEditor!
+              .saveFile(editorTabManager.activeEditor!.path);
         }
         return Future<void>.value();
       },
       saveFileAs: () async {
-        if (_editorTabManager.activeEditor != null) {
-          await _editorTabManager.activeEditor!
-              .saveFileAs(_editorTabManager.activeEditor!.path);
+        if (editorTabManager.activeEditor != null) {
+          await editorTabManager.activeEditor!
+              .saveFileAs(editorTabManager.activeEditor!.path);
         }
         return Future<void>.value();
       },
       requestEditorFocus: () {
-        if (_editorTabManager.activeEditor != null) {
-          _editorTabManager.activeEditor!.requestFocus();
+        if (editorTabManager.activeEditor != null) {
+          editorTabManager.activeEditor!.requestFocus();
         }
       },
     );
@@ -413,12 +416,11 @@ class _EditorScreenState extends State<EditorScreen> {
 
     if (mounted) {
       setState(() {
-        for (int i = 0; i < _editorTabManager.editors.length; i++) {
-          if (_editorTabManager.editors[i].path
-              .endsWith('editor_config.json')) {
+        for (int i = 0; i < editorTabManager.editors.length; i++) {
+          if (editorTabManager.editors[i].path.endsWith('editor_config.json')) {
             // Reload the settings file if it is open
-            _editorTabManager.editors[i].buffer.setContent(
-                FileService.readFile(_editorTabManager.editors[i].path));
+            editorTabManager.editors[i].buffer.setContent(
+                FileService.readFile(editorTabManager.editors[i].path));
           }
         }
       });
@@ -432,12 +434,12 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   void onActiveEditorChanged(int index, {int? row, int? col}) {
-    final targetRow = row ?? _editorTabManager.activeRow;
-    final targetCol = col ?? _editorTabManager.activeCol;
+    final targetRow = row ?? editorTabManager.activeRow;
+    final targetCol = col ?? editorTabManager.activeCol;
 
     // Validate indices before proceeding
-    if (targetRow >= _editorTabManager.horizontalSplits.length ||
-        targetCol >= _editorTabManager.horizontalSplits[targetRow].length) {
+    if (targetRow >= editorTabManager.horizontalSplits.length ||
+        targetCol >= editorTabManager.horizontalSplits[targetRow].length) {
       return;
     }
 
@@ -445,20 +447,20 @@ class _EditorScreenState extends State<EditorScreen> {
     final editorKey = _getEditorViewKey(getSplitIndex(targetRow, targetCol));
 
     setState(() {
-      _editorTabManager.setActiveEditor(
+      editorTabManager.setActiveEditor(
         index,
         row: targetRow,
         col: targetCol,
       );
 
-      if (_editorTabManager.activeEditor != null) {
+      if (editorTabManager.activeEditor != null) {
         scrollManager.editorVerticalScrollController
-            .jumpTo(_editorTabManager.activeEditor!.scrollState.verticalOffset);
+            .jumpTo(editorTabManager.activeEditor!.scrollState.verticalOffset);
         scrollManager.editorHorizontalScrollController.jumpTo(
-            _editorTabManager.activeEditor!.scrollState.horizontalOffset);
+            editorTabManager.activeEditor!.scrollState.horizontalOffset);
         searchService.updateSearchMatches(
           searchService.searchTerm,
-          _editorTabManager.activeEditor,
+          editorTabManager.activeEditor,
         );
       }
     });
@@ -472,12 +474,12 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   void onEditorClosed(int index, {int? row, int? col}) {
-    final targetRow = row ?? _editorTabManager.activeRow;
-    final targetCol = col ?? _editorTabManager.activeCol;
+    final targetRow = row ?? editorTabManager.activeRow;
+    final targetCol = col ?? editorTabManager.activeCol;
 
     // Early validation
-    if (targetRow >= _editorTabManager.horizontalSplits.length ||
-        targetCol >= _editorTabManager.horizontalSplits[targetRow].length) {
+    if (targetRow >= editorTabManager.horizontalSplits.length ||
+        targetCol >= editorTabManager.horizontalSplits[targetRow].length) {
       return;
     }
 
@@ -486,18 +488,18 @@ class _EditorScreenState extends State<EditorScreen> {
 
     setState(() {
       final verticalOffset =
-          _editorTabManager.activeEditor?.scrollState.verticalOffset ?? 0.0;
+          editorTabManager.activeEditor?.scrollState.verticalOffset ?? 0.0;
       final horizontalOffset =
-          _editorTabManager.activeEditor?.scrollState.horizontalOffset ?? 0.0;
+          editorTabManager.activeEditor?.scrollState.horizontalOffset ?? 0.0;
 
-      _editorTabManager.closeEditor(
+      editorTabManager.closeEditor(
         index,
         row: targetRow,
         col: targetCol,
       );
 
       // Only update scroll positions if there's still an active editor
-      if (_editorTabManager.activeEditor != null) {
+      if (editorTabManager.activeEditor != null) {
         scrollManager.editorVerticalScrollController.jumpTo(verticalOffset);
         scrollManager.editorHorizontalScrollController.jumpTo(horizontalOffset);
       }
@@ -536,7 +538,7 @@ class _EditorScreenState extends State<EditorScreen> {
   int getSplitIndex(int row, int col) {
     int index = 0;
     for (int i = 0; i < row; i++) {
-      index += _editorTabManager.horizontalSplits[i].length;
+      index += editorTabManager.horizontalSplits[i].length;
     }
     return index + col;
   }
@@ -555,7 +557,7 @@ class _EditorScreenState extends State<EditorScreen> {
 
         return ListenableBuilder(
           listenable:
-              Listenable.merge([_editorConfigService, _editorTabManager]),
+              Listenable.merge([_editorConfigService, editorTabManager]),
           builder: (context, child) {
             bool isFileExplorerOnLeft =
                 _editorConfigService.config.isFileExplorerOnLeft;
@@ -572,50 +574,50 @@ class _EditorScreenState extends State<EditorScreen> {
                         children: [
                           if (isFileExplorerOnLeft) _buildFileExplorer(),
                           Expanded(
-                            child: _editorTabManager.horizontalSplits.isEmpty
+                            child: editorTabManager.horizontalSplits.isEmpty
                                 ? Container()
                                 : ResizableSplitContainer(
                                     direction: Axis.vertical,
                                     initialSizes: List.generate(
-                                      _editorTabManager.horizontalSplits.length,
+                                      editorTabManager.horizontalSplits.length,
                                       (index) =>
                                           1.0 /
-                                          _editorTabManager
+                                          editorTabManager
                                               .horizontalSplits.length,
                                     ),
-                                    onSizesChanged: (sizes) => _editorTabManager
+                                    onSizesChanged: (sizes) => editorTabManager
                                         .updateVerticalSizes(sizes),
                                     editorConfigService: _editorConfigService,
                                     children: List.generate(
-                                      _editorTabManager.horizontalSplits.length,
+                                      editorTabManager.horizontalSplits.length,
                                       (row) {
-                                        return _editorTabManager
+                                        return editorTabManager
                                                 .horizontalSplits[row].isEmpty
                                             ? Container()
                                             : ResizableSplitContainer(
                                                 direction: Axis.horizontal,
                                                 initialSizes: List.generate(
-                                                  _editorTabManager
+                                                  editorTabManager
                                                       .horizontalSplits[row]
                                                       .length,
                                                   (index) =>
                                                       1.0 /
-                                                      _editorTabManager
+                                                      editorTabManager
                                                           .horizontalSplits[row]
                                                           .length,
                                                 ),
                                                 onSizesChanged: (sizes) =>
-                                                    _editorTabManager
+                                                    editorTabManager
                                                         .updateHorizontalSizes(
                                                             row, sizes),
                                                 editorConfigService:
                                                     _editorConfigService,
                                                 children: List.generate(
-                                                  _editorTabManager
+                                                  editorTabManager
                                                       .horizontalSplits[row]
                                                       .length,
                                                   (col) => _buildEditorSection(
-                                                    _editorTabManager
+                                                    editorTabManager
                                                             .horizontalSplits[
                                                         row][col],
                                                     row,
@@ -665,9 +667,9 @@ class _EditorScreenState extends State<EditorScreen> {
               behavior: HitTestBehavior.opaque,
               onPointerDown: (_) {
                 // Check if indices are still valid before focusing
-                if (row < _editorTabManager.horizontalSplits.length &&
-                    col < _editorTabManager.horizontalSplits[row].length) {
-                  _editorTabManager.focusSplitView(row, col);
+                if (row < editorTabManager.horizontalSplits.length &&
+                    col < editorTabManager.horizontalSplits[row].length) {
+                  editorTabManager.focusSplitView(row, col);
                   if (splitView.activeEditorIndex >= 0) {
                     onActiveEditorChanged(
                       splitView.activeEditorIndex,
@@ -678,7 +680,7 @@ class _EditorScreenState extends State<EditorScreen> {
                 }
               },
               onPointerPanZoomStart: (_) {
-                _editorTabManager.focusSplitView(row, col);
+                editorTabManager.focusSplitView(row, col);
                 if (splitView.activeEditorIndex >= 0) {
                   onActiveEditorChanged(
                     splitView.activeEditorIndex,
@@ -688,7 +690,7 @@ class _EditorScreenState extends State<EditorScreen> {
                 }
               },
               onPointerPanZoomUpdate: (_) {
-                _editorTabManager.focusSplitView(row, col);
+                editorTabManager.focusSplitView(row, col);
                 if (splitView.activeEditorIndex >= 0) {
                   onActiveEditorChanged(
                     splitView.activeEditorIndex,
@@ -699,7 +701,7 @@ class _EditorScreenState extends State<EditorScreen> {
               },
               onPointerMove: (event) {
                 if (event.kind == PointerDeviceKind.touch || event.down) {
-                  _editorTabManager.focusSplitView(row, col);
+                  editorTabManager.focusSplitView(row, col);
                   onActiveEditorChanged(
                     splitView.activeEditorIndex,
                     row: row,
@@ -721,7 +723,7 @@ class _EditorScreenState extends State<EditorScreen> {
                           Expanded(
                             child: EditorTabBar(
                               tabScrollKey: tabBarKey,
-                              onPin: (index) => _editorTabManager.togglePin(
+                              onPin: (index) => editorTabManager.togglePin(
                                 index,
                                 row: row,
                                 col: col,
@@ -741,7 +743,7 @@ class _EditorScreenState extends State<EditorScreen> {
                                 col: col,
                               ),
                               onReorder: (oldIndex, newIndex) =>
-                                  _editorTabManager.reorderEditor(
+                                  editorTabManager.reorderEditor(
                                 oldIndex,
                                 newIndex,
                                 row: row,
@@ -749,15 +751,17 @@ class _EditorScreenState extends State<EditorScreen> {
                               ),
                               onNewTab: () => openNewTab(row: row, col: col),
                               onSplitHorizontal: () =>
-                                  _editorTabManager.addHorizontalSplit(),
+                                  editorTabManager.addHorizontalSplit(),
                               onSplitVertical: () =>
-                                  _editorTabManager.addVerticalSplit(),
+                                  editorTabManager.addVerticalSplit(),
                               row: row,
                               col: col,
                               onSplitClose: () =>
-                                  _editorTabManager.closeSplitView(row, col),
-                              editorTabManager: _editorTabManager,
+                                  editorTabManager.closeSplitView(row, col),
+                              editorTabManager: editorTabManager,
                               tabBarScrollController: tabBarScrollController,
+                              onDirectoryChanged: widget.onDirectoryChanged,
+                              fileService: widget.fileService,
                             ),
                           ),
                         ],

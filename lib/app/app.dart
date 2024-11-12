@@ -1,4 +1,5 @@
 import 'package:crystal/app/app_layout.dart';
+import 'package:crystal/app/menu_bar.dart';
 import 'package:crystal/main.dart';
 import 'package:crystal/screens/editor_screen.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
@@ -21,13 +22,14 @@ class App extends StatefulWidget {
 }
 
 class _AppState extends State<App> {
-  Key _editorKey = UniqueKey();
+  late final GlobalKey<EditorScreenState> _editorKey;
   bool _isLoading = true;
   bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
+    _editorKey = GlobalKey<EditorScreenState>();
     if (!_isInitialized) {
       _initialize();
     }
@@ -56,16 +58,10 @@ class _AppState extends State<App> {
   void _handleDirectoryChanged(String newPath) {
     setState(() {
       widget.fileService.setRootDirectory(newPath);
-      _editorKey = UniqueKey();
-
       widget.editorConfigService.config.currentDirectory = newPath;
       widget.editorConfigService.saveConfig();
-    });
-  }
-
-  void _handleDirectoryRefresh() {
-    setState(() {
-      _editorKey = UniqueKey();
+      widget.fileService.filesFuture =
+          widget.fileService.enumerateFiles(newPath);
     });
   }
 
@@ -215,20 +211,30 @@ class _AppState extends State<App> {
                 ),
               ),
             ),
-            home: AppLayout(
-              editorConfigService: widget.editorConfigService,
-              onDirectoryChanged: _handleDirectoryChanged,
-              onDirectoryRefresh: _handleDirectoryRefresh,
-              fileService: widget.fileService,
-              child: EditorScreen(
-                key: _editorKey,
-                lineHeightMultipler: 1.5,
-                verticalPaddingLines: 5,
-                horizontalPadding: 100,
-                fileService: widget.fileService,
-                onDirectoryChanged: _handleDirectoryChanged,
-                onDirectoryRefresh: _handleDirectoryRefresh,
-              ),
+            home: Column(
+              children: [
+                AppMenuBar(
+                  onDirectoryChanged: _handleDirectoryChanged,
+                  fileService: widget.fileService,
+                  editorConfigService: widget.editorConfigService,
+                  editorKey: _editorKey,
+                ),
+                Expanded(
+                  child: AppLayout(
+                    editorConfigService: widget.editorConfigService,
+                    onDirectoryChanged: _handleDirectoryChanged,
+                    fileService: widget.fileService,
+                    child: EditorScreen(
+                      key: _editorKey,
+                      lineHeightMultipler: 1.5,
+                      verticalPaddingLines: 5,
+                      horizontalPadding: 100,
+                      fileService: widget.fileService,
+                      onDirectoryChanged: _handleDirectoryChanged,
+                    ),
+                  ),
+                ),
+              ],
             ),
           );
         });
