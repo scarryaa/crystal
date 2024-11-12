@@ -171,11 +171,6 @@ class EditorTab extends StatelessWidget {
                       right: BorderSide(
                         color: theme?.border ?? Colors.grey[200]!,
                       ),
-                      bottom: BorderSide(
-                        color: isActive
-                            ? Colors.transparent
-                            : theme?.border ?? Colors.grey[200]!,
-                      ),
                     ),
                     color: isActive
                         ? theme?.background ?? Colors.white

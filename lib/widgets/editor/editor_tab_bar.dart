@@ -100,39 +100,30 @@ class _EditorTabBarState extends State<EditorTabBar> {
     final theme = widget.editorConfigService.themeService.currentTheme;
     final iconColor = theme?.text ?? Colors.black;
 
-    return Container(
-      decoration: BoxDecoration(
-        border: Border(
-          left: BorderSide(
-            color: theme?.border ?? Colors.grey,
-          ),
+    return Row(
+      children: [
+        IconButton(
+          icon: const Icon(Icons.add),
+          iconSize: widget.editorConfigService.config.uiFontSize * 1.2,
+          color: iconColor,
+          tooltip: 'New Tab',
+          onPressed: widget.onNewTab,
         ),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            iconSize: widget.editorConfigService.config.uiFontSize * 1.2,
-            color: iconColor,
-            tooltip: 'New Tab',
-            onPressed: widget.onNewTab,
-          ),
-          IconButton(
-            icon: const Icon(Icons.splitscreen),
-            iconSize: widget.editorConfigService.config.uiFontSize * 1.2,
-            color: iconColor,
-            tooltip: 'Split Horizontally',
-            onPressed: _handleSplitHorizontal,
-          ),
-          IconButton(
-            icon: const Icon(Icons.vertical_split),
-            iconSize: widget.editorConfigService.config.uiFontSize * 1.2,
-            color: iconColor,
-            tooltip: 'Split Vertically',
-            onPressed: _handleSplitVertical,
-          ),
-        ],
-      ),
+        IconButton(
+          icon: const Icon(Icons.splitscreen),
+          iconSize: widget.editorConfigService.config.uiFontSize * 1.2,
+          color: iconColor,
+          tooltip: 'Split Horizontally',
+          onPressed: _handleSplitHorizontal,
+        ),
+        IconButton(
+          icon: const Icon(Icons.vertical_split),
+          iconSize: widget.editorConfigService.config.uiFontSize * 1.2,
+          color: iconColor,
+          tooltip: 'Split Vertically',
+          onPressed: _handleSplitVertical,
+        ),
+      ],
     );
   }
 
@@ -143,8 +134,11 @@ class _EditorTabBarState extends State<EditorTabBar> {
       builder: (context, child) {
         return Container(
           decoration: BoxDecoration(
-            color: widget.editorConfigService.themeService.currentTheme
-                    ?.background ??
+            color: widget
+                    .editorConfigService.themeService.currentTheme?.background
+                    .withRed(30)
+                    .withBlue(30)
+                    .withGreen(30) ??
                 Colors.white,
           ),
           height: widget.editorConfigService.config.uiFontSize * 2.5,
