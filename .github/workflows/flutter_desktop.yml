@@ -8,7 +8,7 @@ env:
   FLUTTER_VERSION: '3.24.4'
   FLUTTER_CHANNEL: 'stable'
   APP_NAME: 'crystal'
-  APP_VERSION: '0.1.0-beta.1' 
+  APP_VERSION: '0.1.0-beta.2' 
 
 on:
   push:
@@ -179,7 +179,7 @@ jobs:
           ./appimagetool --appimage-extract
           
           # Build AppImage with version in filename
-          ./squashfs-root/AppRun AppDir -n -u "gh-releases-zsync|scarryaa|crystal|latest|Crystal-*-x86_64.AppImage.zsync" "${{ env.APP_NAME }}-linux-$VERSION.AppImage"
+          ./squashfs-root/AppRun AppDir -n -u "gh-releases-zsync|scarryaa|crystal|latest|Crystal-*-x86_64.AppImage.zsync" "${{ env.APP_NAME }}-linux-$APP_VERSION.AppImage"
       
       - name: Upload Linux Build
         uses: actions/upload-artifact@v4

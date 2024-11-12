@@ -68,18 +68,31 @@ Future<void> performUpdate() async {
 }
 
 Future<void> launchUpdater() async {
-  final String appPath = Platform.resolvedExecutable;
+  final String executablePath = Platform.resolvedExecutable;
   try {
     if (Platform.isMacOS) {
-      await Process.run('open', ['-a', appPath, '--args', '--update']);
+      await Process.run('open', ['-a', executablePath, '--update']);
+      exit(0); // Exit current process after launching updater
     } else if (Platform.isWindows) {
-      await Process.run(appPath, ['--update'], runInShell: true);
+      // Launch updater detached from current process
+      await Process.start(
+        executablePath,
+        ['--update'],
+        mode: ProcessStartMode.detached,
+      );
+      exit(0);
     } else {
-      await Process.run(appPath, ['--update']);
+      // Linux
+      await Process.start(
+        executablePath,
+        ['--update'],
+        mode: ProcessStartMode.detached,
+      );
+      exit(0);
     }
-    exit(0); // Exit main app to allow update
   } catch (e) {
     log.severe('Failed to launch updater: $e');
+    exit(1);
   }
 }
 
@@ -192,39 +205,65 @@ Future<void> _updateFromZip(File zipFile, String installDir) async {
 
 Future<String> _getCurrentVersion() async {
   try {
+    // Check if in development mode
+    final bool isDevelopment = const bool.fromEnvironment('FLUTTER_DEV');
+    if (isDevelopment) {
+      return 'v0.0.0-dev'; // Always return a lower version in dev mode
+    }
+
     final String executableDir =
         Directory(Platform.resolvedExecutable).parent.path;
-    final File versionFile = File(path.join(executableDir, 'version.txt'));
+    final String versionFilePath;
 
+    if (Platform.isMacOS) {
+      versionFilePath = path.join(executableDir, '../version.txt');
+    } else if (Platform.isWindows) {
+      versionFilePath = path.join(executableDir, 'version.txt');
+    } else {
+      versionFilePath = path.join(executableDir, 'usr/bin/version.txt');
+    }
+
+    final File versionFile = File(versionFilePath);
     if (await versionFile.exists()) {
       return (await versionFile.readAsString()).trim();
     }
-    // Default version if file doesn't exist
-    return 'v1.0.0';
+
+    return 'v0.0.0'; // Default version if file doesn't exist
   } catch (e) {
     log.severe('Failed to get current version: $e');
-    return 'v1.0.0';
+    return 'v0.0.0';
   }
 }
 
 Future<UpdateInfo> checkForUpdates(String repo) async {
   try {
     final versionResponse = await http.get(
-        Uri.parse('https://raw.githubusercontent.com/$repo/main/version.json'));
+        Uri.parse('https://raw.githubusercontent.com/$repo/main/version.txt'));
 
     if (versionResponse.statusCode != 200) {
       throw Exception('Failed to fetch version info');
     }
 
-    final versionData = jsonDecode(versionResponse.body);
+    final latestVersion = versionResponse.body.trim();
     final currentVersion = await _getCurrentVersion();
-    final latestVersion = versionData['version'];
 
     if (latestVersion != currentVersion) {
+      // Construct asset name based on platform
+      final platform = Platform.isWindows
+          ? 'windows'
+          : Platform.isMacOS
+              ? 'macos'
+              : 'linux';
+
+      final assetName =
+          'crystal-$platform-$latestVersion${_getAssetExtension()}';
+      final downloadUrl =
+          'https://github.com/$repo/releases/download/$latestVersion/$assetName';
+
       return UpdateInfo(
         hasUpdate: true,
         version: latestVersion,
-        downloadUrl: _getAssetUrl(repo, versionData['assets']),
+        downloadUrl: downloadUrl,
       );
     }
 
@@ -235,15 +274,10 @@ Future<UpdateInfo> checkForUpdates(String repo) async {
   }
 }
 
-String _getAssetUrl(String repo, Map<String, dynamic> assets) {
-  final platform = Platform.isMacOS
-      ? 'macos'
-      : Platform.isWindows
-          ? 'windows'
-          : 'linux';
-
-  final assetName = assets[platform];
-  return 'https://github.com/$repo/releases/latest/download/$assetName';
+String _getAssetExtension() {
+  if (Platform.isWindows) return '.zip';
+  if (Platform.isMacOS) return '.zip';
+  return '.AppImage';
 }
 
 Future<void> _cleanupBackup(String installDir) async {

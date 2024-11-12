@@ -34,6 +34,42 @@ Future<void> setupWindow() async {
   await windowManager.focus();
 }
 
+Future<bool?> showUpdateDialog(String version) async {
+  final completer = Completer<bool?>();
+
+  runApp(MaterialApp(
+    home: Builder(
+      builder: (context) {
+        // Show dialog after the app is built
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              title: const Text('Update Available'),
+              content: Text(
+                  'Version $version is available. Would you like to update now?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Later'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Update Now'),
+                ),
+              ],
+            ),
+          ).then((value) => completer.complete(value));
+        });
+        return const Scaffold(backgroundColor: Colors.transparent);
+      },
+    ),
+  ));
+
+  return completer.future;
+}
+
 void main(List<String> arguments) {
   Logger.root.level = Level.ALL;
   Logger.root.onRecord.listen((record) {
@@ -49,32 +85,41 @@ void main(List<String> arguments) {
       return;
     }
 
-    // Check for updates during normal startup
-    try {
-      final updateInfo = await checkForUpdates('scarryaa/crystal');
-      if (updateInfo.hasUpdate) {
-        log.info('Update available: ${updateInfo.version}');
-        return;
-      }
-    } catch (e) {
-      log.warning('Failed to check for updates: $e');
-    }
+    // Skip update check if in development mode
+    final bool isDevelopment = arguments.contains('--dev') ||
+        const bool.fromEnvironment('FLUTTER_DEV');
 
-    // Normal app startup
+    // Initialize window first for update prompt
+    await windowManager.ensureInitialized();
     if (Platform.isWindows) {
-      await windowManager.ensureInitialized();
       await windowManager.waitUntilReadyToShow();
       await windowManager.setSize(const Size(1280, 720));
       await windowManager.center();
       await windowManager.show();
-    } else {
-      await windowManager.ensureInitialized();
-      if (!isWindowInitialized) {
-        await setupWindow();
-        isWindowInitialized = true;
+    } else if (!isWindowInitialized) {
+      await setupWindow();
+      isWindowInitialized = true;
+    }
+
+    // Check for updates during normal startup
+    if (!isDevelopment) {
+      try {
+        final updateInfo = await checkForUpdates('scarryaa/crystal');
+        if (updateInfo.hasUpdate) {
+          log.info('Update available: ${updateInfo.version}');
+
+          final shouldUpdate = await showUpdateDialog(updateInfo.version!);
+          if (shouldUpdate == true) {
+            await launchUpdater();
+            return;
+          }
+        }
+      } catch (e) {
+        log.warning('Failed to check for updates: $e');
       }
     }
 
+    // Normal app startup
     final editorConfigService = await EditorConfigService.create();
     final fileService = FileService();
     runApp(App(
