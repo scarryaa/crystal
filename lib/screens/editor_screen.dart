@@ -321,9 +321,20 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   void _scrollToCursor(int row, int col) {
+    // Validate indices before proceeding
+    if (row >= _editorTabManager.horizontalSplits.length ||
+        col >= _editorTabManager.horizontalSplits[row].length) {
+      return;
+    }
+
     final scrollManager = _getScrollManager(row, col);
+    final activeEditor =
+        _editorTabManager.horizontalSplits[row][col].activeEditor;
+
+    if (activeEditor == null) return;
+
     scrollManager.scrollToCursor(
-      activeEditor: _editorTabManager.horizontalSplits[row][col].activeEditor,
+      activeEditor: activeEditor,
       layoutService: EditorLayoutService.instance,
     );
   }

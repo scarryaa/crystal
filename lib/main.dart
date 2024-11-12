@@ -41,7 +41,7 @@ void main() {
       fileService: fileService,
     ));
   }, (error, stack) {
-    log.severe('Uncaught error', error, stack);
+    log.severe('Uncaught error: $error\n$stack');
   });
 }
 
