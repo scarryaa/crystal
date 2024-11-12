@@ -23,7 +23,6 @@ class UpdateInfo {
 Future<void> performUpdate() async {
   try {
     log.info('Starting update process...');
-
     final installDir = await _getInstallDirectory();
     final updateInfo = await checkForUpdates('scarryaa/crystal');
 
@@ -39,6 +38,7 @@ Future<void> performUpdate() async {
     await backupCurrentInstallation(installDir);
 
     try {
+      // Perform the update based on platform
       if (Platform.isLinux) {
         await _updateAppImage(downloadedFile, installDir);
       } else {
@@ -48,14 +48,21 @@ Future<void> performUpdate() async {
       // Clean up backup after successful update
       await _cleanupBackup(installDir);
 
-      // Launch updated main app
+      // Launch updated app without exiting immediately
       if (Platform.isMacOS) {
-        await Process.run('open', ['-a', '$installDir/crystal.app']);
+        await Process.start('open', ['-a', '$installDir/crystal.app'],
+            mode: ProcessStartMode.detached);
       } else if (Platform.isWindows) {
-        await Process.run('$installDir/crystal.exe', [], runInShell: true);
+        await Process.start('$installDir/crystal.exe', [],
+            mode: ProcessStartMode.detached);
       } else {
-        await Process.run('$installDir/crystal.AppImage', []);
+        await Process.start('$installDir/crystal.AppImage', [],
+            mode: ProcessStartMode.detached);
       }
+
+      // Give the new process time to start before exiting
+      await Future.delayed(const Duration(seconds: 2));
+      exit(0);
     } catch (e) {
       log.severe('Update failed: $e');
       await _restoreBackup(installDir);
@@ -63,30 +70,6 @@ Future<void> performUpdate() async {
     }
   } catch (e) {
     log.severe('Update process failed: $e');
-    exit(1);
-  }
-}
-
-Future<void> launchUpdater() async {
-  final String executablePath = Platform.resolvedExecutable;
-  try {
-    if (Platform.isLinux || Platform.isMacOS) {
-      await Process.run('chmod', ['+x', executablePath]);
-    }
-
-    if (Platform.isMacOS) {
-      final appPath = Directory(executablePath).parent.parent.parent.path;
-      await Process.start('open', [appPath, '--args', '--update'],
-          mode: ProcessStartMode.detached);
-    } else {
-      final result = await Process.run(executablePath, ['--update']);
-      if (result.exitCode != 0) {
-        throw Exception('Failed to start updater: ${result.stderr}');
-      }
-    }
-    exit(0);
-  } catch (e) {
-    log.severe('Failed to launch updater: $e');
     exit(1);
   }
 }
@@ -175,6 +158,30 @@ Future<File> _downloadFile(String url) async {
   }
 }
 
+Future<void> launchUpdater() async {
+  final String executablePath = Platform.resolvedExecutable;
+  try {
+    if (Platform.isLinux || Platform.isMacOS) {
+      await Process.run('chmod', ['+x', executablePath]);
+    }
+
+    if (Platform.isMacOS) {
+      final appPath = Directory(executablePath).parent.parent.parent.path;
+      await Process.start('open', [appPath, '--args', '--update'],
+          mode: ProcessStartMode.detached);
+    } else {
+      final result = await Process.run(executablePath, ['--update']);
+      if (result.exitCode != 0) {
+        throw Exception('Failed to start updater: ${result.stderr}');
+      }
+    }
+    exit(0);
+  } catch (e) {
+    log.severe('Failed to launch updater: $e');
+    exit(1);
+  }
+}
+
 Future<void> updateFromZip(File zipFile, String installDir) async {
   try {
     log.info('Starting zip extraction to: $installDir');
@@ -189,6 +196,11 @@ Future<void> updateFromZip(File zipFile, String installDir) async {
         final filePath = path.join(installDir, filename);
         await Directory(path.dirname(filePath)).create(recursive: true);
         await File(filePath).writeAsBytes(data);
+
+        // Ensure version.txt is extracted
+        if (filename.endsWith('version.txt')) {
+          log.info('Updated version file');
+        }
       }
     }
     log.info('Zip extraction completed');
