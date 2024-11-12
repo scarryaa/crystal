@@ -270,29 +270,23 @@ String _cleanVersionString(String version) {
 }
 
 int _compareVersions(String v1, String v2) {
-  final List<int> v1Parts = v1
-      .split('.')
-      .map((e) => int.tryParse(e.replaceAll(RegExp(r'[^\d]'), '')) ?? 0)
-      .toList();
-  final List<int> v2Parts = v2
-      .split('.')
-      .map((e) => int.tryParse(e.replaceAll(RegExp(r'[^\d]'), '')) ?? 0)
-      .toList();
+  final regex = RegExp(r'^(\d+)\.(\d+)\.(\d+)(?:-beta\.(\d+))?$');
+  final match1 = regex.firstMatch(v1);
+  final match2 = regex.firstMatch(v2);
 
-  // Pad with zeros if necessary
-  while (v1Parts.length < 3) {
-    v1Parts.add(0);
-  }
-  while (v2Parts.length < 3) {
-    v2Parts.add(0);
+  if (match1 == null || match2 == null) return 0;
+
+  // Compare major.minor.patch
+  for (var i = 1; i <= 3; i++) {
+    final part1 = int.parse(match1.group(i)!);
+    final part2 = int.parse(match2.group(i)!);
+    if (part1 != part2) return part1.compareTo(part2);
   }
 
-  // Compare each part
-  for (int i = 0; i < 3; i++) {
-    if (v1Parts[i] > v2Parts[i]) return 1;
-    if (v1Parts[i] < v2Parts[i]) return -1;
-  }
-  return 0;
+  // Compare beta versions
+  final beta1 = match1.group(4) != null ? int.parse(match1.group(4)!) : -1;
+  final beta2 = match2.group(4) != null ? int.parse(match2.group(4)!) : -1;
+  return beta1.compareTo(beta2);
 }
 
 String _getAssetExtension() {
