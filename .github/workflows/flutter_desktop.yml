@@ -42,7 +42,7 @@ jobs:
 
       - name: Create Windows Release Package
         run: |
-          $VERSION = "${{ github.ref_type == 'tag' && github.ref_name || format('v{0}.0.0', github.run_number) }}"
+          $VERSION = "${{ github.ref_type == 'tag' && github.ref_name || env.APP_VERSION }}"
           $PACKAGE_NAME = "${{ env.APP_NAME }}-windows-$VERSION"
           mkdir windows-package
           xcopy /E /I "build\windows\x64\runner\Release\*" "windows-package"
@@ -79,7 +79,7 @@ jobs:
       
       - name: Create macOS Archive
         run: |
-          VERSION="${{ github.ref_type == 'tag' && github.ref_name || format('v{0}.0.0', github.run_number) }}"
+          VERSION="${{ github.ref_type == 'tag' && github.ref_name || env.APP_VERSION }}"
           PACKAGE_NAME="${{ env.APP_NAME }}-macos-$VERSION"
           
           # Create version.txt inside the app bundle
@@ -129,7 +129,7 @@ jobs:
       
       - name: Setup AppDir
         run: |
-          VERSION="${{ github.ref_type == 'tag' && github.ref_name || format('v{0}.0.0', github.run_number) }}"
+          VERSION="${{ github.ref_type == 'tag' && github.ref_name || env.APP_VERSION }}"
           mkdir -p AppDir/usr/bin
           mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
           
@@ -227,7 +227,7 @@ jobs:
       - name: Create version.json
         run: |
           mkdir -p release
-          VERSION="${{ github.ref_type == 'tag' && github.ref_name || format('v{0}.0.0', github.run_number) }}"
+          VERSION="${{ github.ref_type == 'tag' && github.ref_name || env.APP_VERSION }}"
           echo "{
             \"version\": \"$VERSION\",
             \"assets\": {
@@ -243,12 +243,13 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}.0.0', github.run_number) }}
-          name: Release ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}.0.0', github.run_number) }}
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || env.APP_VERSION }}
+          name: Release ${{ github.ref_type == 'tag' && github.ref_name || env.APP_VERSION }}
           draft: false
           prerelease: false
           files: |
             release/*
+            downloaded-artifacts/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
