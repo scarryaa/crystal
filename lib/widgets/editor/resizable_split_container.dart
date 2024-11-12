@@ -95,8 +95,8 @@ class _ResizableSplitContainerState extends State<ResizableSplitContainer> {
         onVerticalDragEnd:
             widget.direction == Axis.vertical ? _handleDragEnd : null,
         child: Container(
-          width: widget.direction == Axis.horizontal ? 1.5 : double.infinity,
-          height: widget.direction == Axis.vertical ? 1.5 : double.infinity,
+          width: widget.direction == Axis.horizontal ? 2 : double.infinity,
+          height: widget.direction == Axis.vertical ? 2 : double.infinity,
           color: widget.editorConfigService.themeService.currentTheme?.border ??
               Colors.grey,
         ),
