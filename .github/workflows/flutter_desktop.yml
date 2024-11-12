@@ -236,27 +236,20 @@ jobs:
               \"linux\": \"${{ env.APP_NAME }}-linux-$VERSION.AppImage\"
             }
           }" > release/version.json
-        shell: bash
-
-      - name: Create Release
-        run: |
-          # Delete existing version.json if it exists
-          gh release view $VERSION --json assets -q '.assets[] | select(.name=="version.json").id' | xargs -I {} gh api -X DELETE /repos/${{ github.repository }}/releases/assets/{}
-          
-          # Create or update release
-          mkdir -p release
-          VERSION="${{ github.ref_type == 'tag' && github.ref_name || format('v{0}.0.0', github.run_number) }}"
-          echo "{
-            \"version\": \"$VERSION\",
-            \"assets\": {
-              \"windows\": \"${{ env.APP_NAME }}-windows-$VERSION.zip\",
-              \"macos\": \"${{ env.APP_NAME }}-macos-$VERSION.zip\",
-              \"linux\": \"${{ env.APP_NAME }}-linux-$VERSION.AppImage\"
-            }
-          }" > release/version.json
-          
-          # Upload the new version.json
-          gh release upload $VERSION release/version.json --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
+ 
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}.0.0', github.run_number) }}
+          name: Release ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}.0.0', github.run_number) }}
+          draft: false
+          prerelease: false
+          files: |
+            release/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
