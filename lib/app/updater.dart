@@ -71,25 +71,19 @@ Future<void> launchUpdater() async {
   final String executablePath = Platform.resolvedExecutable;
   try {
     if (Platform.isMacOS) {
-      await Process.run('open', ['-a', executablePath, '--update']);
-      exit(0); // Exit current process after launching updater
-    } else if (Platform.isWindows) {
-      // Launch updater detached from current process
-      await Process.start(
+      final process =
+          await Process.start('open', ['-a', executablePath, '--update']);
+      await process.exitCode; // Wait for completion
+    } else if (Platform.isWindows || Platform.isLinux) {
+      final process = await Process.start(
         executablePath,
         ['--update'],
         mode: ProcessStartMode.detached,
       );
-      exit(0);
-    } else {
-      // Linux
-      await Process.start(
-        executablePath,
-        ['--update'],
-        mode: ProcessStartMode.detached,
-      );
-      exit(0);
+      await process.exitCode; // Wait for completion
     }
+    // Only exit after update is complete
+    exit(0);
   } catch (e) {
     log.severe('Failed to launch updater: $e');
     exit(1);
@@ -206,7 +200,7 @@ Future<void> _updateFromZip(File zipFile, String installDir) async {
 Future<String> _getCurrentVersion() async {
   try {
     // Check if in development mode
-    final bool isDevelopment = const bool.fromEnvironment('FLUTTER_DEV');
+    const bool isDevelopment = bool.fromEnvironment('FLUTTER_DEV');
     if (isDevelopment) {
       return 'v0.0.0-dev'; // Always return a lower version in dev mode
     }
@@ -239,26 +233,23 @@ Future<UpdateInfo> checkForUpdates(String repo) async {
   try {
     final versionResponse = await http.get(
         Uri.parse('https://raw.githubusercontent.com/$repo/main/version.txt'));
-
     if (versionResponse.statusCode != 200) {
       throw Exception('Failed to fetch version info');
     }
 
-    final latestVersion = versionResponse.body.trim();
-    final currentVersion = await _getCurrentVersion();
+    final latestVersion = _cleanVersionString(versionResponse.body.trim());
+    final currentVersion = _cleanVersionString(await _getCurrentVersion());
 
-    if (latestVersion != currentVersion) {
-      // Construct asset name based on platform
+    if (_compareVersions(latestVersion, currentVersion) > 0) {
       final platform = Platform.isWindows
           ? 'windows'
           : Platform.isMacOS
               ? 'macos'
               : 'linux';
-
       final assetName =
-          'crystal-$platform-$latestVersion${_getAssetExtension()}';
+          'crystal-$platform-v$latestVersion${_getAssetExtension()}';
       final downloadUrl =
-          'https://github.com/$repo/releases/download/$latestVersion/$assetName';
+          'https://github.com/$repo/releases/download/v$latestVersion/$assetName';
 
       return UpdateInfo(
         hasUpdate: true,
@@ -266,12 +257,42 @@ Future<UpdateInfo> checkForUpdates(String repo) async {
         downloadUrl: downloadUrl,
       );
     }
-
     return UpdateInfo(hasUpdate: false);
   } catch (e) {
     log.severe('Failed to check for updates: $e');
     return UpdateInfo(hasUpdate: false);
   }
+}
+
+String _cleanVersionString(String version) {
+  // Remove 'v' prefix and any whitespace
+  return version.trim().replaceAll(RegExp(r'^v'), '');
+}
+
+int _compareVersions(String v1, String v2) {
+  final List<int> v1Parts = v1
+      .split('.')
+      .map((e) => int.tryParse(e.replaceAll(RegExp(r'[^\d]'), '')) ?? 0)
+      .toList();
+  final List<int> v2Parts = v2
+      .split('.')
+      .map((e) => int.tryParse(e.replaceAll(RegExp(r'[^\d]'), '')) ?? 0)
+      .toList();
+
+  // Pad with zeros if necessary
+  while (v1Parts.length < 3) {
+    v1Parts.add(0);
+  }
+  while (v2Parts.length < 3) {
+    v2Parts.add(0);
+  }
+
+  // Compare each part
+  for (int i = 0; i < 3; i++) {
+    if (v1Parts[i] > v2Parts[i]) return 1;
+    if (v1Parts[i] < v2Parts[i]) return -1;
+  }
+  return 0;
 }
 
 String _getAssetExtension() {
