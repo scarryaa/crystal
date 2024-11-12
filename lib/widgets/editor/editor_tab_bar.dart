@@ -20,6 +20,7 @@ class EditorTabBar extends StatefulWidget {
   final EditorTabManager editorTabManager;
   final int row;
   final int col;
+  final ScrollController tabBarScrollController;
 
   const EditorTabBar({
     super.key,
@@ -37,6 +38,7 @@ class EditorTabBar extends StatefulWidget {
     required this.editorTabManager,
     required this.row,
     required this.col,
+    required this.tabBarScrollController,
   });
 
   @override
@@ -146,6 +148,7 @@ class _EditorTabBarState extends State<EditorTabBar> {
             children: [
               Expanded(
                 child: ReorderableListView.builder(
+                  scrollController: widget.tabBarScrollController,
                   scrollDirection: Axis.horizontal,
                   buildDefaultDragHandles: false,
                   onReorder: widget.onReorder,
@@ -174,5 +177,11 @@ class _EditorTabBarState extends State<EditorTabBar> {
         );
       },
     );
+  }
+
+  @override
+  void dispose() {
+    widget.tabBarScrollController.dispose();
+    super.dispose();
   }
 }

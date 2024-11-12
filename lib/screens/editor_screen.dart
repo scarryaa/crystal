@@ -44,6 +44,7 @@ class EditorScreen extends StatefulWidget {
 }
 
 class _EditorScreenState extends State<EditorScreen> {
+  final GlobalKey _tabBarKey = GlobalKey();
   bool _isFileExplorerVisible = true;
   final Map<int, GlobalKey<EditorViewState>> _editorViewKeys = {};
   late final EditorConfigService _editorConfigService;
@@ -52,6 +53,51 @@ class _EditorScreenState extends State<EditorScreen> {
   late final Future<void> _initializationFuture;
   late SearchService searchService;
   final Map<int, EditorScrollManager> _scrollManagers = {};
+  final ScrollController _tabBarScrollController = ScrollController();
+
+  void scrollToTab(int index) {
+    if (!mounted) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final splitView =
+          _editorTabManager.horizontalSplits[_editorTabManager.activeRow]
+              [_editorTabManager.activeCol];
+
+      if (index < 0 || index >= splitView.editors.length) return;
+
+      final tabBarContext = _tabBarKey.currentContext;
+      if (tabBarContext == null) return;
+
+      final double maxScroll = _tabBarScrollController.position.maxScrollExtent;
+
+      double totalWidth = 0;
+      for (int i = 0; i < index; i++) {
+        final element = splitView.editors[i];
+        final tabWidth = _calculateTabWidth(element);
+        totalWidth += tabWidth;
+      }
+
+      final double constrainedScroll = totalWidth.clamp(0.0, maxScroll);
+
+      _tabBarScrollController.animateTo(
+        constrainedScroll,
+        duration: const Duration(milliseconds: 1),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
+  double _calculateTabWidth(EditorState editor) {
+    final textSpan = TextSpan(
+        text: editor.relativePath ?? editor.path,
+        style: TextStyle(fontSize: _editorConfigService.config.fontSize));
+    final textPainter = TextPainter(
+      text: textSpan,
+      textDirection: TextDirection.ltr,
+    )..layout();
+
+    return textPainter.width + 60;
+  }
 
   EditorScrollManager _getScrollManager(int row, int col) {
     final splitIndex = getSplitIndex(row, col);
@@ -125,6 +171,7 @@ class _EditorScreenState extends State<EditorScreen> {
       // File is already open in current split, just focus it
       _editorTabManager.focusSplitView(targetRow, targetCol);
       onActiveEditorChanged(editorIndex, row: targetRow, col: targetCol);
+      scrollToTab(editorIndex);
       return;
     }
 
@@ -156,6 +203,12 @@ class _EditorScreenState extends State<EditorScreen> {
       searchService.searchTerm,
       _editorTabManager.activeEditor,
     );
+
+    // Get the new editor's index after adding it
+    final newEditorIndex = _editorTabManager
+            .horizontalSplits[targetRow][targetCol].editors.length -
+        1;
+    scrollToTab(newEditorIndex);
 
     WidgetsBinding.instance.addPostFrameCallback(
         (_) => editorKey.currentState!.updateCachedMaxLineWidth());
@@ -633,6 +686,7 @@ class _EditorScreenState extends State<EditorScreen> {
                         children: [
                           Expanded(
                             child: EditorTabBar(
+                              key: _tabBarKey,
                               onPin: (index) => _editorTabManager.togglePin(
                                 index,
                                 row: row,
@@ -669,6 +723,7 @@ class _EditorScreenState extends State<EditorScreen> {
                               onSplitClose: () =>
                                   _editorTabManager.closeSplitView(row, col),
                               editorTabManager: _editorTabManager,
+                              tabBarScrollController: _tabBarScrollController,
                             ),
                           ),
                         ],
