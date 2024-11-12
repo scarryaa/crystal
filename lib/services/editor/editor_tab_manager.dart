@@ -49,22 +49,23 @@ class EditorTabManager extends ChangeNotifier {
   void addVerticalSplit() {
     if (activeEditor == null) return;
 
+    // First ensure _horizontalSizes has an entry for the active row
+    while (_horizontalSizes.length <= activeRow) {
+      _horizontalSizes.add([1.0]);
+    }
+
     final newSplitView = SplitView();
     final newEditor = _copyEditorState(activeEditor!);
     newSplitView.editors.add(newEditor);
     newSplitView.activeEditorIndex = 0;
-
     _splitViews[activeRow].add(newSplitView);
 
     // Update sizes
     final newSize = 1.0 / _splitViews[activeRow].length;
-    _horizontalSizes[activeRow].clear();
-    for (var i = 0; i < _splitViews[activeRow].length; i++) {
-      _horizontalSizes[activeRow].add(newSize);
-    }
+    _horizontalSizes[activeRow] =
+        List.generate(_splitViews[activeRow].length, (_) => newSize);
 
     activeCol = _splitViews[activeRow].length - 1;
-
     notifyListeners();
   }
 
