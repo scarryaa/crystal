@@ -21,17 +21,14 @@ class SelectionPainter {
   void paint(Canvas canvas, int firstVisibleLine, int lastVisibleLine) {
     if (!editorState.editorSelectionManager.hasSelection()) return;
 
-    // Calculate visual offset for the first visible line
     int visualOffset = 0;
 
     for (var selection in editorState.editorSelectionManager.selections) {
       final (startLine, endLine, startColumn, endColumn) =
           _normalizeSelection(selection);
 
-      // Skip if selection is completely outside visible range
       if (endLine < firstVisibleLine || startLine > lastVisibleLine) continue;
 
-      // Calculate visual line for selection start
       int visualLine = 0;
       for (int i = 0; i < startLine; i++) {
         if (!editorState.foldingState.isLineHidden(i)) {
@@ -44,8 +41,16 @@ class SelectionPainter {
         _paintSingleLineSelection(
             canvas, startLine, startColumn, endColumn, visualLine);
       } else {
-        _paintMultiLineSelection(canvas, startLine, endLine, startColumn,
-            endColumn, firstVisibleLine, lastVisibleLine, visualLine);
+        _paintMultiLineSelection(
+            canvas,
+            startLine,
+            endLine,
+            startColumn,
+            endColumn,
+            firstVisibleLine,
+            lastVisibleLine,
+            visualLine,
+            selection);
       }
     }
   }
@@ -93,6 +98,7 @@ class SelectionPainter {
     int firstVisibleLine,
     int lastVisibleLine,
     int initialVisualLine,
+    var originalSelection, // Add this parameter
   ) {
     Paint selectionPaint = Paint()
       ..color = editorConfigService.themeService.currentTheme?.primary
@@ -101,7 +107,6 @@ class SelectionPainter {
 
     int visualLine = initialVisualLine;
 
-    // Check if selection starts in a folded region
     bool startInFold = false;
     int? foldStart;
     int? foldEnd;
@@ -115,31 +120,29 @@ class SelectionPainter {
       }
     }
 
-    // Handle selection starting in folded region
     if (startInFold && foldStart != null) {
-      // Paint only the first line of the fold
+      // Check if the selection encompasses the entire fold
+      bool entireFoldSelected = originalSelection.startLine < foldStart ||
+          (originalSelection.startLine == foldStart &&
+              originalSelection.startColumn == 0);
+
       _paintSelectionLine(
           canvas,
           foldStart,
-          startColumn,
+          entireFoldSelected
+              ? 0
+              : startColumn, // Use 0 if entire fold is selected
           editorState.buffer.getLineLength(foldStart),
           visualLine,
           selectionPaint);
 
-      // Adjust start line to after the fold
       if (foldEnd != null) {
         startLine = foldEnd + 1;
       }
     } else {
-      // Paint start line normally
-      if (!editorState.foldingState.isLineHidden(endLine)) {
+      if (!editorState.foldingState.isLineHidden(startLine)) {
         _paintSelectionLine(
-            canvas,
-            endLine,
-            0,
-            endColumn,
-            visualLine, // Add offset here instead
-            selectionPaint);
+            canvas, startLine, startColumn, null, visualLine, selectionPaint);
       }
     }
 

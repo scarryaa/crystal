@@ -616,9 +616,9 @@ class EditorState extends ChangeNotifier {
                 targetColumn < currentSelection.anchorColumn);
 
         if (bufferLine <= foldStart && isSelectingBackwards) {
-          // When selecting backwards and reaching or passing the fold start
+          // When selecting backwards, maintain the target column
           editorSelectionManager.updateSelectionToLine(
-              buffer, foldStart, buffer.getLineLength(foldEnd));
+              buffer, foldStart, targetColumn);
         } else if (bufferLine >= foldStart && bufferLine <= foldEnd) {
           // When selecting within the fold
           editorSelectionManager.updateSelectionToLine(
