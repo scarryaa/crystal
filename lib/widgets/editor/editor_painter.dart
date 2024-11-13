@@ -143,10 +143,13 @@ class EditorPainter extends CustomPainter {
     // Clear previous highlighted lines
     _currentHighlightedLines.clear();
 
-    // Highlight current line (if no selection)
+// Draw highlights
     if (!editorState.editorSelectionManager.hasSelection()) {
+      _currentHighlightedLines.clear();
       for (var cursor in editorState.editorCursorManager.cursors) {
-        if (!_currentHighlightedLines.contains(cursor.line)) {
+        // Only highlight if line is not hidden and not already highlighted
+        if (!_currentHighlightedLines.contains(cursor.line) &&
+            !editorState.foldingState.isLineHidden(cursor.line)) {
           _highlightCurrentLine(canvas, size, cursor.line);
           _currentHighlightedLines.add(cursor.line);
         }
@@ -170,18 +173,28 @@ class EditorPainter extends CustomPainter {
   }
 
   void _highlightCurrentLine(Canvas canvas, Size size, int lineNumber) {
+    // Skip if line is hidden
+    if (editorState.foldingState.isLineHidden(lineNumber)) return;
+
+    // Calculate visual position
+    int visualLine = 0;
+    for (int i = 0; i < lineNumber; i++) {
+      if (!editorState.foldingState.isLineHidden(i)) {
+        visualLine++;
+      }
+    }
+
     canvas.drawRect(
         Rect.fromLTWH(
           0,
-          lineNumber * editorLayoutService.config.lineHeight,
+          visualLine * editorLayoutService.config.lineHeight,
           size.width,
           editorLayoutService.config.lineHeight,
         ),
         Paint()
-          ..color = editorConfigService.themeService.currentTheme != null
-              ? editorConfigService
-                  .themeService.currentTheme!.currentLineHighlight
-              : Colors.blue.withOpacity(0.2));
+          ..color = editorConfigService
+                  .themeService.currentTheme?.currentLineHighlight ??
+              Colors.blue.withOpacity(0.2));
   }
 
   double measureLineWidth(String line) {

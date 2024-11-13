@@ -11,6 +11,7 @@ import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_cursor_manager.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/services/editor/editor_selection_manager.dart';
+import 'package:crystal/services/editor/folding_manager.dart';
 import 'package:crystal/services/file_service.dart';
 import 'package:crystal/state/editor/editor_scroll_state.dart';
 import 'package:crystal/utils/utils.dart';
@@ -21,6 +22,7 @@ import 'package:path/path.dart' as p;
 import 'package:window_manager/window_manager.dart';
 
 class EditorState extends ChangeNotifier {
+  late final FoldingManager foldingManager;
   final FoldingState foldingState = FoldingState();
   final String id = UniqueKey().toString();
   EditorScrollState scrollState = EditorScrollState();
@@ -53,7 +55,41 @@ class EditorState extends ChangeNotifier {
     required this.fileService,
     String? path,
     this.relativePath,
-  }) : path = path ?? generateUniqueTempPath();
+  }) : path = path ?? generateUniqueTempPath() {
+    foldingManager = FoldingManager(_buffer);
+  }
+
+  void toggleFold(int startLine, int endLine) {
+    if (foldingState.isLineFolded(startLine)) {
+      // Unfold: Restore lines from buffer's folded content
+      buffer.unfoldLines(startLine);
+      foldingState.toggleFold(startLine, endLine);
+    } else {
+      // Fold: Store lines in buffer's folded content
+      buffer.foldLines(startLine, endLine);
+      foldingState.toggleFold(startLine, endLine);
+    }
+    notifyListeners();
+  }
+
+  bool isFoldable(int line) {
+    return foldingManager.getFoldableRegionEnd(line, _buffer.lines) != null;
+  }
+
+  (int, int) getBufferPosition(int visualLine) {
+    int currentVisualLine = 0;
+    int currentBufferLine = 0;
+
+    while (currentVisualLine < visualLine &&
+        currentBufferLine < _buffer.lineCount) {
+      if (!foldingState.isLineHidden(currentBufferLine)) {
+        currentVisualLine++;
+      }
+      currentBufferLine++;
+    }
+
+    return (currentBufferLine, 0);
+  }
 
   int getCursorLine() {
     // Return the line number of the first cursor
@@ -178,20 +214,69 @@ class EditorState extends ChangeNotifier {
   void deleteSelection() {
     if (!editorSelectionManager.hasSelection()) return;
 
-    var newStartLinesColumns = editorSelectionManager.deleteSelection(_buffer);
+    final foldedRegionsToExpand = <int, int>{};
 
-    // Update cursor positions
-    editorCursorManager.setAllCursors(newStartLinesColumns);
-    _buffer.incrementVersion();
+    // Check all folded regions that intersect with or are contained within selections
+    for (var selection in editorSelectionManager.selections) {
+      final startLine = min(selection.startLine, selection.endLine);
+      final endLine = max(selection.startLine, selection.endLine);
 
-    if (_buffer.isEmpty ||
-        (_buffer.lineCount == 1 && _buffer.getLine(0).isEmpty)) {
-      scrollState.updateVerticalScrollOffset(0);
-      scrollState.updateHorizontalScrollOffset(0);
-      resetGutterScroll();
+      for (final entry in foldingState.foldingRanges.entries) {
+        // Check if folded region intersects with or is contained within selection
+        if ((entry.key >= startLine && entry.key <= endLine) ||
+            (entry.value >= startLine && entry.value <= endLine) ||
+            (startLine >= entry.key && endLine <= entry.value)) {
+          foldedRegionsToExpand[entry.key] = entry.value;
+        }
+      }
     }
 
+    // Unfold all affected regions
+    for (final entry in foldedRegionsToExpand.entries) {
+      buffer.unfoldLines(entry.key);
+      foldingState.toggleFold(entry.key, entry.value);
+    }
+
+    // Perform deletion
+    var newStartLinesColumns = editorSelectionManager.deleteSelection(buffer);
+    editorCursorManager.setAllCursors(newStartLinesColumns);
+    buffer.incrementVersion();
+
     notifyListeners();
+  }
+
+  void _updateFoldedRegionsAfterEdit(Set<int> affectedLines) {
+    // Get all folded regions that contain affected lines
+    final regionsToCheck = <int, int>{};
+
+    for (final entry in foldingState.foldingRanges.entries) {
+      final startLine = entry.key;
+      final endLine = entry.value;
+
+      // Check if any affected line is within this folded region
+      for (final line in affectedLines) {
+        if (line >= startLine && line <= endLine) {
+          regionsToCheck[startLine] = endLine;
+          break;
+        }
+      }
+    }
+
+    // Check each affected folded region
+    for (final entry in regionsToCheck.entries) {
+      final startLine = entry.key;
+      final originalEndLine = entry.value;
+
+      // Check if the folded region is still valid
+      final newEndLine =
+          foldingManager.getFoldableRegionEnd(startLine, _buffer.lines);
+
+      if (newEndLine == null || newEndLine != originalEndLine) {
+        // Region is no longer valid, unfold it
+        buffer.unfoldLines(startLine);
+        foldingState.toggleFold(startLine, originalEndLine);
+      }
+    }
   }
 
   void backspace() {
@@ -200,8 +285,13 @@ class EditorState extends ChangeNotifier {
       return;
     }
 
+    final affectedLines =
+        editorCursorManager.cursors.map((cursor) => cursor.line).toSet();
+
     editorCursorManager.backspace(_buffer);
     _buffer.incrementVersion();
+
+    _updateFoldedRegionsAfterEdit(affectedLines);
     notifyListeners();
   }
 
@@ -211,8 +301,13 @@ class EditorState extends ChangeNotifier {
       return;
     }
 
+    final affectedLines =
+        editorCursorManager.cursors.map((cursor) => cursor.line).toSet();
+
     editorCursorManager.delete(buffer);
     _buffer.incrementVersion();
+
+    _updateFoldedRegionsAfterEdit(affectedLines);
     notifyListeners();
   }
 
@@ -273,26 +368,23 @@ class EditorState extends ChangeNotifier {
       deleteSelection();
     }
 
+    final affectedLines = <int>{};
     var sortedCursors = List.from(editorCursorManager.cursors)
       ..sort((a, b) {
-        if (a.line != b.line) {
-          return a.line.compareTo(b.line);
-        }
+        if (a.line != b.line) return a.line.compareTo(b.line);
         return a.column.compareTo(b.column);
       });
 
-    // Keep track of adjustments needed for subsequent cursors
     for (int i = 0; i < sortedCursors.length; i++) {
       var currentCursor = sortedCursors[i];
+      affectedLines.add(currentCursor.line);
 
-      // Apply adjustments to later cursors if they're on the same line
+      // Apply adjustments to later cursors
       if (i < sortedCursors.length - 1) {
         for (int j = i + 1; j < sortedCursors.length; j++) {
           var laterCursor = sortedCursors[j];
-
           if (laterCursor.line == currentCursor.line &&
               laterCursor.column > currentCursor.column) {
-            // Adjust the column position for cursors after the insertion point
             laterCursor.column += c.length;
           }
         }
@@ -301,6 +393,8 @@ class EditorState extends ChangeNotifier {
       executeCommand(TextInsertCommand(
           _buffer, c, currentCursor.line, currentCursor.column, currentCursor));
     }
+
+    _updateFoldedRegionsAfterEdit(affectedLines);
   }
 
   Future<bool> handleSpecialKeys(bool isControlPressed, bool isShiftPressed,
@@ -411,44 +505,28 @@ class EditorState extends ChangeNotifier {
     }
   }
 
-  void handleTap(double dy, double dx, Function(String line) measureLineWidth,
+  void handleTap(double dy, double dx, Function(String) measureLineWidth,
       bool isAltPressed) {
-    int targetLine = dy ~/ editorLayoutService.config.lineHeight;
-    if (targetLine >= _buffer.lineCount) {
-      targetLine = _buffer.lineCount - 1;
-    }
+    int visualLine = dy ~/ editorLayoutService.config.lineHeight;
+    int bufferLine = _getBufferLineFromVisualLine(visualLine);
 
-    double x = dx;
-    String lineText = _buffer.getLine(targetLine);
-    int targetColumn = 0;
-    double currentWidth = 0;
+    String lineText = buffer.getLine(bufferLine);
+    int targetColumn = _getColumnAtX(dx, lineText, measureLineWidth);
 
-    for (int i = 0; i < lineText.length; i++) {
-      double charWidth =
-          editorLayoutService.config.charWidth * lineText[i].length;
-      if (currentWidth + (charWidth / 2) > x) break;
-      currentWidth += charWidth;
-      targetColumn = i + 1;
-    }
-
-    // Single cursor
     if (!isAltPressed) {
       editorCursorManager.clearAll();
-      editorCursorManager.addCursor(Cursor(targetLine, targetColumn));
+      editorCursorManager.addCursor(Cursor(bufferLine, targetColumn));
       clearSelection();
     } else {
-      // Multi cursor
-      // Check if overlapping -- if so, remove cursor
-      // if it is not the last one
+      // Multi-cursor handling
       if (editorCursorManager.cursorExistsAtPosition(
-          targetLine, targetColumn)) {
+          bufferLine, targetColumn)) {
         if (editorCursorManager.cursors.length > 1) {
-          editorCursorManager.removeCursor(Cursor(targetLine, targetColumn));
+          editorCursorManager.removeCursor(Cursor(bufferLine, targetColumn));
         }
       } else {
-        editorCursorManager.addCursor(Cursor(targetLine, targetColumn));
+        editorCursorManager.addCursor(Cursor(bufferLine, targetColumn));
       }
-      // TODO add more refined logic for multi cursor selection -- check if tap is within selection, etc.
       clearSelection();
     }
     notifyListeners();
@@ -478,32 +556,101 @@ class EditorState extends ChangeNotifier {
   }
 
   void handleDragUpdate(
-      double dy, double dx, Function(String line) measureLineWidth) {
-    int targetLine = dy ~/ editorLayoutService.config.lineHeight;
-    if (targetLine >= _buffer.lineCount) {
-      targetLine = _buffer.lineCount - 1;
-    } else if (targetLine < 0) {
-      targetLine = 0;
+      double dy, double dx, Function(String) measureLineWidth) {
+    int visualLine = dy ~/ editorLayoutService.config.lineHeight;
+    int bufferLine = _getBufferLineFromVisualLine(visualLine);
+    bufferLine = bufferLine.clamp(0, buffer.lineCount - 1);
+
+    // Check if we're selecting a folded region
+    bool isFolded = false;
+    int? foldStart;
+    int? foldEnd;
+
+    for (final entry in foldingState.foldingRanges.entries) {
+      if (bufferLine >= entry.key && bufferLine <= entry.value) {
+        isFolded = true;
+        foldStart = entry.key;
+        foldEnd = entry.value;
+        break;
+      }
     }
 
-    double x = dx;
-    String lineText = _buffer.getLine(targetLine);
-    int targetColumn = 0;
+    String lineText = buffer.getLine(bufferLine);
+    int targetColumn = _getColumnAtX(dx, lineText, measureLineWidth);
+
+    editorCursorManager.clearAll();
+    editorCursorManager.addCursor(Cursor(bufferLine, targetColumn));
+
+// If selecting a folded region
+    if (isFolded && foldStart != null && foldEnd != null) {
+      Selection? currentSelection = editorSelectionManager.selections.isNotEmpty
+          ? editorSelectionManager.selections.first
+          : null;
+
+      // If selecting within the folded region
+      if (currentSelection != null &&
+          currentSelection.anchorLine >= foldStart &&
+          currentSelection.anchorLine <= foldEnd &&
+          bufferLine >= foldStart &&
+          bufferLine <= foldEnd) {
+        // Determine the selection direction
+        bool isSelectingBackwards = currentSelection.anchorLine > bufferLine ||
+            (currentSelection.anchorLine == bufferLine &&
+                targetColumn < currentSelection.anchorColumn);
+
+        if (isSelectingBackwards) {
+          // Select the entire folded region
+          editorSelectionManager.updateSelectionToLine(
+              buffer, foldStart, buffer.getLineLength(foldEnd));
+        } else {
+          // Select normally within the folded region
+          editorSelectionManager.updateSelectionToLine(
+              buffer, bufferLine, targetColumn);
+        }
+      } else {
+        // Select the entire folded region
+        editorSelectionManager.updateSelectionToLine(
+            buffer, foldEnd, buffer.getLineLength(foldEnd));
+      }
+    } else {
+      updateSelection();
+    }
+
+    notifyListeners();
+  }
+
+  int _getBufferLineFromVisualLine(int visualLine) {
+    int currentVisualLine = 0;
+    int bufferLine = 0;
+
+    while (currentVisualLine < visualLine && bufferLine < buffer.lineCount) {
+      if (!foldingState.isLineHidden(bufferLine)) {
+        currentVisualLine++;
+      }
+      bufferLine++;
+    }
+
+    while (bufferLine < buffer.lineCount &&
+        foldingState.isLineHidden(bufferLine)) {
+      bufferLine++;
+    }
+
+    return bufferLine;
+  }
+
+  int _getColumnAtX(
+      double x, String lineText, Function(String line) measureLineWidth) {
     double currentWidth = 0;
+    int targetColumn = 0;
 
     for (int i = 0; i < lineText.length; i++) {
-      double charWidth =
-          editorLayoutService.config.charWidth * lineText[i].length;
+      double charWidth = editorLayoutService.config.charWidth;
       if (currentWidth + (charWidth / 2) > x) break;
       currentWidth += charWidth;
       targetColumn = i + 1;
     }
 
-    // Clear and set single cursor
-    editorCursorManager.clearAll();
-    editorCursorManager.addCursor(Cursor(targetLine, targetColumn));
-    updateSelection();
-    notifyListeners();
+    return targetColumn;
   }
 
   void insertNewLine() {
@@ -518,11 +665,25 @@ class EditorState extends ChangeNotifier {
   void selectLine(bool extend, int lineNumber) {
     if (lineNumber < 0 || lineNumber >= _buffer.lineCount) return;
 
+    // Check if line is in a folded region
+    for (final entry in foldingState.foldingRanges.entries) {
+      if (lineNumber >= entry.key && lineNumber <= entry.value) {
+        // Select entire folded region
+        editorSelectionManager.selectLineRange(
+            buffer, extend, entry.key, entry.value);
+        editorCursorManager.clearAll();
+        editorCursorManager
+            .addCursor(Cursor(entry.value, _buffer.getLineLength(entry.value)));
+        notifyListeners();
+        return;
+      }
+    }
+
+    // Normal line selection if not in folded region
     editorSelectionManager.selectLine(buffer, extend, lineNumber);
     editorCursorManager.clearAll();
     editorCursorManager
         .addCursor(Cursor(lineNumber, _buffer.getLineLength(lineNumber)));
-
     notifyListeners();
   }
 

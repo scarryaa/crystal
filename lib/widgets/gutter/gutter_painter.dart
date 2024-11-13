@@ -93,12 +93,10 @@ class GutterPainter extends CustomPainter {
       }
     }
 
-    // Draw highlights
+    // Highlight current line (if no selection)
     if (!editorState.editorSelectionManager.hasSelection()) {
-      _currentHighlightedLines.clear();
       for (var cursor in editorState.editorCursorManager.cursors) {
-        if (!_currentHighlightedLines.contains(cursor.line) &&
-            !editorState.foldingState.isLineHidden(cursor.line)) {
+        if (!_currentHighlightedLines.contains(cursor.line)) {
           _highlightCurrentLine(canvas, size, cursor.line);
           _currentHighlightedLines.add(cursor.line);
         }
@@ -107,100 +105,95 @@ class GutterPainter extends CustomPainter {
   }
 
   void _drawFoldingIndicators(Canvas canvas, Size size, int line) {
-    if (_isFoldable(line)) {
-      final isFolded = editorState.foldingState.isLineFolded(line);
-      final paint = Paint()
-        ..color = _defaultStyle.color!
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.0;
+    // Skip if line is out of bounds
+    if (line >= editorState.buffer.lines.length) return;
 
-      // Calculate visual position for the indicator
-      int visualLine = 0;
-      for (int i = 0; i < line; i++) {
-        if (!editorState.foldingState.isLineHidden(i)) {
-          visualLine++;
-        }
+    final isFoldable = editorState.isFoldable(line);
+    final isFolded = editorState.foldingState.isLineFolded(line);
+
+    // Only draw if line is foldable or currently folded
+    if (!isFoldable && !isFolded) return;
+
+    final paint = Paint()
+      ..color = _defaultStyle.color!
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+
+    // Calculate visual position for the indicator
+    int visualLine = 0;
+    for (int i = 0; i < line; i++) {
+      if (!editorState.foldingState.isLineHidden(i)) {
+        visualLine++;
       }
+    }
 
-      final y = visualLine * editorLayoutService.config.lineHeight;
-      final iconSize = editorConfigService.config.fontSize * 0.8;
-      final rect = Rect.fromLTWH(
-          4.0,
-          y + (editorLayoutService.config.lineHeight - iconSize) / 2,
-          iconSize,
-          iconSize);
+    final y = visualLine * editorLayoutService.config.lineHeight;
+    final iconSize = editorConfigService.config.fontSize * 0.8;
 
-      // Draw box
-      canvas.drawRect(rect, paint);
+    _drawFoldingIcon(canvas, paint, y, iconSize, isFolded);
 
-      // Draw plus/minus
-      final centerX = rect.left + rect.width / 2;
-      final centerY = rect.top + rect.height / 2;
-      canvas.drawLine(Offset(rect.left + 2, centerY),
-          Offset(rect.right - 2, centerY), paint);
-
-      if (isFolded) {
-        canvas.drawLine(Offset(centerX, rect.top + 2),
-            Offset(centerX, rect.bottom - 2), paint);
-      }
+    if (isFolded) {
+      _drawFoldPreview(canvas, line, y, iconSize);
     }
   }
 
-  bool _isFoldable(int line) {
-    if (line >= editorState.buffer.lines.length) return false;
+  void _drawFoldPreview(Canvas canvas, int line, double y, double iconSize) {
+    final foldEnd = editorState.foldingState.foldingRanges[line];
+    if (foldEnd == null) return;
 
-    final currentLine = editorState.buffer.lines[line].trim();
-
-    // Skip empty lines
-    if (currentLine.isEmpty) return false;
-
-    // Check if the current line ends with a block starter
-    if (!currentLine.endsWith('{') &&
-        !currentLine.endsWith('(') &&
-        !currentLine.endsWith('[')) {
-      return false;
+    // Count visible lines in fold
+    int foldedLines = 0;
+    for (int i = line + 1; i <= foldEnd; i++) {
+      if (!editorState.foldingState.isLineHidden(i)) {
+        foldedLines++;
+      }
     }
 
-    final currentIndent = _getIndentation(editorState.buffer.lines[line]);
+    if (foldedLines == 0) return;
 
-    // Look ahead to find a valid folding range
-    int nextLine = line + 1;
-    bool hasContent = false;
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: '⋯ $foldedLines lines',
+        style: TextStyle(
+          color: _defaultStyle.color!.withOpacity(0.7),
+          fontSize: editorConfigService.config.fontSize * 0.9,
+          fontStyle: FontStyle.italic,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
 
-    while (nextLine < editorState.buffer.lines.length) {
-      final nextLineText = editorState.buffer.lines[nextLine];
-      if (nextLineText.trim().isEmpty) {
-        nextLine++;
-        continue;
-      }
+    textPainter.layout();
 
-      final nextIndent = _getIndentation(nextLineText);
-
-      // If we find a line with less indentation, this is not foldable
-      if (nextIndent <= currentIndent) {
-        return hasContent;
-      }
-
-      hasContent = true;
-      nextLine++;
-    }
-
-    return false;
+    textPainter.paint(
+        canvas,
+        Offset(
+            iconSize + 12,
+            y +
+                (editorLayoutService.config.lineHeight - textPainter.height) /
+                    2));
   }
 
-  int _getIndentation(String line) {
-    // Count leading spaces and tabs
-    int indent = 0;
-    for (int i = 0; i < line.length; i++) {
-      if (line[i] == ' ') {
-        indent++;
-      } else if (line[i] == '\t') {
-        indent += 4;
-      } else {
-        break;
-      }
+  void _drawFoldingIcon(
+      Canvas canvas, Paint paint, double y, double iconSize, bool isFolded) {
+    final rect = Rect.fromLTWH(
+        4.0,
+        y + (editorLayoutService.config.lineHeight - iconSize) / 2,
+        iconSize,
+        iconSize);
+
+    // Draw box
+    canvas.drawRect(rect, paint);
+
+    // Draw horizontal line
+    canvas.drawLine(Offset(rect.left + 2, rect.top + rect.height / 2),
+        Offset(rect.right - 2, rect.top + rect.height / 2), paint);
+
+    // Draw vertical line if folded
+    if (isFolded) {
+      canvas.drawLine(Offset(rect.left + rect.width / 2, rect.top + 2),
+          Offset(rect.left + rect.width / 2, rect.bottom - 2), paint);
     }
-    return indent;
   }
 
   void _drawBackground(Canvas canvas, Size size) {
@@ -280,17 +273,20 @@ class GutterPainter extends CustomPainter {
       }
     }
 
-    canvas.drawRect(
-        Rect.fromLTWH(
-          0,
-          visualLine * editorLayoutService.config.lineHeight,
-          size.width,
-          editorLayoutService.config.lineHeight,
-        ),
-        Paint()
-          ..color = editorConfigService
-                  .themeService.currentTheme?.currentLineHighlight ??
-              Colors.blue.withOpacity(0.2));
+    // Only draw if line is not hidden
+    if (!editorState.foldingState.isLineHidden(lineNumber)) {
+      canvas.drawRect(
+          Rect.fromLTWH(
+            0,
+            visualLine * editorLayoutService.config.lineHeight,
+            size.width,
+            editorLayoutService.config.lineHeight,
+          ),
+          Paint()
+            ..color = editorConfigService
+                    .themeService.currentTheme?.currentLineHighlight ??
+                Colors.blue.withOpacity(0.2));
+    }
   }
 
   @override

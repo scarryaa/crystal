@@ -28,15 +28,82 @@ class EditorSelectionManager {
   }
 
   void startSelection(List<Cursor> cursors) {
-    for (int i = 0; i < cursors.length; i++) {
+    _selections.clear();
+    for (var cursor in cursors) {
       _selections.add(Selection(
-          startLine: cursors[i].line,
-          endLine: cursors[i].line,
-          startColumn: cursors[i].column,
-          endColumn: cursors[i].column,
-          anchorLine: cursors[i].line,
-          anchorColumn: cursors[i].column));
-      debugPrint('added selection ${_selections[i]}');
+        startLine: cursor.line,
+        endLine: cursor.line,
+        startColumn: cursor.column,
+        endColumn: cursor.column,
+        anchorLine: cursor.line,
+        anchorColumn: cursor.column,
+      ));
+    }
+  }
+
+  void updateSelectionToLine(Buffer buffer, int line, int column) {
+    if (_selections.isEmpty) return;
+
+    var currentSelection = _selections[0];
+    if (line < currentSelection.anchorLine ||
+        (line == currentSelection.anchorLine &&
+            column < currentSelection.anchorColumn)) {
+      // Selecting backwards
+      _selections[0] = Selection(
+        startLine: line,
+        endLine: currentSelection.anchorLine,
+        startColumn: column,
+        endColumn: currentSelection.anchorColumn,
+        anchorLine: currentSelection.anchorLine,
+        anchorColumn: currentSelection.anchorColumn,
+      );
+    } else {
+      // Selecting forwards
+      _selections[0] = Selection(
+        startLine: currentSelection.anchorLine,
+        endLine: line,
+        startColumn: currentSelection.anchorColumn,
+        endColumn: column,
+        anchorLine: currentSelection.anchorLine,
+        anchorColumn: currentSelection.anchorColumn,
+      );
+    }
+  }
+
+  void selectLineRange(Buffer buffer, bool extend, int startLine, int endLine) {
+    if (extend && _selections.isNotEmpty) {
+      // Extend existing selection
+      Selection currentSelection = _selections.first;
+      if (startLine < currentSelection.anchorLine) {
+        _selections[0] = Selection(
+          startLine: startLine,
+          endLine: currentSelection.anchorLine,
+          startColumn: 0,
+          endColumn: buffer.getLineLength(currentSelection.anchorLine),
+          anchorLine: currentSelection.anchorLine,
+          anchorColumn: currentSelection.anchorColumn,
+        );
+      } else {
+        _selections[0] = Selection(
+          startLine: currentSelection.anchorLine,
+          endLine: endLine,
+          startColumn: 0,
+          endColumn: buffer.getLineLength(endLine),
+          anchorLine: currentSelection.anchorLine,
+          anchorColumn: currentSelection.anchorColumn,
+        );
+      }
+    } else {
+      // Create new selection
+      clearAll();
+      _selections.add(Selection(
+        startLine: startLine,
+        endLine: endLine,
+        startColumn: 0,
+        endColumn: buffer.getLineLength(endLine),
+        anchorLine: startLine,
+        anchorColumn: 0,
+      ));
     }
   }
 
@@ -45,31 +112,32 @@ class EditorSelectionManager {
       Selection currentSelection = _selections[i];
       Cursor currentCursor = cursors[i];
 
-      // Compare currentCursor position with anchor to determine direction
-      if (currentCursor.line < currentSelection.anchorLine ||
-          (currentCursor.line == currentSelection.anchorLine &&
+      // Get actual buffer positions considering folded regions
+      int anchorLine = currentSelection.anchorLine;
+      int cursorLine = currentCursor.line;
+
+      if (cursorLine < anchorLine ||
+          (cursorLine == anchorLine &&
               currentCursor.column < currentSelection.anchorColumn)) {
         // Selecting backwards
         _selections[i] = Selection(
-          startLine: currentCursor.line,
-          endLine: currentSelection.anchorLine,
+          startLine: cursorLine,
+          endLine: anchorLine,
           startColumn: currentCursor.column,
           endColumn: currentSelection.anchorColumn,
-          anchorLine: currentSelection.anchorLine,
+          anchorLine: anchorLine,
           anchorColumn: currentSelection.anchorColumn,
         );
-        debugPrint('Selecting backwards: ${_selections[i]}');
       } else {
         // Selecting forwards
         _selections[i] = Selection(
-          startLine: currentSelection.anchorLine,
-          endLine: currentCursor.line,
+          startLine: anchorLine,
+          endLine: cursorLine,
           startColumn: currentSelection.anchorColumn,
           endColumn: currentCursor.column,
-          anchorLine: currentSelection.anchorLine,
+          anchorLine: anchorLine,
           anchorColumn: currentSelection.anchorColumn,
         );
-        debugPrint('Selecting forwards: ${_selections[i]}');
       }
     }
   }
@@ -81,13 +149,16 @@ class EditorSelectionManager {
   List<Cursor> deleteSelection(Buffer buffer) {
     List<Cursor> newCursors = [];
 
-    for (var selection in selections) {
+    // Sort selections in reverse order to handle multiple deletions correctly
+    var sortedSelections = List<Selection>.from(_selections)
+      ..sort((a, b) => b.startLine.compareTo(a.startLine));
+
+    for (var selection in sortedSelections) {
       if (selection.startLine == selection.endLine) {
         // Single line deletion
-        String newContent = buffer
-                .getLine(selection.startLine)
-                .substring(0, selection.startColumn) +
-            buffer.getLine(selection.startLine).substring(selection.endColumn);
+        String lineContent = buffer.getLine(selection.startLine);
+        String newContent = lineContent.substring(0, selection.startColumn) +
+            lineContent.substring(selection.endColumn);
         buffer.setLine(selection.startLine, newContent);
       } else {
         // Multi-line deletion
@@ -97,13 +168,23 @@ class EditorSelectionManager {
         String endText =
             buffer.getLine(selection.endLine).substring(selection.endColumn);
 
+        // Handle folded regions
+        if (buffer.isLineFolded(selection.startLine)) {
+          buffer.unfoldLines(selection.startLine);
+        }
+
+        // Remove lines in between, accounting for folded regions
+        for (int line = selection.endLine - 1;
+            line > selection.startLine;
+            line--) {
+          if (buffer.isLineFolded(line)) {
+            buffer.unfoldLines(line);
+          }
+          buffer.removeLine(line);
+        }
+
         // Combine first and last lines
         buffer.setLine(selection.startLine, startText + endText);
-
-        // Remove lines in between
-        for (int i = 0; i < selection.endLine - selection.startLine; i++) {
-          buffer.removeLine(selection.startLine + 1);
-        }
       }
 
       newCursors.add(Cursor(selection.startLine, selection.startColumn));
@@ -233,9 +314,9 @@ class EditorSelectionManager {
     for (var selection in _selections) {
       if (selection.startLine == selection.endLine) {
         // Single line selection
-        sb.write(buffer
-            .getLine(selection.startLine)
-            .substring(selection.startColumn, selection.endColumn));
+        String line = buffer.getLine(selection.startLine);
+        sb.write(line.substring(selection.startColumn, selection.endColumn));
+        continue;
       }
 
       // First line
@@ -245,17 +326,26 @@ class EditorSelectionManager {
 
       // Middle lines
       for (int i = selection.startLine + 1; i < selection.endLine; i++) {
-        sb.write(buffer.getLine(i));
-        sb.write('\n');
+        if (buffer.isLineFolded(i)) {
+          // Include folded content
+          sb.write(buffer.getLine(i));
+          sb.write('\n');
+          for (var line in buffer.getFoldedContent(i)) {
+            sb.write(line);
+            sb.write('\n');
+          }
+          i = buffer.getFoldedRange(i);
+        } else {
+          sb.write(buffer.getLine(i));
+          sb.write('\n');
+        }
       }
 
       // Last line
       sb.write(
           buffer.getLine(selection.endLine).substring(0, selection.endColumn));
-
-      return sb.toString();
     }
 
-    return '';
+    return sb.toString();
   }
 }

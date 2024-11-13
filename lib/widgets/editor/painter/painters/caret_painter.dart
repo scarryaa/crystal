@@ -20,9 +20,27 @@ class CaretPainter extends EditorPainterBase {
       {required int firstVisibleLine, required int lastVisibleLine}) {
     if (!editorState.showCaret) return;
 
+    // Track visual line position
+    int visualLine = 0;
+    for (int i = 0; i < firstVisibleLine; i++) {
+      if (!editorState.foldingState.isLineHidden(i)) {
+        visualLine++;
+      }
+    }
+
     for (var cursor in editorState.editorCursorManager.cursors) {
-      if (cursor.line < 0 || cursor.line >= editorState.buffer.lineCount) {
-        continue; // Skip invalid cursor positions
+      if (cursor.line < 0 ||
+          cursor.line >= editorState.buffer.lineCount ||
+          editorState.foldingState.isLineHidden(cursor.line)) {
+        continue; // Skip invalid cursor positions and hidden lines
+      }
+
+      // Calculate visual position for this cursor
+      int cursorVisualLine = visualLine;
+      for (int i = firstVisibleLine; i < cursor.line; i++) {
+        if (!editorState.foldingState.isLineHidden(i)) {
+          cursorVisualLine++;
+        }
       }
 
       final line = editorState.buffer.getLine(cursor.line);
@@ -51,19 +69,21 @@ class CaretPainter extends EditorPainterBase {
       _textPainter.layout();
 
       final caretLeft = _textPainter.width;
-      final caretTop = editorLayoutService.config.lineHeight * cursor.line;
+      final caretTop = editorLayoutService.config.lineHeight * cursorVisualLine;
       final caretPaint = Paint()
         ..color = editorConfigService.themeService.currentTheme != null
             ? editorConfigService.themeService.currentTheme!.primary
             : Colors.blue;
 
-      _drawCaret(
-        canvas,
-        caretLeft,
-        caretTop,
-        editorState.cursorShape,
-        caretPaint,
-      );
+      if (cursor.line >= firstVisibleLine && cursor.line <= lastVisibleLine) {
+        _drawCaret(
+          canvas,
+          caretLeft,
+          caretTop,
+          editorState.cursorShape,
+          caretPaint,
+        );
+      }
     }
   }
 
