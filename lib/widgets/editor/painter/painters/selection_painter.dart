@@ -58,6 +58,10 @@ class SelectionPainter {
   (int, int, int, int) _normalizeSelection(var selection) {
     int startLine = selection.startLine;
     int endLine = selection.endLine;
+
+    // Add a bounds check here
+    endLine = endLine.clamp(0, editorState.buffer.lineCount - 1);
+
     int startColumn = selection.startColumn;
     int endColumn = selection.endColumn;
 

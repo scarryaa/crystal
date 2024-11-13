@@ -581,7 +581,13 @@ class EditorState extends ChangeNotifier {
 
   void handleDragUpdate(
       double dy, double dx, Function(String) measureLineWidth) {
-    int visualLine = dy ~/ editorLayoutService.config.lineHeight;
+    // Calculate max visual line based on buffer size
+    int maxVisualLine = buffer.lineCount - 1;
+
+    // Clamp visual line to valid range
+    int visualLine =
+        (dy ~/ editorLayoutService.config.lineHeight).clamp(0, maxVisualLine);
+
     int bufferLine = _getBufferLineFromVisualLine(visualLine);
     bufferLine = bufferLine.clamp(0, buffer.lineCount - 1);
 
