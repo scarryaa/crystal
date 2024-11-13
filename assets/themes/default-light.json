@@ -6,5 +6,8 @@
   "titleBar": "#F0F0F0",
   "border": "#E0E0E0",
   "text": "#212121",
-  "textLight": "#757575"
+  "textLight": "#757575",
+  "success": "#2E7D32",
+  "warning": "#ED6C02",
+  "error": "#D32F2F"
 }

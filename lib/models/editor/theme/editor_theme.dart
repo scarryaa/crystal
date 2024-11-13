@@ -9,6 +9,9 @@ class EditorTheme {
   final Color text;
   final Color textLight;
   final Color titleBar;
+  final Color success;
+  final Color warning;
+  final Color error;
   late final Color whitespaceIndicatorColor;
   late final Color currentLineHighlight;
   late final Color indentLineColor;
@@ -23,6 +26,9 @@ class EditorTheme {
     required this.border,
     required this.text,
     required this.textLight,
+    required this.success,
+    required this.warning,
+    required this.error,
     this.indentGuideActive = const Color(0xFF4B4B4B),
   }) {
     whitespaceIndicatorColor = text.withOpacity(0.5);
@@ -40,6 +46,9 @@ class EditorTheme {
       border: _colorFromHex(json['border'] as String),
       text: _colorFromHex(json['text'] as String),
       textLight: _colorFromHex(json['textLight'] as String),
+      success: _colorFromHex(json['success'] as String? ?? '#4CAF50'),
+      warning: _colorFromHex(json['warning'] as String? ?? '#FFA726'),
+      error: _colorFromHex(json['error'] as String? ?? '#F44336'),
     );
   }
 
@@ -47,7 +56,14 @@ class EditorTheme {
         'name': name,
         'primary': _colorToHex(primary),
         'background': _colorToHex(background),
+        'backgroundLight': _colorToHex(backgroundLight),
+        'titleBar': _colorToHex(titleBar),
+        'border': _colorToHex(border),
         'text': _colorToHex(text),
+        'textLight': _colorToHex(textLight),
+        'success': _colorToHex(success),
+        'warning': _colorToHex(warning),
+        'error': _colorToHex(error),
       };
 
   static Color _colorFromHex(String hexString) {

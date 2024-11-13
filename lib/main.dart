@@ -3,8 +3,10 @@ import 'dart:io';
 
 import 'package:crystal/app/app.dart';
 import 'package:crystal/app/updater.dart';
+import 'package:crystal/models/notification_action.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/file_service.dart';
+import 'package:crystal/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:window_manager/window_manager.dart';
@@ -78,6 +80,7 @@ void main(List<String> arguments) {
 
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+    final NotificationService notificationService = NotificationService();
 
     // Check if running in update mode
     if (arguments.contains('--update')) {
@@ -89,7 +92,7 @@ void main(List<String> arguments) {
     final bool isDevelopment = arguments.contains('--dev') ||
         const bool.fromEnvironment('FLUTTER_DEV');
 
-    // Initialize window first for update prompt
+    // Initialize window first
     await windowManager.ensureInitialized();
     if (Platform.isWindows) {
       await windowManager.waitUntilReadyToShow();
@@ -101,33 +104,41 @@ void main(List<String> arguments) {
       isWindowInitialized = true;
     }
 
-    // Check for updates during normal startup
+    // Normal app startup
+    final editorConfigService = await EditorConfigService.create();
+    final fileService = FileService(
+      configService: editorConfigService,
+    );
+
+    // Run the app first
+    runApp(App(
+      notificationService: notificationService,
+      editorConfigService: editorConfigService,
+      fileService: fileService,
+    ));
+
+    // Check for updates after app is running
     if (!isDevelopment) {
       try {
         final updateInfo = await checkForUpdates('scarryaa/crystal');
         if (updateInfo.hasUpdate) {
           log.info('Update available: ${updateInfo.version}');
 
-          final shouldUpdate = await showUpdateDialog(updateInfo.version!);
-          if (shouldUpdate == true) {
-            await launchUpdater();
-            return;
-          }
+          notificationService.show(
+            'Version ${updateInfo.version} is available',
+            duration: const Duration(seconds: 10),
+            action: NotificationAction(
+              label: 'Update Now',
+              onPressed: () async {
+                await launchUpdater();
+              },
+            ),
+          );
         }
       } catch (e) {
         log.warning('Failed to check for updates: $e');
       }
     }
-
-    // Normal app startup
-    final editorConfigService = await EditorConfigService.create();
-    final fileService = FileService(
-      configService: editorConfigService,
-    );
-    runApp(App(
-      editorConfigService: editorConfigService,
-      fileService: fileService,
-    ));
   }, (error, stack) {
     log.severe('Uncaught error: $error\n$stack');
   });
