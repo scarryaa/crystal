@@ -258,116 +258,6 @@ class _AppMenuBarState extends State<AppMenuBar> {
 
     final theme = widget.editorConfigService.themeService.currentTheme!;
 
-    return Container(
-      height: widget.editorConfigService.config.uiFontSize * 2.0,
-      color: theme.titleBar,
-      child: Row(
-        children: [
-          if (Platform.isMacOS) const SizedBox(width: 70),
-          const SizedBox(width: 6),
-          _buildDirectoryButton(),
-          _MenuButton(
-            label: 'File',
-            items: [
-              MenuItemData(
-                label: 'Open Directory...',
-                shortcut:
-                    const SingleActivator(LogicalKeyboardKey.keyO, meta: true),
-                onTap: () async {
-                  final selectedDirectory =
-                      await FilePicker.platform.getDirectoryPath();
-                  if (selectedDirectory != null) {
-                    widget.onDirectoryChanged(selectedDirectory);
-                  }
-                },
-              ),
-              MenuItemData(
-                label: 'Check for Updates...',
-                onTap: () => _checkForUpdates(context),
-              ),
-              if (Platform.isMacOS) ...[
-                MenuItemData(isDivider: true),
-                MenuItemData(
-                  label: 'Quit',
-                  shortcut: const SingleActivator(LogicalKeyboardKey.keyQ,
-                      meta: true),
-                  onTap: () => exit(0),
-                ),
-              ],
-            ],
-            onShow: _showMenu,
-            theme: theme,
-          ),
-          _MenuButton(
-            label: 'Edit',
-            items: [
-              MenuItemData(
-                label: 'Undo',
-                shortcut:
-                    const SingleActivator(LogicalKeyboardKey.keyZ, meta: true),
-                onTap: () {
-                  final editorState = widget.editorKey.currentState;
-                  if (editorState != null) {
-                    final activeEditor =
-                        editorState.editorTabManager.activeEditor;
-                    activeEditor?.undo();
-                  }
-                },
-              ),
-              MenuItemData(
-                label: 'Redo',
-                shortcut: const SingleActivator(LogicalKeyboardKey.keyZ,
-                    meta: true, shift: true),
-                onTap: () {
-                  final editorState = widget.editorKey.currentState;
-                  if (editorState != null) {
-                    final activeEditor =
-                        editorState.editorTabManager.activeEditor;
-                    activeEditor?.redo();
-                  }
-                },
-              ),
-            ],
-            onShow: _showMenu,
-            theme: theme,
-          ),
-          _MenuButton(
-            label: 'View',
-            items: [
-              MenuItemData(
-                label: 'Increase Font Size',
-                shortcut:
-                    const SingleActivator(LogicalKeyboardKey.equal, meta: true),
-                onTap: () {
-                  var config = widget.editorConfigService.config;
-                  config.fontSize += 2;
-                  widget.editorConfigService.saveConfig();
-                },
-              ),
-              MenuItemData(
-                label: 'Decrease Font Size',
-                shortcut:
-                    const SingleActivator(LogicalKeyboardKey.minus, meta: true),
-                onTap: () {
-                  var config = widget.editorConfigService.config;
-                  config.uiFontSize = math.max(8, config.uiFontSize - 2);
-                  widget.editorConfigService.saveConfig();
-                },
-              ),
-            ],
-            onShow: _showMenu,
-            theme: theme,
-          ),
-          const Spacer(),
-          _buildWindowButtons(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWindowButtons() {
-    if (!Platform.isWindows && !Platform.isLinux) return const SizedBox();
-
     return GestureDetector(
         onPanStart: (details) {
           windowManager.startDragging();
@@ -381,33 +271,142 @@ class _AppMenuBarState extends State<AppMenuBar> {
                 }
               }
             : null,
-        child: Row(
-          children: [
-            WindowButton(
-              icon: Icons.remove,
-              onPressed: () async => await windowManager.minimize(),
-              color: widget.editorConfigService.themeService.currentTheme!.text,
-            ),
-            WindowButton(
-              icon:
-                  isMaximized ? Icons.crop_square : Icons.crop_square_outlined,
-              onPressed: () async {
-                if (isMaximized) {
-                  await windowManager.unmaximize();
-                } else {
-                  await windowManager.maximize();
-                }
-              },
-              color: widget.editorConfigService.themeService.currentTheme!.text,
-            ),
-            WindowButton(
-              icon: Icons.close,
-              onPressed: () async => await windowManager.close(),
-              color: widget.editorConfigService.themeService.currentTheme!.text,
-              isClose: true,
-            ),
-          ],
+        child: Container(
+          height: widget.editorConfigService.config.uiFontSize * 2.0,
+          color: theme.titleBar,
+          child: Row(
+            children: [
+              if (Platform.isMacOS) const SizedBox(width: 70),
+              const SizedBox(width: 6),
+              _buildDirectoryButton(),
+              _MenuButton(
+                label: 'File',
+                items: [
+                  MenuItemData(
+                    label: 'Open Directory...',
+                    shortcut: const SingleActivator(LogicalKeyboardKey.keyO,
+                        meta: true),
+                    onTap: () async {
+                      final selectedDirectory =
+                          await FilePicker.platform.getDirectoryPath();
+                      if (selectedDirectory != null) {
+                        widget.onDirectoryChanged(selectedDirectory);
+                      }
+                    },
+                  ),
+                  MenuItemData(
+                    label: 'Check for Updates...',
+                    onTap: () => _checkForUpdates(context),
+                  ),
+                  if (Platform.isMacOS) ...[
+                    MenuItemData(isDivider: true),
+                    MenuItemData(
+                      label: 'Quit',
+                      shortcut: const SingleActivator(LogicalKeyboardKey.keyQ,
+                          meta: true),
+                      onTap: () => exit(0),
+                    ),
+                  ],
+                ],
+                onShow: _showMenu,
+                theme: theme,
+              ),
+              _MenuButton(
+                label: 'Edit',
+                items: [
+                  MenuItemData(
+                    label: 'Undo',
+                    shortcut: const SingleActivator(LogicalKeyboardKey.keyZ,
+                        meta: true),
+                    onTap: () {
+                      final editorState = widget.editorKey.currentState;
+                      if (editorState != null) {
+                        final activeEditor =
+                            editorState.editorTabManager.activeEditor;
+                        activeEditor?.undo();
+                      }
+                    },
+                  ),
+                  MenuItemData(
+                    label: 'Redo',
+                    shortcut: const SingleActivator(LogicalKeyboardKey.keyZ,
+                        meta: true, shift: true),
+                    onTap: () {
+                      final editorState = widget.editorKey.currentState;
+                      if (editorState != null) {
+                        final activeEditor =
+                            editorState.editorTabManager.activeEditor;
+                        activeEditor?.redo();
+                      }
+                    },
+                  ),
+                ],
+                onShow: _showMenu,
+                theme: theme,
+              ),
+              _MenuButton(
+                label: 'View',
+                items: [
+                  MenuItemData(
+                    label: 'Increase Font Size',
+                    shortcut: const SingleActivator(LogicalKeyboardKey.equal,
+                        meta: true),
+                    onTap: () {
+                      var config = widget.editorConfigService.config;
+                      config.fontSize += 2;
+                      widget.editorConfigService.saveConfig();
+                    },
+                  ),
+                  MenuItemData(
+                    label: 'Decrease Font Size',
+                    shortcut: const SingleActivator(LogicalKeyboardKey.minus,
+                        meta: true),
+                    onTap: () {
+                      var config = widget.editorConfigService.config;
+                      config.uiFontSize = math.max(8, config.uiFontSize - 2);
+                      widget.editorConfigService.saveConfig();
+                    },
+                  ),
+                ],
+                onShow: _showMenu,
+                theme: theme,
+              ),
+              const Spacer(),
+              _buildWindowButtons(),
+            ],
+          ),
         ));
+  }
+
+  Widget _buildWindowButtons() {
+    if (!Platform.isWindows && !Platform.isLinux) return const SizedBox();
+
+    return Row(
+      children: [
+        WindowButton(
+          icon: Icons.remove,
+          onPressed: () async => await windowManager.minimize(),
+          color: widget.editorConfigService.themeService.currentTheme!.text,
+        ),
+        WindowButton(
+          icon: isMaximized ? Icons.crop_square : Icons.crop_square_outlined,
+          onPressed: () async {
+            if (isMaximized) {
+              await windowManager.unmaximize();
+            } else {
+              await windowManager.maximize();
+            }
+          },
+          color: widget.editorConfigService.themeService.currentTheme!.text,
+        ),
+        WindowButton(
+          icon: Icons.close,
+          onPressed: () async => await windowManager.close(),
+          color: widget.editorConfigService.themeService.currentTheme!.text,
+          isClose: true,
+        ),
+      ],
+    );
   }
 }
 
