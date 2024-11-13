@@ -216,12 +216,13 @@ class _AppState extends State<App> {
             home: Column(
               children: [
                 if (Platform.isMacOS)
-                  AppMenuBar(
+                  Material(
+                      child: AppMenuBar(
                     onDirectoryChanged: _handleDirectoryChanged,
                     fileService: widget.fileService,
                     editorConfigService: widget.editorConfigService,
                     editorKey: _editorKey,
-                  ),
+                  )),
                 Expanded(
                   child: AppLayout(
                     editorConfigService: widget.editorConfigService,

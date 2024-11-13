@@ -23,6 +23,11 @@ class UpdateInfo {
 Future<void> performUpdate() async {
   try {
     log.info('Starting update process...');
+
+    if (!await checkExecutablePermissions()) {
+      throw Exception('Insufficient permissions or executable not found');
+    }
+
     final installDir = await _getInstallDirectory();
     final updateInfo = await checkForUpdates('scarryaa/crystal');
 
@@ -158,27 +163,60 @@ Future<File> _downloadFile(String url) async {
   }
 }
 
+Future<bool> checkExecutablePermissions() async {
+  try {
+    final File executable = File(Platform.resolvedExecutable);
+    final bool exists = await executable.exists();
+    if (!exists) {
+      log.severe('Executable not found');
+      return false;
+    }
+
+    if (Platform.isLinux || Platform.isMacOS) {
+      final ProcessResult result =
+          await Process.run('test', ['-x', executable.path]);
+      return result.exitCode == 0;
+    }
+    return true;
+  } catch (e) {
+    log.severe('Failed to check executable permissions: $e');
+    return false;
+  }
+}
+
 Future<void> launchUpdater() async {
   final String executablePath = Platform.resolvedExecutable;
   try {
+    // Ensure proper permissions on Unix-like systems
     if (Platform.isLinux || Platform.isMacOS) {
       await Process.run('chmod', ['+x', executablePath]);
     }
 
+    // Platform-specific launch logic
     if (Platform.isMacOS) {
       final appPath = Directory(executablePath).parent.parent.parent.path;
-      await Process.start('open', [appPath, '--args', '--update'],
-          mode: ProcessStartMode.detached);
+      await Process.start(
+        'open',
+        [appPath, '--args', '--update'],
+        mode: ProcessStartMode.detached,
+        environment: {'PATH': Platform.environment['PATH']!},
+      );
     } else {
-      final result = await Process.run(executablePath, ['--update']);
-      if (result.exitCode != 0) {
-        throw Exception('Failed to start updater: ${result.stderr}');
-      }
+      // Use runZoned for better error handling
+      await Process.start(
+        executablePath,
+        ['--update'],
+        mode: ProcessStartMode.detached,
+        environment: {'PATH': Platform.environment['PATH']!},
+      );
     }
+
+    // Give the process time to start
+    await Future.delayed(const Duration(seconds: 1));
     exit(0);
   } catch (e) {
     log.severe('Failed to launch updater: $e');
-    exit(1);
+    rethrow;
   }
 }
 
