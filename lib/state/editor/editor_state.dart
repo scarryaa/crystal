@@ -61,18 +61,7 @@ class EditorState extends ChangeNotifier {
   }
 
   void toggleFold(int startLine, int endLine, {Map<int, int>? nestedFolds}) {
-    if (foldingState.isLineFolded(startLine)) {
-      // Unfolding
-      foldingState.unfold(startLine);
-      if (nestedFolds != null) {
-        for (var entry in nestedFolds.entries) {
-          foldingState.fold(entry.key, entry.value);
-        }
-      }
-    } else {
-      // Folding
-      foldingState.fold(startLine, endLine);
-    }
+    foldingState.toggleFold(startLine, endLine, nestedFolds: nestedFolds);
     notifyListeners();
   }
 

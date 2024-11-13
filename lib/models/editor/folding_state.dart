@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 class FoldingState extends ChangeNotifier {
-  final Map<int, bool> foldedLines = {};
   final Map<int, int> foldingRanges = {};
 
   bool isLineHidden(int line) {
@@ -16,11 +15,6 @@ class FoldingState extends ChangeNotifier {
   bool isLineFolded(int line) => foldingRanges.containsKey(line);
 
   void fold(int startLine, int endLine) {
-    // Remove any existing folds that are completely within this new fold
-    foldingRanges
-        .removeWhere((key, value) => key > startLine && value <= endLine);
-
-    // Add the new fold
     foldingRanges[startLine] = endLine;
     notifyListeners();
   }
@@ -30,12 +24,16 @@ class FoldingState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void toggleFold(int startLine, int endLine) {
+  void toggleFold(int startLine, int endLine, {Map<int, int>? nestedFolds}) {
     if (isLineFolded(startLine)) {
       unfold(startLine);
+      if (nestedFolds != null) {
+        foldingRanges.addAll(nestedFolds);
+      }
     } else {
       fold(startLine, endLine);
     }
+    notifyListeners();
   }
 
   List<int> getVisibleLines(List<String> lines) {

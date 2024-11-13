@@ -125,7 +125,7 @@ class _GutterState extends State<Gutter> {
             }
           }
 
-          // Unfold the parent
+          // Unfold the parent and restore nested folds
           editorState.toggleFold(line, foldEnd, nestedFolds: nestedFolds);
         }
       } else {
