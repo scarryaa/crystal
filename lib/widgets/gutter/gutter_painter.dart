@@ -176,23 +176,40 @@ class GutterPainter extends CustomPainter {
 
   void _drawFoldingIcon(
       Canvas canvas, Paint paint, double y, double iconSize, bool isFolded) {
+    // Create a slightly smaller rect for better visual balance
     final rect = Rect.fromLTWH(
         4.0,
         y + (editorLayoutService.config.lineHeight - iconSize) / 2,
         iconSize,
         iconSize);
 
-    // Draw box
-    canvas.drawRect(rect, paint);
+    // Calculate center points more precisely
+    final centerY = rect.top + rect.height / 2;
+    final centerX = rect.left + rect.width / 2;
 
-    // Draw horizontal line
-    canvas.drawLine(Offset(rect.left + 2, rect.top + rect.height / 2),
-        Offset(rect.right - 2, rect.top + rect.height / 2), paint);
+    // Add padding from edges for better appearance
+    final padding = iconSize * 0.25;
+    final leftX = rect.left + padding;
+    final rightX = rect.right - padding;
+    final topY = rect.top + padding;
+    final bottomY = rect.bottom - padding;
 
-    // Draw vertical line if folded
     if (isFolded) {
-      canvas.drawLine(Offset(rect.left + rect.width / 2, rect.top + 2),
-          Offset(rect.left + rect.width / 2, rect.bottom - 2), paint);
+      // Right-pointing chevron (>) with smoother angles
+      final path = Path()
+        ..moveTo(leftX, topY)
+        ..lineTo(rightX, centerY)
+        ..lineTo(leftX, bottomY);
+
+      canvas.drawPath(path, paint..style = PaintingStyle.stroke);
+    } else {
+      // Down-pointing chevron (v) with smoother angles
+      final path = Path()
+        ..moveTo(leftX, topY)
+        ..lineTo(centerX, bottomY)
+        ..lineTo(rightX, topY);
+
+      canvas.drawPath(path, paint..style = PaintingStyle.stroke);
     }
   }
 

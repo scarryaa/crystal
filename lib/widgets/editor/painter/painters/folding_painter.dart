@@ -92,12 +92,12 @@ class FoldingPainter extends EditorPainterBase {
     if (foldedLines > 0) {
       final textPainter = TextPainter(
         text: TextSpan(
-          text: '⋯ $foldedLines lines folded',
+          text: '⋯ $foldedLines',
           style: TextStyle(
             color: editorConfigService.themeService.currentTheme?.textLight ??
                 Colors.grey,
-            fontSize: editorConfigService.config.fontSize * 0.9,
-            fontStyle: FontStyle.italic,
+            fontSize: editorConfigService.config.fontSize,
+            fontStyle: FontStyle.normal,
           ),
         ),
         textDirection: TextDirection.ltr,
@@ -108,7 +108,7 @@ class FoldingPainter extends EditorPainterBase {
       textPainter.paint(
         canvas,
         Offset(
-          editorLayoutService.config.gutterWidth + lineWidth + 8,
+          lineWidth + 8,
           visualLine * editorLayoutService.config.lineHeight +
               (editorLayoutService.config.lineHeight - textPainter.height) / 2,
         ),
