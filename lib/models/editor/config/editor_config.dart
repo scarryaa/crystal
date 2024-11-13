@@ -11,6 +11,7 @@ class EditorConfig {
   String theme;
   String? currentDirectory;
   double tabWidth;
+  double terminalHeight;
 
   EditorConfig({
     required this.fontSize,
@@ -21,6 +22,7 @@ class EditorConfig {
     required this.fileExplorerWidth,
     required this.theme,
     required this.tabWidth,
+    this.terminalHeight = 300.0,
     this.isFileExplorerVisible = true,
     this.isFileExplorerOnLeft = true,
     this.isTerminalVisible = false,

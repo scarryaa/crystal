@@ -46,6 +46,9 @@ class EditorScreenState extends State<EditorScreen> {
   final Map<String, GlobalKey> _tabBarKeys = {};
   bool _isFileExplorerVisible = true;
   bool _isTerminalVisible = false;
+  double _terminalHeight = 300.0;
+  final double _minTerminalHeight = 100.0;
+  final double _maxTerminalHeight = 800.0;
   final Map<int, GlobalKey<EditorViewState>> _editorViewKeys = {};
   late final EditorConfigService _editorConfigService;
   late final EditorTabManager editorTabManager;
@@ -347,9 +350,37 @@ class EditorScreenState extends State<EditorScreen> {
 
   Widget _buildTerminalSection() {
     if (!_isTerminalVisible) return const SizedBox.shrink();
-    return const SizedBox(
-      height: 300,
-      child: EditorTerminalView(),
+
+    return Column(
+      children: [
+        GestureDetector(
+          onVerticalDragUpdate: (details) {
+            setState(() {
+              _terminalHeight = (_terminalHeight - details.delta.dy)
+                  .clamp(_minTerminalHeight, _maxTerminalHeight);
+              _editorConfigService.config.terminalHeight = _terminalHeight;
+              _editorConfigService.saveConfig();
+            });
+          },
+          child: MouseRegion(
+            cursor: SystemMouseCursors.resizeRow,
+            child: Container(
+              height: 2,
+              decoration: BoxDecoration(
+                color:
+                    _editorConfigService.themeService.currentTheme?.background,
+              ),
+            ),
+          ),
+        ),
+        Container(
+          height: _terminalHeight - 2,
+          color: _editorConfigService.themeService.currentTheme?.background,
+          child: EditorTerminalView(
+            editorConfigService: _editorConfigService,
+          ),
+        ),
+      ],
     );
   }
 
@@ -369,6 +400,8 @@ class EditorScreenState extends State<EditorScreen> {
   Future<void> _initializeServices() async {
     _editorConfigService = await EditorConfigService.create();
     _isFileExplorerVisible = _editorConfigService.config.isFileExplorerVisible;
+    _isTerminalVisible = _editorConfigService.config.isTerminalVisible;
+    _terminalHeight = _editorConfigService.config.terminalHeight;
 
     EditorLayoutService(
       horizontalPadding: widget.horizontalPadding,
@@ -584,73 +617,95 @@ class EditorScreenState extends State<EditorScreen> {
                         children: [
                           if (isFileExplorerOnLeft) _buildFileExplorer(),
                           Expanded(
-                            child: editorTabManager.horizontalSplits.isEmpty
-                                ? Container()
-                                : ResizableSplitContainer(
-                                    direction: Axis.vertical,
-                                    initialSizes: List.generate(
-                                      editorTabManager.horizontalSplits.length,
-                                      (index) =>
-                                          1.0 /
-                                          editorTabManager
-                                              .horizontalSplits.length,
-                                    ),
-                                    onSizesChanged: (sizes) => editorTabManager
-                                        .updateVerticalSizes(sizes),
-                                    editorConfigService: _editorConfigService,
-                                    children: List.generate(
-                                      editorTabManager.horizontalSplits.length,
-                                      (row) {
-                                        return editorTabManager
-                                                .horizontalSplits[row].isEmpty
-                                            ? Container()
-                                            : ResizableSplitContainer(
-                                                direction: Axis.horizontal,
-                                                initialSizes: List.generate(
-                                                  editorTabManager
+                            child: Column(
+                              children: [
+                                Expanded(
+                                  child: editorTabManager
+                                          .horizontalSplits.isEmpty
+                                      ? Container()
+                                      : ResizableSplitContainer(
+                                          direction: Axis.vertical,
+                                          initialSizes: List.generate(
+                                            editorTabManager
+                                                .horizontalSplits.length,
+                                            (index) =>
+                                                1.0 /
+                                                editorTabManager
+                                                    .horizontalSplits.length,
+                                          ),
+                                          onSizesChanged: (sizes) =>
+                                              editorTabManager
+                                                  .updateVerticalSizes(sizes),
+                                          editorConfigService:
+                                              _editorConfigService,
+                                          children: List.generate(
+                                            editorTabManager
+                                                .horizontalSplits.length,
+                                            (row) {
+                                              return editorTabManager
                                                       .horizontalSplits[row]
-                                                      .length,
-                                                  (index) =>
-                                                      1.0 /
-                                                      editorTabManager
-                                                          .horizontalSplits[row]
-                                                          .length,
-                                                ),
-                                                onSizesChanged: (sizes) =>
-                                                    editorTabManager
-                                                        .updateHorizontalSizes(
-                                                            row, sizes),
-                                                editorConfigService:
-                                                    _editorConfigService,
-                                                children: List.generate(
-                                                  editorTabManager
-                                                      .horizontalSplits[row]
-                                                      .length,
-                                                  (col) => _buildEditorSection(
-                                                    editorTabManager
+                                                      .isEmpty
+                                                  ? Container()
+                                                  : ResizableSplitContainer(
+                                                      direction:
+                                                          Axis.horizontal,
+                                                      initialSizes:
+                                                          List.generate(
+                                                        editorTabManager
                                                             .horizontalSplits[
-                                                        row][col],
-                                                    row,
-                                                    col,
-                                                  ),
-                                                ),
-                                              );
-                                      },
-                                    ),
-                                  ),
+                                                                row]
+                                                            .length,
+                                                        (index) =>
+                                                            1.0 /
+                                                            editorTabManager
+                                                                .horizontalSplits[
+                                                                    row]
+                                                                .length,
+                                                      ),
+                                                      onSizesChanged: (sizes) =>
+                                                          editorTabManager
+                                                              .updateHorizontalSizes(
+                                                                  row, sizes),
+                                                      editorConfigService:
+                                                          _editorConfigService,
+                                                      children: List.generate(
+                                                        editorTabManager
+                                                            .horizontalSplits[
+                                                                row]
+                                                            .length,
+                                                        (col) =>
+                                                            _buildEditorSection(
+                                                          editorTabManager
+                                                                  .horizontalSplits[
+                                                              row][col],
+                                                          row,
+                                                          col,
+                                                        ),
+                                                      ),
+                                                    );
+                                            },
+                                          ),
+                                        ),
+                                ),
+                                _buildTerminalSection(),
+                              ],
+                            ),
                           ),
                           if (!isFileExplorerOnLeft) _buildFileExplorer(),
                         ],
                       ),
                     ),
-                    _buildTerminalSection(),
                     StatusBar(
                       editorConfigService: _editorConfigService,
                       onFileExplorerToggle: _toggleFileExplorer,
                       isFileExplorerVisible: _isFileExplorerVisible,
                       onTerminalToggle: () {
                         setState(() {
-                          _isTerminalVisible = !_isTerminalVisible;
+                          _editorConfigService.config.isTerminalVisible =
+                              !_editorConfigService.config.isTerminalVisible;
+                          _isTerminalVisible =
+                              _editorConfigService.config.isTerminalVisible;
+                          _editorConfigService.saveConfig();
                         });
                       },
                     ),

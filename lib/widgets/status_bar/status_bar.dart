@@ -80,6 +80,9 @@ class _StatusBarState extends State<StatusBar> {
           final themeColor =
               widget.editorConfigService.themeService.currentTheme?.text ??
                   Colors.black87;
+          final primary =
+              widget.editorConfigService.themeService.currentTheme?.primary ??
+                  Colors.blue;
 
           return Container(
             height: widget.editorConfigService.config.uiFontSize * 1.8,
@@ -111,7 +114,10 @@ class _StatusBarState extends State<StatusBar> {
                                 ? Icons.folder
                                 : Icons.folder_open,
                             size: widget.editorConfigService.config.uiFontSize,
-                            color: themeColor,
+                            color: widget.editorConfigService.config
+                                    .isFileExplorerVisible
+                                ? primary
+                                : themeColor,
                           ),
                           const SizedBox(width: 4),
                         ],
@@ -131,7 +137,10 @@ class _StatusBarState extends State<StatusBar> {
                                 ? Icons.terminal
                                 : Icons.terminal_outlined,
                             size: widget.editorConfigService.config.uiFontSize,
-                            color: themeColor,
+                            color: widget.editorConfigService.config
+                                    .isTerminalVisible
+                                ? primary
+                                : themeColor,
                           ),
                           const SizedBox(width: 4),
                         ],

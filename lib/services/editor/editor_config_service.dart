@@ -30,6 +30,7 @@ class EditorConfigService extends ChangeNotifier {
     'currentDirectory': '',
     'fileExplorerWidth': 170.0,
     'tabWidth': 4.0,
+    'terminalHeight': 300.0,
   };
 
   EditorConfigService._() : themeService = EditorThemeService() {
@@ -130,6 +131,8 @@ class EditorConfigService extends ChangeNotifier {
             _defaultConfig['currentDirectory'] as String,
         tabWidth: (configData['tabWidth'] as num?)?.toDouble() ??
             _defaultConfig['tabWidth'] as double,
+        terminalHeight: (configData['terminalHeight'] as num?)?.toDouble() ??
+            _defaultConfig['terminalHeight'] as double,
       );
     } catch (e) {
       _logger.warning('Error parsing config file: $e');
@@ -180,6 +183,7 @@ class EditorConfigService extends ChangeNotifier {
         'currentDirectory': config.currentDirectory,
         'fileExplorerWidth': config.fileExplorerWidth,
         'tabWidth': config.tabWidth,
+        'terminalHeight': config.terminalHeight,
       };
 
       const encoder = JsonEncoder.withIndent('  ');
