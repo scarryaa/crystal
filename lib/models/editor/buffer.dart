@@ -149,8 +149,14 @@ class Buffer {
       _lines = [''];
     }
 
+    // Process content the same way as the content getter
+    StringBuffer buffer = StringBuffer();
+    for (int i = 0; i < _lines.length; i++) {
+      buffer.writeln(_lines[i]);
+    }
+
     incrementVersion();
-    _originalContent = content;
+    _originalContent = buffer.toString().trimRight();
   }
 
   void replace(int lineNumber, int index, int length, String newTerm) {
