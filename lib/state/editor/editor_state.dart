@@ -60,15 +60,18 @@ class EditorState extends ChangeNotifier {
     foldingManager = FoldingManager(_buffer);
   }
 
-  void toggleFold(int startLine, int endLine) {
+  void toggleFold(int startLine, int endLine, {Map<int, int>? nestedFolds}) {
     if (foldingState.isLineFolded(startLine)) {
-      // Unfold: Restore lines from buffer's folded content
-      buffer.unfoldLines(startLine);
-      foldingState.toggleFold(startLine, endLine);
+      // Unfolding
+      foldingState.unfold(startLine);
+      if (nestedFolds != null) {
+        for (var entry in nestedFolds.entries) {
+          foldingState.fold(entry.key, entry.value);
+        }
+      }
     } else {
-      // Fold: Store lines in buffer's folded content
-      buffer.foldLines(startLine, endLine);
-      foldingState.toggleFold(startLine, endLine);
+      // Folding
+      foldingState.fold(startLine, endLine);
     }
     notifyListeners();
   }

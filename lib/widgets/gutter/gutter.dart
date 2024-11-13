@@ -55,53 +55,33 @@ class _GutterState extends State<Gutter> {
   }
 
   int? _getLineFromY(double y) {
+    // Get the first visible line based on scroll position
     final firstVisibleLine = (widget.verticalScrollController.offset /
             widget.editorLayoutService.config.lineHeight)
         .floor();
 
+    // Calculate which visual line was clicked
     double adjustedY = y + widget.verticalScrollController.offset;
-    int visualLine = adjustedY ~/ widget.editorLayoutService.config.lineHeight;
+    int targetVisualLine =
+        adjustedY ~/ widget.editorLayoutService.config.lineHeight;
 
-    // Convert visual line to buffer line accounting for folded regions
-    int currentVisualLine = 0;
-    int bufferLine = firstVisibleLine;
-
-    while (currentVisualLine < (visualLine - firstVisibleLine) &&
-        bufferLine < editorState.buffer.lineCount) {
-      if (!editorState.foldingState.isLineHidden(bufferLine)) {
-        currentVisualLine++;
-      }
-      bufferLine++;
-    }
-
-    // Skip any hidden lines
-    while (bufferLine < editorState.buffer.lineCount &&
-        editorState.foldingState.isLineHidden(bufferLine)) {
-      bufferLine++;
-    }
-
-    return bufferLine.clamp(0, editorState.buffer.lineCount - 1);
-  }
-
-  int _getBufferLine(int visualLine) {
+    // Start from the first visible line and count visible lines until we reach the target
     int currentVisualLine = 0;
     int bufferLine = 0;
 
-    while (currentVisualLine < visualLine &&
-        bufferLine < editorState.buffer.lineCount) {
+    while (bufferLine < editorState.buffer.lineCount &&
+        currentVisualLine <= targetVisualLine) {
       if (!editorState.foldingState.isLineHidden(bufferLine)) {
+        if (currentVisualLine == targetVisualLine) {
+          return bufferLine;
+        }
         currentVisualLine++;
       }
       bufferLine++;
     }
 
-    // Skip hidden lines
-    while (bufferLine < editorState.buffer.lineCount &&
-        editorState.foldingState.isLineHidden(bufferLine)) {
-      bufferLine++;
-    }
-
-    return min(bufferLine, editorState.buffer.lineCount - 1);
+    // If we've gone past the end, return the last valid line
+    return bufferLine > 0 ? bufferLine - 1 : 0;
   }
 
   void _handleGutterSelection(double localY, bool isMultiSelect) {
@@ -130,66 +110,30 @@ class _GutterState extends State<Gutter> {
     }
   }
 
-  bool _isFoldable(int line) {
-    if (line >= editorState.buffer.lines.length) return false;
-
-    final currentLine = editorState.buffer.lines[line].trim();
-    if (currentLine.isEmpty) return false;
-
-    // Check if line ends with block starter
-    if (!currentLine.endsWith('{') &&
-        !currentLine.endsWith('(') &&
-        !currentLine.endsWith('[')) {
-      return false;
-    }
-
-    final currentIndent = _getIndentation(editorState.buffer.lines[line]);
-
-    // Look ahead for valid folding range
-    int nextLine = line + 1;
-    bool hasContent = false;
-
-    while (nextLine < editorState.buffer.lines.length) {
-      final nextLineText = editorState.buffer.lines[nextLine];
-      if (nextLineText.trim().isEmpty) {
-        nextLine++;
-        continue;
-      }
-
-      final nextIndent = _getIndentation(nextLineText);
-      if (nextIndent <= currentIndent) {
-        return hasContent;
-      }
-      hasContent = true;
-      nextLine++;
-    }
-
-    return false;
-  }
-
-  int _getIndentation(String line) {
-    final match = RegExp(r'[^\s]').firstMatch(line);
-    return match?.start ?? -1;
-  }
-
   void _handleFoldingIconTap(int line) {
-    // First convert the visual line to buffer line correctly
-    final firstVisibleLine = (widget.verticalScrollController.offset /
-            widget.editorLayoutService.config.lineHeight)
-        .floor();
+    if (editorState.isFoldable(line) ||
+        editorState.foldingState.isLineFolded(line)) {
+      if (editorState.foldingState.isLineFolded(line)) {
+        // Get the existing fold end from foldingRanges
+        final foldEnd = editorState.foldingState.foldingRanges[line];
+        if (foldEnd != null) {
+          // Store nested folds before unfolding
+          Map<int, int> nestedFolds = {};
+          for (var entry in editorState.foldingState.foldingRanges.entries) {
+            if (entry.key > line && entry.key < foldEnd) {
+              nestedFolds[entry.key] = entry.value;
+            }
+          }
 
-    // Calculate visual offset for proper positioning
-    int visualOffset = 0;
-    for (int i = 0; i < firstVisibleLine; i++) {
-      if (!editorState.foldingState.isLineHidden(i)) {
-        visualOffset++;
-      }
-    }
-
-    if (_isFoldable(line) || editorState.foldingState.isLineFolded(line)) {
-      final endLine = _findFoldingEndLine(line);
-      if (endLine != null) {
-        editorState.toggleFold(line, endLine);
+          // Unfold the parent
+          editorState.toggleFold(line, foldEnd, nestedFolds: nestedFolds);
+        }
+      } else {
+        // Find fold end for unfoldable line
+        final endLine = _findFoldingEndLine(line);
+        if (endLine != null) {
+          editorState.toggleFold(line, endLine);
+        }
       }
     }
   }
@@ -211,6 +155,11 @@ class _GutterState extends State<Gutter> {
     }
 
     return editorState.buffer.lines.length - 1;
+  }
+
+  int _getIndentation(String line) {
+    final match = RegExp(r'[^\s]').firstMatch(line);
+    return match?.start ?? -1;
   }
 
   @override

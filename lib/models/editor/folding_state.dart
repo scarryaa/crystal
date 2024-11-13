@@ -15,20 +15,27 @@ class FoldingState extends ChangeNotifier {
 
   bool isLineFolded(int line) => foldingRanges.containsKey(line);
 
+  void fold(int startLine, int endLine) {
+    // Remove any existing folds that are completely within this new fold
+    foldingRanges
+        .removeWhere((key, value) => key > startLine && value <= endLine);
+
+    // Add the new fold
+    foldingRanges[startLine] = endLine;
+    notifyListeners();
+  }
+
+  void unfold(int startLine) {
+    foldingRanges.remove(startLine);
+    notifyListeners();
+  }
+
   void toggleFold(int startLine, int endLine) {
     if (isLineFolded(startLine)) {
-      // Unfold
-      foldingRanges.remove(startLine);
+      unfold(startLine);
     } else {
-      // Fold
-      // Remove any existing folds that are completely within this new fold
-      foldingRanges
-          .removeWhere((key, value) => key > startLine && value <= endLine);
-
-      // Add the new fold
-      foldingRanges[startLine] = endLine;
+      fold(startLine, endLine);
     }
-    notifyListeners();
   }
 
   List<int> getVisibleLines(List<String> lines) {

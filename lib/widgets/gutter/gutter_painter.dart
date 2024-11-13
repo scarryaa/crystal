@@ -105,13 +105,11 @@ class GutterPainter extends CustomPainter {
   }
 
   void _drawFoldingIndicators(Canvas canvas, Size size, int line) {
-    // Skip if line is out of bounds
     if (line >= editorState.buffer.lines.length) return;
 
     final isFoldable = editorState.isFoldable(line);
     final isFolded = editorState.foldingState.isLineFolded(line);
 
-    // Only draw if line is foldable or currently folded
     if (!isFoldable && !isFolded) return;
 
     final paint = Paint()
