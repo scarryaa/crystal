@@ -129,13 +129,17 @@ class SelectionPainter {
       // Adjust start line to after the fold
       if (foldEnd != null) {
         startLine = foldEnd + 1;
-        visualLine++;
       }
     } else {
       // Paint start line normally
-      if (!editorState.foldingState.isLineHidden(startLine)) {
+      if (!editorState.foldingState.isLineHidden(endLine)) {
         _paintSelectionLine(
-            canvas, startLine, startColumn, null, visualLine, selectionPaint);
+            canvas,
+            endLine,
+            0,
+            endColumn,
+            visualLine, // Add offset here instead
+            selectionPaint);
       }
     }
 
