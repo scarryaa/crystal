@@ -21,6 +21,138 @@ class BracketMatchPainter extends EditorPainterBase {
       ..isAntiAlias = true;
   }
 
+  int? _getFoldStartLine(int line) {
+    for (var entry in editorState.buffer.foldedRanges.entries) {
+      if (line >= entry.key && line <= entry.value) {
+        return entry.key;
+      }
+    }
+    return null;
+  }
+
+  int? _getFoldEndLine(int line) {
+    for (var entry in editorState.buffer.foldedRanges.entries) {
+      if (line >= entry.key && line <= entry.value) {
+        return entry.value;
+      }
+    }
+    return null;
+  }
+
+  void _handleFoldedRegions(
+      int startLine, int endLine, void Function() callback) {
+    int currentLine = startLine;
+    while (currentLine <= endLine) {
+      if (editorState.foldingState.isLineHidden(currentLine)) {
+        var foldStartLine = _getFoldStartLine(currentLine);
+        var foldEndLine = _getFoldEndLine(currentLine);
+        if (foldStartLine != null && foldEndLine != null) {
+          callback();
+          currentLine = foldEndLine + 1;
+        } else {
+          currentLine++;
+        }
+      } else {
+        callback();
+        currentLine++;
+      }
+    }
+  }
+
+  Position? _findMatchingBracketPosition(
+      int startLine, int startColumn, String bracket) {
+    final isOpen = _isOpenBracket(bracket);
+    final matchingChar = _getMatchingBracket(bracket);
+    if (matchingChar == null) return null;
+
+    int nestLevel = 1;
+
+    if (isOpen) {
+      // Search forward
+      int currentLine = startLine;
+      while (currentLine < editorState.buffer.lineCount) {
+        // Handle folded regions
+        if (editorState.foldingState.isLineHidden(currentLine)) {
+          // Find the fold that contains this line
+          var foldEnd = _getFoldEndLine(currentLine);
+          if (foldEnd != null) {
+            // Check the last visible line of the fold for matches
+            final lastVisibleLine = editorState.buffer.getLine(foldEnd);
+            int columnStart = 0;
+            for (int col = columnStart; col < lastVisibleLine.length; col++) {
+              final char = lastVisibleLine[col];
+              if (char == bracket) nestLevel++;
+              if (char == matchingChar) nestLevel--;
+
+              if (nestLevel == 0) {
+                return Position(line: foldEnd, column: col);
+              }
+            }
+            currentLine = foldEnd + 1;
+            continue;
+          }
+        }
+
+        final line = editorState.buffer.getLine(currentLine);
+        int columnStart = currentLine == startLine ? startColumn + 1 : 0;
+
+        for (int col = columnStart; col < line.length; col++) {
+          final char = line[col];
+          if (char == bracket) nestLevel++;
+          if (char == matchingChar) nestLevel--;
+
+          if (nestLevel == 0) {
+            return Position(line: currentLine, column: col);
+          }
+        }
+        currentLine++;
+      }
+    } else {
+      // Search backward
+      int currentLine = startLine;
+      while (currentLine >= 0) {
+        // Handle folded regions
+        if (editorState.foldingState.isLineHidden(currentLine)) {
+          // Find the fold that contains this line
+          var foldStart = _getFoldStartLine(currentLine);
+          if (foldStart != null) {
+            // Check the first visible line of the fold for matches
+            final firstVisibleLine = editorState.buffer.getLine(foldStart);
+            int columnStart = firstVisibleLine.length - 1;
+            for (int col = columnStart; col >= 0; col--) {
+              final char = firstVisibleLine[col];
+              if (char == bracket) nestLevel++;
+              if (char == matchingChar) nestLevel--;
+
+              if (nestLevel == 0) {
+                return Position(line: foldStart, column: col);
+              }
+            }
+            currentLine = foldStart - 1;
+            continue;
+          }
+        }
+
+        final line = editorState.buffer.getLine(currentLine);
+        int columnStart =
+            currentLine == startLine ? startColumn - 1 : line.length - 1;
+
+        for (int col = columnStart; col >= 0; col--) {
+          final char = line[col];
+          if (char == bracket) nestLevel++;
+          if (char == matchingChar) nestLevel--;
+
+          if (nestLevel == 0) {
+            return Position(line: currentLine, column: col);
+          }
+        }
+        currentLine--;
+      }
+    }
+
+    return null;
+  }
+
   @override
   void paint(
     Canvas canvas,
@@ -29,7 +161,23 @@ class BracketMatchPainter extends EditorPainterBase {
     required int lastVisibleLine,
   }) {
     if (cursors.isEmpty) return;
-    paintBracketHighlight(canvas, size, firstVisibleLine, lastVisibleLine);
+
+    // Adjust visible lines to account for folded regions
+    int adjustedFirstLine = firstVisibleLine;
+    int adjustedLastLine = lastVisibleLine;
+
+    // Skip hidden lines in the visible range
+    while (adjustedFirstLine <= lastVisibleLine &&
+        editorState.foldingState.isLineHidden(adjustedFirstLine)) {
+      adjustedFirstLine++;
+    }
+
+    while (adjustedLastLine >= firstVisibleLine &&
+        editorState.foldingState.isLineHidden(adjustedLastLine)) {
+      adjustedLastLine--;
+    }
+
+    paintBracketHighlight(canvas, size, adjustedFirstLine, adjustedLastLine);
   }
 
   void paintBracketHighlight(
@@ -107,56 +255,6 @@ class BracketMatchPainter extends EditorPainterBase {
         rect.top >= 0 &&
         rect.right <= size.width &&
         rect.bottom <= size.height;
-  }
-
-  Position? _findMatchingBracketPosition(
-      int startLine, int startColumn, String bracket) {
-    final isOpen = _isOpenBracket(bracket);
-    final matchingChar = _getMatchingBracket(bracket);
-    if (matchingChar == null) return null;
-
-    int nestLevel = 1;
-
-    if (isOpen) {
-      // Search forward
-      int currentLine = startLine;
-      while (currentLine < editorState.buffer.lineCount) {
-        final line = editorState.buffer.getLine(currentLine);
-        int columnStart = currentLine == startLine ? startColumn + 1 : 0;
-
-        for (int col = columnStart; col < line.length; col++) {
-          final char = line[col];
-          if (char == bracket) nestLevel++;
-          if (char == matchingChar) nestLevel--;
-
-          if (nestLevel == 0) {
-            return Position(line: currentLine, column: col);
-          }
-        }
-        currentLine++;
-      }
-    } else {
-      // Search backward
-      int currentLine = startLine;
-      while (currentLine >= 0) {
-        final line = editorState.buffer.getLine(currentLine);
-        int columnStart =
-            currentLine == startLine ? startColumn - 1 : line.length - 1;
-
-        for (int col = columnStart; col >= 0; col--) {
-          final char = line[col];
-          if (char == bracket) nestLevel++;
-          if (char == matchingChar) nestLevel--;
-
-          if (nestLevel == 0) {
-            return Position(line: currentLine, column: col);
-          }
-        }
-        currentLine--;
-      }
-    }
-
-    return null;
   }
 
   bool _isBracket(String char) {

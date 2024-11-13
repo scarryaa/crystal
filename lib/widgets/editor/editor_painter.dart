@@ -126,10 +126,17 @@ class EditorPainter extends CustomPainter {
       lastVisibleLine++;
     }
 
-    // Add buffer but respect content bounds
     lastVisibleLine = min(editorState.buffer.lineCount, lastVisibleLine + 10);
 
     backgroundPainter.paint(canvas, size);
+
+    indentationPainter.paint(
+      canvas,
+      size,
+      firstVisibleLine: firstVisibleLine,
+      lastVisibleLine: lastVisibleLine,
+    );
+
     textPainterHelper.paintText(canvas, size, firstVisibleLine, lastVisibleLine,
         editorState.buffer.lines);
 
@@ -143,7 +150,7 @@ class EditorPainter extends CustomPainter {
     // Clear previous highlighted lines
     _currentHighlightedLines.clear();
 
-// Draw highlights
+    // Draw highlights
     if (!editorState.editorSelectionManager.hasSelection()) {
       _currentHighlightedLines.clear();
       for (var cursor in editorState.editorCursorManager.cursors) {

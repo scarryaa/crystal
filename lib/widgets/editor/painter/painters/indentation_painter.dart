@@ -22,8 +22,14 @@ class IndentationPainter extends EditorPainterBase {
     Map<int, Set<int>> highlightedIndentRanges = {};
     Map<int, bool> isClosestIndentLevel = {};
 
+    // Adjust visible lines to account for folded regions
+    int adjustedFirstLine = _getNextVisibleLine(firstVisibleLine);
+    int adjustedLastLine = _getPreviousVisibleLine(lastVisibleLine);
+
     for (final cursor in cursors) {
-      if (cursor.line >= 0 && cursor.line < lines.length) {
+      if (cursor.line >= 0 &&
+          cursor.line < lines.length &&
+          !editorState.foldingState.isLineHidden(cursor.line)) {
         final line = lines[cursor.line];
         final leadingSpaces = _countLeadingSpaces(line);
         final cursorColumn = cursor.column;
@@ -56,8 +62,8 @@ class IndentationPainter extends EditorPainterBase {
             lines,
             cursor.line,
             closestIndentLevel,
-            firstVisibleLine,
-            lastVisibleLine,
+            adjustedFirstLine,
+            adjustedLastLine,
           );
 
           highlightedIndentRanges
@@ -68,9 +74,11 @@ class IndentationPainter extends EditorPainterBase {
       }
     }
 
-    // Draw the indent lines
-    for (int i = firstVisibleLine; i < lastVisibleLine; i++) {
-      if (i >= 0 && i < lines.length) {
+    // Draw the indent lines only for visible lines
+    for (int i = adjustedFirstLine; i <= adjustedLastLine; i++) {
+      if (i >= 0 &&
+          i < lines.length &&
+          !editorState.foldingState.isLineHidden(i)) {
         final line = lines[i];
         final leadingSpaces = line.trim().isEmpty
             ? _getPreviousNonEmptyLineIndent(lines, i)
@@ -83,7 +91,7 @@ class IndentationPainter extends EditorPainterBase {
           _drawIndentLine(
             canvas,
             xPosition,
-            i,
+            _getVisibleLineIndex(i), // Adjust for folded lines
             isCurrentIndent: highlightedIndentRanges.containsKey(space) &&
                 highlightedIndentRanges[space]!.contains(i),
           );
@@ -95,7 +103,8 @@ class IndentationPainter extends EditorPainterBase {
   int _getPreviousNonEmptyLineIndent(List<String> lines, int currentLine) {
     int line = currentLine - 1;
     while (line >= 0) {
-      if (lines[line].trim().isNotEmpty) {
+      if (!editorState.foldingState.isLineHidden(line) &&
+          lines[line].trim().isNotEmpty) {
         return _countLeadingSpaces(lines[line]);
       }
       line--;
@@ -115,50 +124,84 @@ class IndentationPainter extends EditorPainterBase {
     // Search upward
     int upLine = cursorLine;
     while (upLine >= firstVisibleLine) {
-      final lineIndent = _countLeadingSpaces(lines[upLine]);
-
-      // Stop if we find a line with strictly less indentation
-      if (lineIndent < indentLevel) {
-        break;
+      if (editorState.foldingState.isLineHidden(upLine)) {
+        upLine = _getPreviousVisibleLine(upLine - 1);
+        continue;
       }
 
-      // Stop if we find a line with same indentation but previous line has less
+      final lineIndent = _countLeadingSpaces(lines[upLine]);
+
+      if (lineIndent < indentLevel) break;
+
       if (lineIndent == indentLevel && upLine > 0) {
-        final prevLineIndent = _countLeadingSpaces(lines[upLine - 1]);
-        if (prevLineIndent < indentLevel) {
-          blockLines.add(upLine);
-          break;
+        int prevLine = _getPreviousVisibleLine(upLine - 1);
+        if (prevLine >= 0) {
+          final prevLineIndent = _countLeadingSpaces(lines[prevLine]);
+          if (prevLineIndent < indentLevel) {
+            blockLines.add(upLine);
+            break;
+          }
         }
       }
 
       blockLines.add(upLine);
-      upLine--;
+      upLine = _getPreviousVisibleLine(upLine - 1);
     }
 
     // Search downward
     int downLine = cursorLine + 1;
-    while (downLine < lastVisibleLine && downLine < lines.length) {
-      final lineIndent = _countLeadingSpaces(lines[downLine]);
-
-      // Stop if we find a line with strictly less indentation
-      if (lineIndent < indentLevel) {
-        break;
+    while (downLine <= lastVisibleLine && downLine < lines.length) {
+      if (editorState.foldingState.isLineHidden(downLine)) {
+        downLine = _getNextVisibleLine(downLine + 1);
+        continue;
       }
 
-      // Stop if we find a line with same indentation but next line has less
+      final lineIndent = _countLeadingSpaces(lines[downLine]);
+
+      if (lineIndent < indentLevel) break;
+
       if (lineIndent == indentLevel && downLine < lines.length - 1) {
-        final nextLineIndent = _countLeadingSpaces(lines[downLine + 1]);
-        if (nextLineIndent < indentLevel) {
-          blockLines.add(downLine);
-          break;
+        int nextLine = _getNextVisibleLine(downLine + 1);
+        if (nextLine < lines.length) {
+          final nextLineIndent = _countLeadingSpaces(lines[nextLine]);
+          if (nextLineIndent < indentLevel) {
+            blockLines.add(downLine);
+            break;
+          }
         }
       }
 
       blockLines.add(downLine);
-      downLine++;
+      downLine = _getNextVisibleLine(downLine + 1);
     }
 
     return blockLines;
+  }
+
+  // Helper methods for handling folded regions
+  int _getNextVisibleLine(int line) {
+    while (line < editorState.buffer.lineCount &&
+        editorState.foldingState.isLineHidden(line)) {
+      line++;
+    }
+    return line;
+  }
+
+  int _getPreviousVisibleLine(int line) {
+    while (line >= 0 && editorState.foldingState.isLineHidden(line)) {
+      line--;
+    }
+    return line;
+  }
+
+  int _getVisibleLineIndex(int actualLine) {
+    int visibleIndex = 0;
+    for (int i = 0; i < actualLine; i++) {
+      if (!editorState.foldingState.isLineHidden(i)) {
+        visibleIndex++;
+      }
+    }
+    return visibleIndex;
   }
 
   void _drawIndentLine(Canvas canvas, double left, int lineNumber,
@@ -200,6 +243,7 @@ class IndentationPainter extends EditorPainterBase {
   bool shouldRepaint(covariant IndentationPainter oldDelegate) {
     return editorState.buffer.version !=
             oldDelegate.editorState.buffer.version ||
+        editorState.foldingState != oldDelegate.editorState.foldingState ||
         !_compareCursors(editorState.editorCursorManager.cursors,
             oldDelegate.editorState.editorCursorManager.cursors);
   }
