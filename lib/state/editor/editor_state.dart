@@ -61,8 +61,24 @@ class EditorState extends ChangeNotifier {
   }
 
   void toggleFold(int startLine, int endLine, {Map<int, int>? nestedFolds}) {
+    // Check if the region is currently folded
+    bool isFolded = buffer.foldedRanges.containsKey(startLine);
+
+    if (isFolded) {
+      // Unfold the region
+      buffer.unfoldLines(startLine);
+    } else {
+      // Fold the region
+      buffer.foldLines(startLine, endLine);
+    }
+
+    // Toggle the fold in the folding state
     foldingState.toggleFold(startLine, endLine, nestedFolds: nestedFolds);
+
+    // Recalculate visible lines
     recalculateVisibleLines();
+
+    notifyListeners();
   }
 
   void recalculateVisibleLines() {
