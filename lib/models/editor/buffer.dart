@@ -166,6 +166,15 @@ class Buffer {
   }
 
   void setOriginalContent(String content) {
-    _originalContent = content;
+    // Process the content the same way as the content getter
+    StringBuffer buffer = StringBuffer();
+    List<String> lines = content.split('\n');
+
+    for (int i = 0; i < lines.length; i++) {
+      buffer.writeln(lines[i]);
+    }
+
+    _originalContent = buffer.toString().trimRight();
+    incrementVersion();
   }
 }

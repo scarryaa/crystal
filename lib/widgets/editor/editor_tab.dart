@@ -148,7 +148,7 @@ class EditorTab extends StatelessWidget {
     final theme = editorConfigService.themeService.currentTheme;
 
     return ListenableBuilder(
-        listenable: editorConfigService,
+        listenable: Listenable.merge([editorConfigService, editor]),
         builder: (context, child) {
           return Semantics(
             // TODO add tab index?

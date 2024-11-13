@@ -13,13 +13,13 @@ Crystal aims to be a lightweight yet powerful code editor.
 - Multi-Cursor Editing
 - Split Views
 - Integrated Terminal
+- Code Folding
 
 ### Planned Features
 - Multiple Themes
 - Git Integration
 - Extensions
 - Code Completion/Suggestions
-- Code Folding
 - Custom Keybindings
 - Integrated Debugger (?)
 - Remote Development (?)
