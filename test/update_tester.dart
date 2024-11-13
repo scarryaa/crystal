@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'dart:io';
 import 'package:crystal/app/test_updater.dart';
 import 'package:crystal/app/updater.dart';

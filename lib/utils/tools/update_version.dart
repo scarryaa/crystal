@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'package:crystal/utils/version_manager.dart';
 
 void main(List<String> args) async {

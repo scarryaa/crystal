@@ -4,7 +4,9 @@ import 'package:crystal/services/editor/editor_tab_manager.dart';
 import 'package:crystal/services/file_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/widgets/editor/editor_tab.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class EditorTabBar extends StatefulWidget {
   final List<EditorState> editors;
@@ -53,6 +55,85 @@ class EditorTabBar extends StatefulWidget {
 }
 
 class _EditorTabBarState extends State<EditorTabBar> {
+  final Map<String, GlobalKey> _tabKeys = {};
+
+  GlobalKey _getKeyForEditor(EditorState editor) {
+    return _tabKeys.putIfAbsent(editor.id, () => GlobalKey());
+  }
+
+  void _handleMouseScroll(PointerSignalEvent event) {
+    if (event is PointerScrollEvent) {
+      if (event.buttons == 0 && event.scrollDelta.dy != 0) {
+        if (HardwareKeyboard.instance.isShiftPressed) {
+          // Shift + scroll wheel: switch tabs
+          final delta = event.scrollDelta.dy > 0 ? 1 : -1;
+          final newIndex = (widget.activeEditorIndex + delta).clamp(
+            0,
+            widget.editors.length - 1,
+          );
+
+          if (newIndex != widget.activeEditorIndex) {
+            widget.onActiveEditorChanged(newIndex);
+
+            // Get the RenderBox of the target tab
+            final targetEditor = widget.editors[newIndex];
+            final targetKey = _getKeyForEditor(targetEditor);
+            final RenderBox? renderBox =
+                targetKey.currentContext?.findRenderObject() as RenderBox?;
+
+            if (renderBox != null) {
+              // Find the scroll view's RenderBox
+              final RenderBox scrollBox =
+                  context.findRenderObject() as RenderBox;
+
+              // Convert target position to global coordinates
+              final targetGlobalPosition = renderBox.localToGlobal(Offset.zero);
+              final scrollGlobalPosition = scrollBox.localToGlobal(Offset.zero);
+
+              // Calculate the target's position relative to the scroll view
+              final relativePosition =
+                  targetGlobalPosition.dx - scrollGlobalPosition.dx;
+
+              // Calculate the target scroll offset
+              final targetScrollOffset =
+                  widget.tabBarScrollController.offset + relativePosition;
+
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                final viewportWidth = scrollBox.size.width;
+                final tabWidth = renderBox.size.width;
+
+                // Calculate the ideal offset to center the tab if possible
+                final idealOffset =
+                    targetScrollOffset - (viewportWidth - tabWidth) / 2;
+
+                // Clamp the offset to valid bounds
+                final clampedOffset = idealOffset.clamp(
+                  0.0,
+                  widget.tabBarScrollController.position.maxScrollExtent,
+                );
+
+                // Animate to the new position
+                widget.tabBarScrollController.animateTo(
+                  clampedOffset,
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeInOut,
+                );
+              });
+            }
+          }
+        } else {
+          // Regular scroll wheel: scroll horizontally
+          widget.tabBarScrollController.jumpTo(
+            (widget.tabBarScrollController.offset + event.scrollDelta.dy).clamp(
+              0.0,
+              widget.tabBarScrollController.position.maxScrollExtent,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   void _handleSplitVertical() {
     if (widget.activeEditorIndex >= 0) {
       // Get current active editor
@@ -156,35 +237,40 @@ class _EditorTabBarState extends State<EditorTabBar> {
                 Colors.white,
           ),
           height: widget.editorConfigService.config.uiFontSize * 2.5,
-          child: Row(
-            children: [
-              Expanded(
-                child: ReorderableListView.builder(
-                  scrollController: widget.tabBarScrollController,
-                  scrollDirection: Axis.horizontal,
-                  buildDefaultDragHandles: false,
-                  onReorder: widget.onReorder,
-                  itemCount: widget.editors.length,
-                  itemBuilder: (context, index) {
-                    final editor = widget.editors[index];
-                    return ReorderableDragStartListener(
-                      key: ValueKey(editor.id),
-                      index: index,
-                      child: EditorTab(
-                        editorConfigService: widget.editorConfigService,
-                        editor: editor,
-                        isActive: index == widget.activeEditorIndex,
-                        onTap: () => widget.onActiveEditorChanged(index),
-                        onClose: () => _handleEditorClosed(index),
-                        onPin: () => widget.onPin(index),
-                        isPinned: editor.isPinned,
-                      ),
-                    );
-                  },
+          child: Listener(
+            // Add this Listener widget
+            onPointerSignal: _handleMouseScroll,
+            child: Row(
+              children: [
+                Expanded(
+                  child: ReorderableListView.builder(
+                    scrollController: widget.tabBarScrollController,
+                    scrollDirection: Axis.horizontal,
+                    buildDefaultDragHandles: false,
+                    onReorder: widget.onReorder,
+                    itemCount: widget.editors.length,
+                    itemBuilder: (context, index) {
+                      final editor = widget.editors[index];
+                      return ReorderableDragStartListener(
+                        key: ValueKey(editor.id),
+                        index: index,
+                        child: EditorTab(
+                          key: _getKeyForEditor(editor),
+                          editorConfigService: widget.editorConfigService,
+                          editor: editor,
+                          isActive: index == widget.activeEditorIndex,
+                          onTap: () => widget.onActiveEditorChanged(index),
+                          onClose: () => _handleEditorClosed(index),
+                          onPin: () => widget.onPin(index),
+                          isPinned: editor.isPinned,
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              ),
-              _buildSplitButtons(),
-            ],
+                _buildSplitButtons(),
+              ],
+            ),
           ),
         );
       },
