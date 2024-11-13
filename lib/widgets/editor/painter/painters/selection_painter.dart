@@ -1,3 +1,6 @@
+import 'dart:math';
+
+import 'package:crystal/models/selection.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
@@ -5,7 +8,6 @@ import 'package:flutter/material.dart';
 
 class SelectionPainter {
   final EditorState editorState;
-  final TextPainter _textPainter;
   final EditorLayoutService editorLayoutService;
   final EditorConfigService editorConfigService;
 
@@ -13,104 +15,73 @@ class SelectionPainter {
     this.editorState, {
     required this.editorLayoutService,
     required this.editorConfigService,
-  }) : _textPainter = TextPainter(
-          textDirection: TextDirection.ltr,
-          textAlign: TextAlign.left,
-        );
+  });
 
   void paint(Canvas canvas, int firstVisibleLine, int lastVisibleLine) {
     if (!editorState.editorSelectionManager.hasSelection()) return;
 
+    // Find the maximum selection line to ensure we render the full selection
+    int maxSelectionLine = firstVisibleLine;
     for (var selection in editorState.editorSelectionManager.selections) {
-      int selectionStartLine,
-          selectionEndLine,
-          selectionStartColumn,
-          selectionEndColumn;
+      maxSelectionLine =
+          max(maxSelectionLine, max(selection.startLine, selection.endLine));
+    }
 
-      // Normalize selection
-      if (selection.startLine > selection.endLine ||
-          selection.startLine == selection.endLine &&
-              selection.startColumn > selection.endColumn) {
-        selectionStartLine = selection.endLine;
-        selectionEndLine = selection.startLine;
-        selectionStartColumn = selection.endColumn;
-        selectionEndColumn = selection.startColumn;
-      } else {
-        selectionStartLine = selection.startLine;
-        selectionEndLine = selection.endLine;
-        selectionStartColumn = selection.startColumn;
-        selectionEndColumn = selection.endColumn;
+    // Extend lastVisibleLine if needed to show full selection
+    lastVisibleLine = max(lastVisibleLine, maxSelectionLine + 1);
+
+    for (var selection in editorState.editorSelectionManager.selections) {
+      final (startLine, endLine, startColumn, endColumn) =
+          _normalizeSelection(selection);
+
+      // Calculate visual line position
+      int visualLine = 0;
+      for (int i = firstVisibleLine; i < startLine; i++) {
+        if (!editorState.foldingState.isLineHidden(i)) {
+          visualLine++;
+        }
       }
 
-      if (selectionStartLine == selectionEndLine) {
-        _paintSingleLineSelection(
-            canvas,
-            selectionStartLine,
-            selectionStartColumn,
-            selectionEndColumn,
-            firstVisibleLine,
-            lastVisibleLine);
+      if (startLine == endLine) {
+        _paintSingleLineSelection(canvas, startLine, startColumn, endColumn,
+            firstVisibleLine, lastVisibleLine, visualLine);
       } else {
-        _paintMultiLineSelection(
-            canvas,
-            selectionStartLine,
-            selectionEndLine,
-            selectionStartColumn,
-            selectionEndColumn,
-            firstVisibleLine,
-            lastVisibleLine);
+        _paintMultiLineSelection(canvas, startLine, endLine, startColumn,
+            endColumn, firstVisibleLine, lastVisibleLine, visualLine);
       }
     }
   }
 
-  void _paintSingleLineSelection(Canvas canvas, int line, int startColumn,
-      int endColumn, int firstVisibleLine, int lastVisibleLine) {
-    if (line >= firstVisibleLine && line <= lastVisibleLine) {
-      String textUpToSelection =
-          editorState.buffer.getLine(line).substring(0, startColumn);
-      String textSlice =
-          editorState.buffer.getLine(line).substring(startColumn, endColumn);
+  void _paintSingleLineSelection(
+      Canvas canvas,
+      int line,
+      int startColumn,
+      int endColumn,
+      int firstVisibleLine,
+      int lastVisibleLine,
+      int visualLine) {
+    if (_isLineVisible(line, firstVisibleLine, lastVisibleLine)) {
+      String lineText = editorState.buffer.getLine(line);
+      double startX = _measureText(lineText.substring(0, startColumn));
+      double width = _measureText(lineText.substring(startColumn, endColumn));
 
-      _textPainter.text = TextSpan(
-        text: textUpToSelection,
-        style: TextStyle(
-          fontSize: editorConfigService.config.fontSize,
-          fontFamily: editorConfigService.config.fontFamily,
-          color: Colors.black,
-          height: 1.0,
-          leadingDistribution: TextLeadingDistribution.even,
-          fontFeatures: const [
-            FontFeature.enable('kern'),
-            FontFeature.enable('liga'),
-            FontFeature.enable('calt'),
-          ],
-        ),
-      );
-      _textPainter.layout();
-      double left = _textPainter.width;
+      if (width == 0) {
+        width = editorConfigService.config.fontSize / 2;
+      }
 
-      _textPainter.text = TextSpan(
-        text: textSlice,
-        style: TextStyle(
-          fontSize: editorConfigService.config.fontSize,
-          fontFamily: editorConfigService.config.fontFamily,
-          color: Colors.black,
-        ),
-      );
-      _textPainter.layout();
-      double width = _textPainter.width;
-
-      _drawWhitespaceIndicators(canvas, startColumn, endColumn, line);
-
-      // TODO revise this?
       canvas.drawRect(
-          Rect.fromLTWH(left, line * editorLayoutService.config.lineHeight,
-              width, editorLayoutService.config.lineHeight),
+          Rect.fromLTWH(
+              startX,
+              visualLine * editorLayoutService.config.lineHeight,
+              width,
+              editorLayoutService.config.lineHeight),
           Paint()
-            ..color = editorConfigService.themeService.currentTheme != null
-                ? editorConfigService.themeService.currentTheme!.primary
-                    .withOpacity(0.2)
-                : Colors.blue.withOpacity(0.2));
+            ..color = editorConfigService.themeService.currentTheme?.primary
+                    .withOpacity(0.2) ??
+                Colors.blue.withOpacity(0.2));
+
+      _drawWhitespaceIndicators(
+          canvas, startColumn, endColumn, line, visualLine);
     }
   }
 
@@ -121,117 +92,143 @@ class SelectionPainter {
       int startColumn,
       int endColumn,
       int firstVisibleLine,
-      int lastVisibleLine) {
+      int lastVisibleLine,
+      int initialVisualLine) {
     Paint selectionPaint = Paint()
-      ..color = editorConfigService.themeService.currentTheme != null
-          ? editorConfigService.themeService.currentTheme!.primary
-              .withOpacity(0.2)
-          : Colors.blue.withOpacity(0.2);
+      ..color = editorConfigService.themeService.currentTheme?.primary
+              .withOpacity(0.2) ??
+          Colors.blue.withOpacity(0.2);
 
-    // Start line
-    String startLineLeftSlice =
-        editorState.buffer.getLine(startLine).substring(0, startColumn);
-    _textPainter.text = TextSpan(
-      text: startLineLeftSlice,
-      style: TextStyle(
-        fontSize: editorConfigService.config.fontSize,
-        fontFamily: editorConfigService.config.fontFamily,
-        color: Colors.black,
-      ),
-    );
-    _textPainter.layout();
-    double startLineLeft = _textPainter.width;
-    double startLineWidth =
-        _measureLineWidth(editorState.buffer.getLine(startLine)) -
-            startLineLeft;
+    int visualLine = initialVisualLine;
 
-    _drawWhitespaceIndicators(canvas, startColumn,
-        editorState.buffer.getLineLength(startLine), startLine);
+    // Paint start line
+    if (_isLineVisible(startLine, firstVisibleLine, lastVisibleLine)) {
+      _paintSelectionLine(
+          canvas, startLine, startColumn, null, visualLine, selectionPaint);
+    }
 
-    _drawSelectionForLine(
-        canvas, startLine, startLineLeft, startLineWidth, selectionPaint);
-
-    // Middle lines
-    for (int i = startLine + 1; i < endLine; i++) {
-      if (i >= firstVisibleLine && i <= lastVisibleLine) {
-        _drawWhitespaceIndicators(
-            canvas, 0, editorState.buffer.getLineLength(i), i);
-
-        double width = _measureLineWidth(editorState.buffer.getLine(i));
-        _drawSelectionForLine(canvas, i, 0, width, selectionPaint);
+    // Paint middle lines
+    for (int line = startLine + 1; line < endLine; line++) {
+      if (_isLineVisible(line, firstVisibleLine, lastVisibleLine)) {
+        visualLine++;
+        _paintSelectionLine(canvas, line, 0, null, visualLine, selectionPaint);
+      } else if (!editorState.foldingState.isLineHidden(line)) {
+        // Still increment visual line even if not visible
+        visualLine++;
       }
     }
 
-    // End line
-    String endLineSlice =
-        editorState.buffer.getLine(endLine).substring(0, endColumn);
-    _textPainter.text = TextSpan(
-      text: endLineSlice,
-      style: TextStyle(
-        fontSize: editorConfigService.config.fontSize,
-        fontFamily: editorConfigService.config.fontFamily,
-        color: Colors.black,
-      ),
-    );
-    _textPainter.layout();
-    double endLineWidth = _textPainter.width;
-
-    _drawWhitespaceIndicators(canvas, 0, endColumn, endLine);
-
-    _drawSelectionForLine(canvas, endLine, 0, endLineWidth, selectionPaint);
+    // Paint end line
+    if (_isLineVisible(endLine, firstVisibleLine, lastVisibleLine)) {
+      if (!editorState.foldingState.isLineHidden(endLine)) {
+        visualLine++;
+        _paintSelectionLine(
+            canvas, endLine, 0, endColumn, visualLine, selectionPaint);
+      }
+    }
   }
 
-  void _drawSelectionForLine(
-      Canvas canvas, int lineNumber, double left, double width, Paint paint) {
+  void _paintSelectionLine(
+    Canvas canvas,
+    int line,
+    int startColumn,
+    int? endColumn,
+    int visualLine,
+    Paint paint,
+  ) {
+    String lineText = editorState.buffer.getLine(line);
+    double startX =
+        startColumn > 0 ? _measureText(lineText.substring(0, startColumn)) : 0;
+
+    double width;
+    if (endColumn != null) {
+      width = _measureText(
+          lineText.substring(startColumn, min(endColumn, lineText.length)));
+    } else {
+      width = _measureText(lineText.substring(startColumn));
+    }
+
     if (width == 0) {
       width = editorConfigService.config.fontSize / 2;
     }
 
     canvas.drawRect(
-        Rect.fromLTWH(left, lineNumber * editorLayoutService.config.lineHeight,
-            width, editorLayoutService.config.lineHeight),
+        Rect.fromLTWH(
+            startX,
+            visualLine * editorLayoutService.config.lineHeight,
+            width,
+            editorLayoutService.config.lineHeight),
         paint);
+
+    _drawWhitespaceIndicators(
+        canvas, startColumn, endColumn ?? lineText.length, line, visualLine);
   }
 
-  void _drawWhitespaceIndicators(
-      Canvas canvas, int startColumn, int endColumn, int lineNumber) {
-    for (int i = startColumn; i < endColumn; i++) {
-      if (editorState.buffer.getLine(lineNumber)[i] == ' ') {
+  (int, int, int, int) _normalizeSelection(Selection selection) {
+    if (selection.startLine > selection.endLine ||
+        (selection.startLine == selection.endLine &&
+            selection.startColumn > selection.endColumn)) {
+      return (
+        selection.endLine,
+        selection.startLine,
+        selection.endColumn,
+        selection.startColumn
+      );
+    }
+    return (
+      selection.startLine,
+      selection.endLine,
+      selection.startColumn,
+      selection.endColumn
+    );
+  }
+
+  bool _isLineVisible(int line, int firstVisible, int lastVisible) {
+    return line >= firstVisible &&
+        line <= lastVisible &&
+        !editorState.foldingState.isLineHidden(line);
+  }
+
+  double _measureText(String text) {
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          fontFamily: editorConfigService.config.fontFamily,
+          fontSize: editorConfigService.config.fontSize,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    return textPainter.width;
+  }
+
+  void _drawWhitespaceIndicators(Canvas canvas, int startColumn, int endColumn,
+      int lineNumber, int visualLine) {
+    String lineText = editorState.buffer.getLine(lineNumber);
+
+    for (int i = startColumn; i < min(endColumn, lineText.length); i++) {
+      if (lineText[i] == ' ') {
+        double xPos = _measureText(lineText.substring(0, i)) +
+            (editorConfigService.config.fontSize / 4);
+
         _drawWhitespaceIndicator(
             canvas,
-            (i + 0.5) * editorLayoutService.config.charWidth,
-            lineNumber * editorLayoutService.config.lineHeight +
-                editorLayoutService.config.lineHeight / 2);
+            xPos,
+            visualLine * editorLayoutService.config.lineHeight +
+                (editorLayoutService.config.lineHeight / 2));
       }
     }
   }
 
   void _drawWhitespaceIndicator(Canvas canvas, double left, double top) {
     canvas.drawCircle(
-        Offset(left,
-            top + editorConfigService.config.whitespaceIndicatorRadius / 2),
+        Offset(left, top),
         editorConfigService.config.whitespaceIndicatorRadius,
         Paint()
-          ..color = editorConfigService.themeService.currentTheme != null
-              ? editorConfigService
-                  .themeService.currentTheme!.whitespaceIndicatorColor
-              : Colors.black.withOpacity(0.5));
-  }
-
-  double _measureLineWidth(String line) {
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: line,
-        style: TextStyle(
-          fontFamily: editorConfigService.config.fontFamily,
-          fontSize: editorConfigService.config.fontSize,
-          fontWeight: FontWeight.normal,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    );
-
-    textPainter.layout();
-    return textPainter.width;
+          ..color = editorConfigService
+                  .themeService.currentTheme?.whitespaceIndicatorColor ??
+              Colors.black.withOpacity(0.5));
   }
 }
