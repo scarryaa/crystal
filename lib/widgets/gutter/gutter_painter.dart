@@ -60,31 +60,147 @@ class GutterPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Draw background
     _drawBackground(canvas, size);
 
-    // Calculate visible lines
     int firstVisibleLine = max(0,
-        (verticalOffset / editorLayoutService.config.lineHeight).floor() - 5);
-    int lastVisibleLine = min(
-        editorState.buffer.lineCount,
-        ((verticalOffset + viewportHeight) /
-                    editorLayoutService.config.lineHeight)
-                .ceil() +
-            5);
-    lastVisibleLine = lastVisibleLine.clamp(0, editorState.buffer.lineCount);
+        (verticalOffset / editorLayoutService.config.lineHeight).floor() - 20);
+
+    // Calculate last visible line with proper bounds
+    int lastVisibleLine = firstVisibleLine;
+    double currentHeight = 0;
+
+    while (currentHeight <
+            viewportHeight + (editorLayoutService.config.lineHeight * 30) &&
+        lastVisibleLine < editorState.buffer.lineCount) {
+      if (!editorState.foldingState.isLineHidden(lastVisibleLine)) {
+        currentHeight += editorLayoutService.config.lineHeight;
+        // Break if we've exceeded the actual content height
+        if (currentHeight > size.height) {
+          break;
+        }
+      }
+      lastVisibleLine++;
+    }
+
+    // Add buffer but respect actual content bounds
+    lastVisibleLine = min(lastVisibleLine + 20, editorState.buffer.lineCount);
 
     _drawText(canvas, size, firstVisibleLine, lastVisibleLine);
 
-    // Highlight current line (if no selection)
+    for (var i = firstVisibleLine; i < lastVisibleLine; i++) {
+      if (!editorState.foldingState.isLineHidden(i)) {
+        _drawFoldingIndicators(canvas, size, i);
+      }
+    }
+
+    // Draw highlights
     if (!editorState.editorSelectionManager.hasSelection()) {
+      _currentHighlightedLines.clear();
       for (var cursor in editorState.editorCursorManager.cursors) {
-        if (!_currentHighlightedLines.contains(cursor.line)) {
+        if (!_currentHighlightedLines.contains(cursor.line) &&
+            !editorState.foldingState.isLineHidden(cursor.line)) {
           _highlightCurrentLine(canvas, size, cursor.line);
           _currentHighlightedLines.add(cursor.line);
         }
       }
     }
+  }
+
+  void _drawFoldingIndicators(Canvas canvas, Size size, int line) {
+    if (_isFoldable(line)) {
+      final isFolded = editorState.foldingState.isLineFolded(line);
+      final paint = Paint()
+        ..color = _defaultStyle.color!
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0;
+
+      // Calculate visual position for the indicator
+      int visualLine = 0;
+      for (int i = 0; i < line; i++) {
+        if (!editorState.foldingState.isLineHidden(i)) {
+          visualLine++;
+        }
+      }
+
+      final y = visualLine * editorLayoutService.config.lineHeight;
+      final iconSize = editorConfigService.config.fontSize * 0.8;
+      final rect = Rect.fromLTWH(
+          4.0,
+          y + (editorLayoutService.config.lineHeight - iconSize) / 2,
+          iconSize,
+          iconSize);
+
+      // Draw box
+      canvas.drawRect(rect, paint);
+
+      // Draw plus/minus
+      final centerX = rect.left + rect.width / 2;
+      final centerY = rect.top + rect.height / 2;
+      canvas.drawLine(Offset(rect.left + 2, centerY),
+          Offset(rect.right - 2, centerY), paint);
+
+      if (isFolded) {
+        canvas.drawLine(Offset(centerX, rect.top + 2),
+            Offset(centerX, rect.bottom - 2), paint);
+      }
+    }
+  }
+
+  bool _isFoldable(int line) {
+    if (line >= editorState.buffer.lines.length) return false;
+
+    final currentLine = editorState.buffer.lines[line].trim();
+
+    // Skip empty lines
+    if (currentLine.isEmpty) return false;
+
+    // Check if the current line ends with a block starter
+    if (!currentLine.endsWith('{') &&
+        !currentLine.endsWith('(') &&
+        !currentLine.endsWith('[')) {
+      return false;
+    }
+
+    final currentIndent = _getIndentation(editorState.buffer.lines[line]);
+
+    // Look ahead to find a valid folding range
+    int nextLine = line + 1;
+    bool hasContent = false;
+
+    while (nextLine < editorState.buffer.lines.length) {
+      final nextLineText = editorState.buffer.lines[nextLine];
+      if (nextLineText.trim().isEmpty) {
+        nextLine++;
+        continue;
+      }
+
+      final nextIndent = _getIndentation(nextLineText);
+
+      // If we find a line with less indentation, this is not foldable
+      if (nextIndent <= currentIndent) {
+        return hasContent;
+      }
+
+      hasContent = true;
+      nextLine++;
+    }
+
+    return false;
+  }
+
+  int _getIndentation(String line) {
+    // Count leading spaces and tabs
+    int indent = 0;
+    for (int i = 0; i < line.length; i++) {
+      if (line[i] == ' ') {
+        indent++;
+      } else if (line[i] == '\t') {
+        indent += 4;
+      } else {
+        break;
+      }
+    }
+    return indent;
   }
 
   void _drawBackground(Canvas canvas, Size size) {
@@ -115,14 +231,26 @@ class GutterPainter extends CustomPainter {
       ),
     );
 
-    for (var i = firstVisibleLine; i < lastVisibleLine; i++) {
-      final lineNumber = (i + 1).toString();
-      final isLineInSelection = editorState.editorSelectionManager.selections
-          .any((selection) =>
-              i >= selection.startLine && i <= selection.endLine);
+    // Track both buffer position and visual position
+    int visualLine = 0;
+
+    for (int i = 0; i < firstVisibleLine; i++) {
+      if (!editorState.foldingState.isLineHidden(i)) {
+        visualLine++;
+      }
+    }
+
+    for (int currentLine = firstVisibleLine;
+        currentLine < lastVisibleLine;
+        currentLine++) {
+      // Skip hidden lines
+      if (editorState.foldingState.isLineHidden(currentLine)) {
+        continue;
+      }
+
+      final lineNumber = (currentLine + 1).toString();
       final style = editorState.editorCursorManager.cursors
-                  .any((cursor) => cursor.line == i) ||
-              isLineInSelection
+              .any((cursor) => cursor.line == currentLine)
           ? _highlightStyle
           : _defaultStyle;
 
@@ -134,29 +262,35 @@ class GutterPainter extends CustomPainter {
       textPainter.layout(maxWidth: _gutterWidth - (horizontalPadding * 2));
 
       final xOffset = size.width - textPainter.width - horizontalPadding;
-      final yOffset = i * editorLayoutService.config.lineHeight +
+      final yOffset = visualLine * editorLayoutService.config.lineHeight +
           (editorLayoutService.config.lineHeight - textPainter.height) / 2;
 
-      textPainter.paint(
-        canvas,
-        Offset(xOffset, yOffset),
-      );
+      textPainter.paint(canvas, Offset(xOffset, yOffset));
+
+      visualLine++;
     }
   }
 
   void _highlightCurrentLine(Canvas canvas, Size size, int lineNumber) {
+    // Convert buffer line to visual line
+    int visualLine = 0;
+    for (int i = 0; i < lineNumber; i++) {
+      if (!editorState.foldingState.isLineHidden(i)) {
+        visualLine++;
+      }
+    }
+
     canvas.drawRect(
         Rect.fromLTWH(
           0,
-          lineNumber * editorLayoutService.config.lineHeight,
+          visualLine * editorLayoutService.config.lineHeight,
           size.width,
           editorLayoutService.config.lineHeight,
         ),
         Paint()
-          ..color = editorConfigService.themeService.currentTheme != null
-              ? editorConfigService
-                  .themeService.currentTheme!.currentLineHighlight
-              : Colors.blue.withOpacity(0.2));
+          ..color = editorConfigService
+                  .themeService.currentTheme?.currentLineHighlight ??
+              Colors.blue.withOpacity(0.2));
   }
 
   @override
@@ -166,6 +300,9 @@ class GutterPainter extends CustomPainter {
         editorState.editorCursorManager.cursors !=
             oldDelegate.editorState.editorCursorManager.cursors ||
         editorConfigService.config.fontSize !=
-            oldDelegate.editorConfigService.config.fontSize;
+            oldDelegate.editorConfigService.config.fontSize ||
+        editorState.foldingState.foldingRanges !=
+            oldDelegate.editorState.foldingState.foldingRanges ||
+        verticalOffset != oldDelegate.verticalOffset;
   }
 }

@@ -8,6 +8,7 @@ import 'package:crystal/state/editor/editor_syntax_highlighter.dart';
 import 'package:crystal/widgets/editor/painter/painters/background_painter.dart';
 import 'package:crystal/widgets/editor/painter/painters/bracket_match_painter.dart';
 import 'package:crystal/widgets/editor/painter/painters/caret_painter.dart';
+import 'package:crystal/widgets/editor/painter/painters/folding_painter.dart';
 import 'package:crystal/widgets/editor/painter/painters/indentation_painter.dart';
 import 'package:crystal/widgets/editor/painter/painters/search_painter.dart';
 import 'package:crystal/widgets/editor/painter/painters/selection_painter.dart';
@@ -25,6 +26,7 @@ class EditorPainter extends CustomPainter {
   final List<SearchMatch> searchTermMatches;
   final int currentSearchTermMatch;
   final BackgroundPainter backgroundPainter;
+  final FoldingPainter _foldingPainter;
   final CaretPainter caretPainter;
   final IndentationPainter indentationPainter;
   late final SearchPainter searchPainter;
@@ -67,10 +69,10 @@ class EditorPainter extends CustomPainter {
             editorLayoutService: editorLayoutService,
             editorConfigService: editorConfigService),
         textPainterHelper = TextPainterHelper(
-          editorConfigService: editorConfigService,
-          editorLayoutService: editorLayoutService,
-          editorSyntaxHighlighter: editorSyntaxHighlighter,
-        ),
+            editorConfigService: editorConfigService,
+            editorLayoutService: editorLayoutService,
+            editorSyntaxHighlighter: editorSyntaxHighlighter,
+            editorState: editorState),
         caretPainter = CaretPainter(
             editorConfigService: editorConfigService,
             editorLayoutService: editorLayoutService,
@@ -81,36 +83,53 @@ class EditorPainter extends CustomPainter {
           editorState: editorState,
           viewportHeight: viewportHeight,
         ),
+        _foldingPainter = FoldingPainter(
+          editorLayoutService: editorLayoutService,
+          editorConfigService: editorConfigService,
+          textPainterHelper: TextPainterHelper(
+            editorConfigService: editorConfigService,
+            editorLayoutService: editorLayoutService,
+            editorSyntaxHighlighter: editorSyntaxHighlighter,
+            editorState: editorState,
+          ),
+          foldedRegions: editorState.foldingState.foldingRanges,
+        ),
         super(repaint: editorState);
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Draw background
+    // Calculate first visible line based on scroll position
+    final scrollOffset = editorState.scrollState.verticalOffset;
+    final lineHeight = editorLayoutService.config.lineHeight;
+
+    int firstVisibleLine = max(0, (scrollOffset / lineHeight).floor() - 10);
+
+    int lastVisibleLine = firstVisibleLine;
+    double accumulatedHeight = 0;
+    int visualLines = 0;
+
+    // Keep track of visual position relative to scroll
+    while (accumulatedHeight < (viewportHeight + lineHeight * 20) &&
+        lastVisibleLine < editorState.buffer.lineCount) {
+      if (!textPainterHelper.isLineHidden(lastVisibleLine)) {
+        accumulatedHeight += lineHeight;
+        visualLines++;
+      }
+      lastVisibleLine++;
+    }
+
+    lastVisibleLine = min(editorState.buffer.lineCount, lastVisibleLine + 10);
+
     backgroundPainter.paint(canvas, size);
+    textPainterHelper.paintText(canvas, size, firstVisibleLine, lastVisibleLine,
+        editorState.buffer.lines);
 
-    // Calculate visible lines
-    int firstVisibleLine = max(
-        0,
-        (editorState.scrollState.verticalOffset /
-                    editorLayoutService.config.lineHeight)
-                .floor() -
-            5);
-    int lastVisibleLine = min(
-        editorState.buffer.lineCount,
-        ((editorState.scrollState.verticalOffset + viewportHeight) /
-                    editorLayoutService.config.lineHeight)
-                .ceil() +
-            5);
-    List<String> lines = editorState.buffer.lines;
-    lastVisibleLine = lastVisibleLine.clamp(0, lines.length);
-
-    // Draw indentation lines
-    indentationPainter.paint(canvas, size,
-        firstVisibleLine: firstVisibleLine, lastVisibleLine: lastVisibleLine);
-
-    // Draw text
-    textPainterHelper.paintText(
-        canvas, size, firstVisibleLine, lastVisibleLine, lines);
+    _foldingPainter.paint(
+      canvas,
+      size,
+      firstVisibleLine: firstVisibleLine,
+      lastVisibleLine: lastVisibleLine,
+    );
 
     // Clear previous highlighted lines
     _currentHighlightedLines.clear();
@@ -176,6 +195,8 @@ class EditorPainter extends CustomPainter {
         searchTerm != oldDelegate.searchTerm ||
         currentSearchTermMatch != oldDelegate.currentSearchTermMatch ||
         oldDelegate.editorState.editorCursorManager.cursors !=
-            editorState.editorCursorManager.cursors;
+            editorState.editorCursorManager.cursors ||
+        editorState.foldingState.foldingRanges !=
+            oldDelegate.editorState.foldingState.foldingRanges;
   }
 }

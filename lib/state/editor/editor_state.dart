@@ -5,6 +5,7 @@ import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/editor/command.dart';
 import 'package:crystal/models/editor/cursor_shape.dart';
+import 'package:crystal/models/editor/folding_state.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_cursor_manager.dart';
@@ -20,6 +21,7 @@ import 'package:path/path.dart' as p;
 import 'package:window_manager/window_manager.dart';
 
 class EditorState extends ChangeNotifier {
+  final FoldingState foldingState = FoldingState();
   final String id = UniqueKey().toString();
   EditorScrollState scrollState = EditorScrollState();
   final Buffer _buffer = Buffer();

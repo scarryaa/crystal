@@ -175,6 +175,18 @@ class EditorViewState extends State<EditorView> {
     });
   }
 
+  int getVisibleLineCount() {
+    int visibleCount = 0;
+    final lines = widget.state.buffer.lineCount;
+
+    for (int i = 0; i < lines; i++) {
+      if (!widget.state.foldingState.isLineHidden(i)) {
+        visibleCount++;
+      }
+    }
+    return visibleCount;
+  }
+
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
@@ -188,8 +200,7 @@ class EditorViewState extends State<EditorView> {
     );
     final height = math.max(
       mediaQuery.size.height,
-      widget.editorLayoutService.config.lineHeight *
-              widget.state.buffer.lineCount +
+      widget.editorLayoutService.config.lineHeight * getVisibleLineCount() +
           widget.editorLayoutService.config.verticalPadding,
     );
     editorPainter = EditorPainter(

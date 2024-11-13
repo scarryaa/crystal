@@ -29,6 +29,7 @@ class _GutterState extends State<Gutter> {
   EditorState get editorState => widget.editorState;
 
   double get gutterWidth {
+    // Use total line count for gutter width calculation
     final lineCount = editorState.buffer.lineCount;
     final textPainter = TextPainter(
       text: TextSpan(
@@ -42,23 +43,142 @@ class _GutterState extends State<Gutter> {
     );
     textPainter.layout();
 
-    EditorLayoutService.instance.config.gutterWidth = textPainter.width + 32.0;
     return textPainter.width + 32.0;
+  }
+
+  int getVisibleLineCount() {
+    int visibleCount = 0;
+    for (int i = 0; i < editorState.buffer.lineCount; i++) {
+      if (!editorState.foldingState.isLineHidden(i)) {
+        visibleCount++;
+      }
+    }
+    return visibleCount;
+  }
+
+  int? _getLineFromY(double y) {
+    double adjustedY = y + widget.verticalScrollController.offset;
+    // Convert from visual position to buffer position
+    int visualLine = adjustedY ~/ widget.editorLayoutService.config.lineHeight;
+    return getBufferLine(visualLine);
+  }
+
+  void _handleGutterSelection(double localY, bool isMultiSelect) {
+    double adjustedY = localY + widget.verticalScrollController.offset;
+    int visualLine = adjustedY ~/ widget.editorLayoutService.config.lineHeight;
+
+    // Convert visual line to buffer line accounting for folded regions
+    int bufferLine = getBufferLine(visualLine);
+
+    if (bufferLine >= editorState.buffer.lineCount) {
+      editorState.selectLine(isMultiSelect, editorState.buffer.lineCount - 1);
+    } else {
+      editorState.selectLine(isMultiSelect, bufferLine);
+    }
+  }
+
+  int getBufferLine(int visualLine) {
+    int currentVisualLine = 0;
+    int bufferLine = 0;
+
+    // Iterate through buffer lines until we reach the target visual line
+    while (currentVisualLine < visualLine &&
+        bufferLine < editorState.buffer.lineCount) {
+      if (!editorState.foldingState.isLineHidden(bufferLine)) {
+        currentVisualLine++;
+      }
+      bufferLine++;
+    }
+
+    // Ensure we don't return a hidden line
+    while (bufferLine < editorState.buffer.lineCount &&
+        editorState.foldingState.isLineHidden(bufferLine)) {
+      bufferLine++;
+    }
+
+    return min(bufferLine, editorState.buffer.lineCount - 1);
+  }
+
+  void _handleGutterDrag(DragUpdateDetails details) {
+    double adjustedY =
+        details.localPosition.dy + widget.verticalScrollController.offset;
+    int visualLine = adjustedY ~/ widget.editorLayoutService.config.lineHeight;
+    int bufferLine = getBufferLine(visualLine);
+
+    editorState.selectLine(true, bufferLine);
+  }
+
+  void _handleGutterTap(TapDownDetails details) {
+    final line = _getLineFromY(details.localPosition.dy);
+    if (line == null) return;
+
+    // Check if tap is in folding indicator area
+    if (details.localPosition.dx < 20) {
+      _handleFoldingIconTap(line);
+    } else {
+      _handleGutterSelection(details.localPosition.dy, false);
+    }
+  }
+
+  bool _isFoldable(int line) {
+    if (line >= editorState.buffer.lines.length) return false;
+
+    final currentLine = editorState.buffer.lines[line];
+    final currentIndent = _getIndentation(currentLine);
+
+    if (line + 1 < editorState.buffer.lines.length) {
+      final nextLine = editorState.buffer.lines[line + 1];
+      final nextIndent = _getIndentation(nextLine);
+      return nextIndent > currentIndent;
+    }
+    return false;
+  }
+
+  int _getIndentation(String line) {
+    return line.indexOf(RegExp(r'[^\s]'));
+  }
+
+  void _handleFoldingIconTap(int line) {
+    if (_isFoldable(line)) {
+      final endLine = _findFoldingEndLine(line);
+      if (endLine != null) {
+        editorState.foldingState.toggleFold(line, endLine);
+      }
+    }
+  }
+
+  int? _findFoldingEndLine(int startLine) {
+    final startIndent = _getIndentation(editorState.buffer.lines[startLine]);
+
+    for (int i = startLine + 1; i < editorState.buffer.lineCount; i++) {
+      final currentIndent = _getIndentation(editorState.buffer.lines[i]);
+      if (currentIndent <= startIndent &&
+          editorState.buffer.lines[i].trim().isNotEmpty) {
+        return i - 1;
+      }
+    }
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
+    // Calculate height based on visible content and viewport
+    double contentHeight =
+        getVisibleLineCount() * widget.editorLayoutService.config.lineHeight +
+            widget.editorLayoutService.config.verticalPadding;
+
     double height = max(
-      MediaQuery.of(context).size.height,
-      (editorState.buffer.lineCount *
-              widget.editorLayoutService.config.lineHeight) +
-          widget.editorLayoutService.config.verticalPadding,
-    );
+        contentHeight,
+        // Only use viewport height if content doesn't fill it
+        contentHeight < MediaQuery.of(context).size.height
+            ? MediaQuery.of(context).size.height
+            : contentHeight);
 
     return Consumer<EditorState>(
       builder: (context, editorState, child) {
         return Container(
           width: gutterWidth,
+          height: height,
           color: widget
                   .editorConfigService.themeService.currentTheme?.background ??
               Colors.white,
@@ -70,28 +190,24 @@ class _GutterState extends State<Gutter> {
               onPanUpdate: _handleGutterDrag,
               child: SingleChildScrollView(
                 controller: widget.verticalScrollController,
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: SizedBox(
-                    width: gutterWidth,
-                    height: height,
-                    child: CustomPaint(
-                      painter: GutterPainter(
-                        textColor: widget.editorConfigService.themeService
-                                .currentTheme?.textLight ??
-                            Colors.grey,
-                        highlightColor: widget.editorConfigService.themeService
-                                .currentTheme?.primary ??
-                            Colors.blue,
-                        editorConfigService: widget.editorConfigService,
-                        editorLayoutService: widget.editorLayoutService,
-                        editorState: editorState,
-                        verticalOffset:
-                            widget.verticalScrollController.hasClients
-                                ? widget.verticalScrollController.offset
-                                : 0,
-                        viewportHeight: MediaQuery.of(context).size.height,
-                      ),
+                child: SizedBox(
+                  width: gutterWidth,
+                  height: height,
+                  child: CustomPaint(
+                    painter: GutterPainter(
+                      textColor: widget.editorConfigService.themeService
+                              .currentTheme?.textLight ??
+                          Colors.grey,
+                      highlightColor: widget.editorConfigService.themeService
+                              .currentTheme?.primary ??
+                          Colors.blue,
+                      editorConfigService: widget.editorConfigService,
+                      editorLayoutService: widget.editorLayoutService,
+                      editorState: editorState,
+                      verticalOffset: widget.verticalScrollController.hasClients
+                          ? widget.verticalScrollController.offset
+                          : 0,
+                      viewportHeight: height,
                     ),
                   ),
                 ),
@@ -103,31 +219,7 @@ class _GutterState extends State<Gutter> {
     );
   }
 
-  void _handleGutterTap(TapDownDetails details) {
-    _handleGutterSelection(details.localPosition.dy, false);
-  }
-
   void _handleGutterDragStart(DragStartDetails details) {
     _handleGutterSelection(details.localPosition.dy, false);
-  }
-
-  void _handleGutterSelection(double localY, bool isMultiSelect) {
-    double adjustedY = localY + editorState.scrollState.verticalOffset;
-    int targetLine = adjustedY ~/ widget.editorLayoutService.config.lineHeight;
-
-    // If out of range, select the last line
-    if (targetLine > editorState.buffer.lineCount) {
-      editorState.selectLine(isMultiSelect, editorState.buffer.lineCount - 1);
-    } else {
-      editorState.selectLine(isMultiSelect, targetLine);
-    }
-  }
-
-  void _handleGutterDrag(DragUpdateDetails details) {
-    // Select multiple lines
-    double adjustedY =
-        details.localPosition.dy + editorState.scrollState.verticalOffset;
-    editorState.selectLine(
-        true, adjustedY ~/ widget.editorLayoutService.config.lineHeight);
   }
 }

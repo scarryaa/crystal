@@ -183,6 +183,7 @@ class _AppMenuBarState extends State<AppMenuBar> {
                         style: TextStyle(color: theme.text),
                       ),
                     ),
+                    const SizedBox(width: 18),
                     if (item.shortcut != null)
                       Text(
                         _getShortcutLabel(item.shortcut!),
