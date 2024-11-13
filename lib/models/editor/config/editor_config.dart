@@ -6,6 +6,7 @@ class EditorConfig {
   double whitespaceIndicatorRadius;
   bool isFileExplorerVisible;
   bool isFileExplorerOnLeft;
+  bool isTerminalVisible;
   double fileExplorerWidth;
   String theme;
   String? currentDirectory;
@@ -22,6 +23,7 @@ class EditorConfig {
     required this.tabWidth,
     this.isFileExplorerVisible = true,
     this.isFileExplorerOnLeft = true,
+    this.isTerminalVisible = false,
     this.currentDirectory = '',
   });
 }

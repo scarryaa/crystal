@@ -17,6 +17,7 @@ import 'package:crystal/widgets/editor/resizable_split_container.dart';
 import 'package:crystal/widgets/file_explorer/file_explorer.dart';
 import 'package:crystal/widgets/gutter/gutter.dart';
 import 'package:crystal/widgets/status_bar/status_bar.dart';
+import 'package:crystal/widgets/terminal/terminal_view.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -44,6 +45,7 @@ class EditorScreen extends StatefulWidget {
 class EditorScreenState extends State<EditorScreen> {
   final Map<String, GlobalKey> _tabBarKeys = {};
   bool _isFileExplorerVisible = true;
+  bool _isTerminalVisible = false;
   final Map<int, GlobalKey<EditorViewState>> _editorViewKeys = {};
   late final EditorConfigService _editorConfigService;
   late final EditorTabManager editorTabManager;
@@ -343,6 +345,14 @@ class EditorScreenState extends State<EditorScreen> {
     );
   }
 
+  Widget _buildTerminalSection() {
+    if (!_isTerminalVisible) return const SizedBox.shrink();
+    return const SizedBox(
+      height: 300,
+      child: EditorTerminalView(),
+    );
+  }
+
   Widget _buildFileExplorer() {
     if (_isFileExplorerVisible) {
       return FileExplorer(
@@ -633,10 +643,16 @@ class EditorScreenState extends State<EditorScreen> {
                         ],
                       ),
                     ),
+                    _buildTerminalSection(),
                     StatusBar(
                       editorConfigService: _editorConfigService,
                       onFileExplorerToggle: _toggleFileExplorer,
                       isFileExplorerVisible: _isFileExplorerVisible,
+                      onTerminalToggle: () {
+                        setState(() {
+                          _isTerminalVisible = !_isTerminalVisible;
+                        });
+                      },
                     ),
                   ],
                 ),

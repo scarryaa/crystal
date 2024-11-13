@@ -6,12 +6,14 @@ import 'package:provider/provider.dart';
 class StatusBar extends StatefulWidget {
   final EditorConfigService editorConfigService;
   final VoidCallback? onFileExplorerToggle;
+  final VoidCallback onTerminalToggle;
   final bool? isFileExplorerVisible;
 
   const StatusBar({
     super.key,
     required this.editorConfigService,
     this.onFileExplorerToggle,
+    required this.onTerminalToggle,
     this.isFileExplorerVisible,
   });
 
@@ -108,6 +110,26 @@ class _StatusBarState extends State<StatusBar> {
                                     .isFileExplorerVisible
                                 ? Icons.folder
                                 : Icons.folder_open,
+                            size: widget.editorConfigService.config.uiFontSize,
+                            color: themeColor,
+                          ),
+                          const SizedBox(width: 4),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                MouseRegion(
+                  child: GestureDetector(
+                    onTap: widget.onTerminalToggle,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Row(
+                        children: [
+                          Icon(
+                            widget.editorConfigService.config.isTerminalVisible
+                                ? Icons.terminal
+                                : Icons.terminal_outlined,
                             size: widget.editorConfigService.config.uiFontSize,
                             color: themeColor,
                           ),

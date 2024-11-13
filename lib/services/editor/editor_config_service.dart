@@ -26,6 +26,7 @@ class EditorConfigService extends ChangeNotifier {
     'theme': 'default-dark',
     'isFileExplorerVisible': true,
     'isFileExplorerOnLeft': true,
+    'isTerminalVisible': false,
     'currentDirectory': '',
     'fileExplorerWidth': 170.0,
     'tabWidth': 4.0,
@@ -123,11 +124,12 @@ class EditorConfigService extends ChangeNotifier {
             _defaultConfig['isFileExplorerVisible'] as bool,
         isFileExplorerOnLeft: configData['isFileExplorerOnLeft'] as bool? ??
             _defaultConfig['isFileExplorerOnLeft'] as bool,
+        isTerminalVisible: configData['isTerminalVisible'] as bool? ??
+            _defaultConfig['isTerminalVisible'] as bool,
         currentDirectory: configData['currentDirectory'] as String? ??
             _defaultConfig['currentDirectory'] as String,
-        tabWidth:
-            (configData['tabWidth'] as num?)?.toDouble() ?? // Add this line
-                _defaultConfig['tabWidth'] as double,
+        tabWidth: (configData['tabWidth'] as num?)?.toDouble() ??
+            _defaultConfig['tabWidth'] as double,
       );
     } catch (e) {
       _logger.warning('Error parsing config file: $e');
@@ -147,8 +149,9 @@ class EditorConfigService extends ChangeNotifier {
       fileExplorerWidth: (_defaultConfig['uiFontSize'] as double) * 11.0,
       isFileExplorerVisible: _defaultConfig['isFileExplorerVisible'] as bool,
       isFileExplorerOnLeft: _defaultConfig['isFileExplorerOnLeft'] as bool,
+      isTerminalVisible: _defaultConfig['isTerminalVisible'] as bool,
       currentDirectory: _defaultConfig['currentDirectory'] as String,
-      tabWidth: _defaultConfig['tabWidth'] as double, // Add this line
+      tabWidth: _defaultConfig['tabWidth'] as double,
     );
   }
 
@@ -173,9 +176,10 @@ class EditorConfigService extends ChangeNotifier {
         'whitespaceIndicatorRadius': config.whitespaceIndicatorRadius,
         'isFileExplorerVisible': config.isFileExplorerVisible,
         'isFileExplorerOnLeft': config.isFileExplorerOnLeft,
+        'isTerminalVisible': config.isTerminalVisible,
         'currentDirectory': config.currentDirectory,
         'fileExplorerWidth': config.fileExplorerWidth,
-        'tabWidth': config.tabWidth, // Add this line
+        'tabWidth': config.tabWidth,
       };
 
       const encoder = JsonEncoder.withIndent('  ');
