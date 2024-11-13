@@ -63,26 +63,6 @@ class EditorState extends ChangeNotifier {
   void toggleFold(int startLine, int endLine, {Map<int, int>? nestedFolds}) {
     foldingState.toggleFold(startLine, endLine, nestedFolds: nestedFolds);
     recalculateVisibleLines();
-    recalculateScrollOffset();
-  }
-
-  void recalculateScrollOffset() {
-    int visibleLines = 0;
-    double newScrollOffset = scrollState.verticalOffset;
-
-    for (int i = 0; i < buffer.lineCount; i++) {
-      if (!foldingState.isLineHidden(i)) {
-        if (visibleLines * editorLayoutService.config.lineHeight >=
-            newScrollOffset) {
-          break;
-        }
-        visibleLines++;
-      }
-    }
-
-    newScrollOffset = visibleLines * editorLayoutService.config.lineHeight;
-    scrollState.updateVerticalScrollOffset(newScrollOffset);
-    notifyListeners();
   }
 
   void recalculateVisibleLines() {

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:crystal/models/editor/config/config_paths.dart';
 import 'package:crystal/models/editor/split_view.dart';
@@ -730,6 +731,47 @@ class EditorScreenState extends State<EditorScreen> {
     );
   }
 
+  double _calculateVisibleScrollPosition(
+      EditorState state, EditorScrollManager scrollManager) {
+    double targetOffset = state.scrollState.verticalOffset;
+    double totalHeight = 0;
+    int visibleLines = 0;
+    int lastVisibleLine = 0;
+
+    for (int i = 0; i < state.buffer.lineCount; i++) {
+      if (!state.foldingState.isLineHidden(i)) {
+        if (totalHeight > targetOffset) {
+          break;
+        }
+        visibleLines++;
+        lastVisibleLine = i;
+        totalHeight += state.editorLayoutService.config.lineHeight;
+      }
+    }
+
+    // Calculate the visible height of the document
+    double visibleDocumentHeight =
+        visibleLines * state.editorLayoutService.config.lineHeight;
+
+    // Calculate the maximum scroll offset
+    double maxScroll = max(
+        0,
+        visibleDocumentHeight -
+            scrollManager
+                .editorVerticalScrollController.position.viewportDimension);
+
+    // If the target offset is beyond the last visible line, adjust it
+    if (targetOffset > totalHeight) {
+      targetOffset = totalHeight -
+          scrollManager
+              .editorVerticalScrollController.position.viewportDimension;
+      targetOffset = max(0, targetOffset);
+    }
+
+    // Ensure the scroll position is within bounds
+    return targetOffset.clamp(0, maxScroll);
+  }
+
   Widget _buildEditorSection(SplitView splitView, int row, int col) {
     final scrollManager = _getScrollManager(row, col);
     final editorViewKey = _getEditorViewKey(getSplitIndex(row, col));
@@ -895,11 +937,17 @@ class EditorScreenState extends State<EditorScreen> {
                                 onFoldToggled: () {
                                   WidgetsBinding.instance
                                       .addPostFrameCallback((_) {
-                                    scrollManager.editorVerticalScrollController
-                                        .jumpTo(
-                                            state.scrollState.verticalOffset);
-                                    scrollManager.gutterScrollController.jumpTo(
-                                        state.scrollState.verticalOffset);
+                                    if (state != null) {
+                                      scrollManager
+                                          .editorVerticalScrollController
+                                          .jumpTo(scrollManager
+                                              .editorVerticalScrollController
+                                              .offset);
+                                      state.updateVerticalScrollOffset(
+                                          scrollManager
+                                              .editorVerticalScrollController
+                                              .offset);
+                                    }
                                   });
                                 },
                               ),
