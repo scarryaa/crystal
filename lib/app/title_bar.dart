@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:crystal/app/window_button.dart';
 import 'package:crystal/screens/editor_screen.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/file_service.dart';

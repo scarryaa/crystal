@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:crystal/app/title_bar.dart';
 import 'package:crystal/screens/editor_screen.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
@@ -25,12 +27,13 @@ class AppLayout extends StatelessWidget {
     return Scaffold(
       body: Column(
         children: [
-          TitleBar(
-            editorConfigService: editorConfigService,
-            onDirectoryChanged: onDirectoryChanged,
-            fileService: fileService,
-            editorKey: editorKey,
-          ),
+          if (Platform.isMacOS)
+            TitleBar(
+              editorConfigService: editorConfigService,
+              onDirectoryChanged: onDirectoryChanged,
+              fileService: fileService,
+              editorKey: editorKey,
+            ),
           Expanded(child: child),
         ],
       ),
