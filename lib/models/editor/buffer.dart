@@ -5,7 +5,25 @@ class Buffer {
   final Map<int, int> _foldedRanges = {};
 
   int get version => _version;
-  bool get isDirty => _originalContent != content;
+  bool get isDirty {
+    StringBuffer originalBuffer = StringBuffer();
+    List<String> originalLines = _originalContent.split('\n');
+    int currentLine = 0;
+
+    while (currentLine < originalLines.length) {
+      originalBuffer.writeln(originalLines[currentLine]);
+      if (isLineFolded(currentLine)) {
+        // Skip folded lines
+        currentLine = _foldedRanges[currentLine]! + 1;
+      } else {
+        currentLine++;
+      }
+    }
+
+    String processedOriginal = originalBuffer.toString().trimRight();
+    return processedOriginal != content;
+  }
+
   List<String> get lines => _lines;
   int get lineCount => _lines.length;
   bool get isEmpty => _lines.isEmpty;
