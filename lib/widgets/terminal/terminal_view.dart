@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/widgets/terminal/terminal_tab.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_pty/flutter_pty.dart';
@@ -23,6 +24,7 @@ class EditorTerminalView extends StatefulWidget {
 
 class _EditorTerminalViewState extends State<EditorTerminalView>
     with TickerProviderStateMixin {
+  final ScrollController _tabScrollController = ScrollController();
   static const double _kSpacing = 8.0;
   static const double _kHorizontalPadding = 16.0;
 
@@ -186,6 +188,7 @@ class _EditorTerminalViewState extends State<EditorTerminalView>
     }
 
     final theme = widget.editorConfigService.themeService.currentTheme;
+    final scrollController = ScrollController();
 
     return Column(
       children: [
@@ -196,64 +199,91 @@ class _EditorTerminalViewState extends State<EditorTerminalView>
               Expanded(
                 child: _tabs.isEmpty
                     ? const SizedBox()
-                    : TabBar(
-                        controller: _tabController,
-                        isScrollable: true,
-                        padding: EdgeInsets.zero,
-                        labelPadding: EdgeInsets.zero,
-                        tabAlignment: TabAlignment.start,
-                        dividerColor: Colors.transparent,
-                        indicatorColor: Colors.transparent,
-                        tabs: _tabs.asMap().entries.map((entry) {
-                          final index = entry.key;
-                          final tab = entry.value;
-                          final isActive = _tabController.index == index;
-
-                          return DragTarget<int>(
-                            onAccept: (draggedIndex) {
-                              setState(() {
-                                // Reorder the tabs
-                                final draggedTab = _tabs.removeAt(draggedIndex);
-                                _tabs.insert(index, draggedTab);
-
-                                // Update tab controller
-                                _tabController = TabController(
-                                  length: _tabs.length,
-                                  vsync: this,
-                                  animationDuration: Duration.zero,
+                    : Listener(
+                        onPointerSignal: (PointerSignalEvent event) {
+                          if (event is PointerScrollEvent) {
+                            if (event.scrollDelta.dy != 0) {
+                              if (HardwareKeyboard.instance.isShiftPressed) {
+                                // Shift + Scroll: Switch tabs
+                                final newIndex = _tabController.index +
+                                    (event.scrollDelta.dy > 0 ? 1 : -1);
+                                if (newIndex >= 0 && newIndex < _tabs.length) {
+                                  setState(() {
+                                    _tabController.index = newIndex;
+                                  });
+                                }
+                              } else {
+                                // Regular scroll: Scroll tabs horizontally
+                                scrollController.position.moveTo(
+                                  scrollController.offset +
+                                      event.scrollDelta.dy,
+                                  curve: Curves.linear,
                                 );
-                                _tabController.index = index;
-                              });
-                            },
-                            builder: (context, candidateData, rejectedData) {
-                              return Draggable<int>(
-                                  data: index,
-                                  feedback: Material(
-                                    elevation: 4,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: _kHorizontalPadding,
-                                      ),
-                                      color: theme?.background ?? Colors.white,
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            tab.title,
-                                            style: TextStyle(
-                                              color:
-                                                  theme?.primary ?? Colors.blue,
-                                              fontSize: widget
-                                                  .editorConfigService
-                                                  .config
-                                                  .uiFontSize,
+                              }
+                            }
+                          }
+                        },
+                        child: SingleChildScrollView(
+                          controller: scrollController,
+                          scrollDirection: Axis.horizontal,
+                          child: TabBar(
+                            controller: _tabController,
+                            isScrollable: true,
+                            padding: EdgeInsets.zero,
+                            labelPadding: EdgeInsets.zero,
+                            tabAlignment: TabAlignment.start,
+                            dividerColor: Colors.transparent,
+                            indicatorColor: Colors.transparent,
+                            tabs: _tabs.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final tab = entry.value;
+                              final isActive = _tabController.index == index;
+
+                              return DragTarget<int>(
+                                onAccept: (draggedIndex) {
+                                  setState(() {
+                                    final draggedTab =
+                                        _tabs.removeAt(draggedIndex);
+                                    _tabs.insert(index, draggedTab);
+                                    _tabController = TabController(
+                                      length: _tabs.length,
+                                      vsync: this,
+                                      animationDuration: Duration.zero,
+                                    );
+                                    _tabController.index = index;
+                                  });
+                                },
+                                builder:
+                                    (context, candidateData, rejectedData) {
+                                  return Draggable<int>(
+                                    data: index,
+                                    feedback: Material(
+                                      elevation: 4,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: _kHorizontalPadding,
+                                        ),
+                                        color:
+                                            theme?.background ?? Colors.white,
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              tab.title,
+                                              style: TextStyle(
+                                                color: theme?.primary ??
+                                                    Colors.blue,
+                                                fontSize: widget
+                                                    .editorConfigService
+                                                    .config
+                                                    .uiFontSize,
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  child: MouseRegion(
+                                    child: MouseRegion(
                                       cursor: SystemMouseCursors.click,
                                       child: GestureDetector(
                                         onTap: () {
@@ -311,10 +341,14 @@ class _EditorTerminalViewState extends State<EditorTerminalView>
                                             ),
                                           ),
                                         ),
-                                      )));
-                            },
-                          );
-                        }).toList(),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            }).toList(),
+                          ),
+                        ),
                       ),
               ),
               IconButton(
@@ -366,6 +400,7 @@ class _EditorTerminalViewState extends State<EditorTerminalView>
 
   @override
   void dispose() {
+    _tabScrollController.dispose();
     for (var tab in _tabs) {
       tab.pty.kill();
     }
