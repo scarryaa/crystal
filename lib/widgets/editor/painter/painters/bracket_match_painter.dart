@@ -71,12 +71,10 @@ class BracketMatchPainter extends EditorPainterBase {
       // Search forward
       int currentLine = startLine;
       while (currentLine < editorState.buffer.lineCount) {
-        // Handle folded regions
         if (editorState.foldingState.isLineHidden(currentLine)) {
-          // Find the fold that contains this line
           var foldEnd = _getFoldEndLine(currentLine);
           if (foldEnd != null) {
-            // Check the last visible line of the fold for matches
+            // Check the last visible line of the fold
             final lastVisibleLine = editorState.buffer.getLine(foldEnd);
             int columnStart = 0;
             for (int col = columnStart; col < lastVisibleLine.length; col++) {
@@ -111,12 +109,10 @@ class BracketMatchPainter extends EditorPainterBase {
       // Search backward
       int currentLine = startLine;
       while (currentLine >= 0) {
-        // Handle folded regions
         if (editorState.foldingState.isLineHidden(currentLine)) {
-          // Find the fold that contains this line
           var foldStart = _getFoldStartLine(currentLine);
           if (foldStart != null) {
-            // Check the first visible line of the fold for matches
+            // Check the first visible line of the fold
             final firstVisibleLine = editorState.buffer.getLine(foldStart);
             int columnStart = firstVisibleLine.length - 1;
             for (int col = columnStart; col >= 0; col--) {
@@ -162,22 +158,71 @@ class BracketMatchPainter extends EditorPainterBase {
   }) {
     if (cursors.isEmpty) return;
 
-    // Adjust visible lines to account for folded regions
-    int adjustedFirstLine = firstVisibleLine;
-    int adjustedLastLine = lastVisibleLine;
+    final config = editorLayoutService.config;
+    final theme = editorConfigService.themeService.currentTheme;
+    _bracketPaint.color =
+        theme?.primary.withOpacity(0.3) ?? Colors.blue.withOpacity(0.3);
 
-    // Skip hidden lines in the visible range
-    while (adjustedFirstLine <= lastVisibleLine &&
-        editorState.foldingState.isLineHidden(adjustedFirstLine)) {
-      adjustedFirstLine++;
+    for (final cursor in cursors) {
+      final line = editorState.buffer.getLine(cursor.line);
+      if (line.isEmpty) continue; // Skip empty lines
+
+      Position? matchingPosition;
+      Position? bracketPosition;
+
+      final positions = <int>[];
+      if (cursor.column > 0 && cursor.column <= line.length) {
+        positions.add(cursor.column - 1); // Before cursor
+      }
+      if (cursor.column < line.length) {
+        positions.add(cursor.column); // At cursor
+      }
+
+      for (final pos in positions) {
+        if (pos < 0 || pos >= line.length) continue;
+
+        final char = line[pos];
+        if (_isBracket(char)) {
+          final potentialMatch = _findMatchingBracketPosition(
+            cursor.line,
+            pos,
+            char,
+          );
+          if (potentialMatch != null) {
+            bracketPosition = Position(line: cursor.line, column: pos);
+            matchingPosition = potentialMatch;
+            break;
+          }
+        }
+      }
+
+      if (bracketPosition != null && matchingPosition != null) {
+        _paintBracket(canvas, size, bracketPosition, firstVisibleLine);
+        _paintBracket(canvas, size, matchingPosition, firstVisibleLine);
+      }
     }
+  }
 
-    while (adjustedLastLine >= firstVisibleLine &&
-        editorState.foldingState.isLineHidden(adjustedLastLine)) {
-      adjustedLastLine--;
+  void _paintBracket(
+      Canvas canvas, Size size, Position position, int firstVisibleLine) {
+    final config = editorLayoutService.config;
+    final visualLine = _getVisualLine(position.line);
+
+    if (visualLine < firstVisibleLine) return;
+
+    final yOffset = (visualLine) * config.lineHeight;
+    final xOffset = position.column * config.charWidth;
+
+    final bracketRect = Rect.fromLTWH(
+      xOffset,
+      yOffset,
+      config.charWidth,
+      config.lineHeight,
+    );
+
+    if (_isWithinBounds(bracketRect, size)) {
+      canvas.drawRect(bracketRect, _bracketPaint);
     }
-
-    paintBracketHighlight(canvas, size, adjustedFirstLine, adjustedLastLine);
   }
 
   void paintBracketHighlight(
@@ -225,10 +270,14 @@ class BracketMatchPainter extends EditorPainterBase {
       }
 
       if (bracketPosition != null && matchingPosition != null) {
+        // Calculate visual positions accounting for folded regions
+        int visualBracketLine = _getVisualLine(bracketPosition.line);
+        int visualMatchingLine = _getVisualLine(matchingPosition.line);
+
         // Draw bracket at cursor position
         final bracketRect = Rect.fromLTWH(
           config.charWidth * bracketPosition.column,
-          bracketPosition.line * config.lineHeight,
+          (visualBracketLine - firstVisibleLine) * config.lineHeight,
           config.charWidth,
           config.lineHeight,
         );
@@ -239,7 +288,7 @@ class BracketMatchPainter extends EditorPainterBase {
         // Draw matching bracket
         final matchingRect = Rect.fromLTWH(
           config.charWidth * matchingPosition.column,
-          matchingPosition.line * config.lineHeight,
+          (visualMatchingLine - firstVisibleLine) * config.lineHeight,
           config.charWidth,
           config.lineHeight,
         );
@@ -248,6 +297,16 @@ class BracketMatchPainter extends EditorPainterBase {
         }
       }
     }
+  }
+
+  int _getVisualLine(int bufferLine) {
+    int visualLine = 0;
+    for (int i = 0; i < bufferLine; i++) {
+      if (!editorState.foldingState.isLineHidden(i)) {
+        visualLine++;
+      }
+    }
+    return visualLine;
   }
 
   bool _isWithinBounds(Rect rect, Size size) {
@@ -292,6 +351,7 @@ class BracketMatchPainter extends EditorPainterBase {
   @override
   bool shouldRepaint(covariant BracketMatchPainter oldDelegate) {
     return !listEquals(cursors, oldDelegate.cursors) ||
-        editorState != oldDelegate.editorState;
+        editorState != oldDelegate.editorState ||
+        editorLayoutService.config != oldDelegate.editorLayoutService.config;
   }
 }
