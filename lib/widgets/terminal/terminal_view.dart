@@ -9,10 +9,12 @@ import 'package:xterm/xterm.dart';
 
 class EditorTerminalView extends StatefulWidget {
   final EditorConfigService editorConfigService;
+  final VoidCallback? onLastTabClosed;
 
   const EditorTerminalView({
     super.key,
     required this.editorConfigService,
+    this.onLastTabClosed,
   });
 
   @override
@@ -34,6 +36,27 @@ class _EditorTerminalViewState extends State<EditorTerminalView>
     _tabController =
         TabController(length: 0, vsync: this, animationDuration: Duration.zero);
     _addNewTab();
+  }
+
+  void _closeTab(int index) {
+    setState(() {
+      _tabs[index].pty.kill();
+      _tabs.removeAt(index);
+
+      if (_tabs.isEmpty) {
+        widget.editorConfigService.config.isTerminalVisible = false;
+        widget.editorConfigService.saveConfig();
+
+        // Call the callback when last tab is closed
+        widget.onLastTabClosed?.call();
+      } else {
+        _tabController = TabController(
+          length: _tabs.length,
+          vsync: this,
+          animationDuration: Duration.zero,
+        );
+      }
+    });
   }
 
   Widget _buildTabButton(TerminalTab tab, int index) {
@@ -121,26 +144,6 @@ class _EditorTerminalViewState extends State<EditorTerminalView>
     });
   }
 
-  void _closeTab(int index) {
-    setState(() {
-      _tabs[index].pty.kill();
-      _tabs.removeAt(index);
-
-      if (_tabs.isEmpty) {
-        // Hide terminal when all tabs are closed
-        widget.editorConfigService.config.isTerminalVisible = false;
-        widget.editorConfigService.saveConfig();
-      } else {
-        // Update tab controller if there are remaining tabs
-        _tabController = TabController(
-          length: _tabs.length,
-          vsync: this,
-          animationDuration: Duration.zero,
-        );
-      }
-    });
-  }
-
   void _startPty(TerminalTab tab) {
     tab.pty = Pty.start(
       _getShell(),
@@ -178,6 +181,10 @@ class _EditorTerminalViewState extends State<EditorTerminalView>
 
   @override
   Widget build(BuildContext context) {
+    if (_tabs.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     final theme = widget.editorConfigService.themeService.currentTheme;
 
     return Column(
@@ -187,121 +194,128 @@ class _EditorTerminalViewState extends State<EditorTerminalView>
           child: Row(
             children: [
               Expanded(
-                child: TabBar(
-                  controller: _tabController,
-                  isScrollable: true,
-                  padding: EdgeInsets.zero,
-                  labelPadding: EdgeInsets.zero,
-                  tabAlignment: TabAlignment.start,
-                  dividerColor: Colors.transparent,
-                  indicatorColor: Colors.transparent,
-                  tabs: _tabs.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final tab = entry.value;
-                    final isActive = _tabController.index == index;
+                child: _tabs.isEmpty
+                    ? const SizedBox()
+                    : TabBar(
+                        controller: _tabController,
+                        isScrollable: true,
+                        padding: EdgeInsets.zero,
+                        labelPadding: EdgeInsets.zero,
+                        tabAlignment: TabAlignment.start,
+                        dividerColor: Colors.transparent,
+                        indicatorColor: Colors.transparent,
+                        tabs: _tabs.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final tab = entry.value;
+                          final isActive = _tabController.index == index;
 
-                    return DragTarget<int>(
-                      onAccept: (draggedIndex) {
-                        setState(() {
-                          // Reorder the tabs
-                          final draggedTab = _tabs.removeAt(draggedIndex);
-                          _tabs.insert(index, draggedTab);
+                          return DragTarget<int>(
+                            onAccept: (draggedIndex) {
+                              setState(() {
+                                // Reorder the tabs
+                                final draggedTab = _tabs.removeAt(draggedIndex);
+                                _tabs.insert(index, draggedTab);
 
-                          // Update tab controller
-                          _tabController = TabController(
-                            length: _tabs.length,
-                            vsync: this,
-                            animationDuration: Duration.zero,
-                          );
-                          _tabController.index = index;
-                        });
-                      },
-                      builder: (context, candidateData, rejectedData) {
-                        return Draggable<int>(
-                            data: index,
-                            feedback: Material(
-                              elevation: 4,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: _kHorizontalPadding,
-                                ),
-                                color: theme?.background ?? Colors.white,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      tab.title,
-                                      style: TextStyle(
-                                        color: theme?.primary ?? Colors.blue,
-                                        fontSize: widget.editorConfigService
-                                            .config.uiFontSize,
+                                // Update tab controller
+                                _tabController = TabController(
+                                  length: _tabs.length,
+                                  vsync: this,
+                                  animationDuration: Duration.zero,
+                                );
+                                _tabController.index = index;
+                              });
+                            },
+                            builder: (context, candidateData, rejectedData) {
+                              return Draggable<int>(
+                                  data: index,
+                                  feedback: Material(
+                                    elevation: 4,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: _kHorizontalPadding,
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            child: MouseRegion(
-                                cursor: SystemMouseCursors.click,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _tabController.index = index;
-                                    });
-                                  },
-                                  child: Container(
-                                    height: widget.editorConfigService.config
-                                            .uiFontSize *
-                                        2.5,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: _kHorizontalPadding,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: isActive
-                                          ? theme?.background ?? Colors.white
-                                          : theme?.backgroundLight ??
-                                              Colors.grey[50],
-                                      border: Border(
-                                        right: BorderSide(
-                                          color: theme?.border ??
-                                              Colors.grey[200]!,
-                                        ),
-                                      ),
-                                    ),
-                                    child: GestureDetector(
-                                      onSecondaryTapDown: (details) =>
-                                          _showTabContextMenu(
-                                              context, details, index),
-                                      onTertiaryTapDown: (_) =>
-                                          _closeTab(index),
+                                      color: theme?.background ?? Colors.white,
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Text(
                                             tab.title,
                                             style: TextStyle(
-                                              color: isActive
-                                                  ? theme?.primary ??
-                                                      Colors.blue
-                                                  : theme?.text ??
-                                                      Colors.black87,
+                                              color:
+                                                  theme?.primary ?? Colors.blue,
                                               fontSize: widget
                                                   .editorConfigService
                                                   .config
                                                   .uiFontSize,
                                             ),
                                           ),
-                                          const SizedBox(width: _kSpacing),
-                                          _buildTabButton(tab, index),
                                         ],
                                       ),
                                     ),
                                   ),
-                                )));
-                      },
-                    );
-                  }).toList(),
-                ),
+                                  child: MouseRegion(
+                                      cursor: SystemMouseCursors.click,
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            _tabController.index = index;
+                                          });
+                                        },
+                                        child: Container(
+                                          height: widget.editorConfigService
+                                                  .config.uiFontSize *
+                                              2.5,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: _kHorizontalPadding,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: isActive
+                                                ? theme?.background ??
+                                                    Colors.white
+                                                : theme?.backgroundLight ??
+                                                    Colors.grey[50],
+                                            border: Border(
+                                              right: BorderSide(
+                                                color: theme?.border ??
+                                                    Colors.grey[200]!,
+                                              ),
+                                            ),
+                                          ),
+                                          child: GestureDetector(
+                                            onSecondaryTapDown: (details) =>
+                                                _showTabContextMenu(
+                                                    context, details, index),
+                                            onTertiaryTapDown: (_) =>
+                                                _closeTab(index),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  tab.title,
+                                                  style: TextStyle(
+                                                    color: isActive
+                                                        ? theme?.primary ??
+                                                            Colors.blue
+                                                        : theme?.text ??
+                                                            Colors.black87,
+                                                    fontSize: widget
+                                                        .editorConfigService
+                                                        .config
+                                                        .uiFontSize,
+                                                  ),
+                                                ),
+                                                const SizedBox(
+                                                    width: _kSpacing),
+                                                _buildTabButton(tab, index),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      )));
+                            },
+                          );
+                        }).toList(),
+                      ),
               ),
               IconButton(
                 icon: Icon(
@@ -324,6 +338,10 @@ class _EditorTerminalViewState extends State<EditorTerminalView>
                 tab.terminal,
                 controller: tab.controller,
                 autofocus: true,
+                textStyle: TerminalStyle(
+                  fontSize: widget.editorConfigService.config.fontSize,
+                  fontFamily: widget.editorConfigService.config.fontFamily,
+                ),
                 onSecondaryTapDown: (details, offset) async {
                   final selection = tab.controller.selection;
                   if (selection != null) {

@@ -349,7 +349,9 @@ class EditorScreenState extends State<EditorScreen> {
   }
 
   Widget _buildTerminalSection() {
-    if (!_isTerminalVisible) return const SizedBox.shrink();
+    if (!_isTerminalVisible || _terminalHeight <= 0) {
+      return const SizedBox.shrink();
+    }
 
     return Column(
       children: [
@@ -358,9 +360,11 @@ class EditorScreenState extends State<EditorScreen> {
             setState(() {
               _terminalHeight = (_terminalHeight - details.delta.dy)
                   .clamp(_minTerminalHeight, _maxTerminalHeight);
-              _editorConfigService.config.terminalHeight = _terminalHeight;
-              _editorConfigService.saveConfig();
             });
+          },
+          onVerticalDragEnd: (_) {
+            _editorConfigService.config.terminalHeight = _terminalHeight;
+            _editorConfigService.saveConfig();
           },
           child: MouseRegion(
             cursor: SystemMouseCursors.resizeRow,
@@ -378,6 +382,13 @@ class EditorScreenState extends State<EditorScreen> {
           color: _editorConfigService.themeService.currentTheme?.background,
           child: EditorTerminalView(
             editorConfigService: _editorConfigService,
+            onLastTabClosed: () {
+              setState(() {
+                _isTerminalVisible = false;
+                _editorConfigService.config.isTerminalVisible = false;
+                _editorConfigService.saveConfig();
+              });
+            },
           ),
         ),
       ],
