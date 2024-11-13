@@ -290,8 +290,6 @@ Future<UpdateInfo> checkForUpdates(String repo) async {
 
     final latestVersion = _cleanVersionString(versionResponse.body.trim());
     final currentVersion = _cleanVersionString(await _getCurrentVersion());
-    print(latestVersion);
-    print(currentVersion);
 
     if (_compareVersions(latestVersion, currentVersion) > 0) {
       final platform = Platform.isWindows

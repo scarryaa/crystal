@@ -700,7 +700,7 @@ class EditorScreenState extends State<EditorScreen> {
                 }
               },
               onPointerMove: (event) {
-                if (event.kind == PointerDeviceKind.touch || event.down) {
+                if (event.kind == PointerDeviceKind.touch) {
                   editorTabManager.focusSplitView(row, col);
                   onActiveEditorChanged(
                     splitView.activeEditorIndex,
