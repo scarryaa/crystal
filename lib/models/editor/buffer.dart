@@ -101,21 +101,42 @@ class Buffer {
   }
 
   void removeLine(int lineNumber) {
+    // Add bounds checking
+    if (lineNumber < 0 || lineNumber >= _lines.length) {
+      return; // Early return if line number is out of bounds
+    }
+
     _lines.removeAt(lineNumber);
 
     // Update folding ranges after the removal point
-    for (var entry in _foldedRanges.entries) {
+    var rangesToUpdate = Map<int, int>.from(
+        _foldedRanges); // Create a copy to avoid modification during iteration
+    for (var entry in rangesToUpdate.entries) {
       if (lineNumber < entry.key) {
+        // Fold start is after removed line
         _foldedRanges[entry.key - 1] = _foldedRanges.remove(entry.key)! - 1;
       } else if (lineNumber <= entry.value) {
-        _foldedRanges[entry.key] = entry.value - 1;
+        // Removed line is within fold range
+        if (lineNumber == entry.key) {
+          // Remove fold if start line is removed
+          _foldedRanges.remove(entry.key);
+        } else {
+          // Adjust end of fold range
+          _foldedRanges[entry.key] = entry.value - 1;
+        }
       }
     }
 
     incrementVersion();
   }
 
-  String getLine(int lineNumber) => _lines[lineNumber];
+  String getLine(int index) {
+    // Add bounds checking
+    if (index < 0 || index >= lines.length) {
+      return '';
+    }
+    return lines[index];
+  }
 
   int getLineLength(int lineNumber) => _lines[lineNumber].length;
 

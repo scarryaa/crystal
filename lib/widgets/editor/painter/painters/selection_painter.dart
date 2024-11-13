@@ -98,8 +98,12 @@ class SelectionPainter {
     int firstVisibleLine,
     int lastVisibleLine,
     int initialVisualLine,
-    var originalSelection, // Add this parameter
+    var originalSelection,
   ) {
+    // Validate line bounds
+    endLine = endLine.clamp(0, editorState.buffer.lineCount - 1);
+    startLine = startLine.clamp(0, editorState.buffer.lineCount - 1);
+
     Paint selectionPaint = Paint()
       ..color = editorConfigService.themeService.currentTheme?.primary
               .withOpacity(0.2) ??
@@ -107,55 +111,25 @@ class SelectionPainter {
 
     int visualLine = initialVisualLine;
 
-    bool startInFold = false;
-    int? foldStart;
-    int? foldEnd;
-
-    for (final entry in editorState.foldingState.foldingRanges.entries) {
-      if (startLine >= entry.key && startLine <= entry.value) {
-        startInFold = true;
-        foldStart = entry.key;
-        foldEnd = entry.value;
-        break;
-      }
-    }
-
-    if (startInFold && foldStart != null) {
-      // Check if the selection encompasses the entire fold
-      bool entireFoldSelected = originalSelection.startLine < foldStart ||
-          (originalSelection.startLine == foldStart &&
-              originalSelection.startColumn == 0);
-
+    // Handle start line
+    if (!editorState.foldingState.isLineHidden(startLine)) {
       _paintSelectionLine(
-          canvas,
-          foldStart,
-          entireFoldSelected
-              ? 0
-              : startColumn, // Use 0 if entire fold is selected
-          editorState.buffer.getLineLength(foldStart),
-          visualLine,
-          selectionPaint);
-
-      if (foldEnd != null) {
-        startLine = foldEnd + 1;
-      }
-    } else {
-      if (!editorState.foldingState.isLineHidden(startLine)) {
-        _paintSelectionLine(
-            canvas, startLine, startColumn, null, visualLine, selectionPaint);
-      }
+          canvas, startLine, startColumn, null, visualLine, selectionPaint);
     }
 
     // Paint middle lines
     for (int line = startLine + 1; line < endLine; line++) {
+      if (line >= editorState.buffer.lineCount) break;
+
       if (!editorState.foldingState.isLineHidden(line)) {
         visualLine++;
         _paintSelectionLine(canvas, line, 0, null, visualLine, selectionPaint);
       }
     }
 
-    // Paint end line
-    if (!editorState.foldingState.isLineHidden(endLine)) {
+    // Paint end line if within bounds
+    if (endLine < editorState.buffer.lineCount &&
+        !editorState.foldingState.isLineHidden(endLine)) {
       visualLine++;
       _paintSelectionLine(
           canvas, endLine, 0, endColumn, visualLine, selectionPaint);
