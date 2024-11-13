@@ -2,7 +2,6 @@ class Buffer {
   int _version = 1;
   List<String> _lines = [''];
   String _originalContent = '';
-  final Map<int, List<String>> _foldedContent = {};
   final Map<int, int> _foldedRanges = {};
 
   int get version => _version;
@@ -17,14 +16,12 @@ class Buffer {
 
     while (currentLine < _lines.length) {
       buffer.writeln(_lines[currentLine]);
-
       if (isLineFolded(currentLine)) {
-        // Add folded content
-        for (var line in _foldedContent[currentLine]!) {
-          buffer.writeln(line);
-        }
+        // Skip folded lines
+        currentLine = _foldedRanges[currentLine]! + 1;
+      } else {
+        currentLine++;
       }
-      currentLine++;
     }
 
     return buffer.toString().trimRight();
@@ -33,8 +30,6 @@ class Buffer {
   Map<int, int> get foldedRanges => _foldedRanges;
 
   bool isLineFolded(int line) => _foldedRanges.containsKey(line);
-
-  List<String> getFoldedContent(int line) => _foldedContent[line] ?? [];
 
   int getActualLine(int visualLine) {
     int currentLine = 0;
@@ -79,71 +74,48 @@ class Buffer {
       return;
     }
 
-    // Store folded content
-    _foldedContent[startLine] = _lines.sublist(startLine + 1, endLine + 1);
     _foldedRanges[startLine] = endLine;
-
-    // Remove folded lines from main buffer
-    _lines.removeRange(startLine + 1, endLine + 1);
-
     incrementVersion();
   }
 
   void unfoldLines(int line) {
     if (!isLineFolded(line)) return;
 
-    final foldedContent = _foldedContent[line]!;
-    final insertPosition = line + 1;
-
-    // Reinsert folded content
-    _lines.insertAll(insertPosition, foldedContent);
-
-    // Clear folding data
-    _foldedContent.remove(line);
     _foldedRanges.remove(line);
-
     incrementVersion();
   }
 
   void insertLine(int lineNumber, {String content = ''}) {
-    // Check if inserting into folded region
+    _lines.insert(lineNumber, content);
+
+    // Update folding ranges after the insertion point
     for (var entry in _foldedRanges.entries) {
-      if (lineNumber > entry.key && lineNumber <= entry.value) {
-        _foldedContent[entry.key]!.insert(lineNumber - entry.key - 1, content);
-        _foldedRanges[entry.key] = _foldedRanges[entry.key]! + 1;
-        incrementVersion();
-        return;
+      if (lineNumber <= entry.key) {
+        _foldedRanges[entry.key + 1] = _foldedRanges.remove(entry.key)! + 1;
+      } else if (lineNumber <= entry.value) {
+        _foldedRanges[entry.key] = entry.value + 1;
       }
     }
 
-    _lines.insert(lineNumber, content);
     incrementVersion();
   }
 
   void removeLine(int lineNumber) {
-    // Check if removing from folded region
+    _lines.removeAt(lineNumber);
+
+    // Update folding ranges after the removal point
     for (var entry in _foldedRanges.entries) {
-      if (lineNumber > entry.key && lineNumber <= entry.value) {
-        _foldedContent[entry.key]!.removeAt(lineNumber - entry.key - 1);
-        _foldedRanges[entry.key] = _foldedRanges[entry.key]! - 1;
-        incrementVersion();
-        return;
+      if (lineNumber < entry.key) {
+        _foldedRanges[entry.key - 1] = _foldedRanges.remove(entry.key)! - 1;
+      } else if (lineNumber <= entry.value) {
+        _foldedRanges[entry.key] = entry.value - 1;
       }
     }
 
-    _lines.removeAt(lineNumber);
     incrementVersion();
   }
 
-  String getLine(int lineNumber) {
-    // Check if line is in folded region
-    for (var entry in _foldedRanges.entries) {
-      if (lineNumber > entry.key && lineNumber <= entry.value) {
-        return _foldedContent[entry.key]![lineNumber - entry.key - 1];
-      }
-    }
-    return _lines[lineNumber];
-  }
+  String getLine(int lineNumber) => _lines[lineNumber];
 
   int getLineLength(int lineNumber) => _lines[lineNumber].length;
 
@@ -161,36 +133,18 @@ class Buffer {
   }
 
   void replace(int lineNumber, int index, int length, String newTerm) {
-    // Check if replacing in folded region
-    for (var entry in _foldedRanges.entries) {
-      if (lineNumber > entry.key && lineNumber <= entry.value) {
-        final foldedLine =
-            _foldedContent[entry.key]![lineNumber - entry.key - 1];
-        _foldedContent[entry.key]![lineNumber - entry.key - 1] =
-            foldedLine.substring(0, index) +
-                newTerm +
-                foldedLine.substring(index + length);
-        return;
-      }
-    }
-
     _lines[lineNumber] = _lines[lineNumber].substring(0, index) +
         newTerm +
         _lines[lineNumber].substring(index + length);
+    incrementVersion();
+  }
+
+  void setLine(int lineNumber, String content) {
+    _lines[lineNumber] = content;
+    incrementVersion();
   }
 
   void setOriginalContent(String content) {
     _originalContent = content;
-  }
-
-  void setLine(int lineNumber, String content) {
-    // Check if line is in folded region
-    for (var entry in _foldedRanges.entries) {
-      if (lineNumber > entry.key && lineNumber <= entry.value) {
-        _foldedContent[entry.key]![lineNumber - entry.key - 1] = content;
-        return;
-      }
-    }
-    _lines[lineNumber] = content;
   }
 }

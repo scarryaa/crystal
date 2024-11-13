@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/selection.dart';
-import 'package:flutter/material.dart';
 
 class EditorSelectionManager {
   List<Selection> _selections = [];
@@ -174,9 +173,7 @@ class EditorSelectionManager {
         }
 
         // Remove lines in between, accounting for folded regions
-        for (int line = selection.endLine - 1;
-            line > selection.startLine;
-            line--) {
+        for (int line = selection.endLine; line > selection.startLine; line--) {
           if (buffer.isLineFolded(line)) {
             buffer.unfoldLines(line);
           }
@@ -310,7 +307,6 @@ class EditorSelectionManager {
 
   String getSelectedText(Buffer buffer) {
     StringBuffer sb = StringBuffer();
-
     for (var selection in _selections) {
       if (selection.startLine == selection.endLine) {
         // Single line selection
@@ -326,18 +322,12 @@ class EditorSelectionManager {
 
       // Middle lines
       for (int i = selection.startLine + 1; i < selection.endLine; i++) {
+        sb.write(buffer.getLine(i));
+        sb.write('\n');
+
         if (buffer.isLineFolded(i)) {
-          // Include folded content
-          sb.write(buffer.getLine(i));
-          sb.write('\n');
-          for (var line in buffer.getFoldedContent(i)) {
-            sb.write(line);
-            sb.write('\n');
-          }
+          // Skip folded lines
           i = buffer.getFoldedRange(i);
-        } else {
-          sb.write(buffer.getLine(i));
-          sb.write('\n');
         }
       }
 
@@ -345,7 +335,6 @@ class EditorSelectionManager {
       sb.write(
           buffer.getLine(selection.endLine).substring(0, selection.endColumn));
     }
-
     return sb.toString();
   }
 }

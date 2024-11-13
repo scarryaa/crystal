@@ -214,33 +214,59 @@ class EditorState extends ChangeNotifier {
   void deleteSelection() {
     if (!editorSelectionManager.hasSelection()) return;
 
-    final foldedRegionsToExpand = <int, int>{};
+    // Sort selections in reverse order to handle overlapping selections correctly
+    var sortedSelections =
+        List<Selection>.from(editorSelectionManager.selections)
+          ..sort((a, b) => b.startLine.compareTo(a.startLine));
 
-    // Check all folded regions that intersect with or are contained within selections
-    for (var selection in editorSelectionManager.selections) {
+    // Track folded regions that need to be removed
+    final foldedRegionsToRemove = <int>{};
+
+    // Check all folded regions that intersect with selections
+    for (var selection in sortedSelections) {
       final startLine = min(selection.startLine, selection.endLine);
       final endLine = max(selection.startLine, selection.endLine);
 
-      for (final entry in foldingState.foldingRanges.entries) {
-        // Check if folded region intersects with or is contained within selection
-        if ((entry.key >= startLine && entry.key <= endLine) ||
-            (entry.value >= startLine && entry.value <= endLine) ||
-            (startLine >= entry.key && endLine <= entry.value)) {
-          foldedRegionsToExpand[entry.key] = entry.value;
+      // Check each folded region
+      for (final entry in buffer.foldedRanges.entries) {
+        final foldStart = entry.key;
+        final foldEnd = entry.value;
+
+        // Cases where we need to remove the folded region:
+        // 1. Selection completely contains the folded region
+        // 2. Selection starts within the folded region
+        // 3. Selection ends within the folded region
+        // 4. Folded region completely contains the selection
+        if ((startLine <= foldStart && endLine >= foldEnd) || // Case 1
+            (startLine >= foldStart && startLine <= foldEnd) || // Case 2
+            (endLine >= foldStart && endLine <= foldEnd) || // Case 3
+            (foldStart <= startLine && foldEnd >= endLine)) {
+          // Case 4
+          foldedRegionsToRemove.add(foldStart);
         }
       }
     }
 
-    // Unfold all affected regions
-    for (final entry in foldedRegionsToExpand.entries) {
-      buffer.unfoldLines(entry.key);
-      foldingState.toggleFold(entry.key, entry.value);
+    // Remove affected folded regions before deleting text
+    for (final foldStart in foldedRegionsToRemove) {
+      buffer.unfoldLines(foldStart);
+      foldingState.toggleFold(
+          foldStart, buffer.foldedRanges[foldStart] ?? foldStart);
     }
 
     // Perform deletion
     var newStartLinesColumns = editorSelectionManager.deleteSelection(buffer);
     editorCursorManager.setAllCursors(newStartLinesColumns);
     buffer.incrementVersion();
+
+    // Clean up any remaining folded regions that might be invalid
+    final remainingFolds = Map<int, int>.from(buffer.foldedRanges);
+    for (final entry in remainingFolds.entries) {
+      if (entry.key >= buffer.lineCount || entry.value >= buffer.lineCount) {
+        buffer.unfoldLines(entry.key);
+        foldingState.toggleFold(entry.key, entry.value);
+      }
+    }
 
     notifyListeners();
   }
@@ -249,7 +275,7 @@ class EditorState extends ChangeNotifier {
     // Get all folded regions that contain affected lines
     final regionsToCheck = <int, int>{};
 
-    for (final entry in foldingState.foldingRanges.entries) {
+    for (final entry in buffer.foldedRanges.entries) {
       final startLine = entry.key;
       final endLine = entry.value;
 
@@ -269,12 +295,10 @@ class EditorState extends ChangeNotifier {
 
       // Check if the folded region is still valid
       final newEndLine =
-          foldingManager.getFoldableRegionEnd(startLine, _buffer.lines);
-
+          foldingManager.getFoldableRegionEnd(startLine, buffer.lines);
       if (newEndLine == null || newEndLine != originalEndLine) {
         // Region is no longer valid, unfold it
         buffer.unfoldLines(startLine);
-        foldingState.toggleFold(startLine, originalEndLine);
       }
     }
   }
@@ -566,7 +590,7 @@ class EditorState extends ChangeNotifier {
     int? foldStart;
     int? foldEnd;
 
-    for (final entry in foldingState.foldingRanges.entries) {
+    for (final entry in buffer.foldedRanges.entries) {
       if (bufferLine >= entry.key && bufferLine <= entry.value) {
         isFolded = true;
         foldStart = entry.key;
@@ -581,36 +605,29 @@ class EditorState extends ChangeNotifier {
     editorCursorManager.clearAll();
     editorCursorManager.addCursor(Cursor(bufferLine, targetColumn));
 
-// If selecting a folded region
     if (isFolded && foldStart != null && foldEnd != null) {
       Selection? currentSelection = editorSelectionManager.selections.isNotEmpty
           ? editorSelectionManager.selections.first
           : null;
 
-      // If selecting within the folded region
-      if (currentSelection != null &&
-          currentSelection.anchorLine >= foldStart &&
-          currentSelection.anchorLine <= foldEnd &&
-          bufferLine >= foldStart &&
-          bufferLine <= foldEnd) {
-        // Determine the selection direction
+      if (currentSelection != null) {
         bool isSelectingBackwards = currentSelection.anchorLine > bufferLine ||
             (currentSelection.anchorLine == bufferLine &&
                 targetColumn < currentSelection.anchorColumn);
 
-        if (isSelectingBackwards) {
-          // Select the entire folded region
+        if (bufferLine <= foldStart && isSelectingBackwards) {
+          // When selecting backwards and reaching or passing the fold start
           editorSelectionManager.updateSelectionToLine(
               buffer, foldStart, buffer.getLineLength(foldEnd));
-        } else {
-          // Select normally within the folded region
+        } else if (bufferLine >= foldStart && bufferLine <= foldEnd) {
+          // When selecting within the fold
           editorSelectionManager.updateSelectionToLine(
               buffer, bufferLine, targetColumn);
+        } else {
+          // When selecting outside the fold
+          editorSelectionManager.updateSelectionToLine(
+              buffer, foldEnd, buffer.getLineLength(foldEnd));
         }
-      } else {
-        // Select the entire folded region
-        editorSelectionManager.updateSelectionToLine(
-            buffer, foldEnd, buffer.getLineLength(foldEnd));
       }
     } else {
       updateSelection();
