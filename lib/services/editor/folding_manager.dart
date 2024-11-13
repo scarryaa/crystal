@@ -93,31 +93,37 @@ class FoldingManager extends ChangeNotifier {
   int? getFoldableRegionEnd(int line, List<String> lines) {
     if (line >= lines.length) return null;
 
-    final baseIndent = _getIndentation(lines[line]);
-    if (baseIndent == -1) return null;
+    final openingBracket = '{';
+    final closingBracket = '}';
+    int bracketCount = 0;
+    bool foundOpeningBracket = false;
 
-    int lastValidLine = line;
-    bool foundContent = false;
+    // Check if the current line contains an opening bracket
+    if (!lines[line].contains(openingBracket)) return null;
 
-    for (int i = line + 1; i < lines.length; i++) {
-      final currentLine = lines[i].trim();
-      if (currentLine.isEmpty) continue;
+    // Find the position of the first opening bracket on the current line
+    int openingPosition = lines[line].indexOf(openingBracket);
 
-      final currentIndent = _getIndentation(lines[i]);
-      if (currentIndent <= baseIndent) {
-        return foundContent ? lastValidLine : null;
+    for (int i = line; i < lines.length; i++) {
+      final currentLine = lines[i];
+
+      for (int j = i == line ? openingPosition : 0;
+          j < currentLine.length;
+          j++) {
+        if (currentLine[j] == openingBracket) {
+          bracketCount++;
+          foundOpeningBracket = true;
+        } else if (currentLine[j] == closingBracket) {
+          bracketCount--;
+        }
+
+        if (foundOpeningBracket && bracketCount == 0) {
+          // Only return if the closing bracket is not on the same line as the opening bracket
+          return i > line ? i : null;
+        }
       }
-
-      foundContent = true;
-      lastValidLine = i;
     }
 
-    return foundContent ? lastValidLine : null;
-  }
-
-  int _getIndentation(String line) {
-    if (line.trim().isEmpty) return -1;
-    final match = RegExp(r'[^\s]').firstMatch(line);
-    return match?.start ?? -1;
+    return null; // No matching closing bracket found
   }
 }
