@@ -40,15 +40,23 @@ class EditorScrollManager {
     if (activeEditor == null) return;
 
     final cursor = activeEditor.editorCursorManager.cursors.last;
-    final cursorLine = cursor.line;
+    final cursorBufferLine = cursor.line;
     final lineHeight = layoutService.config.lineHeight;
     final viewportHeight =
         editorVerticalScrollController.position.viewportDimension;
     final currentOffset = editorVerticalScrollController.offset;
     final verticalPadding = layoutService.config.verticalPadding;
 
-    // Vertical scrolling
-    final cursorY = cursorLine * lineHeight;
+    // Calculate visual line by counting only visible lines
+    int visualLine = 0;
+    for (int i = 0; i < cursorBufferLine; i++) {
+      if (!activeEditor.foldingState.isLineHidden(i)) {
+        visualLine++;
+      }
+    }
+
+    // Vertical scrolling using visual line position
+    final cursorY = visualLine * lineHeight;
     if (cursorY < currentOffset + verticalPadding) {
       editorVerticalScrollController.jumpTo(max(0, cursorY - verticalPadding));
     } else if (cursorY + lineHeight >
@@ -59,7 +67,7 @@ class EditorScrollManager {
 
     // Horizontal scrolling
     final cursorColumn = cursor.column;
-    final currentLine = activeEditor.buffer.getLine(cursorLine);
+    final currentLine = activeEditor.buffer.getLine(cursorBufferLine);
     final safeColumn = min(cursorColumn, currentLine.length);
     final textBeforeCursor = currentLine.substring(0, safeColumn);
     final cursorX = textBeforeCursor.length * layoutService.config.charWidth;
