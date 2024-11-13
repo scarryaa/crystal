@@ -100,28 +100,15 @@ class EditorPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final scrollOffset = editorState.scrollState.verticalOffset;
     final lineHeight = editorLayoutService.config.lineHeight;
-    int firstVisibleLine = max(0, (scrollOffset / lineHeight).floor() - 10);
-
-    // Calculate the maximum line needed for selections
-    int maxSelectionLine = firstVisibleLine;
-    if (editorState.editorSelectionManager.hasSelection()) {
-      for (var selection in editorState.editorSelectionManager.selections) {
-        maxSelectionLine =
-            max(maxSelectionLine, max(selection.startLine, selection.endLine));
-      }
-    }
+    int firstVisibleLine = max(0, (scrollOffset / lineHeight).floor());
 
     int lastVisibleLine = firstVisibleLine;
     double accumulatedHeight = 0;
-    int visualLines = 0;
 
-    // Extend the visible range to include all selected lines
-    while (accumulatedHeight < (viewportHeight + lineHeight * 20) &&
-            lastVisibleLine < editorState.buffer.lineCount ||
-        lastVisibleLine <= maxSelectionLine) {
-      if (!textPainterHelper.isLineHidden(lastVisibleLine)) {
+    while (accumulatedHeight < size.height &&
+        lastVisibleLine < editorState.buffer.lineCount) {
+      if (!editorState.foldingState.isLineHidden(lastVisibleLine)) {
         accumulatedHeight += lineHeight;
-        visualLines++;
       }
       lastVisibleLine++;
     }

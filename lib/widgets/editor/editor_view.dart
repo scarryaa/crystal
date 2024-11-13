@@ -225,13 +225,13 @@ class EditorViewState extends State<EditorView> {
                       ?.background ??
                   Colors.white,
               child: Focus(
-                focusNode: _focusNode,
-                onKeyEvent: (node, event) {
-                  _handleKeyEventAsync(node, event);
-                  return KeyEventResult.handled;
-                },
-                autofocus: true,
-                child: GestureDetector(
+                  focusNode: _focusNode,
+                  onKeyEvent: (node, event) {
+                    _handleKeyEventAsync(node, event);
+                    return KeyEventResult.handled;
+                  },
+                  autofocus: true,
+                  child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTapDown: (details) => editorInputHandler.handleTap(
                         details,
@@ -269,29 +269,30 @@ class EditorViewState extends State<EditorView> {
                             thickness: 10,
                             radius: const Radius.circular(0),
                             child: Scrollbar(
-                              controller: widget.horizontalScrollController,
-                              thickness: 10,
-                              radius: const Radius.circular(0),
-                              notificationPredicate: (notification) =>
-                                  notification.depth == 1,
-                              child: ScrollConfiguration(
-                                behavior: const ScrollBehavior()
-                                    .copyWith(scrollbars: false),
-                                child: SingleChildScrollView(
-                                  controller: widget.verticalScrollController,
+                                controller: widget.horizontalScrollController,
+                                thickness: 10,
+                                radius: const Radius.circular(0),
+                                notificationPredicate: (notification) =>
+                                    notification.depth == 1,
+                                child: ScrollConfiguration(
+                                  behavior: const ScrollBehavior()
+                                      .copyWith(scrollbars: false),
                                   child: SingleChildScrollView(
-                                    controller:
-                                        widget.horizontalScrollController,
-                                    scrollDirection: Axis.horizontal,
-                                    child: CustomPaint(
-                                      painter: editorPainter,
-                                      size: Size(width, height),
+                                    controller: widget.verticalScrollController,
+                                    child: SingleChildScrollView(
+                                      controller:
+                                          widget.horizontalScrollController,
+                                      scrollDirection: Axis.horizontal,
+                                      child: RepaintBoundary(
+                                        child: CustomPaint(
+                                          painter: editorPainter,
+                                          size: Size(width, height),
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ),
-                            )))),
-              ));
+                                )))),
+                  )));
         });
   }
 

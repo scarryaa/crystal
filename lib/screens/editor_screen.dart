@@ -892,6 +892,16 @@ class EditorScreenState extends State<EditorScreen> {
                                 editorState: state,
                                 verticalScrollController:
                                     scrollManager.gutterScrollController,
+                                onFoldToggled: () {
+                                  WidgetsBinding.instance
+                                      .addPostFrameCallback((_) {
+                                    scrollManager.editorVerticalScrollController
+                                        .jumpTo(
+                                            state.scrollState.verticalOffset);
+                                    scrollManager.gutterScrollController.jumpTo(
+                                        state.scrollState.verticalOffset);
+                                  });
+                                },
                               ),
                             Expanded(
                               child: splitView.editors.isNotEmpty &&

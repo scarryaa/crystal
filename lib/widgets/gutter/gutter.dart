@@ -12,6 +12,7 @@ class Gutter extends StatefulWidget {
   final EditorState editorState;
   final EditorLayoutService editorLayoutService;
   final EditorConfigService editorConfigService;
+  final VoidCallback onFoldToggled;
 
   const Gutter({
     super.key,
@@ -19,6 +20,7 @@ class Gutter extends StatefulWidget {
     required this.editorState,
     required this.editorLayoutService,
     required this.editorConfigService,
+    required this.onFoldToggled,
   });
 
   @override
@@ -135,6 +137,8 @@ class _GutterState extends State<Gutter> {
           editorState.toggleFold(line, endLine);
         }
       }
+
+      widget.onFoldToggled();
     }
   }
 
