@@ -72,30 +72,4 @@ class EditorInputHandler {
         localX,
         editorPainter.measureLineWidth);
   }
-
-  int _getBufferLineFromY(double y, EditorState state) {
-    int visualLine = y ~/ state.editorLayoutService.config.lineHeight;
-
-    // Count visible lines up to the target visual line
-    int currentVisualLine = 0;
-    int bufferLine = 0;
-
-    while (
-        currentVisualLine < visualLine && bufferLine < state.buffer.lineCount) {
-      //TODO refactor to not expose state.foldingManager?
-      if (!state.foldingManager.isLineHidden(bufferLine)) {
-        currentVisualLine++;
-      }
-      bufferLine++;
-    }
-
-    // Skip any hidden lines
-    while (bufferLine < state.buffer.lineCount &&
-        // TODO refactor?
-        state.foldingManager.isLineHidden(bufferLine)) {
-      bufferLine++;
-    }
-
-    return bufferLine.clamp(0, state.buffer.lineCount - 1);
-  }
 }

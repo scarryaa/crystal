@@ -1,9 +1,10 @@
 import 'dart:io';
 
 import 'package:crystal/models/editor/config/config_paths.dart';
-import 'package:crystal/models/editor/split_view.dart';
+import 'package:crystal/providers/editor_state_provider.dart';
 import 'package:crystal/providers/file_explorer_provider.dart';
 import 'package:crystal/providers/terminal_provider.dart';
+import 'package:crystal/screens/editor/editor_section.dart';
 import 'package:crystal/screens/editor/file_explorer/file_explorer_container.dart';
 import 'package:crystal/screens/editor/terminal/terminal_section.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
@@ -14,13 +15,8 @@ import 'package:crystal/services/file_service.dart';
 import 'package:crystal/services/search_service.dart';
 import 'package:crystal/services/shortcut_handler.dart';
 import 'package:crystal/state/editor/editor_state.dart';
-import 'package:crystal/widgets/editor/editor_control_bar_view.dart';
-import 'package:crystal/widgets/editor/editor_tab_bar.dart';
-import 'package:crystal/widgets/editor/editor_view.dart';
 import 'package:crystal/widgets/editor/resizable_split_container.dart';
-import 'package:crystal/widgets/gutter/gutter.dart';
 import 'package:crystal/widgets/status_bar/status_bar.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -45,30 +41,15 @@ class EditorScreen extends StatefulWidget {
 }
 
 class EditorScreenState extends State<EditorScreen> {
-  final Map<String, GlobalKey> _tabBarKeys = {};
-  final Map<int, GlobalKey<EditorViewState>> _editorViewKeys = {};
   late final EditorConfigService _editorConfigService;
   late final EditorTabManager editorTabManager;
   late final ShortcutHandler _shortcutHandler;
   late final Future<void> _initializationFuture;
   late SearchService searchService;
   final Map<int, EditorScrollManager> _scrollManagers = {};
-  final Map<String, ScrollController> _tabBarScrollControllers = {};
-
-  ScrollController _getTabBarScrollController(int row, int col) {
-    final String key = 'tabBar_${row}_$col';
-    if (!_tabBarScrollControllers.containsKey(key)) {
-      _tabBarScrollControllers[key] = ScrollController();
-    }
-    return _tabBarScrollControllers[key]!;
-  }
-
-  GlobalKey _getTabBarKey(int row, int col) {
-    final String keyId = 'tabBar_${row}_$col';
-    return _tabBarKeys.putIfAbsent(keyId, () => GlobalKey());
-  }
 
   void scrollToTab(int index) {
+    final editorState = context.read<EditorStateProvider>();
     if (!mounted) return;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -80,12 +61,12 @@ class EditorScreenState extends State<EditorScreen> {
 
       if (index < 0 || index >= splitView.editors.length) return;
 
-      final tabBarKey =
-          _getTabBarKey(editorTabManager.activeRow, editorTabManager.activeCol);
+      final tabBarKey = editorState.getTabBarKey(
+          editorTabManager.activeRow, editorTabManager.activeCol);
       final tabBarContext = tabBarKey.currentContext;
       if (tabBarContext == null) return;
 
-      final scrollController = _getTabBarScrollController(row, col);
+      final scrollController = editorState.getTabBarScrollController(row, col);
       final double maxScroll = scrollController.position.maxScrollExtent;
 
       double totalWidth = 0;
@@ -117,31 +98,11 @@ class EditorScreenState extends State<EditorScreen> {
     return textPainter.width + 60;
   }
 
-  EditorScrollManager _getScrollManager(int row, int col) {
-    final splitIndex = getSplitIndex(row, col);
-
-    if (!_scrollManagers.containsKey(splitIndex)) {
-      final scrollManager = EditorScrollManager();
-      scrollManager.initListeners(
-        onEditorScroll: () => _handleEditorScroll(row, col),
-        onGutterScroll: () => _handleGutterScroll(row, col),
-      );
-      _scrollManagers[splitIndex] = scrollManager;
-    }
-    return _scrollManagers[splitIndex]!;
-  }
-
-  GlobalKey<EditorViewState> _getEditorViewKey(int splitViewIndex) {
-    return _editorViewKeys.putIfAbsent(
-      splitViewIndex,
-      () => GlobalKey<EditorViewState>(),
-    );
-  }
-
   void openNewTab({int? row, int? col}) {
+    final editorState = context.read<EditorStateProvider>();
     final targetRow = row ?? editorTabManager.activeRow;
     final targetCol = col ?? editorTabManager.activeCol;
-    final scrollManager = _getScrollManager(targetRow, targetCol);
+    final scrollManager = editorState.getScrollManager(targetRow, targetCol);
 
     // Focus the target split view first
     editorTabManager.focusSplitView(targetRow, targetCol);
@@ -163,7 +124,7 @@ class EditorScreenState extends State<EditorScreen> {
           searchService.searchTerm, editorTabManager.activeEditor);
     });
 
-    final editorKey = _getEditorViewKey(getSplitIndex(targetRow, targetCol));
+    final editorKey = editorState.getEditorViewKey(targetRow, targetCol);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (editorKey.currentState != null) {
         editorKey.currentState!.updateCachedMaxLineWidth();
@@ -173,6 +134,7 @@ class EditorScreenState extends State<EditorScreen> {
   }
 
   Future<void> tapCallback(String path, {int? row, int? col}) async {
+    final editorState = context.read<EditorStateProvider>();
     final targetRow = row ?? editorTabManager.activeRow;
     final targetCol = col ?? editorTabManager.activeCol;
 
@@ -190,8 +152,8 @@ class EditorScreenState extends State<EditorScreen> {
     }
 
     // File is not open in current split, create new editor
-    final scrollManager = _getScrollManager(targetRow, targetCol);
-    final editorKey = _getEditorViewKey(getSplitIndex(targetRow, targetCol));
+    final scrollManager = editorState.getScrollManager(targetRow, targetCol);
+    final editorKey = editorState.getEditorViewKey(targetRow, targetCol);
 
     String content = await File(path).readAsString();
     final relativePath = widget.fileService
@@ -233,6 +195,7 @@ class EditorScreenState extends State<EditorScreen> {
   @override
   void initState() {
     super.initState();
+    final editorState = context.read<EditorStateProvider>();
     editorTabManager = EditorTabManager(
       onSplitViewClosed: _cleanupScrollManager,
       onDirectoryChanged: widget.onDirectoryChanged,
@@ -247,11 +210,12 @@ class EditorScreenState extends State<EditorScreen> {
     );
 
     // Initialize scroll manager for the first split view
-    _getScrollManager(0, 0);
+    editorState.getScrollManager(0, 0);
   }
 
   void _cleanupScrollManager(int row, int col) {
-    final splitIndex = getSplitIndex(row, col);
+    final editorState = context.read<EditorStateProvider>();
+    final splitIndex = editorState.getSplitIndex(row, col);
     if (_scrollManagers.containsKey(splitIndex)) {
       _scrollManagers[splitIndex]!.dispose();
       _scrollManagers.remove(splitIndex);
@@ -261,8 +225,8 @@ class EditorScreenState extends State<EditorScreen> {
     final newScrollManagers = <int, EditorScrollManager>{};
     for (int r = 0; r < editorTabManager.horizontalSplits.length; r++) {
       for (int c = 0; c < editorTabManager.horizontalSplits[r].length; c++) {
-        final oldIndex = getSplitIndex(r, c);
-        final newIndex = getSplitIndex(r, c);
+        final oldIndex = editorState.getSplitIndex(r, c);
+        final newIndex = editorState.getSplitIndex(r, c);
         if (_scrollManagers.containsKey(oldIndex)) {
           newScrollManagers[newIndex] = _scrollManagers[oldIndex]!;
         }
@@ -273,61 +237,15 @@ class EditorScreenState extends State<EditorScreen> {
       ..addAll(newScrollManagers);
   }
 
-  void _handleEditorScroll(int row, int col) {
-    // Validate indices before accessing splits
-    if (row >= editorTabManager.horizontalSplits.length ||
-        col >= editorTabManager.horizontalSplits[row].length) {
-      return;
-    }
-
-    final scrollManager = _getScrollManager(row, col);
-    final activeEditor =
-        editorTabManager.horizontalSplits[row][col].activeEditor;
-
-    if (activeEditor == null) return;
-
-    if (scrollManager.gutterScrollController.offset !=
-        scrollManager.editorVerticalScrollController.offset) {
-      scrollManager.gutterScrollController
-          .jumpTo(scrollManager.editorVerticalScrollController.offset);
-      activeEditor.updateVerticalScrollOffset(
-          scrollManager.editorVerticalScrollController.offset);
-    }
-
-    activeEditor.updateHorizontalScrollOffset(
-        scrollManager.editorHorizontalScrollController.offset);
-  }
-
-  void _handleGutterScroll(int row, int col) {
-    // Validate indices before accessing splits
-    if (row >= editorTabManager.horizontalSplits.length ||
-        col >= editorTabManager.horizontalSplits[row].length) {
-      return;
-    }
-
-    final scrollManager = _getScrollManager(row, col);
-    final activeEditor =
-        editorTabManager.horizontalSplits[row][col].activeEditor;
-
-    if (activeEditor == null) return;
-
-    if (scrollManager.editorVerticalScrollController.offset !=
-        scrollManager.gutterScrollController.offset) {
-      scrollManager.editorVerticalScrollController
-          .jumpTo(scrollManager.gutterScrollController.offset);
-      activeEditor.updateVerticalScrollOffset(
-          scrollManager.gutterScrollController.offset);
-    }
-  }
-
   void _scrollToCursor(int row, int col) {
+    final editorState = context.read<EditorStateProvider>();
     // Validate indices before proceeding
     if (row >= editorTabManager.horizontalSplits.length ||
         col >= editorTabManager.horizontalSplits[row].length) {
       return;
     }
 
-    final scrollManager = _getScrollManager(row, col);
+    final scrollManager = editorState.getScrollManager(row, col);
     final activeEditor =
         editorTabManager.horizontalSplits[row][col].activeEditor;
 
@@ -416,6 +334,7 @@ class EditorScreenState extends State<EditorScreen> {
   }
 
   void onActiveEditorChanged(int index, {int? row, int? col}) {
+    final editorState = context.read<EditorStateProvider>();
     final targetRow = row ?? editorTabManager.activeRow;
     final targetCol = col ?? editorTabManager.activeCol;
 
@@ -425,8 +344,8 @@ class EditorScreenState extends State<EditorScreen> {
       return;
     }
 
-    final scrollManager = _getScrollManager(targetRow, targetCol);
-    final editorKey = _getEditorViewKey(getSplitIndex(targetRow, targetCol));
+    final scrollManager = editorState.getScrollManager(targetRow, targetCol);
+    final editorKey = editorState.getEditorViewKey(targetRow, targetCol);
 
     setState(() {
       editorTabManager.setActiveEditor(
@@ -456,6 +375,7 @@ class EditorScreenState extends State<EditorScreen> {
   }
 
   void onEditorClosed(int index, {int? row, int? col}) {
+    final editorState = context.read<EditorStateProvider>();
     final targetRow = row ?? editorTabManager.activeRow;
     final targetCol = col ?? editorTabManager.activeCol;
 
@@ -465,8 +385,8 @@ class EditorScreenState extends State<EditorScreen> {
       return;
     }
 
-    final scrollManager = _getScrollManager(targetRow, targetCol);
-    final editorKey = _getEditorViewKey(getSplitIndex(targetRow, targetCol));
+    final scrollManager = editorState.getScrollManager(targetRow, targetCol);
+    final editorKey = editorState.getEditorViewKey(targetRow, targetCol);
 
     setState(() {
       final verticalOffset =
@@ -498,9 +418,6 @@ class EditorScreenState extends State<EditorScreen> {
     for (final scrollManager in _scrollManagers.values) {
       scrollManager.dispose();
     }
-    for (final scrollController in _tabBarScrollControllers.values) {
-      scrollController.dispose();
-    }
     _scrollManagers.clear();
     _editorConfigService.themeService.removeListener(_onThemeChanged);
     _editorConfigService.removeListener(_onConfigChanged);
@@ -513,14 +430,6 @@ class EditorScreenState extends State<EditorScreen> {
 
   Future<void> _openDefaultSettings() async {
     await tapCallback(await ConfigPaths.getDefaultConfigFilePath());
-  }
-
-  int getSplitIndex(int row, int col) {
-    int index = 0;
-    for (int i = 0; i < row; i++) {
-      index += editorTabManager.horizontalSplits[i].length;
-    }
-    return index + col;
   }
 
   @override
@@ -632,19 +541,37 @@ class EditorScreenState extends State<EditorScreen> {
                                                               _editorConfigService,
                                                           children:
                                                               List.generate(
-                                                            editorTabManager
-                                                                .horizontalSplits[
-                                                                    row]
-                                                                .length,
-                                                            (col) =>
-                                                                _buildEditorSection(
-                                                              editorTabManager
+                                                                  editorTabManager
                                                                       .horizontalSplits[
-                                                                  row][col],
-                                                              row,
-                                                              col,
-                                                            ),
-                                                          ),
+                                                                          row]
+                                                                      .length,
+                                                                  (col) =>
+                                                                      EditorSection(
+                                                                        splitView:
+                                                                            editorTabManager.horizontalSplits[row][col],
+                                                                        row:
+                                                                            row,
+                                                                        col:
+                                                                            col,
+                                                                        editorConfigService:
+                                                                            _editorConfigService,
+                                                                        editorTabManager:
+                                                                            editorTabManager,
+                                                                        searchService:
+                                                                            searchService,
+                                                                        onActiveEditorChanged:
+                                                                            onActiveEditorChanged,
+                                                                        onEditorClosed:
+                                                                            onEditorClosed,
+                                                                        openNewTab:
+                                                                            openNewTab,
+                                                                        scrollToCursor:
+                                                                            _scrollToCursor,
+                                                                        onDirectoryChanged:
+                                                                            widget.onDirectoryChanged,
+                                                                        fileService:
+                                                                            widget.fileService,
+                                                                      )),
                                                         );
                                                 },
                                               ),
@@ -675,237 +602,5 @@ class EditorScreenState extends State<EditorScreen> {
             ));
       },
     );
-  }
-
-  Widget _buildEditorSection(SplitView splitView, int row, int col) {
-    final scrollManager = _getScrollManager(row, col);
-    final editorViewKey = _getEditorViewKey(getSplitIndex(row, col));
-    final tabBarKey = _getTabBarKey(row, col);
-    final tabBarScrollController = _getTabBarScrollController(row, col);
-
-    return MultiProvider(
-        providers: [
-          ChangeNotifierProvider<EditorState?>.value(
-            value: splitView.activeEditor,
-          ),
-        ],
-        child: Consumer<EditorState?>(
-          builder: (context, state, _) {
-            return MouseRegion(
-              child: Listener(
-                behavior: HitTestBehavior.opaque,
-                onPointerDown: (_) {
-                  // Check if indices are still valid before focusing
-                  if (row < editorTabManager.horizontalSplits.length &&
-                      col < editorTabManager.horizontalSplits[row].length) {
-                    editorTabManager.focusSplitView(row, col);
-                    if (splitView.activeEditorIndex >= 0) {
-                      onActiveEditorChanged(
-                        splitView.activeEditorIndex,
-                        row: row,
-                        col: col,
-                      );
-                    }
-                  }
-                },
-                onPointerPanZoomStart: (_) {
-                  editorTabManager.focusSplitView(row, col);
-                  if (splitView.activeEditorIndex >= 0) {
-                    onActiveEditorChanged(
-                      splitView.activeEditorIndex,
-                      row: row,
-                      col: col,
-                    );
-                  }
-                },
-                onPointerPanZoomUpdate: (_) {
-                  editorTabManager.focusSplitView(row, col);
-                  if (splitView.activeEditorIndex >= 0) {
-                    onActiveEditorChanged(
-                      splitView.activeEditorIndex,
-                      row: row,
-                      col: col,
-                    );
-                  }
-                },
-                onPointerMove: (event) {
-                  if (event.kind == PointerDeviceKind.touch) {
-                    editorTabManager.focusSplitView(row, col);
-                    onActiveEditorChanged(
-                      splitView.activeEditorIndex,
-                      row: row,
-                      col: col,
-                    );
-                  }
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: _editorConfigService
-                            .themeService.currentTheme?.background ??
-                        Colors.white,
-                  ),
-                  child: Column(
-                    children: [
-                      if (splitView.editors.isNotEmpty)
-                        Row(
-                          children: [
-                            Expanded(
-                              child: EditorTabBar(
-                                tabScrollKey: tabBarKey,
-                                onPin: (index) => editorTabManager.togglePin(
-                                  index,
-                                  row: row,
-                                  col: col,
-                                ),
-                                editorConfigService: _editorConfigService,
-                                editors: splitView.editors,
-                                activeEditorIndex: splitView.activeEditorIndex,
-                                onActiveEditorChanged: (index) =>
-                                    onActiveEditorChanged(
-                                  index,
-                                  row: row,
-                                  col: col,
-                                ),
-                                onEditorClosed: (index) => onEditorClosed(
-                                  index,
-                                  row: row,
-                                  col: col,
-                                ),
-                                onReorder: (oldIndex, newIndex) =>
-                                    editorTabManager.reorderEditor(
-                                  oldIndex,
-                                  newIndex,
-                                  row: row,
-                                  col: col,
-                                ),
-                                onNewTab: () => openNewTab(row: row, col: col),
-                                onSplitHorizontal: () =>
-                                    editorTabManager.addHorizontalSplit(),
-                                onSplitVertical: () =>
-                                    editorTabManager.addVerticalSplit(),
-                                row: row,
-                                col: col,
-                                onSplitClose: () =>
-                                    editorTabManager.closeSplitView(row, col),
-                                editorTabManager: editorTabManager,
-                                tabBarScrollController: tabBarScrollController,
-                                onDirectoryChanged: widget.onDirectoryChanged,
-                                fileService: widget.fileService,
-                              ),
-                            ),
-                          ],
-                        ),
-                      if (splitView.editors.isNotEmpty)
-                        EditorControlBarView(
-                          editorConfigService: _editorConfigService,
-                          filePath: state?.relativePath ?? state?.path ?? '',
-                          searchTermChanged: (newTerm) =>
-                              searchService.onSearchTermChanged(newTerm, state),
-                          nextSearchTerm: () =>
-                              searchService.nextSearchTerm(state),
-                          previousSearchTerm: () =>
-                              searchService.previousSearchTerm(state),
-                          currentSearchTermMatch:
-                              searchService.currentSearchTermMatch,
-                          totalSearchTermMatches:
-                              searchService.searchTermMatches.length,
-                          isCaseSensitiveActive:
-                              searchService.caseSensitiveActive,
-                          isRegexActive: searchService.regexActive,
-                          isWholeWordActive: searchService.wholeWordActive,
-                          toggleRegex: (active) =>
-                              searchService.toggleRegex(active, state),
-                          toggleWholeWord: (active) =>
-                              searchService.toggleWholeWord(active, state),
-                          toggleCaseSensitive: (active) =>
-                              searchService.toggleCaseSensitive(active, state),
-                          replaceNextMatch: (newTerm) =>
-                              searchService.replaceNextMatch(newTerm, state),
-                          replaceAllMatches: (newTerm) =>
-                              searchService.replaceAllMatches(newTerm, state),
-                        ),
-                      Expanded(
-                        child: Container(
-                          color: _editorConfigService
-                                  .themeService.currentTheme?.background ??
-                              Colors.white,
-                          child: Row(
-                            children: [
-                              if (splitView.editors.isNotEmpty && state != null)
-                                Gutter(
-                                  editorConfigService: _editorConfigService,
-                                  editorLayoutService:
-                                      EditorLayoutService.instance,
-                                  editorState: state,
-                                  verticalScrollController:
-                                      scrollManager.gutterScrollController,
-                                  onFoldToggled: () {
-                                    WidgetsBinding.instance
-                                        .addPostFrameCallback((_) {
-                                      scrollManager
-                                          .editorVerticalScrollController
-                                          .jumpTo(scrollManager
-                                              .editorVerticalScrollController
-                                              .offset);
-                                      state.updateVerticalScrollOffset(
-                                          scrollManager
-                                              .editorVerticalScrollController
-                                              .offset);
-                                    });
-                                  },
-                                ),
-                              Expanded(
-                                child: splitView.editors.isNotEmpty &&
-                                        splitView.activeEditor != null
-                                    ? EditorView(
-                                        key: editorViewKey,
-                                        editorConfigService:
-                                            _editorConfigService,
-                                        editorLayoutService:
-                                            EditorLayoutService.instance,
-                                        state: splitView.activeEditor!,
-                                        searchTerm: searchService.searchTerm,
-                                        searchTermMatches:
-                                            searchService.searchTermMatches,
-                                        currentSearchTermMatch: searchService
-                                            .currentSearchTermMatch,
-                                        onSearchTermChanged: (newTerm) =>
-                                            searchService.updateSearchMatches(
-                                                newTerm,
-                                                splitView.activeEditor),
-                                        scrollToCursor: () =>
-                                            _scrollToCursor(row, col),
-                                        onEditorClosed: onEditorClosed,
-                                        saveFileAs: () =>
-                                            splitView.activeEditor!.saveFileAs(
-                                                splitView.activeEditor!.path),
-                                        saveFile: () => splitView.activeEditor!
-                                            .saveFile(
-                                                splitView.activeEditor!.path),
-                                        openNewTab: openNewTab,
-                                        activeEditorIndex: () =>
-                                            splitView.activeEditorIndex,
-                                        verticalScrollController: scrollManager
-                                            .editorVerticalScrollController,
-                                        horizontalScrollController: scrollManager
-                                            .editorHorizontalScrollController,
-                                      )
-                                    : Container(
-                                        color: _editorConfigService.themeService
-                                                .currentTheme?.background ??
-                                            Colors.white,
-                                      ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        ));
   }
 }
