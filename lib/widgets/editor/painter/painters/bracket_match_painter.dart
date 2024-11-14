@@ -183,24 +183,30 @@ class BracketMatchPainter extends EditorPainterBase {
   }
 
   void _paintBracket(
-      Canvas canvas, Size size, Position position, int firstVisibleLine) {
+    Canvas canvas,
+    Size size,
+    Position position,
+    int firstVisibleLine,
+  ) {
     final config = editorLayoutService.config;
     final visualLine = _getVisualLine(position.line);
-
     if (visualLine < firstVisibleLine) return;
 
     final yOffset = (visualLine) * config.lineHeight;
     final xOffset = position.column * config.charWidth;
 
-    final bracketRect = Rect.fromLTWH(
-      xOffset,
-      yOffset,
-      config.charWidth,
-      config.lineHeight,
+    final bracketRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        xOffset,
+        yOffset,
+        config.charWidth,
+        config.lineHeight,
+      ),
+      const Radius.circular(3.0),
     );
 
-    if (_isWithinBounds(bracketRect, size)) {
-      canvas.drawRect(bracketRect, _bracketPaint);
+    if (_isWithinBounds(bracketRect.outerRect, size)) {
+      canvas.drawRRect(bracketRect, _bracketPaint);
     }
   }
 
@@ -249,30 +255,37 @@ class BracketMatchPainter extends EditorPainterBase {
       }
 
       if (bracketPosition != null && matchingPosition != null) {
-        // Calculate visual positions accounting for folded regions
         int visualBracketLine = _getVisualLine(bracketPosition.line);
         int visualMatchingLine = _getVisualLine(matchingPosition.line);
 
         // Draw bracket at cursor position
-        final bracketRect = Rect.fromLTWH(
-          config.charWidth * bracketPosition.column,
-          (visualBracketLine - firstVisibleLine) * config.lineHeight,
-          config.charWidth,
-          config.lineHeight,
+        final bracketRRect = RRect.fromRectAndRadius(
+          Rect.fromLTWH(
+            config.charWidth * bracketPosition.column,
+            (visualBracketLine - firstVisibleLine) * config.lineHeight,
+            config.charWidth,
+            config.lineHeight,
+          ),
+          const Radius.circular(3.0),
         );
-        if (_isWithinBounds(bracketRect, size)) {
-          canvas.drawRect(bracketRect, _bracketPaint);
+
+        if (_isWithinBounds(bracketRRect.outerRect, size)) {
+          canvas.drawRRect(bracketRRect, _bracketPaint);
         }
 
         // Draw matching bracket
-        final matchingRect = Rect.fromLTWH(
-          config.charWidth * matchingPosition.column,
-          (visualMatchingLine - firstVisibleLine) * config.lineHeight,
-          config.charWidth,
-          config.lineHeight,
+        final matchingRRect = RRect.fromRectAndRadius(
+          Rect.fromLTWH(
+            config.charWidth * matchingPosition.column,
+            (visualMatchingLine - firstVisibleLine) * config.lineHeight,
+            config.charWidth,
+            config.lineHeight,
+          ),
+          const Radius.circular(3.0),
         );
-        if (_isWithinBounds(matchingRect, size)) {
-          canvas.drawRect(matchingRect, _bracketPaint);
+
+        if (_isWithinBounds(matchingRRect.outerRect, size)) {
+          canvas.drawRRect(matchingRRect, _bracketPaint);
         }
       }
     }

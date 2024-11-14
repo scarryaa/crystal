@@ -31,8 +31,14 @@ class SearchPainter {
         var width = searchTerm.length * editorLayoutService.config.charWidth;
         var height = editorLayoutService.config.lineHeight;
 
-        canvas.drawRect(
-            Rect.fromLTWH(left, top, width, height),
+        // Create a rounded rectangle
+        final rrect = RRect.fromRectAndRadius(
+          Rect.fromLTWH(left, top, width, height),
+          const Radius.circular(3.0),
+        );
+
+        canvas.drawRRect(
+            rrect,
             Paint()
               ..color = i == currentSearchTermMatch
                   ? editorConfigService.themeService.currentTheme != null
