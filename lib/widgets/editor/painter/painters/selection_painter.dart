@@ -156,7 +156,7 @@ class SelectionPainter {
               .withOpacity(0.2) ??
           Colors.blue.withOpacity(0.2);
 
-    int visualLine = initialVisualLine;
+    int visualLine = startLine;
 
     // Handle start line
     if (!editorState.foldingState.isLineHidden(startLine)) {
@@ -224,11 +224,6 @@ class SelectionPainter {
 
     // Pre-calculate visual lines
     final visualLines = _calculateVisualLines(firstVisibleLine);
-
-    final selectionPaint = Paint()
-      ..color = editorConfigService.themeService.currentTheme?.primary
-              .withOpacity(0.2) ??
-          Colors.blue.withOpacity(0.2);
 
     for (var selection in editorState.editorSelectionManager.selections) {
       final (startLine, endLine, startColumn, endColumn) =
