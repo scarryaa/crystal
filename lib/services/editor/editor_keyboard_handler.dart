@@ -73,7 +73,7 @@ class EditorKeyboardHandler {
           }
         case LogicalKeyboardKey.keyV:
           if (isControlPressed) {
-            final cursorLine = getState().getCursorLine();
+            final cursorLine = getState().cursorLine;
             getState().paste();
             // Update from paste position to end of pasted content
             final pastedLines = getState().getLastPastedLineCount();
@@ -147,7 +147,7 @@ class EditorKeyboardHandler {
           return KeyEventResult.handled;
 
         case LogicalKeyboardKey.enter:
-          final currentLine = getState().getCursorLine();
+          final currentLine = getState().cursorLine;
           getState().insertNewLine();
           // Update current and next line
           updateSingleLineWidth(currentLine);
@@ -157,7 +157,7 @@ class EditorKeyboardHandler {
           return KeyEventResult.handled;
         case LogicalKeyboardKey.backspace:
         case LogicalKeyboardKey.delete:
-          final currentLine = getState().getCursorLine();
+          final currentLine = getState().cursorLine;
           final hasSelection = getState().hasSelection();
 
           if (hasSelection) {
@@ -197,7 +197,7 @@ class EditorKeyboardHandler {
           onSearchTermChanged(searchTerm);
           return KeyEventResult.handled;
         case LogicalKeyboardKey.tab:
-          final currentLine = getState().getCursorLine();
+          final currentLine = getState().cursorLine;
           if (isShiftPressed) {
             getState().backTab();
           } else {
@@ -211,7 +211,7 @@ class EditorKeyboardHandler {
           if (event.character != null &&
               event.character!.length == 1 &&
               event.logicalKey != LogicalKeyboardKey.escape) {
-            final currentLine = getState().getCursorLine();
+            final currentLine = getState().cursorLine;
             getState().insertChar(event.character!);
             updateSingleLineWidth(currentLine);
             scrollToCursor();

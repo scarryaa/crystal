@@ -21,17 +21,29 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:window_manager/window_manager.dart';
 
+// Text buffer management
+// Cursor management
+// Selection management
+// Folding management
+// Undo/Redo functionality
+// File operations
+// Configuration management
+
+// BufferManager
+// CursorManager
+// SelectionManager
+// FoldingManager
+// UndoRedoManager
+// FileManager
+// ConfigManager
+
 class EditorState extends ChangeNotifier {
   late final FoldingManager foldingManager;
   final FoldingState foldingState = FoldingState();
   final String id = UniqueKey().toString();
   EditorScrollState scrollState = EditorScrollState();
   final Buffer _buffer = Buffer();
-  int? anchorLine;
-  int? anchorColumn;
   VoidCallback resetGutterScroll;
-  bool showCaret = true;
-  CursorShape cursorShape = CursorShape.bar;
   String path = '';
   final List<Command> _undoStack = [];
   final List<Command> _redoStack = [];
@@ -60,6 +72,14 @@ class EditorState extends ChangeNotifier {
     foldingManager = FoldingManager(_buffer);
   }
 
+  // Getters
+  bool get showCaret => editorCursorManager.showCaret;
+  CursorShape get cursorShape => editorCursorManager.cursorShape;
+  int get cursorLine => editorCursorManager.getCursorLine();
+
+  // Setters
+  set showCaret(bool show) => editorCursorManager.showCaret = show;
+
   void toggleFold(int startLine, int endLine, {Map<int, int>? nestedFolds}) {
     // Check if the region is currently folded
     bool isFolded = buffer.foldedRanges.containsKey(startLine);
@@ -82,12 +102,6 @@ class EditorState extends ChangeNotifier {
   }
 
   void recalculateVisibleLines() {
-    int visibleLines = 0;
-    for (int i = 0; i < buffer.lineCount; i++) {
-      if (!foldingState.isLineHidden(i)) {
-        visibleLines++;
-      }
-    }
     notifyListeners();
   }
 
@@ -148,18 +162,10 @@ class EditorState extends ChangeNotifier {
     return (currentBufferLine, 0);
   }
 
-  int getCursorLine() {
-    // Return the line number of the first cursor
-    if (editorCursorManager.cursors.isEmpty) {
-      return 0;
-    }
-    return editorCursorManager.cursors.first.line;
-  }
-
   TextRange getSelectedLineRange() {
     if (!editorSelectionManager.hasSelection()) {
       // If no selection, return range containing only current line
-      int currentLine = getCursorLine();
+      int currentLine = editorCursorManager.getCursorLine();
       return TextRange(start: currentLine, end: currentLine);
     }
 
@@ -235,13 +241,13 @@ class EditorState extends ChangeNotifier {
 
   Buffer get buffer => _buffer;
 
-  void toggleCaret() {
-    showCaret = !showCaret;
-    notifyListeners();
-  }
-
   void startSelection() {
     editorSelectionManager.startSelection(editorCursorManager.cursors);
+  }
+
+  void toggleCaret() {
+    editorCursorManager.toggleCaret();
+    notifyListeners();
   }
 
   void updateSelection() {
@@ -935,27 +941,7 @@ class EditorState extends ChangeNotifier {
       startSelection();
     }
 
-    // Handle each cursor separately
-    for (var cursor in editorCursorManager.cursors) {
-      int nextLine = cursor.line + 1;
-
-      // Skip over folded regions
-      while (
-          nextLine < _buffer.lineCount && foldingState.isLineHidden(nextLine)) {
-        nextLine++;
-      }
-
-      // If we're on a fold start, jump to after the fold
-      if (buffer.foldedRanges.containsKey(cursor.line)) {
-        nextLine = buffer.foldedRanges[cursor.line]! + 1;
-      }
-
-      if (nextLine < _buffer.lineCount) {
-        cursor.line = nextLine;
-        // Maintain the same column position if possible
-        cursor.column = min(cursor.column, _buffer.getLineLength(nextLine));
-      }
-    }
+    editorCursorManager.moveDown(buffer, foldingState);
 
     if (isShiftPressed) {
       updateSelection();
@@ -970,29 +956,7 @@ class EditorState extends ChangeNotifier {
       startSelection();
     }
 
-    // Handle each cursor separately
-    for (var cursor in editorCursorManager.cursors) {
-      int prevLine = cursor.line - 1;
-
-      // Skip over folded regions
-      while (prevLine >= 0 && foldingState.isLineHidden(prevLine)) {
-        prevLine--;
-      }
-
-      // If we're after a fold end, jump to the fold start
-      for (var entry in buffer.foldedRanges.entries) {
-        if (cursor.line == entry.value + 1) {
-          prevLine = entry.key;
-          break;
-        }
-      }
-
-      if (prevLine >= 0) {
-        cursor.line = prevLine;
-        // Maintain the same column position if possible
-        cursor.column = min(cursor.column, _buffer.getLineLength(prevLine));
-      }
-    }
+    editorCursorManager.moveUp(buffer, foldingState);
 
     if (isShiftPressed) {
       updateSelection();
@@ -1007,32 +971,7 @@ class EditorState extends ChangeNotifier {
       startSelection();
     }
 
-    for (var cursor in editorCursorManager.cursors) {
-      int lineLength = _buffer.getLineLength(cursor.line);
-
-      if (cursor.column < lineLength) {
-        cursor.column++;
-      } else if (cursor.line < _buffer.lineCount - 1) {
-        // Moving to next line
-        int nextLine = cursor.line + 1;
-
-        // Skip folded regions
-        while (nextLine < _buffer.lineCount &&
-            foldingState.isLineHidden(nextLine)) {
-          nextLine++;
-        }
-
-        // If we're on a fold start, jump to after the fold
-        if (buffer.foldedRanges.containsKey(cursor.line)) {
-          nextLine = buffer.foldedRanges[cursor.line]! + 1;
-        }
-
-        if (nextLine < _buffer.lineCount) {
-          cursor.line = nextLine;
-          cursor.column = 0;
-        }
-      }
-    }
+    editorCursorManager.moveRight(buffer, foldingState);
 
     if (isShiftPressed) {
       updateSelection();
@@ -1047,32 +986,7 @@ class EditorState extends ChangeNotifier {
       startSelection();
     }
 
-    for (var cursor in editorCursorManager.cursors) {
-      if (cursor.column > 0) {
-        cursor.column--;
-      } else if (cursor.line > 0) {
-        // Moving to previous line
-        int prevLine = cursor.line - 1;
-
-        // Skip folded regions
-        while (prevLine >= 0 && foldingState.isLineHidden(prevLine)) {
-          prevLine--;
-        }
-
-        // If we're after a fold end, jump to the fold start
-        for (var entry in buffer.foldedRanges.entries) {
-          if (cursor.line == entry.value + 1) {
-            prevLine = entry.key;
-            break;
-          }
-        }
-
-        if (prevLine >= 0) {
-          cursor.line = prevLine;
-          cursor.column = _buffer.getLineLength(prevLine);
-        }
-      }
-    }
+    editorCursorManager.moveLeft(buffer, foldingState);
 
     if (isShiftPressed) {
       updateSelection();

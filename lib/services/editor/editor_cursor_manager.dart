@@ -1,13 +1,31 @@
 import 'dart:math' as math;
+import 'dart:math';
 
 import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/buffer.dart';
+import 'package:crystal/models/editor/cursor_shape.dart';
+import 'package:crystal/models/editor/folding_state.dart';
 
 class EditorCursorManager {
+  bool showCaret = true;
+  CursorShape cursorShape = CursorShape.bar;
+
   List<Cursor> _cursors = [];
   List<Cursor> get cursors => _cursors;
 
   bool get hasCursors => cursors.isNotEmpty;
+
+  int getCursorLine() {
+    // Return the line number of the first cursor
+    if (cursors.isEmpty) {
+      return 0;
+    }
+    return cursors.first.line;
+  }
+
+  void toggleCaret() {
+    showCaret = !showCaret;
+  }
 
   void addCursor(Cursor cursor) {
     _cursors.add(cursor);
@@ -92,54 +110,111 @@ class EditorCursorManager {
     }
   }
 
-  void moveUp(Buffer buffer) {
-    for (var cursor in _cursors) {
-      if (cursor.line > 0) {
-        cursor.line--;
-        cursor.column =
-            cursor.column.clamp(0, buffer.getLineLength(cursor.line));
+  void moveUp(Buffer buffer, FoldingState foldingState) {
+    // Handle each cursor separately
+    for (var cursor in cursors) {
+      int prevLine = cursor.line - 1;
+
+      // Skip over folded regions
+      while (prevLine >= 0 && foldingState.isLineHidden(prevLine)) {
+        prevLine--;
+      }
+
+      // If we're after a fold end, jump to the fold start
+      for (var entry in buffer.foldedRanges.entries) {
+        if (cursor.line == entry.value + 1) {
+          prevLine = entry.key;
+          break;
+        }
+      }
+
+      if (prevLine >= 0) {
+        cursor.line = prevLine;
+        // Maintain the same column position if possible
+        cursor.column = min(cursor.column, buffer.getLineLength(prevLine));
       }
     }
-
-    mergeCursorsIfNeeded();
   }
 
-  void moveRight(Buffer buffer) {
-    for (var cursor in _cursors) {
-      if (cursor.column < buffer.getLineLength(cursor.line)) {
+  void moveRight(Buffer buffer, FoldingState foldingState) {
+    for (var cursor in cursors) {
+      int lineLength = buffer.getLineLength(cursor.line);
+
+      if (cursor.column < lineLength) {
         cursor.column++;
       } else if (cursor.line < buffer.lineCount - 1) {
-        cursor.line++;
-        cursor.column = 0;
+        // Moving to next line
+        int nextLine = cursor.line + 1;
+
+        // Skip folded regions
+        while (nextLine < buffer.lineCount &&
+            foldingState.isLineHidden(nextLine)) {
+          nextLine++;
+        }
+
+        // If we're on a fold start, jump to after the fold
+        if (buffer.foldedRanges.containsKey(cursor.line)) {
+          nextLine = buffer.foldedRanges[cursor.line]! + 1;
+        }
+
+        if (nextLine < buffer.lineCount) {
+          cursor.line = nextLine;
+          cursor.column = 0;
+        }
       }
     }
-
-    mergeCursorsIfNeeded();
   }
 
-  void moveLeft(Buffer buffer) {
-    for (var cursor in _cursors) {
+  void moveLeft(Buffer buffer, FoldingState foldingState) {
+    for (var cursor in cursors) {
       if (cursor.column > 0) {
         cursor.column--;
       } else if (cursor.line > 0) {
-        cursor.line--;
-        cursor.column = buffer.getLineLength(cursor.line);
+        // Moving to previous line
+        int prevLine = cursor.line - 1;
+
+        // Skip folded regions
+        while (prevLine >= 0 && foldingState.isLineHidden(prevLine)) {
+          prevLine--;
+        }
+
+        // If we're after a fold end, jump to the fold start
+        for (var entry in buffer.foldedRanges.entries) {
+          if (cursor.line == entry.value + 1) {
+            prevLine = entry.key;
+            break;
+          }
+        }
+
+        if (prevLine >= 0) {
+          cursor.line = prevLine;
+          cursor.column = buffer.getLineLength(prevLine);
+        }
       }
     }
-
-    mergeCursorsIfNeeded();
   }
 
-  void moveDown(Buffer buffer) {
-    for (var cursor in _cursors) {
-      if (cursor.line < buffer.lineCount - 1) {
-        cursor.line++;
-        cursor.column =
-            cursor.column.clamp(0, buffer.getLineLength(cursor.line));
+  void moveDown(Buffer buffer, FoldingState foldingState) {
+    for (var cursor in cursors) {
+      int nextLine = cursor.line + 1;
+
+      // Skip over folded regions
+      while (
+          nextLine < buffer.lineCount && foldingState.isLineHidden(nextLine)) {
+        nextLine++;
+      }
+
+      // If we're on a fold start, jump to after the fold
+      if (buffer.foldedRanges.containsKey(cursor.line)) {
+        nextLine = buffer.foldedRanges[cursor.line]! + 1;
+      }
+
+      if (nextLine < buffer.lineCount) {
+        cursor.line = nextLine;
+        // Maintain the same column position if possible
+        cursor.column = min(cursor.column, buffer.getLineLength(nextLine));
       }
     }
-
-    mergeCursorsIfNeeded();
   }
 
   void setAllCursors(List<Cursor> newCursors) {
