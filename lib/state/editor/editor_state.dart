@@ -11,6 +11,7 @@ import 'package:crystal/services/editor/editor_cursor_manager.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/services/editor/editor_selection_manager.dart';
 import 'package:crystal/services/editor/folding_manager.dart';
+import 'package:crystal/services/editor/undo_redo_manager.dart';
 import 'package:crystal/services/file_service.dart';
 import 'package:crystal/state/editor/editor_scroll_state.dart';
 import 'package:crystal/utils/utils.dart';
@@ -43,8 +44,7 @@ class EditorState extends ChangeNotifier {
   final Buffer _buffer = Buffer();
   VoidCallback resetGutterScroll;
   String path = '';
-  final List<Command> _undoStack = [];
-  final List<Command> _redoStack = [];
+  final UndoRedoManager undoRedoManager = UndoRedoManager();
   final EditorLayoutService editorLayoutService;
   final EditorConfigService editorConfigService;
   final EditorCursorManager editorCursorManager = EditorCursorManager();
@@ -99,11 +99,11 @@ class EditorState extends ChangeNotifier {
 
   int getLastPastedLineCount() {
     // Get the last command from undo stack
-    if (_undoStack.isEmpty) {
+    if (!undoRedoManager.canUndo) {
       return 0;
     }
 
-    Command lastCommand = _undoStack.last;
+    Command lastCommand = undoRedoManager.getLastUndo();
     if (lastCommand is TextInsertCommand) {
       // Count newlines in inserted text
       return '\n'.allMatches(lastCommand.text).length + 1;
@@ -373,9 +373,7 @@ class EditorState extends ChangeNotifier {
   }
 
   void executeCommand(Command command) {
-    command.execute();
-    _undoStack.add(command);
-    _redoStack.clear();
+    undoRedoManager.executeCommand(command);
     notifyListeners();
   }
 
@@ -429,21 +427,16 @@ class EditorState extends ChangeNotifier {
   }
 
   // Undo/redo management
-  void undo() {
-    if (_undoStack.isEmpty) return;
+  bool get canUndo => undoRedoManager.canUndo;
+  bool get canRedo => undoRedoManager.canRedo;
 
-    Command command = _undoStack.removeLast();
-    command.undo();
-    _redoStack.add(command);
+  void undo() {
+    undoRedoManager.undo();
     notifyListeners();
   }
 
   void redo() {
-    if (_redoStack.isEmpty) return;
-
-    Command command = _redoStack.removeLast();
-    command.execute();
-    _undoStack.add(command);
+    undoRedoManager.redo();
     notifyListeners();
   }
 
