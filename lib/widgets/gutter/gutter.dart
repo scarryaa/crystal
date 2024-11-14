@@ -195,46 +195,49 @@ class _GutterState extends State<Gutter> {
 
     return Consumer<EditorState>(
       builder: (context, editorState, child) {
-        return Container(
-          width: gutterWidth,
-          height: height,
-          color: widget
-                  .editorConfigService.themeService.currentTheme?.background ??
-              Colors.white,
-          child: ScrollConfiguration(
-            behavior: const ScrollBehavior().copyWith(scrollbars: false),
-            child: GestureDetector(
-              onTapDown: _handleGutterTap,
-              onPanStart: (details) =>
-                  _handleGutterSelection(details.localPosition.dy, false),
-              onPanUpdate: _handleGutterDrag,
-              child: SingleChildScrollView(
-                controller: widget.verticalScrollController,
-                child: SizedBox(
-                  width: gutterWidth,
-                  height: height,
-                  child: CustomPaint(
-                    painter: GutterPainter(
-                      textColor: widget.editorConfigService.themeService
-                              .currentTheme?.textLight ??
-                          Colors.grey,
-                      highlightColor: widget.editorConfigService.themeService
-                              .currentTheme?.primary ??
-                          Colors.blue,
-                      editorConfigService: widget.editorConfigService,
-                      editorLayoutService: widget.editorLayoutService,
-                      editorState: editorState,
-                      verticalOffset: widget.verticalScrollController.hasClients
-                          ? widget.verticalScrollController.offset
-                          : 0,
-                      viewportHeight: viewportHeight,
+        return Align(
+            alignment: Alignment.topLeft,
+            child: Container(
+              width: gutterWidth,
+              height: height,
+              color: widget.editorConfigService.themeService.currentTheme
+                      ?.background ??
+                  Colors.white,
+              child: ScrollConfiguration(
+                behavior: const ScrollBehavior().copyWith(scrollbars: false),
+                child: GestureDetector(
+                  onTapDown: _handleGutterTap,
+                  onPanStart: (details) =>
+                      _handleGutterSelection(details.localPosition.dy, false),
+                  onPanUpdate: _handleGutterDrag,
+                  child: SingleChildScrollView(
+                    controller: widget.verticalScrollController,
+                    child: SizedBox(
+                      width: gutterWidth,
+                      height: height,
+                      child: CustomPaint(
+                        painter: GutterPainter(
+                          textColor: widget.editorConfigService.themeService
+                                  .currentTheme?.textLight ??
+                              Colors.grey,
+                          highlightColor: widget.editorConfigService
+                                  .themeService.currentTheme?.primary ??
+                              Colors.blue,
+                          editorConfigService: widget.editorConfigService,
+                          editorLayoutService: widget.editorLayoutService,
+                          editorState: editorState,
+                          verticalOffset:
+                              widget.verticalScrollController.hasClients
+                                  ? widget.verticalScrollController.offset
+                                  : 0,
+                          viewportHeight: viewportHeight,
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
-        );
+            ));
       },
     );
   }

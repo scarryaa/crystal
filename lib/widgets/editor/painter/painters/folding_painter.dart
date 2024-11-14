@@ -23,8 +23,6 @@ class FoldingPainter extends EditorPainterBase {
     required int lastVisibleLine,
   }) {
     assert(firstVisibleLine >= 0, 'firstVisibleLine must be non-negative');
-    assert(lastVisibleLine >= firstVisibleLine,
-        'lastVisibleLine must be >= firstVisibleLine');
     assert(size.height > 0, 'Canvas size must have positive height');
 
     // Add buffer zones above and below visible area

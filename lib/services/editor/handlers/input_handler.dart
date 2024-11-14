@@ -148,7 +148,8 @@ class InputHandler {
     int currentVisualLine = 0;
     int bufferLine = 0;
 
-    while (currentVisualLine < visualLine && bufferLine < buffer.lineCount) {
+    while (
+        currentVisualLine < visualLine && bufferLine < buffer.lineCount - 1) {
       if (!foldingManager.isLineHidden(bufferLine)) {
         currentVisualLine++;
       }
