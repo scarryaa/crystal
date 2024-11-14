@@ -82,7 +82,7 @@ class TextPainterHelper {
       }
     }
 
-    // Paint lines until we reach target visible line count
+    // Paint only visible lines plus buffer
     const bufferLines = 5;
     for (int i = firstVisibleLine;
         paintedLines < targetVisibleLines + bufferLines && i < lines.length;
@@ -115,6 +115,7 @@ class TextPainterHelper {
         );
 
         visualLine++;
+        paintedLines++;
       }
     }
 
