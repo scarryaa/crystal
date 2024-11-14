@@ -4,6 +4,7 @@ import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/widgets/gutter/gutter_painter.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../state/editor/editor_state.dart';
 
@@ -29,6 +30,9 @@ class Gutter extends StatefulWidget {
 
 class _GutterState extends State<Gutter> {
   EditorState get editorState => widget.editorState;
+  int? hoveredLine;
+  double? hoverX;
+  double? hoverY;
 
   double get gutterWidth {
     final lineCount = editorState.buffer.lineCount;
@@ -43,7 +47,7 @@ class _GutterState extends State<Gutter> {
       textDirection: TextDirection.ltr,
     );
     textPainter.layout();
-    return textPainter.width + 32.0;
+    return textPainter.width + 64.0;
   }
 
   int getActualLineCount() {
@@ -119,12 +123,42 @@ class _GutterState extends State<Gutter> {
     final line = _getLineFromY(details.localPosition.dy);
     if (line == null) return;
 
-    // Check if tap is in folding indicator area
-    if (details.localPosition.dx < 20) {
+    final lineNumberText = (line + 1).toString();
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: lineNumberText,
+        style: TextStyle(
+          fontSize: widget.editorConfigService.config.fontSize,
+          fontFamily: widget.editorConfigService.config.fontFamily,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+
+    // Calculate the x position where folding icons start
+    final foldIconX = gutterWidth - textPainter.width - 8;
+
+    if (details.localPosition.dx >= foldIconX &&
+        details.localPosition.dx <= foldIconX + 18) {
       _handleFoldingIconTap(line);
     } else {
       _handleGutterSelection(details.localPosition.dy, false);
     }
+  }
+
+  void _handleHover(PointerHoverEvent event) {
+    setState(() {
+      hoverX = event.localPosition.dx;
+      hoverY = event.localPosition.dy;
+    });
+  }
+
+  void _handleHoverExit(PointerExitEvent event) {
+    setState(() {
+      hoverX = null;
+      hoverY = null;
+    });
   }
 
   void _handleFoldingIconTap(int line) {
@@ -197,47 +231,54 @@ class _GutterState extends State<Gutter> {
       builder: (context, editorState, child) {
         return Align(
             alignment: Alignment.topLeft,
-            child: Container(
-              width: gutterWidth,
-              height: height,
-              color: widget.editorConfigService.themeService.currentTheme
-                      ?.background ??
-                  Colors.white,
-              child: ScrollConfiguration(
-                behavior: const ScrollBehavior().copyWith(scrollbars: false),
-                child: GestureDetector(
-                  onTapDown: _handleGutterTap,
-                  onPanStart: (details) =>
-                      _handleGutterSelection(details.localPosition.dy, false),
-                  onPanUpdate: _handleGutterDrag,
-                  child: SingleChildScrollView(
-                    controller: widget.verticalScrollController,
-                    child: SizedBox(
-                      width: gutterWidth,
-                      height: height,
-                      child: CustomPaint(
-                        painter: GutterPainter(
-                          textColor: widget.editorConfigService.themeService
-                                  .currentTheme?.textLight ??
-                              Colors.grey,
-                          highlightColor: widget.editorConfigService
-                                  .themeService.currentTheme?.primary ??
-                              Colors.blue,
-                          editorConfigService: widget.editorConfigService,
-                          editorLayoutService: widget.editorLayoutService,
-                          editorState: editorState,
-                          verticalOffset:
-                              widget.verticalScrollController.hasClients
-                                  ? widget.verticalScrollController.offset
-                                  : 0,
-                          viewportHeight: viewportHeight,
+            child: MouseRegion(
+                onHover: _handleHover,
+                onExit: _handleHoverExit,
+                child: Container(
+                  width: gutterWidth,
+                  height: height,
+                  color: widget.editorConfigService.themeService.currentTheme
+                          ?.background ??
+                      Colors.white,
+                  child: ScrollConfiguration(
+                    behavior:
+                        const ScrollBehavior().copyWith(scrollbars: false),
+                    child: GestureDetector(
+                      onTapDown: _handleGutterTap,
+                      onPanStart: (details) => _handleGutterSelection(
+                          details.localPosition.dy, false),
+                      onPanUpdate: _handleGutterDrag,
+                      child: SingleChildScrollView(
+                        controller: widget.verticalScrollController,
+                        child: SizedBox(
+                          width: gutterWidth,
+                          height: height,
+                          child: CustomPaint(
+                            painter: GutterPainter(
+                              textColor: widget.editorConfigService.themeService
+                                      .currentTheme?.textLight ??
+                                  Colors.grey,
+                              highlightColor: widget.editorConfigService
+                                      .themeService.currentTheme?.primary ??
+                                  Colors.blue,
+                              editorConfigService: widget.editorConfigService,
+                              editorLayoutService: widget.editorLayoutService,
+                              editorState: editorState,
+                              verticalOffset:
+                                  widget.verticalScrollController.hasClients
+                                      ? widget.verticalScrollController.offset
+                                      : 0,
+                              viewportHeight: viewportHeight,
+                              hoveredLine: hoveredLine,
+                              hoverX: hoverX,
+                              hoverY: hoverY,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ),
-            ));
+                )));
       },
     );
   }

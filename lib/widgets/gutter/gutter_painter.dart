@@ -11,8 +11,11 @@ class GutterPainter extends CustomPainter {
   final double viewportHeight;
   final EditorLayoutService editorLayoutService;
   final EditorConfigService editorConfigService;
-  final double horizontalPadding = 16.0;
+  final double horizontalPadding = 32.0;
   late final double _gutterWidth;
+  final int? hoveredLine;
+  final double? hoverX;
+  final double? hoverY;
 
   final TextStyle _defaultStyle;
   final TextStyle _highlightStyle;
@@ -23,6 +26,9 @@ class GutterPainter extends CustomPainter {
     required this.viewportHeight,
     required this.editorLayoutService,
     required this.editorConfigService,
+    this.hoveredLine,
+    this.hoverX,
+    this.hoverY,
     Color? textColor,
     Color? highlightColor,
   })  : _defaultStyle = TextStyle(
@@ -37,6 +43,19 @@ class GutterPainter extends CustomPainter {
         ),
         super(repaint: editorState) {
     _gutterWidth = _calculateGutterWidth();
+  }
+
+  bool _isIconHovered(double iconX, double iconY, double iconSize) {
+    if (hoverX == null || hoverY == null) return false;
+
+    final iconRect = Rect.fromLTWH(
+      iconX - 4,
+      iconY - 4,
+      iconSize + 8,
+      iconSize + 8,
+    );
+
+    return iconRect.contains(Offset(hoverX!, hoverY!));
   }
 
   double _calculateGutterWidth() {
@@ -112,37 +131,7 @@ class GutterPainter extends CustomPainter {
       }
 
       if (visualLine >= firstVisibleVisualLine - bufferLines) {
-        final lineNumber = (currentLine + 1).toString();
-        final style = _getStyleForLine(currentLine);
-
-        // Draw line number
-        textPainter.text = TextSpan(text: lineNumber, style: style);
-        textPainter.layout(maxWidth: _gutterWidth - (horizontalPadding * 2));
-
-        final xOffset = size.width - textPainter.width - horizontalPadding;
-        final yOffset = visualLine * editorLayoutService.config.lineHeight +
-            (editorLayoutService.config.lineHeight - textPainter.height) / 2;
-
-        textPainter.paint(canvas, Offset(xOffset, yOffset));
-
-        // Draw folding indicator
-        if (editorState.isFoldable(currentLine) ||
-            editorState.isLineFolded(currentLine)) {
-          final iconSize = editorConfigService.config.fontSize * 0.8;
-          _drawFoldingIcon(
-              canvas,
-              paint,
-              visualLine * editorLayoutService.config.lineHeight,
-              iconSize,
-              editorState.isLineFolded(currentLine));
-
-          if (editorState.isLineFolded(currentLine)) {
-            _drawFoldPreview(canvas, currentLine,
-                visualLine * editorLayoutService.config.lineHeight, iconSize);
-          }
-        }
-
-        // Highlight current line
+        // Highlight current line first
         if (!editorState.editorSelectionManager.hasSelection() &&
             editorState.editorCursorManager.cursors
                 .any((cursor) => cursor.line == currentLine)) {
@@ -155,8 +144,40 @@ class GutterPainter extends CustomPainter {
               ),
               highlightPaint);
         }
-      }
 
+        // Draw line number
+        final lineNumber = (currentLine + 1).toString();
+        final style = _getStyleForLine(currentLine);
+        textPainter.text = TextSpan(text: lineNumber, style: style);
+        textPainter.layout(maxWidth: _gutterWidth - (horizontalPadding * 2));
+
+        final xOffset = size.width - textPainter.width - horizontalPadding;
+        final yOffset = visualLine * editorLayoutService.config.lineHeight +
+            (editorLayoutService.config.lineHeight - textPainter.height) / 2;
+        textPainter.paint(canvas, Offset(xOffset, yOffset));
+
+        if (editorState.isFoldable(currentLine) ||
+            editorState.isLineFolded(currentLine)) {
+          final iconSize = editorConfigService.config.fontSize * 0.8;
+          _drawFoldingIcon(
+              canvas,
+              paint,
+              visualLine * editorLayoutService.config.lineHeight,
+              iconSize,
+              editorState.isLineFolded(currentLine),
+              xOffset + textPainter.width + 10,
+              currentLine == hoveredLine);
+
+          if (editorState.isLineFolded(currentLine)) {
+            _drawFoldPreview(
+                canvas,
+                currentLine,
+                visualLine * editorLayoutService.config.lineHeight,
+                iconSize,
+                xOffset + textPainter.width + iconSize + 14);
+          }
+        }
+      }
       visualLine++;
       currentLine++;
     }
@@ -178,18 +199,17 @@ class GutterPainter extends CustomPainter {
     return _defaultStyle;
   }
 
-  void _drawFoldPreview(Canvas canvas, int line, double y, double iconSize) {
+  void _drawFoldPreview(
+      Canvas canvas, int line, double y, double iconSize, double x) {
     final foldEnd = editorState.foldingRanges[line];
     if (foldEnd == null) return;
 
-    // Count visible lines in fold
     int foldedLines = 0;
     for (int i = line + 1; i <= foldEnd; i++) {
       if (!editorState.isLineHidden(i)) {
         foldedLines++;
       }
     }
-
     if (foldedLines == 0) return;
 
     final textPainter = TextPainter(
@@ -203,32 +223,46 @@ class GutterPainter extends CustomPainter {
       ),
       textDirection: TextDirection.ltr,
     );
-
     textPainter.layout();
-
     textPainter.paint(
         canvas,
         Offset(
-            iconSize + 12,
+            x,
             y +
                 (editorLayoutService.config.lineHeight - textPainter.height) /
                     2));
   }
 
-  void _drawFoldingIcon(
-      Canvas canvas, Paint paint, double y, double iconSize, bool isFolded) {
-    // Create a slightly smaller rect for better visual balance
+  void _drawFoldingIcon(Canvas canvas, Paint paint, double y, double iconSize,
+      bool isFolded, double x, bool isHovered) {
+    final iconY = y + (editorLayoutService.config.lineHeight - iconSize) / 2;
+
+    // Use the new hover check
+    if (_isIconHovered(x, iconY, iconSize)) {
+      final backgroundRect = Rect.fromLTWH(
+        x - 4,
+        iconY - 4,
+        iconSize + 8,
+        iconSize + 8,
+      );
+
+      canvas.drawRRect(
+          RRect.fromRectAndRadius(backgroundRect, const Radius.circular(4)),
+          Paint()
+            ..color = editorConfigService.themeService.currentTheme?.primary
+                    .withOpacity(0.2) ??
+                Colors.blue.withOpacity(0.1)
+            ..style = PaintingStyle.fill);
+    }
+
     final rect = Rect.fromLTWH(
-        4.0,
+        x,
         y + (editorLayoutService.config.lineHeight - iconSize) / 2,
         iconSize,
         iconSize);
 
-    // Calculate center points more precisely
     final centerY = rect.top + rect.height / 2;
     final centerX = rect.left + rect.width / 2;
-
-    // Add padding from edges for better appearance
     final padding = iconSize * 0.25;
     final leftX = rect.left + padding;
     final rightX = rect.right - padding;
@@ -236,20 +270,16 @@ class GutterPainter extends CustomPainter {
     final bottomY = rect.bottom - padding;
 
     if (isFolded) {
-      // Right-pointing chevron (>) with smoother angles
       final path = Path()
         ..moveTo(leftX, topY)
         ..lineTo(rightX, centerY)
         ..lineTo(leftX, bottomY);
-
       canvas.drawPath(path, paint..style = PaintingStyle.stroke);
     } else {
-      // Down-pointing chevron (v) with smoother angles
       final path = Path()
         ..moveTo(leftX, topY)
         ..lineTo(centerX, bottomY)
         ..lineTo(rightX, topY);
-
       canvas.drawPath(path, paint..style = PaintingStyle.stroke);
     }
   }
@@ -265,7 +295,8 @@ class GutterPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(GutterPainter oldDelegate) {
-    return editorState.buffer.lineCount !=
+    return oldDelegate.hoveredLine != hoveredLine ||
+        editorState.buffer.lineCount !=
             oldDelegate.editorState.buffer.lineCount ||
         editorState.editorCursorManager.cursors !=
             oldDelegate.editorState.editorCursorManager.cursors ||

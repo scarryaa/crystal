@@ -417,7 +417,7 @@ class EditorScreenState extends State<EditorScreen> {
     EditorLayoutService(
       horizontalPadding: widget.horizontalPadding,
       verticalPaddingLines: widget.verticalPaddingLines,
-      gutterWidth: 40,
+      gutterWidth: 60,
       fontSize: _editorConfigService.config.fontSize,
       fontFamily: _editorConfigService.config.fontFamily,
       lineHeightMultiplier: widget.lineHeightMultipler,

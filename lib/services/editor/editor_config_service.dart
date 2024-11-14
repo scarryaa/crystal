@@ -37,7 +37,7 @@ class EditorConfigService extends ChangeNotifier {
     EditorLayoutService(
       horizontalPadding: 16.0,
       verticalPaddingLines: 2,
-      gutterWidth: 40,
+      gutterWidth: 60,
       fontSize: _defaultConfig['fontSize'] as double,
       fontFamily: _defaultConfig['fontFamily'] as String,
       lineHeightMultiplier: 1.5,
