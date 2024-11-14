@@ -47,15 +47,13 @@ class GutterPainter extends CustomPainter {
 
   bool _isIconHovered(double iconX, double iconY, double iconSize) {
     if (hoverX == null || hoverY == null) return false;
-
     final iconRect = Rect.fromLTWH(
       iconX - 4,
       iconY - 4,
       iconSize + 8,
       iconSize + 8,
     );
-
-    return iconRect.contains(Offset(hoverX!, hoverY!));
+    return iconRect.contains(Offset(hoverX!, hoverY! + verticalOffset));
   }
 
   double _calculateGutterWidth() {
