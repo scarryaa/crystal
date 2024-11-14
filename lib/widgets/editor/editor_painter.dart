@@ -100,20 +100,19 @@ class EditorPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final scrollOffset = editorState.scrollState.verticalOffset;
     final lineHeight = editorLayoutService.config.lineHeight;
+
+    // Calculate visible lines more precisely
     int firstVisibleLine = max(0, (scrollOffset / lineHeight).floor());
+    int visibleLineCount =
+        (editorState.scrollState.viewportHeight / lineHeight).ceil() + 1;
+    int lastVisibleLine =
+        min(editorState.buffer.lineCount, firstVisibleLine + visibleLineCount);
+    print(lastVisibleLine);
 
-    int lastVisibleLine = firstVisibleLine;
-    double accumulatedHeight = 0;
-
-    while (accumulatedHeight < size.height &&
-        lastVisibleLine < editorState.buffer.lineCount) {
-      if (!editorState.foldingState.isLineHidden(lastVisibleLine)) {
-        accumulatedHeight += lineHeight;
-      }
-      lastVisibleLine++;
-    }
-
-    lastVisibleLine = min(editorState.buffer.lineCount, lastVisibleLine + 10);
+    // Add small buffer for partial lines
+    int bufferLines = 2;
+    lastVisibleLine =
+        min(editorState.buffer.lineCount, lastVisibleLine + bufferLines);
 
     backgroundPainter.paint(canvas, size);
 

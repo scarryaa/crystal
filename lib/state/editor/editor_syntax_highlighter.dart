@@ -11,6 +11,10 @@ class EditorSyntaxHighlighter {
   final EditorLayoutService editorLayoutService;
   final EditorConfigService editorConfigService;
 
+  static final Map<String, List<HighlightedText>> _highlightCache = {};
+  static const int _maxCacheSize = 100; // Limit cache size
+  String? _lastProcessedText;
+
   EditorSyntaxHighlighter({
     Language? language,
     required this.editorLayoutService,
@@ -30,6 +34,19 @@ class EditorSyntaxHighlighter {
   static Color defaultTextColor = Colors.black;
 
   void highlight(String text) {
+    // Return cached result if available
+    if (_lastProcessedText == text) {
+      return; // Text hasn't changed, keep current highlights
+    }
+
+    // Check cache
+    if (_highlightCache.containsKey(text)) {
+      highlightedText.clear();
+      highlightedText.addAll(_highlightCache[text]!);
+      _lastProcessedText = text;
+      return;
+    }
+
     highlightedText.clear();
 
     final List<(int, int)> commentRegions = [];
@@ -86,6 +103,24 @@ class EditorSyntaxHighlighter {
 
     // Sort highlights by start position
     highlightedText.sort((a, b) => a.start.compareTo(b.start));
+    // Cache the results
+    _cacheHighlights(text, List.from(highlightedText));
+    _lastProcessedText = text;
+  }
+
+  void _cacheHighlights(String text, List<HighlightedText> highlights) {
+    if (_highlightCache.length >= _maxCacheSize) {
+      _highlightCache.remove(_highlightCache.keys.first);
+    }
+    _highlightCache[text] = highlights;
+  }
+
+  static void clearCache() {
+    _highlightCache.clear();
+  }
+
+  static void removeFromCache(String text) {
+    _highlightCache.remove(text);
   }
 
   void _highlightPattern(String text, RegExp pattern, Color color,
