@@ -71,18 +71,22 @@ class TextPainterHelper {
   ) {
     canvas.save();
     final lineHeight = editorLayoutService.config.lineHeight;
-
     int visualLine = 0;
+    int paintedLines = 0;
+    final targetVisibleLines = lastVisibleLine - firstVisibleLine;
 
-    // Find first actual visible line
+    // Count visual lines before first visible line
     for (int i = 0; i < firstVisibleLine; i++) {
       if (!editorState.foldingState.isLineHidden(i)) {
         visualLine++;
       }
     }
 
-    // Paint visible lines
-    for (int i = firstVisibleLine; i < lastVisibleLine; i++) {
+    // Paint lines until we reach target visible line count
+    const bufferLines = 5;
+    for (int i = firstVisibleLine;
+        paintedLines < targetVisibleLines + bufferLines && i < lines.length;
+        i++) {
       if (editorState.foldingState.isLineHidden(i)) continue;
 
       if (i >= 0 && i < lines.length) {
