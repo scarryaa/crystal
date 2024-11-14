@@ -85,7 +85,7 @@ class EditorState extends ChangeNotifier {
   }
 
   bool isLineFolded(int line) {
-    return foldingManager.isLineHidden(line);
+    return foldingManager.isLineFolded(line);
   }
 
   void toggleFold(int startLine, int endLine, {Map<int, int>? nestedFolds}) {
@@ -101,8 +101,6 @@ class EditorState extends ChangeNotifier {
     }
 
     foldingManager.toggleFold(startLine, endLine);
-    recalculateVisibleLines();
-
     notifyListeners();
   }
 

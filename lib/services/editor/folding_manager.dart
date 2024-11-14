@@ -110,6 +110,10 @@ class FoldingManager extends ChangeNotifier {
     return null; // No matching closing bracket found
   }
 
+  bool isLineFolded(int line) {
+    return foldingState.isLineFolded(line);
+  }
+
   void unfoldAtCursor(Cursor cursor) {
     if (cursor.column > 0) {
       final lineContent = buffer.getLine(cursor.line);

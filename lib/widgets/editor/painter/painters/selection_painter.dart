@@ -138,7 +138,7 @@ class SelectionPainter {
               .withOpacity(0.2) ??
           Colors.blue.withOpacity(0.2);
 
-    int visualLine = startLine;
+    int visualLine = initialVisualLine;
 
     // Handle start line
     if (!editorState.isLineHidden(startLine)) {
