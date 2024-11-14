@@ -118,15 +118,30 @@ class EditorViewState extends State<EditorView> {
     final line = widget.state.buffer.lines[lineIndex];
     final lineWidth = editorPainter!.measureLineWidth(line);
 
-    // If this line's new width is less than the cached max width,
-    // we need to recalculate in case this was the longest line
-    if (lineWidth < _cachedMaxLineWidth) {
-      updateCachedMaxLineWidth();
-    } else {
-      // If this line is longer than the cached max, update the cached max
+    // Only update if this line was previously the longest
+    if (lineWidth < _cachedMaxLineWidth && _isLongestLine(lineIndex)) {
+      _updateMaxWidthEfficiently();
+    } else if (lineWidth > _cachedMaxLineWidth) {
       _cachedMaxLineWidth = lineWidth;
+      setState(() {});
     }
+  }
 
+  bool _isLongestLine(int lineIndex) {
+    final currentLineWidth =
+        editorPainter!.measureLineWidth(widget.state.buffer.lines[lineIndex]);
+    return currentLineWidth >= _cachedMaxLineWidth;
+  }
+
+  void _updateMaxWidthEfficiently() {
+    // Keep track of the longest line index to avoid full recalculation
+    double maxWidth = 0;
+    for (int i = 0; i < widget.state.buffer.lines.length; i++) {
+      final lineWidth =
+          editorPainter!.measureLineWidth(widget.state.buffer.lines[i]);
+      maxWidth = math.max(maxWidth, lineWidth);
+    }
+    _cachedMaxLineWidth = maxWidth;
     setState(() {});
   }
 
