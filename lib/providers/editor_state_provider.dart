@@ -36,15 +36,15 @@ class EditorStateProvider extends ChangeNotifier {
     if (!_scrollManagers.containsKey(key)) {
       final scrollManager = EditorScrollManager();
       scrollManager.initListeners(
-        onEditorScroll: () => _handleEditorScroll(row, col),
-        onGutterScroll: () => _handleGutterScroll(row, col),
+        onEditorScroll: () => handleEditorScroll(row, col),
+        onGutterScroll: () => handleGutterScroll(row, col),
       );
       _scrollManagers[key] = scrollManager;
     }
     return _scrollManagers[key]!;
   }
 
-  void _handleEditorScroll(int row, int col) {
+  void handleEditorScroll(int row, int col) {
     if (row >= editorTabManager.horizontalSplits.length ||
         col >= editorTabManager.horizontalSplits[row].length) {
       return;
@@ -68,7 +68,7 @@ class EditorStateProvider extends ChangeNotifier {
         scrollManager.editorHorizontalScrollController.offset);
   }
 
-  void _handleGutterScroll(int row, int col) {
+  void handleGutterScroll(int row, int col) {
     if (row >= editorTabManager.horizontalSplits.length ||
         col >= editorTabManager.horizontalSplits[row].length) {
       return;
@@ -104,9 +104,7 @@ class EditorStateProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    for (final scrollManager in _scrollManagers.values) {
-      scrollManager.dispose();
-    }
+    _scrollManagers.forEach((_, manager) => manager.dispose());
     _scrollManagers.clear();
 
     for (final scrollController in _tabBarScrollControllers.values) {

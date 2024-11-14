@@ -203,7 +203,12 @@ class FoldingState extends ChangeNotifier {
   Map<int, int> get foldingRanges => Map.unmodifiable(_foldStartToEnd);
 
   bool isLineHidden(int line) {
-    return _foldedRanges.containsPoint(line);
+    for (var entry in foldingRanges.entries) {
+      if (line > entry.key && line <= entry.value) {
+        return true;
+      }
+    }
+    return false;
   }
 
   bool isLineFolded(int line) => _foldStartToEnd.containsKey(line);

@@ -118,4 +118,43 @@ void main() {
       expect(() => buffer.removeLine(-1), throwsRangeError);
     });
   });
+
+  test('should handle large content', () {
+    String largeContent =
+        List.generate(10000, (index) => 'Line $index').join('\n');
+    buffer.setContent(largeContent);
+    expect(buffer.lineCount, equals(10000));
+    expect(buffer.getLine(9999), equals('Line 9999'));
+  });
+
+  test('should handle folding operations on invalid ranges', () {
+    buffer.setContent('Line 1\nLine 2\nLine 3');
+    buffer.foldLines(0, 3); // End line out of range
+    expect(buffer.foldedRanges, isEmpty);
+    buffer.foldLines(2, 1); // Start line greater than end line
+    expect(buffer.foldedRanges, isEmpty);
+  });
+
+  group('Folding Operations', () {
+    test('should fold and unfold lines correctly', () {
+      buffer.setContent('Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
+      buffer.foldLines(1, 3);
+      expect(buffer.isLineFolded(1), isTrue);
+      expect(buffer.getFoldedRange(1), equals(3));
+      expect(buffer.content, equals('Line 1\nLine 2\nLine 5'));
+
+      buffer.unfoldLines(1);
+      expect(buffer.isLineFolded(1), isFalse);
+      expect(buffer.content, equals('Line 1\nLine 2\nLine 3\nLine 4\nLine 5'));
+    });
+
+    test('should handle nested folds', () {
+      buffer.setContent('Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
+      buffer.foldLines(0, 4);
+      buffer.foldLines(1, 3);
+      expect(buffer.isLineFolded(0), isTrue);
+      expect(buffer.isLineFolded(1), isTrue);
+      expect(buffer.content, equals('Line 1'));
+    });
+  });
 }

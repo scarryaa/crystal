@@ -119,9 +119,8 @@ class Buffer {
   }
 
   void removeLine(int lineNumber) {
-    // Add bounds checking
     if (lineNumber < 0 || lineNumber >= _lines.length) {
-      return; // Early return if line number is out of bounds
+      throw RangeError('Invalid line number: $lineNumber');
     }
 
     _lines.removeAt(lineNumber);
@@ -148,12 +147,11 @@ class Buffer {
     incrementVersion();
   }
 
-  String getLine(int index) {
-    // Add bounds checking
-    if (index < 0 || index >= lines.length) {
-      return '';
+  String getLine(int lineNumber) {
+    if (lineNumber < 0 || lineNumber >= _lines.length) {
+      throw RangeError('Invalid line number: $lineNumber');
     }
-    return lines[index];
+    return _lines[lineNumber];
   }
 
   int getLineLength(int lineNumber) => _lines[lineNumber].length;
