@@ -8,7 +8,11 @@ import 'package:crystal/services/editor/editor_file_manager.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/services/editor/editor_selection_manager.dart';
 import 'package:crystal/services/editor/folding_manager.dart';
+import 'package:crystal/services/editor/handlers/command_handler.dart';
+import 'package:crystal/services/editor/handlers/cursor_movement_handler.dart';
+import 'package:crystal/services/editor/handlers/folding_handler.dart';
 import 'package:crystal/services/editor/handlers/input_handler.dart';
+import 'package:crystal/services/editor/handlers/scroll_handler.dart';
 import 'package:crystal/services/editor/handlers/selection_handler.dart';
 import 'package:crystal/services/editor/handlers/text_manipulator.dart';
 import 'package:crystal/services/editor/undo_redo_manager.dart';
@@ -18,31 +22,14 @@ import 'package:crystal/utils/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-// Text buffer management
-// Cursor management
-// Selection management
-// Folding management
-// Undo/Redo functionality
-// File operations
-// Configuration management
-
-// BufferManager
-// CursorManager
-// SelectionManager
-// FoldingManager
-// UndoRedoManager
-// FileManager
-// ConfigManager
-
 class EditorState extends ChangeNotifier {
-  // New structure?
-  // final CommandHandler commandHandler;
+  late final CommandHandler commandHandler;
   late final InputHandler inputHandler;
   late final TextManipulator textManipulator;
-  // final CursorMovementHandler cursorMovementHandler;
+  late final CursorMovementHandler cursorMovementHandler;
   late final SelectionHandler selectionHandler;
-  // final FoldingHandler foldingHandler;
-  // final ScrollHandler scrollHandler;
+  late final FoldingHandler foldingHandler;
+  late final ScrollHandler scrollHandler;
 
   late final FoldingManager foldingManager;
   final String id = UniqueKey().toString();
@@ -76,6 +63,22 @@ class EditorState extends ChangeNotifier {
     foldingManager = FoldingManager(
       _buffer,
     );
+    textManipulator = TextManipulator(
+      editorSelectionManager: editorSelectionManager,
+      editorCursorManager: editorCursorManager,
+      buffer: buffer,
+      foldingManager: foldingManager,
+      undoRedoManager: undoRedoManager,
+      notifyListeners: notifyListeners,
+    );
+    commandHandler = CommandHandler(
+        undoRedoManager: undoRedoManager,
+        editorSelectionManager: editorSelectionManager,
+        editorCursorManager: editorCursorManager,
+        textManipulator: textManipulator,
+        buffer: buffer,
+        notifyListeners: notifyListeners,
+        getSelectedText: getSelectedText);
     editorFileManager = EditorFileManager(buffer, fileService);
     selectionHandler = SelectionHandler(
         selectionManager: editorSelectionManager,
@@ -90,19 +93,29 @@ class EditorState extends ChangeNotifier {
       editorSelectionManager: editorSelectionManager,
       foldingManager: foldingManager,
       notifyListeners: notifyListeners,
-      undo: undo,
-      redo: redo,
+      undo: commandHandler.undo,
+      redo: commandHandler.redo,
       onDirectoryChanged: onDirectoryChanged,
       fileService: fileService,
     );
-    textManipulator = TextManipulator(
-      editorSelectionManager: editorSelectionManager,
-      editorCursorManager: editorCursorManager,
+    cursorMovementHandler = CursorMovementHandler(
       buffer: buffer,
       foldingManager: foldingManager,
-      undoRedoManager: undoRedoManager,
+      editorCursorManager: editorCursorManager,
+      editorSelectionManager: editorSelectionManager,
+      notifyListeners: notifyListeners,
+      startSelection: startSelection,
+      updateSelection: updateSelection,
+      clearSelection: clearSelection,
+    );
+    scrollHandler = ScrollHandler(
+      scrollState: scrollState,
       notifyListeners: notifyListeners,
     );
+    foldingHandler = FoldingHandler(
+        buffer: buffer,
+        foldingManager: foldingManager,
+        notifyListeners: notifyListeners);
   }
 
   // Getters
@@ -116,6 +129,23 @@ class EditorState extends ChangeNotifier {
   set showCaret(bool show) => editorCursorManager.showCaret = show;
 
   // Misc
+  void restoreSelections(List<Selection> selections) {
+    editorSelectionManager.clearAll();
+    for (var selection in selections) {
+      editorSelectionManager.addSelection(selection);
+    }
+    notifyListeners();
+  }
+
+  void updateSelection() {
+    editorSelectionManager.updateSelection(editorCursorManager.cursors);
+  }
+
+  void clearSelection() {
+    editorSelectionManager.clearAll();
+    notifyListeners();
+  }
+
   int getLastPastedLineCount() {
     // Get the last command from undo stack
     if (!undoRedoManager.canUndo) {
@@ -157,72 +187,15 @@ class EditorState extends ChangeNotifier {
   }
 
   // FoldingManager methods
-
-  bool isLineHidden(int line) {
-    return foldingManager.isLineHidden(line);
-  }
-
-  bool isLineFolded(int line) {
-    return foldingManager.isLineFolded(line);
-  }
-
-  void toggleFold(int startLine, int endLine, {Map<int, int>? nestedFolds}) {
-    // Check if the region is currently folded
-    bool isFolded = buffer.foldedRanges.containsKey(startLine);
-
-    if (isFolded) {
-      // Unfold the region
-      buffer.unfoldLines(startLine);
-    } else {
-      // Fold the region
-      buffer.foldLines(startLine, endLine);
-    }
-
-    foldingManager.toggleFold(startLine, endLine);
-    notifyListeners();
-  }
-
-  bool isFoldable(int line) {
-    if (line >= buffer.lines.length) return false;
-
-    final currentLine = buffer.lines[line].trim();
-    if (currentLine.isEmpty) return false;
-
-    // Check if line ends with block starter
-    if (!currentLine.endsWith('{') &&
-        !currentLine.endsWith('(') &&
-        !currentLine.endsWith('[')) {
-      return false;
-    }
-
-    final currentIndent = _getIndentation(buffer.lines[line]);
-
-    // Look ahead for valid folding range
-    int nextLine = line + 1;
-    bool hasContent = false;
-
-    while (nextLine < buffer.lines.length) {
-      final nextLineText = buffer.lines[nextLine];
-      if (nextLineText.trim().isEmpty) {
-        nextLine++;
-        continue;
-      }
-
-      final nextIndent = _getIndentation(nextLineText);
-      if (nextIndent <= currentIndent) {
-        return hasContent;
-      }
-      hasContent = true;
-      nextLine++;
-    }
-
-    return false;
-  }
-
-  int _getIndentation(String line) {
-    final match = RegExp(r'[^\s]').firstMatch(line);
-    return match?.start ?? -1;
-  }
+  bool isLineHidden(int line) => foldingHandler.isLineHidden(line);
+  bool isFoldable(int line) => foldingHandler.isFoldable(line);
+  bool isLineFolded(int line) => foldingHandler.isLineFolded(line);
+  void toggleFold(
+    int startLine,
+    int endLine, {
+    Map<int, int>? nestedFolds,
+  }) =>
+      foldingHandler.toggleFold(startLine, endLine);
 
   // Buffer / Text manipulation
   void insertNewLine() => textManipulator.insertNewLine();
@@ -233,18 +206,11 @@ class EditorState extends ChangeNotifier {
   void insertChar(String c) => textManipulator.insertChar(c);
 
   // Undo/redo management
-  bool get canUndo => undoRedoManager.canUndo;
-  bool get canRedo => undoRedoManager.canRedo;
-
-  void undo() {
-    undoRedoManager.undo();
-    notifyListeners();
-  }
-
-  void redo() {
-    undoRedoManager.redo();
-    notifyListeners();
-  }
+  void paste() => commandHandler.paste();
+  void copy() => commandHandler.copy();
+  void cut() => commandHandler.cut();
+  void undo() => commandHandler.undo();
+  void redo() => commandHandler.redo();
 
   // Input management
   void handleTap(double dy, double dx, Function(String) measureLineWidth,
@@ -260,48 +226,7 @@ class EditorState extends ChangeNotifier {
           bool isControlPressed, bool isShiftPressed, LogicalKeyboardKey key) =>
       inputHandler.handleSpecialKeys(isControlPressed, isShiftPressed, key);
 
-  void cut() {
-    copy();
-    textManipulator.deleteSelection();
-    notifyListeners();
-  }
-
-  void copy() {
-    Clipboard.setData(ClipboardData(text: getSelectedText()));
-  }
-
-  Future<void> paste() async {
-    ClipboardData? data = await Clipboard.getData(Clipboard.kTextPlain);
-    if (data == null || data.text == null) return;
-
-    if (editorSelectionManager.hasSelection()) {
-      textManipulator.deleteSelection();
-    }
-
-    String pastedLines = data.text!;
-    editorCursorManager.paste(_buffer, pastedLines);
-
-    _buffer.incrementVersion();
-    notifyListeners();
-  }
-
   // SelectionManager methods
-  void restoreSelections(List<Selection> selections) {
-    editorSelectionManager.clearAll();
-    for (var selection in selections) {
-      editorSelectionManager.addSelection(selection);
-    }
-    notifyListeners();
-  }
-
-  void updateSelection() {
-    editorSelectionManager.updateSelection(editorCursorManager.cursors);
-  }
-
-  void clearSelection() {
-    editorSelectionManager.clearAll();
-    notifyListeners();
-  }
 
   /// Clear all selections and add a single selection that encompasses the whole document.
   ///
@@ -330,54 +255,26 @@ class EditorState extends ChangeNotifier {
     return editorSelectionManager.getSelectedText(_buffer);
   }
 
-  // CursorManager methods
+  // Cursor methods
+  void moveCursorUp(bool isShiftPressed) =>
+      cursorMovementHandler.moveCursorUp(isShiftPressed);
+  void moveCursorDown(bool isShiftPressed) =>
+      cursorMovementHandler.moveCursorDown(isShiftPressed);
+  void moveCursorLeft(bool isShiftPressed) =>
+      cursorMovementHandler.moveCursorLeft(isShiftPressed);
+  void moveCursorRight(bool isShiftPressed) =>
+      cursorMovementHandler.moveCursorRight(isShiftPressed);
+
   void toggleCaret() {
     editorCursorManager.toggleCaret();
     notifyListeners();
   }
 
-  void _moveCursor(
-      bool isShiftPressed, void Function(Buffer, FoldingManager) moveFunction) {
-    if (!editorSelectionManager.hasSelection() && isShiftPressed) {
-      startSelection();
-    }
-
-    moveFunction(buffer, foldingManager);
-
-    if (isShiftPressed) {
-      updateSelection();
-    } else {
-      clearSelection();
-    }
-    notifyListeners();
-  }
-
-  void moveCursorUp(bool isShiftPressed) {
-    _moveCursor(isShiftPressed, editorCursorManager.moveUp);
-  }
-
-  void moveCursorDown(bool isShiftPressed) {
-    _moveCursor(isShiftPressed, editorCursorManager.moveDown);
-  }
-
-  void moveCursorLeft(bool isShiftPressed) {
-    _moveCursor(isShiftPressed, editorCursorManager.moveLeft);
-  }
-
-  void moveCursorRight(bool isShiftPressed) {
-    _moveCursor(isShiftPressed, editorCursorManager.moveRight);
-  }
-
   // Scroll methods
-  void updateVerticalScrollOffset(double offset) {
-    scrollState.updateVerticalScrollOffset(offset);
-    notifyListeners();
-  }
-
-  void updateHorizontalScrollOffset(double offset) {
-    scrollState.updateHorizontalScrollOffset(offset);
-    notifyListeners();
-  }
+  void updateVerticalScrollOffset(double offset) =>
+      scrollHandler.updateVerticalScrollOffset(offset);
+  void updateHorizontalScrollOffset(double offset) =>
+      scrollHandler.updateHorizontalScrollOffset(offset);
 
   // File management
   Future<bool> saveFile(path) => editorFileManager.saveFile(path);
