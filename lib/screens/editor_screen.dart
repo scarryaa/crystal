@@ -525,175 +525,156 @@ class EditorScreenState extends State<EditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-        providers: [
-          ChangeNotifierProvider.value(
-            value: _editorConfigService,
-          ),
-          ChangeNotifierProvider(
-            create: (_) => FileExplorerProvider(
-              configService: _editorConfigService,
-            ),
-          ),
-          ChangeNotifierProvider(
-            create: (_) => TerminalProvider(
-              editorConfigService: _editorConfigService,
-            ),
-          ),
-        ],
-        child: FutureBuilder(
-          future: _initializationFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState != ConnectionState.done) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}'));
-            }
+    return FutureBuilder(
+      future: _initializationFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
 
-            return MultiProvider(
-                providers: [
-                  ChangeNotifierProvider(
-                    create: (_) => FileExplorerProvider(
-                      configService: _editorConfigService,
-                    ),
-                  ),
-                  ChangeNotifierProvider(
-                    create: (_) => TerminalProvider(
-                      editorConfigService: _editorConfigService,
-                    ),
-                  ),
-                ],
-                child: ListenableBuilder(
-                  listenable: Listenable.merge(
-                      [_editorConfigService, editorTabManager]),
-                  builder: (context, child) {
-                    bool isFileExplorerOnLeft =
-                        _editorConfigService.config.isFileExplorerOnLeft;
+        return MultiProvider(
+            providers: [
+              ChangeNotifierProvider.value(
+                value: _editorConfigService,
+              ),
+              ChangeNotifierProvider(
+                create: (_) => FileExplorerProvider(
+                  configService: _editorConfigService,
+                ),
+              ),
+              ChangeNotifierProvider(
+                create: (_) => TerminalProvider(
+                  editorConfigService: _editorConfigService,
+                ),
+              ),
+            ],
+            child: ListenableBuilder(
+              listenable:
+                  Listenable.merge([_editorConfigService, editorTabManager]),
+              builder: (context, child) {
+                bool isFileExplorerOnLeft =
+                    _editorConfigService.config.isFileExplorerOnLeft;
 
-                    return Focus(
-                      autofocus: true,
-                      onKeyEvent: (node, event) =>
-                          _shortcutHandler.handleKeyEvent(node, event),
-                      child: Material(
-                        child: Column(
-                          children: [
-                            Expanded(
-                              child: Row(
-                                children: [
-                                  if (isFileExplorerOnLeft)
-                                    FileExplorerContainer(
-                                        editorConfigService:
-                                            _editorConfigService,
-                                        fileService: widget.fileService,
-                                        tapCallback: tapCallback,
-                                        onDirectoryChanged:
-                                            widget.onDirectoryChanged),
-                                  Expanded(
-                                    child: Column(
-                                      children: [
-                                        Expanded(
-                                          child:
-                                              editorTabManager
-                                                      .horizontalSplits.isEmpty
-                                                  ? Container()
-                                                  : ResizableSplitContainer(
-                                                      direction: Axis.vertical,
-                                                      initialSizes:
-                                                          List.generate(
-                                                        editorTabManager
-                                                            .horizontalSplits
-                                                            .length,
-                                                        (index) =>
-                                                            1.0 /
+                return Focus(
+                  autofocus: true,
+                  onKeyEvent: (node, event) =>
+                      _shortcutHandler.handleKeyEvent(node, event),
+                  child: Material(
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              if (isFileExplorerOnLeft)
+                                FileExplorerContainer(
+                                    editorConfigService: _editorConfigService,
+                                    fileService: widget.fileService,
+                                    tapCallback: tapCallback,
+                                    onDirectoryChanged:
+                                        widget.onDirectoryChanged),
+                              Expanded(
+                                child: Column(
+                                  children: [
+                                    Expanded(
+                                      child: editorTabManager
+                                              .horizontalSplits.isEmpty
+                                          ? Container()
+                                          : ResizableSplitContainer(
+                                              direction: Axis.vertical,
+                                              initialSizes: List.generate(
+                                                editorTabManager
+                                                    .horizontalSplits.length,
+                                                (index) =>
+                                                    1.0 /
+                                                    editorTabManager
+                                                        .horizontalSplits
+                                                        .length,
+                                              ),
+                                              onSizesChanged: (sizes) =>
+                                                  editorTabManager
+                                                      .updateVerticalSizes(
+                                                          sizes),
+                                              editorConfigService:
+                                                  _editorConfigService,
+                                              children: List.generate(
+                                                editorTabManager
+                                                    .horizontalSplits.length,
+                                                (row) {
+                                                  return editorTabManager
+                                                          .horizontalSplits[row]
+                                                          .isEmpty
+                                                      ? Container()
+                                                      : ResizableSplitContainer(
+                                                          direction:
+                                                              Axis.horizontal,
+                                                          initialSizes:
+                                                              List.generate(
                                                             editorTabManager
-                                                                .horizontalSplits
+                                                                .horizontalSplits[
+                                                                    row]
                                                                 .length,
-                                                      ),
-                                                      onSizesChanged: (sizes) =>
-                                                          editorTabManager
-                                                              .updateVerticalSizes(
-                                                                  sizes),
-                                                      editorConfigService:
-                                                          _editorConfigService,
-                                                      children: List.generate(
-                                                        editorTabManager
-                                                            .horizontalSplits
-                                                            .length,
-                                                        (row) {
-                                                          return editorTabManager
-                                                                  .horizontalSplits[
-                                                                      row]
-                                                                  .isEmpty
-                                                              ? Container()
-                                                              : ResizableSplitContainer(
-                                                                  direction: Axis
-                                                                      .horizontal,
-                                                                  initialSizes:
-                                                                      List.generate(
-                                                                    editorTabManager
-                                                                        .horizontalSplits[
-                                                                            row]
-                                                                        .length,
-                                                                    (index) =>
-                                                                        1.0 /
-                                                                        editorTabManager
-                                                                            .horizontalSplits[row]
-                                                                            .length,
-                                                                  ),
-                                                                  onSizesChanged:
-                                                                      (sizes) =>
-                                                                          editorTabManager.updateHorizontalSizes(
-                                                                              row,
-                                                                              sizes),
-                                                                  editorConfigService:
-                                                                      _editorConfigService,
-                                                                  children: List
-                                                                      .generate(
-                                                                    editorTabManager
-                                                                        .horizontalSplits[
-                                                                            row]
-                                                                        .length,
-                                                                    (col) =>
-                                                                        _buildEditorSection(
-                                                                      editorTabManager
-                                                                              .horizontalSplits[row]
-                                                                          [col],
+                                                            (index) =>
+                                                                1.0 /
+                                                                editorTabManager
+                                                                    .horizontalSplits[
+                                                                        row]
+                                                                    .length,
+                                                          ),
+                                                          onSizesChanged: (sizes) =>
+                                                              editorTabManager
+                                                                  .updateHorizontalSizes(
                                                                       row,
-                                                                      col,
-                                                                    ),
-                                                                  ),
-                                                                );
-                                                        },
-                                                      ),
-                                                    ),
-                                        ),
-                                        TerminalSection(
-                                            editorConfigService:
-                                                _editorConfigService),
-                                      ],
+                                                                      sizes),
+                                                          editorConfigService:
+                                                              _editorConfigService,
+                                                          children:
+                                                              List.generate(
+                                                            editorTabManager
+                                                                .horizontalSplits[
+                                                                    row]
+                                                                .length,
+                                                            (col) =>
+                                                                _buildEditorSection(
+                                                              editorTabManager
+                                                                      .horizontalSplits[
+                                                                  row][col],
+                                                              row,
+                                                              col,
+                                                            ),
+                                                          ),
+                                                        );
+                                                },
+                                              ),
+                                            ),
                                     ),
-                                  ),
-                                  if (!isFileExplorerOnLeft)
-                                    FileExplorerContainer(
+                                    TerminalSection(
                                         editorConfigService:
-                                            _editorConfigService,
-                                        fileService: widget.fileService,
-                                        tapCallback: tapCallback,
-                                        onDirectoryChanged:
-                                            widget.onDirectoryChanged),
-                                ],
+                                            _editorConfigService),
+                                  ],
+                                ),
                               ),
-                            ),
-                            const StatusBar(),
-                          ],
+                              if (!isFileExplorerOnLeft)
+                                FileExplorerContainer(
+                                    editorConfigService: _editorConfigService,
+                                    fileService: widget.fileService,
+                                    tapCallback: tapCallback,
+                                    onDirectoryChanged:
+                                        widget.onDirectoryChanged),
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ));
-          },
-        ));
+                        const StatusBar(),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ));
+      },
+    );
   }
 
   Widget _buildEditorSection(SplitView splitView, int row, int col) {
