@@ -123,6 +123,7 @@ class _GutterState extends State<Gutter> {
     final line = _getLineFromY(details.localPosition.dy);
     if (line == null) return;
 
+    // Calculate line number text width dynamically
     final lineNumberText = (line + 1).toString();
     final textPainter = TextPainter(
       text: TextSpan(
@@ -136,11 +137,17 @@ class _GutterState extends State<Gutter> {
     );
     textPainter.layout();
 
-    // Calculate the x position where folding icons start
-    final foldIconX = gutterWidth - textPainter.width - 8;
+    const iconWidth = 18.0;
+    const iconPadding = 8.0;
 
-    if (details.localPosition.dx >= foldIconX &&
-        details.localPosition.dx <= foldIconX + 18) {
+    // Calculate click zones
+    final lineNumberWidth = textPainter.width;
+    final foldIconStart = gutterWidth - iconPadding - iconWidth;
+    final foldIconEnd = foldIconStart + iconWidth;
+
+    // Check if click is in fold icon zone
+    if (details.localPosition.dx >= foldIconStart &&
+        details.localPosition.dx <= foldIconEnd) {
       _handleFoldingIconTap(line);
     } else {
       _handleGutterSelection(details.localPosition.dy, false);
