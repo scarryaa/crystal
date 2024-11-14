@@ -8,6 +8,7 @@ import 'package:crystal/models/editor/cursor_shape.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_cursor_manager.dart';
+import 'package:crystal/services/editor/editor_file_manager.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/services/editor/editor_selection_manager.dart';
 import 'package:crystal/services/editor/folding_manager.dart';
@@ -18,7 +19,6 @@ import 'package:crystal/utils/utils.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:path/path.dart' as p;
 import 'package:window_manager/window_manager.dart';
 
 // Text buffer management
@@ -46,6 +46,7 @@ class EditorState extends ChangeNotifier {
   String path = '';
   final UndoRedoManager undoRedoManager = UndoRedoManager();
   final EditorLayoutService editorLayoutService;
+  late final EditorFileManager editorFileManager;
   final EditorConfigService editorConfigService;
   final EditorCursorManager editorCursorManager = EditorCursorManager();
   final EditorSelectionManager editorSelectionManager =
@@ -69,6 +70,7 @@ class EditorState extends ChangeNotifier {
     foldingManager = FoldingManager(
       _buffer,
     );
+    editorFileManager = EditorFileManager(buffer, fileService);
   }
 
   // Getters
@@ -853,50 +855,14 @@ class EditorState extends ChangeNotifier {
   }
 
   // File management
-  Future<bool> _writeFileToDisk(String path, String content) async {
-    try {
-      FileService.saveFile(path, content);
-      _buffer.setOriginalContent(content);
-      notifyListeners();
-      return true;
-    } catch (e) {
-      // Handle error
-      return false;
-    }
-  }
-
-  Future<bool> saveFile(String path) async {
-    if (path.isEmpty || path.startsWith('__temp')) {
-      return saveFileAs(path);
-    }
-
-    final String content = _buffer.lines.join('\n');
-    return _writeFileToDisk(path, content);
-  }
-
-  Future<bool> saveFileAs(String path) async {
-    try {
-      final String? outputFile = await FilePicker.platform.saveFile(
-          dialogTitle: 'Save As',
-          fileName: p.basename(path).contains('__temp') ? '' : p.basename(path),
-          initialDirectory: p.dirname(path));
-
-      if (outputFile == null) {
-        return false; // User cancelled
-      }
-
-      final String content = _buffer.lines.join('\n');
-      return _writeFileToDisk(outputFile, content);
-    } catch (e) {
-      return false;
-    }
-  }
+  Future<bool> saveFile(path) => editorFileManager.saveFile(path);
+  Future<bool> saveFileAs(path) => editorFileManager.saveFileAs(path);
 
   void openFile(String content) {
     // Reset cursor and selection
     editorCursorManager.reset();
     clearSelection();
-    _buffer.setContent(content);
+    editorFileManager.openFile(content);
 
     // Reset scroll positions
     scrollState.updateVerticalScrollOffset(0);
