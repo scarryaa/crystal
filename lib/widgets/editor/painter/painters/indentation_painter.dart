@@ -22,9 +22,17 @@ class IndentationPainter extends EditorPainterBase {
     Map<int, Set<int>> highlightedIndentRanges = {};
     Map<int, bool> isClosestIndentLevel = {};
 
-    // Adjust visible lines to account for folded regions
-    int adjustedFirstLine = _getNextVisibleLine(firstVisibleLine);
-    int adjustedLastLine = _getPreviousVisibleLine(lastVisibleLine);
+    int visualLine = 0;
+    int paintedLines = 0;
+    final targetVisibleLines =
+        lastVisibleLine - firstVisibleLine + 5; // Add buffer
+
+    // Count visual lines before first visible line
+    for (int i = 0; i < firstVisibleLine; i++) {
+      if (!editorState.foldingState.isLineHidden(i)) {
+        visualLine++;
+      }
+    }
 
     for (final cursor in cursors) {
       if (cursor.line >= 0 &&
@@ -62,10 +70,9 @@ class IndentationPainter extends EditorPainterBase {
             lines,
             cursor.line,
             closestIndentLevel,
-            adjustedFirstLine,
-            adjustedLastLine,
+            firstVisibleLine, // Use firstVisibleLine directly
+            lastVisibleLine, // Use lastVisibleLine directly
           );
-
           highlightedIndentRanges
               .putIfAbsent(closestIndentLevel, () => {})
               .addAll(blockRange);
@@ -74,11 +81,13 @@ class IndentationPainter extends EditorPainterBase {
       }
     }
 
-    // Draw the indent lines only for visible lines
-    for (int i = adjustedFirstLine; i <= adjustedLastLine; i++) {
-      if (i >= 0 &&
-          i < lines.length &&
-          !editorState.foldingState.isLineHidden(i)) {
+    // Draw the indent lines
+    for (int i = firstVisibleLine;
+        paintedLines < targetVisibleLines && i < lines.length;
+        i++) {
+      if (editorState.foldingState.isLineHidden(i)) continue;
+
+      if (i >= 0) {
         final line = lines[i];
         final leadingSpaces = line.trim().isEmpty
             ? _getPreviousNonEmptyLineIndent(lines, i)
@@ -86,17 +95,20 @@ class IndentationPainter extends EditorPainterBase {
 
         for (int space = 0; space < leadingSpaces; space += 4) {
           if (line.isNotEmpty && !line.startsWith(' ')) continue;
-          final xPosition = space * editorLayoutService.config.charWidth;
 
+          final xPosition = space * editorLayoutService.config.charWidth;
           _drawIndentLine(
             canvas,
             xPosition,
-            _getVisibleLineIndex(i), // Adjust for folded lines
+            visualLine,
             isCurrentIndent: highlightedIndentRanges.containsKey(space) &&
                 highlightedIndentRanges[space]!.contains(i),
           );
         }
       }
+
+      visualLine++;
+      paintedLines++;
     }
   }
 
@@ -128,11 +140,8 @@ class IndentationPainter extends EditorPainterBase {
         upLine = _getPreviousVisibleLine(upLine - 1);
         continue;
       }
-
       final lineIndent = _countLeadingSpaces(lines[upLine]);
-
       if (lineIndent < indentLevel) break;
-
       if (lineIndent == indentLevel && upLine > 0) {
         int prevLine = _getPreviousVisibleLine(upLine - 1);
         if (prevLine >= 0) {
@@ -143,7 +152,6 @@ class IndentationPainter extends EditorPainterBase {
           }
         }
       }
-
       blockLines.add(upLine);
       upLine = _getPreviousVisibleLine(upLine - 1);
     }
@@ -155,11 +163,8 @@ class IndentationPainter extends EditorPainterBase {
         downLine = _getNextVisibleLine(downLine + 1);
         continue;
       }
-
       final lineIndent = _countLeadingSpaces(lines[downLine]);
-
       if (lineIndent < indentLevel) break;
-
       if (lineIndent == indentLevel && downLine < lines.length - 1) {
         int nextLine = _getNextVisibleLine(downLine + 1);
         if (nextLine < lines.length) {
@@ -170,7 +175,6 @@ class IndentationPainter extends EditorPainterBase {
           }
         }
       }
-
       blockLines.add(downLine);
       downLine = _getNextVisibleLine(downLine + 1);
     }
@@ -178,7 +182,6 @@ class IndentationPainter extends EditorPainterBase {
     return blockLines;
   }
 
-  // Helper methods for handling folded regions
   int _getNextVisibleLine(int line) {
     while (line < editorState.buffer.lineCount &&
         editorState.foldingState.isLineHidden(line)) {
