@@ -240,9 +240,7 @@ class GutterPainter extends CustomPainter {
       ),
     );
 
-    // Track both buffer position and visual position
     int visualLine = 0;
-
     for (int i = 0; i < firstVisibleLine; i++) {
       if (!editorState.isLineHidden(i)) {
         visualLine++;
@@ -252,16 +250,27 @@ class GutterPainter extends CustomPainter {
     for (int currentLine = firstVisibleLine;
         currentLine < lastVisibleLine;
         currentLine++) {
-      // Skip hidden lines
       if (editorState.isLineHidden(currentLine)) {
         continue;
       }
 
       final lineNumber = (currentLine + 1).toString();
-      final style = editorState.editorCursorManager.cursors
-              .any((cursor) => cursor.line == currentLine)
-          ? _highlightStyle
-          : _defaultStyle;
+      TextStyle style = _defaultStyle;
+
+      // Check if line is in any selection
+      if (editorState.editorSelectionManager.hasSelection()) {
+        for (var selection in editorState.editorSelectionManager.selections) {
+          int startLine = min(selection.anchorLine, selection.startLine);
+          int endLine = max(selection.anchorLine, selection.endLine);
+          if (currentLine >= startLine && currentLine <= endLine) {
+            style = _highlightStyle;
+            break;
+          }
+        }
+      } else if (editorState.editorCursorManager.cursors
+          .any((cursor) => cursor.line == currentLine)) {
+        style = _highlightStyle;
+      }
 
       textPainter.text = TextSpan(
         text: lineNumber,
@@ -269,13 +278,11 @@ class GutterPainter extends CustomPainter {
       );
 
       textPainter.layout(maxWidth: _gutterWidth - (horizontalPadding * 2));
-
       final xOffset = size.width - textPainter.width - horizontalPadding;
       final yOffset = visualLine * editorLayoutService.config.lineHeight +
           (editorLayoutService.config.lineHeight - textPainter.height) / 2;
 
       textPainter.paint(canvas, Offset(xOffset, yOffset));
-
       visualLine++;
     }
   }
