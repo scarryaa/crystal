@@ -11,7 +11,6 @@ class GutterPainter extends CustomPainter {
   final double viewportHeight;
   final EditorLayoutService editorLayoutService;
   final EditorConfigService editorConfigService;
-  final Set<int> _currentHighlightedLines = {};
   final double horizontalPadding = 16.0;
   late final double _gutterWidth;
 
@@ -62,78 +61,121 @@ class GutterPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     _drawBackground(canvas, size);
 
-    int firstVisibleLine = max(0,
-        (verticalOffset / editorLayoutService.config.lineHeight).floor() - 20);
-
-    // Calculate last visible line with proper bounds
-    int lastVisibleLine = firstVisibleLine;
-
+    const bufferLines = 20;
     final lineHeight = editorLayoutService.config.lineHeight;
+    final firstVisibleVisualLine = (verticalOffset / lineHeight).floor();
     final visibleLinesInViewport = (viewportHeight / lineHeight).ceil();
-// Add buffer lines for smooth scrolling
-    final targetVisibleLines = visibleLinesInViewport + 30;
+    final lastVisibleVisualLine =
+        firstVisibleVisualLine + visibleLinesInViewport + bufferLines;
 
-    int visibleLineCount = 0;
-
-    while (visibleLineCount < targetVisibleLines &&
-        lastVisibleLine < editorState.buffer.lineCount) {
-      if (!editorState.isLineHidden(lastVisibleLine)) {
-        visibleLineCount++;
-      }
-      lastVisibleLine++;
-    }
-
-    // Add buffer but respect actual content bounds
-    lastVisibleLine = min(lastVisibleLine + 20, editorState.buffer.lineCount);
-
-    _drawText(canvas, size, firstVisibleLine, lastVisibleLine);
-
-    for (var i = firstVisibleLine; i < lastVisibleLine; i++) {
-      if (!editorState.isLineHidden(i)) {
-        _drawFoldingIndicators(canvas, size, i);
-      }
-    }
-
-    // Highlight current line (if no selection)
-    if (!editorState.editorSelectionManager.hasSelection()) {
-      for (var cursor in editorState.editorCursorManager.cursors) {
-        if (!_currentHighlightedLines.contains(cursor.line)) {
-          _highlightCurrentLine(canvas, size, cursor.line);
-          _currentHighlightedLines.add(cursor.line);
-        }
-      }
-    }
+    _drawContent(canvas, size, firstVisibleVisualLine, lastVisibleVisualLine);
   }
 
-  void _drawFoldingIndicators(Canvas canvas, Size size, int line) {
-    if (line >= editorState.buffer.lines.length) return;
-
-    final isFoldable = editorState.isFoldable(line);
-    final isFolded = editorState.isLineFolded(line);
-
-    if (!isFoldable && !isFolded) return;
+  void _drawContent(Canvas canvas, Size size, int firstVisibleVisualLine,
+      int lastVisibleVisualLine) {
+    final textPainter = TextPainter(
+      textDirection: TextDirection.ltr,
+      textAlign: TextAlign.right,
+      maxLines: 1,
+      textHeightBehavior: const TextHeightBehavior(
+        applyHeightToFirstAscent: false,
+        applyHeightToLastDescent: false,
+      ),
+      strutStyle: StrutStyle(
+        fontSize: editorConfigService.config.fontSize,
+        fontFamily: editorConfigService.config.fontFamily,
+        height: 1.0,
+        forceStrutHeight: true,
+        leadingDistribution: TextLeadingDistribution.even,
+      ),
+    );
 
     final paint = Paint()
       ..color = _defaultStyle.color!
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
 
-    // Calculate visual position for the indicator
+    final highlightPaint = Paint()
+      ..color =
+          editorConfigService.themeService.currentTheme?.currentLineHighlight ??
+              Colors.blue.withOpacity(0.2);
+
+    int currentLine = 0;
+    const bufferLines = 20;
     int visualLine = 0;
-    for (int i = 0; i < line; i++) {
-      if (!editorState.isLineHidden(i)) {
-        visualLine++;
+
+    while (visualLine <= lastVisibleVisualLine &&
+        currentLine < editorState.buffer.lineCount) {
+      if (editorState.isLineHidden(currentLine)) {
+        currentLine++;
+        continue;
       }
+
+      if (visualLine >= firstVisibleVisualLine - bufferLines) {
+        final lineNumber = (currentLine + 1).toString();
+        final style = _getStyleForLine(currentLine);
+
+        // Draw line number
+        textPainter.text = TextSpan(text: lineNumber, style: style);
+        textPainter.layout(maxWidth: _gutterWidth - (horizontalPadding * 2));
+
+        final xOffset = size.width - textPainter.width - horizontalPadding;
+        final yOffset = visualLine * editorLayoutService.config.lineHeight +
+            (editorLayoutService.config.lineHeight - textPainter.height) / 2;
+
+        textPainter.paint(canvas, Offset(xOffset, yOffset));
+
+        // Draw folding indicator
+        if (editorState.isFoldable(currentLine) ||
+            editorState.isLineFolded(currentLine)) {
+          final iconSize = editorConfigService.config.fontSize * 0.8;
+          _drawFoldingIcon(
+              canvas,
+              paint,
+              visualLine * editorLayoutService.config.lineHeight,
+              iconSize,
+              editorState.isLineFolded(currentLine));
+
+          if (editorState.isLineFolded(currentLine)) {
+            _drawFoldPreview(canvas, currentLine,
+                visualLine * editorLayoutService.config.lineHeight, iconSize);
+          }
+        }
+
+        // Highlight current line
+        if (!editorState.editorSelectionManager.hasSelection() &&
+            editorState.editorCursorManager.cursors
+                .any((cursor) => cursor.line == currentLine)) {
+          canvas.drawRect(
+              Rect.fromLTWH(
+                0,
+                visualLine * editorLayoutService.config.lineHeight,
+                size.width,
+                editorLayoutService.config.lineHeight,
+              ),
+              highlightPaint);
+        }
+      }
+
+      visualLine++;
+      currentLine++;
     }
+  }
 
-    final y = visualLine * editorLayoutService.config.lineHeight;
-    final iconSize = editorConfigService.config.fontSize * 0.8;
-
-    _drawFoldingIcon(canvas, paint, y, iconSize, isFolded);
-
-    if (isFolded) {
-      _drawFoldPreview(canvas, line, y, iconSize);
+  TextStyle _getStyleForLine(int line) {
+    if (editorState.editorSelectionManager.hasSelection()) {
+      for (var selection in editorState.editorSelectionManager.selections) {
+        int startLine = min(selection.anchorLine, selection.startLine);
+        int endLine = max(selection.anchorLine, selection.endLine);
+        if (line >= startLine && line <= endLine) {
+          return _highlightStyle;
+        }
+      }
+    } else if (editorState.editorCursorManager.cursors
+        .any((cursor) => cursor.line == line)) {
+      return _highlightStyle;
     }
+    return _defaultStyle;
   }
 
   void _drawFoldPreview(Canvas canvas, int line, double y, double iconSize) {
@@ -219,97 +261,6 @@ class GutterPainter extends CustomPainter {
           ..color = editorConfigService.themeService.currentTheme != null
               ? editorConfigService.themeService.currentTheme!.background
               : Colors.white);
-  }
-
-  void _drawText(
-      Canvas canvas, Size size, int firstVisibleLine, int lastVisibleLine) {
-    final textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
-      textAlign: TextAlign.right,
-      maxLines: 1,
-      textHeightBehavior: const TextHeightBehavior(
-        applyHeightToFirstAscent: false,
-        applyHeightToLastDescent: false,
-      ),
-      strutStyle: StrutStyle(
-        fontSize: editorConfigService.config.fontSize,
-        fontFamily: editorConfigService.config.fontFamily,
-        height: 1.0,
-        forceStrutHeight: true,
-        leadingDistribution: TextLeadingDistribution.even,
-      ),
-    );
-
-    int visualLine = 0;
-    for (int i = 0; i < firstVisibleLine; i++) {
-      if (!editorState.isLineHidden(i)) {
-        visualLine++;
-      }
-    }
-
-    for (int currentLine = firstVisibleLine;
-        currentLine < lastVisibleLine;
-        currentLine++) {
-      if (editorState.isLineHidden(currentLine)) {
-        continue;
-      }
-
-      final lineNumber = (currentLine + 1).toString();
-      TextStyle style = _defaultStyle;
-
-      // Check if line is in any selection
-      if (editorState.editorSelectionManager.hasSelection()) {
-        for (var selection in editorState.editorSelectionManager.selections) {
-          int startLine = min(selection.anchorLine, selection.startLine);
-          int endLine = max(selection.anchorLine, selection.endLine);
-          if (currentLine >= startLine && currentLine <= endLine) {
-            style = _highlightStyle;
-            break;
-          }
-        }
-      } else if (editorState.editorCursorManager.cursors
-          .any((cursor) => cursor.line == currentLine)) {
-        style = _highlightStyle;
-      }
-
-      textPainter.text = TextSpan(
-        text: lineNumber,
-        style: style,
-      );
-
-      textPainter.layout(maxWidth: _gutterWidth - (horizontalPadding * 2));
-      final xOffset = size.width - textPainter.width - horizontalPadding;
-      final yOffset = visualLine * editorLayoutService.config.lineHeight +
-          (editorLayoutService.config.lineHeight - textPainter.height) / 2;
-
-      textPainter.paint(canvas, Offset(xOffset, yOffset));
-      visualLine++;
-    }
-  }
-
-  void _highlightCurrentLine(Canvas canvas, Size size, int lineNumber) {
-    // Convert buffer line to visual line
-    int visualLine = 0;
-    for (int i = 0; i < lineNumber; i++) {
-      if (!editorState.isLineHidden(i)) {
-        visualLine++;
-      }
-    }
-
-    // Only draw if line is not hidden
-    if (!editorState.isLineHidden(lineNumber)) {
-      canvas.drawRect(
-          Rect.fromLTWH(
-            0,
-            visualLine * editorLayoutService.config.lineHeight,
-            size.width,
-            editorLayoutService.config.lineHeight,
-          ),
-          Paint()
-            ..color = editorConfigService
-                    .themeService.currentTheme?.currentLineHighlight ??
-                Colors.blue.withOpacity(0.2));
-    }
   }
 
   @override
