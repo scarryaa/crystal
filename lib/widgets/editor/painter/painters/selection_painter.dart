@@ -41,20 +41,23 @@ class SelectionPainter {
     String lineText = editorState.buffer.getLine(line);
 
     if (lineText.isEmpty) {
-      canvas.drawRect(
-          Rect.fromLTWH(
-              0,
-              visualLine * editorLayoutService.config.lineHeight,
-              editorConfigService.config.fontSize / 2,
-              editorLayoutService.config.lineHeight),
-          paint);
+      // For empty lines, draw a rounded rectangle
+      final rrect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(
+          0,
+          visualLine * editorLayoutService.config.lineHeight,
+          editorConfigService.config.fontSize / 2,
+          editorLayoutService.config.lineHeight,
+        ),
+        const Radius.circular(3.0),
+      );
+      canvas.drawRRect(rrect, paint);
       return;
     }
 
     startColumn = startColumn.clamp(0, lineText.length);
     endColumn = endColumn?.clamp(0, lineText.length);
 
-    // Calculate positions more efficiently
     double startX = 0;
     if (startColumn > 0) {
       startX = startColumn * editorLayoutService.config.charWidth;
@@ -68,18 +71,25 @@ class SelectionPainter {
           editorLayoutService.config.charWidth;
     }
 
-    // Batch draw operations
-    canvas.drawRect(
-        Rect.fromLTWH(
-            startX,
-            visualLine * editorLayoutService.config.lineHeight,
-            width,
-            editorLayoutService.config.lineHeight),
-        paint);
+    // Create a rounded rectangle
+    final rrect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        startX,
+        visualLine * editorLayoutService.config.lineHeight,
+        width,
+        editorLayoutService.config.lineHeight,
+      ),
+      const Radius.circular(3.0),
+    );
+    canvas.drawRRect(rrect, paint);
 
-    // Only draw whitespace indicators if configured
     _drawWhitespaceIndicators(
-        canvas, startColumn, endColumn ?? lineText.length, line, visualLine);
+      canvas,
+      startColumn,
+      endColumn ?? lineText.length,
+      line,
+      visualLine,
+    );
   }
 
   (int, int, int, int) _normalizeSelection(var selection) {
