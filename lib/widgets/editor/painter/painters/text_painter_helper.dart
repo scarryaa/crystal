@@ -38,7 +38,7 @@ class TextPaintingCache {
         text: span,
         textDirection: TextDirection.ltr,
       );
-      painter.layout(maxWidth: maxWidth);
+      painter.layout();
       _painterCache[line] = painter;
     }
 
@@ -104,7 +104,7 @@ class TextPainterHelper {
           ),
         );
 
-        _textPainter.layout(maxWidth: size.width);
+        _textPainter.layout();
         final halfLineHeightDiff = (lineHeight - _textPainter.height) / 2;
 
         final yPosition = (visualLine * lineHeight) + halfLineHeightDiff;

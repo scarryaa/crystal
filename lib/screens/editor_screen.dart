@@ -553,10 +553,8 @@ class EditorScreenState extends State<EditorScreen> {
       );
 
       // Only update scroll positions if there's still an active editor
-      if (editorTabManager.activeEditor != null) {
-        scrollManager.editorVerticalScrollController.jumpTo(verticalOffset);
-        scrollManager.editorHorizontalScrollController.jumpTo(horizontalOffset);
-      }
+      scrollManager.editorVerticalScrollController.jumpTo(verticalOffset);
+      scrollManager.editorHorizontalScrollController.jumpTo(horizontalOffset);
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
