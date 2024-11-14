@@ -12,6 +12,49 @@ class EditorSelectionManager {
     return _selections.isNotEmpty;
   }
 
+  void updateSelection(List<Cursor> cursors) {
+    for (int i = 0; i < math.min(cursors.length, _selections.length); i++) {
+      _selections[i] = _updateSingleSelection(_selections[i], cursors[i]);
+    }
+  }
+
+  Selection _updateSingleSelection(
+      Selection currentSelection, Cursor currentCursor) {
+    if (_isSelectingBackwards(currentSelection, currentCursor)) {
+      return _createBackwardsSelection(currentSelection, currentCursor);
+    } else {
+      return _createForwardsSelection(currentSelection, currentCursor);
+    }
+  }
+
+  bool _isSelectingBackwards(Selection selection, Cursor cursor) {
+    return cursor.line < selection.anchorLine ||
+        (cursor.line == selection.anchorLine &&
+            cursor.column < selection.anchorColumn);
+  }
+
+  Selection _createBackwardsSelection(Selection selection, Cursor cursor) {
+    return Selection(
+      startLine: cursor.line,
+      endLine: selection.anchorLine,
+      startColumn: cursor.column,
+      endColumn: selection.anchorColumn,
+      anchorLine: selection.anchorLine,
+      anchorColumn: selection.anchorColumn,
+    );
+  }
+
+  Selection _createForwardsSelection(Selection selection, Cursor cursor) {
+    return Selection(
+      startLine: selection.anchorLine,
+      endLine: cursor.line,
+      startColumn: selection.anchorColumn,
+      endColumn: cursor.column,
+      anchorLine: selection.anchorLine,
+      anchorColumn: selection.anchorColumn,
+    );
+  }
+
   void setAllSelections(List<Selection> selections) {
     _selections = selections;
   }
@@ -103,41 +146,6 @@ class EditorSelectionManager {
         anchorLine: startLine,
         anchorColumn: 0,
       ));
-    }
-  }
-
-  void updateSelection(List<Cursor> cursors) {
-    for (int i = 0; i < cursors.length; i++) {
-      Selection currentSelection = _selections[i];
-      Cursor currentCursor = cursors[i];
-
-      // Get actual buffer positions considering folded regions
-      int anchorLine = currentSelection.anchorLine;
-      int cursorLine = currentCursor.line;
-
-      if (cursorLine < anchorLine ||
-          (cursorLine == anchorLine &&
-              currentCursor.column < currentSelection.anchorColumn)) {
-        // Selecting backwards
-        _selections[i] = Selection(
-          startLine: cursorLine,
-          endLine: anchorLine,
-          startColumn: currentCursor.column,
-          endColumn: currentSelection.anchorColumn,
-          anchorLine: anchorLine,
-          anchorColumn: currentSelection.anchorColumn,
-        );
-      } else {
-        // Selecting forwards
-        _selections[i] = Selection(
-          startLine: anchorLine,
-          endLine: cursorLine,
-          startColumn: currentSelection.anchorColumn,
-          endColumn: currentCursor.column,
-          anchorLine: anchorLine,
-          anchorColumn: currentSelection.anchorColumn,
-        );
-      }
     }
   }
 
