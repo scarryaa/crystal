@@ -141,7 +141,6 @@ class _GutterState extends State<Gutter> {
     const iconPadding = 8.0;
 
     // Calculate click zones
-    final lineNumberWidth = textPainter.width;
     final foldIconStart = gutterWidth - iconPadding - iconWidth;
     final foldIconEnd = foldIconStart + iconWidth;
 
