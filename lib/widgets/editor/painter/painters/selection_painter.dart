@@ -211,7 +211,12 @@ class SelectionPainter {
       final (startLine, endLine, startColumn, endColumn) =
           _normalizeSelection(selection);
 
+      // Modified visibility check - render if ANY part of selection is visible
       if (endLine < firstVisibleLine || startLine > lastVisibleLine) continue;
+
+      // Adjust the visible portion of the selection
+      int visibleStartLine = startLine.clamp(firstVisibleLine, lastVisibleLine);
+      int visibleEndLine = endLine.clamp(firstVisibleLine, lastVisibleLine);
 
       if (startLine == endLine) {
         final visualLine = visualLines[startLine];
@@ -220,13 +225,13 @@ class SelectionPainter {
               canvas, startLine, startColumn, endColumn, visualLine);
         }
       } else {
-        // Get the visual line for the start line
-        final initialVisualLine = visualLines[startLine] ?? 0;
+        // Get the visual line for the visible start line
+        final initialVisualLine = visualLines[visibleStartLine] ?? 0;
 
         _paintMultiLineSelection(
             canvas,
-            startLine,
-            endLine,
+            visibleStartLine,
+            visibleEndLine,
             startColumn,
             endColumn,
             firstVisibleLine,
