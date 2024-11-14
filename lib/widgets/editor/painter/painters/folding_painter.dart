@@ -22,19 +22,33 @@ class FoldingPainter extends EditorPainterBase {
     required int firstVisibleLine,
     required int lastVisibleLine,
   }) {
+    assert(firstVisibleLine >= 0, 'firstVisibleLine must be non-negative');
+    assert(lastVisibleLine >= firstVisibleLine,
+        'lastVisibleLine must be >= firstVisibleLine');
+    assert(size.height > 0, 'Canvas size must have positive height');
+
+    // Add buffer zones above and below visible area
+    final extendedFirstLine = max(0, firstVisibleLine - 5);
+    final extendedLastLine = lastVisibleLine + 5;
+
     // Sort folding regions by start line to handle nested folds correctly
     final sortedRegions = foldedRegions.entries.toList()
       ..sort((a, b) => a.key.compareTo(b.key));
 
     for (final entry in sortedRegions) {
       final startLine = entry.key;
-      if (startLine >= firstVisibleLine && startLine <= lastVisibleLine) {
+      final endLine = entry.value;
+
+      // Check if any part of the folded region is visible
+      if ((startLine >= extendedFirstLine && startLine <= extendedLastLine) ||
+          (endLine >= extendedFirstLine && endLine <= extendedLastLine) ||
+          (startLine <= extendedFirstLine && endLine >= extendedLastLine)) {
         // Only draw if the line itself is not hidden (inside another fold)
         if (!textPainterHelper.isLineHidden(startLine)) {
           _drawFoldedRegionIndicator(
             canvas,
             startLine,
-            entry.value - startLine,
+            endLine - startLine,
           );
         }
       }
@@ -105,13 +119,19 @@ class FoldingPainter extends EditorPainterBase {
 
       textPainter.layout();
 
+      // Constants for padding and positioning
+      const horizontalPadding = 8.0;
+      final verticalPadding = editorLayoutService.config.lineHeight * 0.1;
+      final lineHeight = editorLayoutService.config.lineHeight;
+
+      // Calculate position with improved vertical alignment
+      final xPosition = lineWidth + horizontalPadding;
+      final yPosition = (visualLine * lineHeight) + verticalPadding / 2;
+
+      // Paint the fold indicator text
       textPainter.paint(
         canvas,
-        Offset(
-          lineWidth + 8,
-          visualLine * editorLayoutService.config.lineHeight +
-              (editorLayoutService.config.lineHeight - textPainter.height) / 2,
-        ),
+        Offset(xPosition, yPosition),
       );
     }
   }

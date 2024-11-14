@@ -20,62 +20,53 @@ class CaretPainter extends EditorPainterBase {
       {required int firstVisibleLine, required int lastVisibleLine}) {
     if (!editorState.showCaret) return;
 
-    // Track visual line position
-    int visualLine = 0;
-    for (int i = 0; i < firstVisibleLine; i++) {
-      if (!editorState.foldingState.isLineHidden(i)) {
-        visualLine++;
-      }
-    }
+    // Add buffer to visible range
+    final extendedFirstLine = firstVisibleLine - 1;
+    final extendedLastLine = lastVisibleLine + 1;
 
     for (var cursor in editorState.editorCursorManager.cursors) {
-      if (cursor.line < 0 ||
-          cursor.line >= editorState.buffer.lineCount ||
-          editorState.foldingState.isLineHidden(cursor.line)) {
-        continue; // Skip invalid cursor positions and hidden lines
-      }
-
-      // Calculate visual position for this cursor
-      int cursorVisualLine = visualLine;
-      for (int i = firstVisibleLine; i < cursor.line; i++) {
+      // Calculate visual line number
+      int visualLine = 0;
+      for (int i = 0; i < cursor.line; i++) {
         if (!editorState.foldingState.isLineHidden(i)) {
-          cursorVisualLine++;
+          visualLine++;
         }
       }
 
-      final line = editorState.buffer.getLine(cursor.line);
-      final safeColumn = cursor.column.clamp(0, line.length);
-      final textUpToCaret = line.substring(0, safeColumn);
+      // Check if cursor is in visible range
+      if (!editorState.foldingState.isLineHidden(cursor.line)) {
+        final line = editorState.buffer.getLine(cursor.line);
+        final safeColumn = cursor.column.clamp(0, line.length);
+        final textUpToCaret = line.substring(0, safeColumn);
 
-      _textPainter.text = TextSpan(
-        text: textUpToCaret,
-        style: TextStyle(
-          fontSize: editorConfigService.config.fontSize,
-          fontFamily: editorConfigService.config.fontFamily,
-          color: Colors.transparent,
-          height: 1.0,
-          leadingDistribution: TextLeadingDistribution.even,
-          fontFeatures: const [
-            FontFeature.enable('kern'),
-            FontFeature.enable('liga'),
-            FontFeature.enable('calt'),
-          ],
-          fontVariations: const [
-            FontVariation('wght', 400),
-          ],
-        ),
-      );
+        _textPainter.text = TextSpan(
+          text: textUpToCaret,
+          style: TextStyle(
+            fontSize: editorConfigService.config.fontSize,
+            fontFamily: editorConfigService.config.fontFamily,
+            color: Colors.transparent,
+            height: 1.0,
+            leadingDistribution: TextLeadingDistribution.even,
+            fontFeatures: const [
+              FontFeature.enable('kern'),
+              FontFeature.enable('liga'),
+              FontFeature.enable('calt'),
+            ],
+            fontVariations: const [
+              FontVariation('wght', 400),
+            ],
+          ),
+        );
 
-      _textPainter.layout();
+        _textPainter.layout();
 
-      final caretLeft = _textPainter.width;
-      final caretTop = editorLayoutService.config.lineHeight * cursorVisualLine;
-      final caretPaint = Paint()
-        ..color = editorConfigService.themeService.currentTheme != null
-            ? editorConfigService.themeService.currentTheme!.primary
-            : Colors.blue;
+        final caretLeft = _textPainter.width;
+        final caretTop = editorLayoutService.config.lineHeight * visualLine;
+        final caretPaint = Paint()
+          ..color = editorConfigService.themeService.currentTheme != null
+              ? editorConfigService.themeService.currentTheme!.primary
+              : Colors.blue;
 
-      if (cursor.line >= firstVisibleLine && cursor.line <= lastVisibleLine) {
         _drawCaret(
           canvas,
           caretLeft,
