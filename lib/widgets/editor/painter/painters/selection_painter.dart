@@ -8,6 +8,10 @@ class SelectionPainter {
   final TextPainter _textPainter;
   final EditorLayoutService editorLayoutService;
   final EditorConfigService editorConfigService;
+  final Map<String, double> _widthCache = {};
+
+  // Reuse the same TextStyle
+  late final TextStyle _measureStyle;
 
   SelectionPainter(
     this.editorState, {
@@ -16,43 +20,82 @@ class SelectionPainter {
   }) : _textPainter = TextPainter(
           textDirection: TextDirection.ltr,
           textAlign: TextAlign.left,
-        );
+        ) {
+    _measureStyle = TextStyle(
+      fontFamily: editorConfigService.config.fontFamily,
+      fontSize: editorConfigService.config.fontSize,
+      fontWeight: FontWeight.normal,
+    );
+    _textPainter.text = TextSpan(style: _measureStyle);
+  }
 
-  void paint(Canvas canvas, int firstVisibleLine, int lastVisibleLine) {
-    if (!editorState.editorSelectionManager.hasSelection()) return;
-
-    int visualOffset = 0;
-
-    for (var selection in editorState.editorSelectionManager.selections) {
-      final (startLine, endLine, startColumn, endColumn) =
-          _normalizeSelection(selection);
-
-      if (endLine < firstVisibleLine || startLine > lastVisibleLine) continue;
-
-      int visualLine = 0;
-      for (int i = 0; i < startLine; i++) {
-        if (!editorState.foldingState.isLineHidden(i)) {
-          visualLine++;
-        }
-      }
-      visualLine -= visualOffset;
-
-      if (startLine == endLine) {
-        _paintSingleLineSelection(
-            canvas, startLine, startColumn, endColumn, visualLine);
-      } else {
-        _paintMultiLineSelection(
-            canvas,
-            startLine,
-            endLine,
-            startColumn,
-            endColumn,
-            firstVisibleLine,
-            lastVisibleLine,
-            visualLine,
-            selection);
-      }
+  double _measureLineWidth(String line) {
+    // Use cached width if available
+    if (_widthCache.containsKey(line)) {
+      return _widthCache[line]!;
     }
+
+    // Reuse the same TextPainter instance
+    _textPainter.text = TextSpan(text: line, style: _measureStyle);
+    _textPainter.layout();
+
+    final width = _textPainter.width;
+    // Cache the result
+    if (_widthCache.length > 1000) _widthCache.clear(); // Prevent memory leaks
+    _widthCache[line] = width;
+    return width;
+  }
+
+  void _paintSelectionLine(
+    Canvas canvas,
+    int line,
+    int startColumn,
+    int? endColumn,
+    int visualLine,
+    Paint paint,
+  ) {
+    String lineText = editorState.buffer.getLine(line);
+
+    if (lineText.isEmpty) {
+      canvas.drawRect(
+          Rect.fromLTWH(
+              0,
+              visualLine * editorLayoutService.config.lineHeight,
+              editorConfigService.config.fontSize / 2,
+              editorLayoutService.config.lineHeight),
+          paint);
+      return;
+    }
+
+    startColumn = startColumn.clamp(0, lineText.length);
+    endColumn = endColumn?.clamp(0, lineText.length);
+
+    // Calculate positions more efficiently
+    double startX = 0;
+    if (startColumn > 0) {
+      startX = startColumn * editorLayoutService.config.charWidth;
+    }
+
+    double width;
+    if (endColumn != null && startColumn < endColumn) {
+      width = (endColumn - startColumn) * editorLayoutService.config.charWidth;
+    } else {
+      width = (lineText.length - startColumn) *
+          editorLayoutService.config.charWidth;
+    }
+
+    // Batch draw operations
+    canvas.drawRect(
+        Rect.fromLTWH(
+            startX,
+            visualLine * editorLayoutService.config.lineHeight,
+            width,
+            editorLayoutService.config.lineHeight),
+        paint);
+
+    // Only draw whitespace indicators if configured
+    _drawWhitespaceIndicators(
+        canvas, startColumn, endColumn ?? lineText.length, line, visualLine);
   }
 
   (int, int, int, int) _normalizeSelection(var selection) {
@@ -140,60 +183,6 @@ class SelectionPainter {
     }
   }
 
-  void _paintSelectionLine(
-    Canvas canvas,
-    int line,
-    int startColumn,
-    int? endColumn,
-    int visualLine,
-    Paint paint,
-  ) {
-    String lineText = editorState.buffer.getLine(line);
-
-    // Guard against empty lines
-    if (lineText.isEmpty) {
-      // Draw minimum width selection for empty lines
-      canvas.drawRect(
-          Rect.fromLTWH(
-              0,
-              visualLine * editorLayoutService.config.lineHeight,
-              editorConfigService.config.fontSize / 2,
-              editorLayoutService.config.lineHeight),
-          paint);
-      return;
-    }
-
-    // Clamp columns to valid range
-    startColumn = startColumn.clamp(0, lineText.length);
-    endColumn = endColumn?.clamp(0, lineText.length);
-
-    // Calculate start position
-    double startX = startColumn > 0
-        ? _measureLineWidth(lineText.substring(0, startColumn))
-        : 0;
-
-    // Calculate width
-    double width;
-    if (endColumn != null && startColumn < endColumn) {
-      width = _measureLineWidth(lineText.substring(startColumn, endColumn));
-    } else {
-      width = startColumn < lineText.length
-          ? _measureLineWidth(lineText.substring(startColumn))
-          : editorConfigService.config.fontSize / 2;
-    }
-
-    canvas.drawRect(
-        Rect.fromLTWH(
-            startX,
-            visualLine * editorLayoutService.config.lineHeight,
-            width,
-            editorLayoutService.config.lineHeight),
-        paint);
-
-    _drawWhitespaceIndicators(
-        canvas, startColumn, endColumn ?? lineText.length, line, visualLine);
-  }
-
   void _drawWhitespaceIndicators(
     Canvas canvas,
     int startColumn,
@@ -202,10 +191,13 @@ class SelectionPainter {
     int visualLine,
   ) {
     final lineText = editorState.buffer.getLine(line);
+
+    // Pre-calculate the base width once
+    double baseWidth = editorLayoutService.config.charWidth;
+
     for (int i = startColumn; i < endColumn && i < lineText.length; i++) {
       if (lineText[i] == ' ') {
-        double x = _measureLineWidth(lineText.substring(0, i)) +
-            editorLayoutService.config.charWidth / 2;
+        double x = i * baseWidth + baseWidth / 2;
         _drawWhitespaceIndicator(
             canvas,
             x,
@@ -227,20 +219,63 @@ class SelectionPainter {
               : Colors.black.withOpacity(0.5));
   }
 
-  double _measureLineWidth(String line) {
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: line,
-        style: TextStyle(
-          fontFamily: editorConfigService.config.fontFamily,
-          fontSize: editorConfigService.config.fontSize,
-          fontWeight: FontWeight.normal,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    );
+  void paint(Canvas canvas, int firstVisibleLine, int lastVisibleLine) {
+    if (!editorState.editorSelectionManager.hasSelection()) return;
 
-    textPainter.layout();
-    return textPainter.width;
+    // Pre-calculate visual lines
+    final visualLines = _calculateVisualLines(firstVisibleLine);
+
+    final selectionPaint = Paint()
+      ..color = editorConfigService.themeService.currentTheme?.primary
+              .withOpacity(0.2) ??
+          Colors.blue.withOpacity(0.2);
+
+    for (var selection in editorState.editorSelectionManager.selections) {
+      final (startLine, endLine, startColumn, endColumn) =
+          _normalizeSelection(selection);
+
+      if (endLine < firstVisibleLine || startLine > lastVisibleLine) continue;
+
+      if (startLine == endLine) {
+        final visualLine = visualLines[startLine];
+        if (visualLine != null) {
+          _paintSingleLineSelection(
+              canvas, startLine, startColumn, endColumn, visualLine);
+        }
+      } else {
+        // Get the visual line for the start line
+        final initialVisualLine = visualLines[startLine] ?? 0;
+
+        _paintMultiLineSelection(
+            canvas,
+            startLine,
+            endLine,
+            startColumn,
+            endColumn,
+            firstVisibleLine,
+            lastVisibleLine,
+            initialVisualLine,
+            selection);
+      }
+    }
+  }
+
+  Map<int, int> _calculateVisualLines(int firstVisibleLine) {
+    final Map<int, int> visualLines = {};
+    int visualLine = 0;
+
+    for (int i = 0; i < firstVisibleLine; i++) {
+      if (!editorState.foldingState.isLineHidden(i)) {
+        visualLine++;
+      }
+    }
+
+    for (int i = firstVisibleLine; i < editorState.buffer.lineCount; i++) {
+      if (!editorState.foldingState.isLineHidden(i)) {
+        visualLines[i] = visualLine++;
+      }
+    }
+
+    return visualLines;
   }
 }
