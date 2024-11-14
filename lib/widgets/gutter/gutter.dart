@@ -46,7 +46,7 @@ class _GutterState extends State<Gutter> {
     return textPainter.width + 32.0;
   }
 
-  int getVisibleLineCount() {
+  int getActualLineCount() {
     int visibleCount = 0;
     for (int i = 0; i < editorState.buffer.lineCount; i++) {
       if (!editorState.foldingState.isLineHidden(i)) {
@@ -54,6 +54,26 @@ class _GutterState extends State<Gutter> {
       }
     }
     return visibleCount;
+  }
+
+  int getVisibleLineCount() {
+    final lineHeight = widget.editorLayoutService.config.lineHeight;
+    final viewportLineCount =
+        (widget.editorState.scrollState.viewportHeight / lineHeight).ceil();
+
+    // Find how many actual buffer lines we need to get viewportLineCount visible lines
+    int visibleCount = 0;
+    int bufferLine = 0;
+
+    while (visibleCount < viewportLineCount &&
+        bufferLine < editorState.buffer.lineCount) {
+      if (!editorState.foldingState.isLineHidden(bufferLine)) {
+        visibleCount++;
+      }
+      bufferLine++;
+    }
+
+    return bufferLine;
   }
 
   int? _getLineFromY(double y) {
@@ -168,15 +188,16 @@ class _GutterState extends State<Gutter> {
 
   @override
   Widget build(BuildContext context) {
+    // Calculate the height needed for all content
     double contentHeight =
-        getVisibleLineCount() * widget.editorLayoutService.config.lineHeight +
+        getActualLineCount() * widget.editorLayoutService.config.lineHeight +
             widget.editorLayoutService.config.verticalPadding;
 
-    double height = max(
-        contentHeight,
-        contentHeight < MediaQuery.of(context).size.height
-            ? MediaQuery.of(context).size.height
-            : contentHeight);
+    // Get viewport height from the editor state
+    double viewportHeight = widget.editorState.scrollState.viewportHeight;
+
+    // Use the larger of viewport height or content height
+    double height = max(viewportHeight, contentHeight);
 
     return Consumer<EditorState>(
       builder: (context, editorState, child) {
@@ -212,7 +233,7 @@ class _GutterState extends State<Gutter> {
                       verticalOffset: widget.verticalScrollController.hasClients
                           ? widget.verticalScrollController.offset
                           : 0,
-                      viewportHeight: height,
+                      viewportHeight: viewportHeight,
                     ),
                   ),
                 ),

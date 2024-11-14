@@ -69,15 +69,17 @@ class GutterPainter extends CustomPainter {
     int lastVisibleLine = firstVisibleLine;
     double currentHeight = 0;
 
-    while (currentHeight <
-            viewportHeight + (editorLayoutService.config.lineHeight * 30) &&
+    final lineHeight = editorLayoutService.config.lineHeight;
+    final visibleLinesInViewport = (viewportHeight / lineHeight).ceil();
+// Add buffer lines for smooth scrolling
+    final targetVisibleLines = visibleLinesInViewport + 30;
+
+    int visibleLineCount = 0;
+
+    while (visibleLineCount < targetVisibleLines &&
         lastVisibleLine < editorState.buffer.lineCount) {
       if (!editorState.foldingState.isLineHidden(lastVisibleLine)) {
-        currentHeight += editorLayoutService.config.lineHeight;
-        // Break if we've exceeded the actual content height
-        if (currentHeight > size.height) {
-          break;
-        }
+        visibleLineCount++;
       }
       lastVisibleLine++;
     }

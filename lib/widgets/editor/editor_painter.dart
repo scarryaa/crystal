@@ -107,7 +107,6 @@ class EditorPainter extends CustomPainter {
         (editorState.scrollState.viewportHeight / lineHeight).ceil() + 1;
     int lastVisibleLine =
         min(editorState.buffer.lineCount, firstVisibleLine + visibleLineCount);
-    print(lastVisibleLine);
 
     // Add small buffer for partial lines
     int bufferLines = 2;
