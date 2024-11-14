@@ -12,6 +12,7 @@ import 'package:crystal/services/editor/editor_file_manager.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/services/editor/editor_selection_manager.dart';
 import 'package:crystal/services/editor/folding_manager.dart';
+import 'package:crystal/services/editor/handlers/selection_handler.dart';
 import 'package:crystal/services/editor/undo_redo_manager.dart';
 import 'package:crystal/services/file_service.dart';
 import 'package:crystal/state/editor/editor_scroll_state.dart';
@@ -38,6 +39,15 @@ import 'package:window_manager/window_manager.dart';
 // ConfigManager
 
 class EditorState extends ChangeNotifier {
+  // New structure?
+  // final CommandHandler commandHandler;
+  // final InputHandler inputHandler;
+  // final TextManipulator textManipulator;
+  // final CursorMovementHandler cursorMovementHandler;
+  late final SelectionHandler selectionHandler;
+  // final FoldingHandler foldingHandler;
+  // final ScrollHandler scrollHandler;
+
   late final FoldingManager foldingManager;
   final String id = UniqueKey().toString();
   EditorScrollState scrollState = EditorScrollState();
@@ -71,6 +81,11 @@ class EditorState extends ChangeNotifier {
       _buffer,
     );
     editorFileManager = EditorFileManager(buffer, fileService);
+    selectionHandler = SelectionHandler(
+        selectionManager: editorSelectionManager,
+        buffer: buffer,
+        cursorManager: editorCursorManager,
+        foldingManager: foldingManager);
   }
 
   // Getters
@@ -129,10 +144,6 @@ class EditorState extends ChangeNotifier {
       }
     }
     return false;
-  }
-
-  bool _isValidLineNumber(int lineNumber) {
-    return lineNumber >= 0 && lineNumber < _buffer.lineCount;
   }
 
   void requestFocus() {
@@ -643,39 +654,6 @@ class EditorState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void selectLine(bool extend, int lineNumber) {
-    if (!_isValidLineNumber(lineNumber)) return;
-
-    final foldedRegion = foldingManager.getFoldedRegionForLine(lineNumber);
-    if (foldedRegion != null) {
-      _selectFoldedRegion(extend, foldedRegion);
-    } else {
-      _selectSingleLine(extend, lineNumber);
-    }
-
-    notifyListeners();
-  }
-
-  TextRange getSelectedLineRange() {
-    if (!editorSelectionManager.hasSelection()) {
-      // If no selection, return range containing only current line
-      int currentLine = editorCursorManager.getCursorLine();
-      return TextRange(start: currentLine, end: currentLine);
-    }
-
-    // Get all selections and find min/max lines
-    var selections = editorSelectionManager.selections;
-    int minLine = _buffer.lineCount;
-    int maxLine = 0;
-
-    for (var selection in selections) {
-      minLine = min(minLine, min(selection.startLine, selection.endLine));
-      maxLine = max(maxLine, max(selection.startLine, selection.endLine));
-    }
-
-    return TextRange(start: minLine, end: maxLine);
-  }
-
   void updateSelection() {
     editorSelectionManager.updateSelection(editorCursorManager.cursors);
   }
@@ -691,10 +669,22 @@ class EditorState extends ChangeNotifier {
   /// of the last line in the document. Updates the [EditorSelectionManager] with this
   /// new selection and notifies listeners of the change.
   void selectAll() {
-    editorSelectionManager.selectAll(
-        _buffer.lineCount - 1, _buffer.getLineLength(_buffer.lineCount - 1));
+    selectionHandler.selectAll();
     notifyListeners();
   }
+
+  void selectLine(bool extend, int lineNumber) {
+    selectionHandler.selectLine(extend, lineNumber);
+    notifyListeners();
+  }
+
+  void startSelection() {
+    selectionHandler.startSelection();
+    notifyListeners();
+  }
+
+  bool hasSelection() => selectionHandler.hasSelection();
+  TextRange getSelectedLineRange() => selectionHandler.getSelectedLineRange();
 
   String getSelectedText() {
     return editorSelectionManager.getSelectedText(_buffer);
@@ -764,33 +754,6 @@ class EditorState extends ChangeNotifier {
     }
 
     notifyListeners();
-  }
-
-  void _selectFoldedRegion(bool extend, MapEntry<int, int> foldedRegion) {
-    editorSelectionManager.selectLineRange(
-      buffer,
-      extend,
-      foldedRegion.key,
-      foldedRegion.value,
-    );
-    _updateCursorForFoldedRegion(foldedRegion.value);
-  }
-
-  void startSelection() {
-    editorSelectionManager.startSelection(editorCursorManager.cursors);
-  }
-
-  void _selectSingleLine(bool extend, int lineNumber) {
-    editorSelectionManager.selectLine(buffer, extend, lineNumber);
-    _updateCursorForSingleLine(lineNumber);
-  }
-
-  bool hasSelection() {
-    return editorSelectionManager.hasSelection();
-  }
-
-  List<Selection> getCurrentSelections() {
-    return editorSelectionManager.selections.toList();
   }
 
   // CursorManager methods
