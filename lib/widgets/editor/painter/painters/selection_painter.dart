@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
@@ -118,53 +120,6 @@ class SelectionPainter {
               Colors.blue.withOpacity(0.2));
   }
 
-  void _paintMultiLineSelection(
-    Canvas canvas,
-    int startLine,
-    int endLine,
-    int startColumn,
-    int endColumn,
-    int firstVisibleLine,
-    int lastVisibleLine,
-    int initialVisualLine,
-    var originalSelection,
-  ) {
-    // Validate line bounds
-    endLine = endLine.clamp(0, editorState.buffer.lineCount - 1);
-    startLine = startLine.clamp(0, editorState.buffer.lineCount - 1);
-
-    Paint selectionPaint = Paint()
-      ..color = editorConfigService.themeService.currentTheme?.primary
-              .withOpacity(0.2) ??
-          Colors.blue.withOpacity(0.2);
-
-    int visualLine = initialVisualLine;
-
-    // Handle start line
-    if (!editorState.isLineHidden(startLine)) {
-      _paintSelectionLine(
-          canvas, startLine, startColumn, null, visualLine, selectionPaint);
-    }
-
-    // Paint middle lines
-    for (int line = startLine + 1; line < endLine; line++) {
-      if (line >= editorState.buffer.lineCount) break;
-
-      if (!editorState.isLineHidden(line)) {
-        visualLine++;
-        _paintSelectionLine(canvas, line, 0, null, visualLine, selectionPaint);
-      }
-    }
-
-    // Paint end line if within bounds
-    if (endLine < editorState.buffer.lineCount &&
-        !editorState.isLineHidden(endLine)) {
-      visualLine++;
-      _paintSelectionLine(
-          canvas, endLine, 0, endColumn, visualLine, selectionPaint);
-    }
-  }
-
   void _drawWhitespaceIndicators(
     Canvas canvas,
     int startColumn,
@@ -204,60 +159,56 @@ class SelectionPainter {
   void paint(Canvas canvas, int firstVisibleLine, int lastVisibleLine) {
     if (!editorState.editorSelectionManager.hasSelection()) return;
 
-    // Pre-calculate visual lines
-    final visualLines = _calculateVisualLines(firstVisibleLine);
+    const bufferLines = 5;
+    int visualLine = 0;
+    int startLine = 0;
+
+    // Find the first actual line to start painting
+    while (startLine < editorState.buffer.lineCount &&
+        visualLine < firstVisibleLine - bufferLines) {
+      if (!editorState.isLineHidden(startLine)) {
+        visualLine++;
+      }
+      startLine++;
+    }
+
+    visualLine = max(0, firstVisibleLine - bufferLines);
 
     for (var selection in editorState.editorSelectionManager.selections) {
-      final (startLine, endLine, startColumn, endColumn) =
+      final (selStartLine, selEndLine, startColumn, endColumn) =
           _normalizeSelection(selection);
 
-      // Modified visibility check - render if ANY part of selection is visible
-      if (endLine < firstVisibleLine || startLine > lastVisibleLine) continue;
+      for (int line = startLine; line < editorState.buffer.lineCount; line++) {
+        if (editorState.isLineHidden(line)) continue;
 
-      // Adjust the visible portion of the selection
-      int visibleStartLine = startLine.clamp(firstVisibleLine, lastVisibleLine);
-      int visibleEndLine = endLine.clamp(firstVisibleLine, lastVisibleLine);
+        if (line > selEndLine) break;
 
-      if (startLine == endLine) {
-        final visualLine = visualLines[startLine];
-        if (visualLine != null) {
-          _paintSingleLineSelection(
-              canvas, startLine, startColumn, endColumn, visualLine);
+        if (line >= selStartLine && line <= selEndLine) {
+          if (selStartLine == selEndLine) {
+            _paintSingleLineSelection(
+                canvas, line, startColumn, endColumn, visualLine);
+          } else if (line == selStartLine) {
+            _paintSelectionLine(canvas, line, startColumn, null, visualLine,
+                _getSelectionPaint());
+          } else if (line == selEndLine) {
+            _paintSelectionLine(
+                canvas, line, 0, endColumn, visualLine, _getSelectionPaint());
+          } else {
+            _paintSelectionLine(
+                canvas, line, 0, null, visualLine, _getSelectionPaint());
+          }
         }
-      } else {
-        // Get the visual line for the visible start line
-        final initialVisualLine = visualLines[visibleStartLine] ?? 0;
 
-        _paintMultiLineSelection(
-            canvas,
-            visibleStartLine,
-            visibleEndLine,
-            startColumn,
-            endColumn,
-            firstVisibleLine,
-            lastVisibleLine,
-            initialVisualLine,
-            selection);
+        visualLine++;
+        if (visualLine > lastVisibleLine + bufferLines) break;
       }
     }
   }
 
-  Map<int, int> _calculateVisualLines(int firstVisibleLine) {
-    final Map<int, int> visualLines = {};
-    int visualLine = 0;
-
-    for (int i = 0; i < firstVisibleLine; i++) {
-      if (!editorState.isLineHidden(i)) {
-        visualLine++;
-      }
-    }
-
-    for (int i = firstVisibleLine; i < editorState.buffer.lineCount; i++) {
-      if (!editorState.isLineHidden(i)) {
-        visualLines[i] = visualLine++;
-      }
-    }
-
-    return visualLines;
+  Paint _getSelectionPaint() {
+    return Paint()
+      ..color = editorConfigService.themeService.currentTheme?.primary
+              .withOpacity(0.2) ??
+          Colors.blue.withOpacity(0.2);
   }
 }

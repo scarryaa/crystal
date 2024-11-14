@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
@@ -72,51 +74,50 @@ class TextPainterHelper {
     canvas.save();
     final lineHeight = editorLayoutService.config.lineHeight;
     int visualLine = 0;
-    int paintedLines = 0;
-    final targetVisibleLines = lastVisibleLine - firstVisibleLine;
+    const bufferLines = 5;
 
-    // Count visual lines before first visible line
-    for (int i = 0; i < firstVisibleLine; i++) {
-      if (!editorState.isLineHidden(i)) {
+    // Find the first actual line to start painting
+    int startLine = 0;
+    while (startLine < lines.length &&
+        visualLine < firstVisibleLine - bufferLines) {
+      if (!editorState.isLineHidden(startLine)) {
         visualLine++;
       }
+      startLine++;
     }
 
-    // Paint only visible lines plus buffer
-    const bufferLines = 5;
-    for (int i = firstVisibleLine;
-        paintedLines < targetVisibleLines + bufferLines && i < lines.length;
-        i++) {
+    visualLine = max(0, firstVisibleLine - bufferLines);
+
+    for (int i = startLine; i < lines.length; i++) {
       if (editorState.isLineHidden(i)) continue;
 
-      if (i >= 0 && i < lines.length) {
-        final line = lines[i];
+      final line = lines[i];
 
-        editorSyntaxHighlighter.highlight(line);
+      editorSyntaxHighlighter.highlight(line);
 
-        _textPainter.text = TextSpan(
-          children: [editorSyntaxHighlighter.buildTextSpan(line)],
-          style: TextStyle(
-            fontFamily: editorConfigService.config.fontFamily,
-            fontSize: editorConfigService.config.fontSize,
-            height: editorLayoutService.config.lineHeight /
-                editorConfigService.config.fontSize,
-          ),
-        );
+      _textPainter.text = TextSpan(
+        children: [editorSyntaxHighlighter.buildTextSpan(line)],
+        style: TextStyle(
+          fontFamily: editorConfigService.config.fontFamily,
+          fontSize: editorConfigService.config.fontSize,
+          height: editorLayoutService.config.lineHeight /
+              editorConfigService.config.fontSize,
+        ),
+      );
 
-        _textPainter.layout();
-        final halfLineHeightDiff = (lineHeight - _textPainter.height) / 2;
+      _textPainter.layout();
+      final halfLineHeightDiff = (lineHeight - _textPainter.height) / 2;
 
-        final yPosition = (visualLine * lineHeight) + halfLineHeightDiff;
+      final yPosition = (visualLine * lineHeight) + halfLineHeightDiff;
 
-        _textPainter.paint(
-          canvas,
-          Offset(0, yPosition),
-        );
+      _textPainter.paint(
+        canvas,
+        Offset(0, yPosition),
+      );
 
-        visualLine++;
-        paintedLines++;
-      }
+      visualLine++;
+
+      if (visualLine > lastVisibleLine + bufferLines) break;
     }
 
     canvas.restore();

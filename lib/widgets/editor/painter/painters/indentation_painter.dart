@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:crystal/models/cursor.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/widgets/editor/painter/painters/editor_painter_base.dart';
@@ -22,79 +24,105 @@ class IndentationPainter extends EditorPainterBase {
     Map<int, Set<int>> highlightedIndentRanges = {};
     Map<int, bool> isClosestIndentLevel = {};
 
-    // Adjust visible lines to account for folded regions
-    int adjustedFirstLine = _getNextVisibleLine(firstVisibleLine);
-    int adjustedLastLine = _getPreviousVisibleLine(lastVisibleLine);
+    const bufferLines = 5;
+    int visualLine = 0;
+    int startLine = 0;
 
+    // Find the first actual line to start painting
+    while (startLine < lines.length &&
+        visualLine < firstVisibleLine - bufferLines) {
+      if (!editorState.isLineHidden(startLine)) {
+        visualLine++;
+      }
+      startLine++;
+    }
+
+    visualLine = max(0, firstVisibleLine - bufferLines);
+
+    // Process cursors and find indent ranges
     for (final cursor in cursors) {
-      if (cursor.line >= 0 &&
+      if (cursor.line >= startLine &&
           cursor.line < lines.length &&
           !editorState.isLineHidden(cursor.line)) {
-        final line = lines[cursor.line];
-        final leadingSpaces = _countLeadingSpaces(line);
-        final cursorColumn = cursor.column;
-
-        // Find the closest indent level by checking all possible indent levels
-        int closestIndentLevel = -1;
-        int minDistance = double.maxFinite.toInt();
-
-        // Check all possible indent levels (in steps of 4)
-        for (int space = 0; space <= leadingSpaces; space += 4) {
-          int distance = (cursorColumn - space).abs();
-          if (distance < minDistance) {
-            minDistance = distance;
-            closestIndentLevel = space;
-          }
-        }
-
-        // Add an additional check for the last indent level
-        if (leadingSpaces > 0) {
-          int lastIndentLevel = (leadingSpaces ~/ 4) * 4;
-          int distanceToLast = (cursorColumn - lastIndentLevel).abs();
-          if (distanceToLast < minDistance) {
-            minDistance = distanceToLast;
-            closestIndentLevel = lastIndentLevel;
-          }
-        }
-
-        if (closestIndentLevel >= 0) {
-          final blockRange = _findBlockBoundaries(
-            lines,
-            cursor.line,
-            closestIndentLevel,
-            adjustedFirstLine,
-            adjustedLastLine,
-          );
-
-          highlightedIndentRanges
-              .putIfAbsent(closestIndentLevel, () => {})
-              .addAll(blockRange);
-          isClosestIndentLevel[closestIndentLevel] = true;
-        }
+        _processCursor(cursor, lines, highlightedIndentRanges,
+            isClosestIndentLevel, firstVisibleLine, lastVisibleLine);
       }
     }
 
-    // Draw the indent lines only for visible lines
-    for (int i = adjustedFirstLine; i <= adjustedLastLine; i++) {
-      if (i >= 0 && i < lines.length && !editorState.isLineHidden(i)) {
-        final line = lines[i];
-        final leadingSpaces = line.trim().isEmpty
-            ? _getPreviousNonEmptyLineIndent(lines, i)
-            : _countLeadingSpaces(line);
-
-        for (int space = 0; space < leadingSpaces; space += 4) {
-          if (line.isNotEmpty && !line.startsWith(' ')) continue;
-          final xPosition = space * editorLayoutService.config.charWidth;
-
-          _drawIndentLine(
-            canvas,
-            xPosition,
-            _getVisibleLineIndex(i), // Adjust for folded lines
-            isCurrentIndent: highlightedIndentRanges.containsKey(space) &&
-                highlightedIndentRanges[space]!.contains(i),
-          );
-        }
+    // Draw indent lines
+    for (int i = startLine; i < lines.length; i++) {
+      if (!editorState.isLineHidden(i)) {
+        _drawIndentLinesForLine(
+            canvas, i, lines, highlightedIndentRanges, visualLine);
+        visualLine++;
+        if (visualLine > lastVisibleLine + bufferLines) break;
       }
+    }
+  }
+
+  void _processCursor(
+      Cursor cursor,
+      List<String> lines,
+      Map<int, Set<int>> highlightedIndentRanges,
+      Map<int, bool> isClosestIndentLevel,
+      int firstVisibleLine,
+      int lastVisibleLine) {
+    final line = lines[cursor.line];
+    final leadingSpaces = _countLeadingSpaces(line);
+    final closestIndentLevel =
+        _findClosestIndentLevel(leadingSpaces, cursor.column);
+
+    if (closestIndentLevel >= 0) {
+      final blockRange = _findBlockBoundaries(lines, cursor.line,
+          closestIndentLevel, firstVisibleLine, lastVisibleLine);
+      highlightedIndentRanges
+          .putIfAbsent(closestIndentLevel, () => {})
+          .addAll(blockRange);
+      isClosestIndentLevel[closestIndentLevel] = true;
+    }
+  }
+
+  int _findClosestIndentLevel(int leadingSpaces, int cursorColumn) {
+    int closestIndentLevel = -1;
+    int minDistance = double.maxFinite.toInt();
+
+    for (int space = 0; space <= leadingSpaces; space += 4) {
+      int distance = (cursorColumn - space).abs();
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestIndentLevel = space;
+      }
+    }
+
+    if (leadingSpaces > 0) {
+      int lastIndentLevel = (leadingSpaces ~/ 4) * 4;
+      int distanceToLast = (cursorColumn - lastIndentLevel).abs();
+      if (distanceToLast < minDistance) {
+        closestIndentLevel = lastIndentLevel;
+      }
+    }
+
+    return closestIndentLevel;
+  }
+
+  void _drawIndentLinesForLine(Canvas canvas, int lineIndex, List<String> lines,
+      Map<int, Set<int>> highlightedIndentRanges, int visualLine) {
+    final line = lines[lineIndex];
+    final leadingSpaces = line.trim().isEmpty
+        ? _getPreviousNonEmptyLineIndent(lines, lineIndex)
+        : _countLeadingSpaces(line);
+
+    for (int space = 0; space < leadingSpaces; space += 4) {
+      if (line.isNotEmpty && !line.startsWith(' ')) continue;
+      final xPosition = space * editorLayoutService.config.charWidth;
+
+      _drawIndentLine(
+        canvas,
+        xPosition,
+        visualLine,
+        isCurrentIndent: highlightedIndentRanges.containsKey(space) &&
+            highlightedIndentRanges[space]!.contains(lineIndex),
+      );
     }
   }
 
@@ -109,73 +137,49 @@ class IndentationPainter extends EditorPainterBase {
     return 0;
   }
 
-  Set<int> _findBlockBoundaries(
-    List<String> lines,
-    int cursorLine,
-    int indentLevel,
-    int firstVisibleLine,
-    int lastVisibleLine,
-  ) {
+  Set<int> _findBlockBoundaries(List<String> lines, int cursorLine,
+      int indentLevel, int firstVisibleLine, int lastVisibleLine) {
     Set<int> blockLines = {};
 
     // Search upward
     int upLine = cursorLine;
     while (upLine >= firstVisibleLine) {
-      if (editorState.isLineHidden(upLine)) {
-        upLine = _getPreviousVisibleLine(upLine - 1);
-        continue;
-      }
-
-      final lineIndent = _countLeadingSpaces(lines[upLine]);
-
-      if (lineIndent < indentLevel) break;
-
-      if (lineIndent == indentLevel && upLine > 0) {
-        int prevLine = _getPreviousVisibleLine(upLine - 1);
-        if (prevLine >= 0) {
-          final prevLineIndent = _countLeadingSpaces(lines[prevLine]);
-          if (prevLineIndent < indentLevel) {
-            blockLines.add(upLine);
+      if (!editorState.isLineHidden(upLine)) {
+        final lineIndent = _countLeadingSpaces(lines[upLine]);
+        if (lineIndent < indentLevel) break;
+        blockLines.add(upLine);
+        if (lineIndent == indentLevel && upLine > 0) {
+          int prevLine = _getPreviousVisibleLine(upLine - 1);
+          if (prevLine >= 0 &&
+              _countLeadingSpaces(lines[prevLine]) < indentLevel) {
             break;
           }
         }
       }
-
-      blockLines.add(upLine);
       upLine = _getPreviousVisibleLine(upLine - 1);
     }
 
     // Search downward
-    int downLine = cursorLine + 1;
+    int downLine = _getNextVisibleLine(cursorLine + 1);
     while (downLine <= lastVisibleLine && downLine < lines.length) {
-      if (editorState.isLineHidden(downLine)) {
-        downLine = _getNextVisibleLine(downLine + 1);
-        continue;
-      }
-
-      final lineIndent = _countLeadingSpaces(lines[downLine]);
-
-      if (lineIndent < indentLevel) break;
-
-      if (lineIndent == indentLevel && downLine < lines.length - 1) {
-        int nextLine = _getNextVisibleLine(downLine + 1);
-        if (nextLine < lines.length) {
-          final nextLineIndent = _countLeadingSpaces(lines[nextLine]);
-          if (nextLineIndent < indentLevel) {
-            blockLines.add(downLine);
+      if (!editorState.isLineHidden(downLine)) {
+        final lineIndent = _countLeadingSpaces(lines[downLine]);
+        if (lineIndent < indentLevel) break;
+        blockLines.add(downLine);
+        if (lineIndent == indentLevel && downLine < lines.length - 1) {
+          int nextLine = _getNextVisibleLine(downLine + 1);
+          if (nextLine < lines.length &&
+              _countLeadingSpaces(lines[nextLine]) < indentLevel) {
             break;
           }
         }
       }
-
-      blockLines.add(downLine);
       downLine = _getNextVisibleLine(downLine + 1);
     }
 
     return blockLines;
   }
 
-  // Helper methods for handling folded regions
   int _getNextVisibleLine(int line) {
     while (
         line < editorState.buffer.lineCount && editorState.isLineHidden(line)) {
@@ -189,16 +193,6 @@ class IndentationPainter extends EditorPainterBase {
       line--;
     }
     return line;
-  }
-
-  int _getVisibleLineIndex(int actualLine) {
-    int visibleIndex = 0;
-    for (int i = 0; i < actualLine; i++) {
-      if (!editorState.isLineHidden(i)) {
-        visibleIndex++;
-      }
-    }
-    return visibleIndex;
   }
 
   void _drawIndentLine(Canvas canvas, double left, int lineNumber,
