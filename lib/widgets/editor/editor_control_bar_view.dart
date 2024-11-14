@@ -1,4 +1,8 @@
+import 'package:crystal/models/editor/breadcrumb_item.dart';
+import 'package:crystal/services/editor/breadcrumb_generator.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
+import 'package:crystal/state/editor/editor_state.dart';
+import 'package:crystal/widgets/editor/symbol_popup.dart';
 import 'package:flutter/material.dart';
 
 class EditorControlBarView extends StatefulWidget {
@@ -17,6 +21,7 @@ class EditorControlBarView extends StatefulWidget {
   final bool isWholeWordActive;
   final bool isRegexActive;
   final EditorConfigService editorConfigService;
+  final EditorState editorState;
 
   const EditorControlBarView({
     super.key,
@@ -35,6 +40,7 @@ class EditorControlBarView extends StatefulWidget {
     required this.replaceNextMatch,
     required this.replaceAllMatches,
     required this.editorConfigService,
+    required this.editorState,
   });
 
   @override
@@ -50,18 +56,53 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
   bool _replaceAllHovered = false;
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _replaceController = TextEditingController();
+  List<BreadcrumbItem> _breadcrumbs = [];
+  final BreadcrumbGenerator _breadcrumbGenerator = BreadcrumbGenerator();
+
+  @override
+  void initState() {
+    super.initState();
+    widget.editorState.editorCursorManager.onCursorChange = _updateBreadcrumbs;
+    _populateSymbols();
+  }
+
+  void _populateSymbols() {
+    String sourceCode = widget.editorState.buffer.lines.join('\n');
+    _breadcrumbGenerator.getAllSymbols(sourceCode);
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
     _replaceController.dispose();
+    widget.editorState.editorCursorManager.onCursorChange = null;
     super.dispose();
+  }
+
+  void _updateBreadcrumbs(int line, int column) {
+    String sourceCode = widget.editorState.buffer.lines.join('\n');
+    int cursorOffset = _calculateCursorOffset(sourceCode, line, column);
+
+    setState(() {
+      _breadcrumbs =
+          _breadcrumbGenerator.generateBreadcrumbs(sourceCode, cursorOffset);
+    });
+  }
+
+  int _calculateCursorOffset(String sourceCode, int line, int column) {
+    List<String> lines = sourceCode.split('\n');
+    int offset = 0;
+    for (int i = 0; i < line; i++) {
+      offset += lines[i].length + 1; // +1 for newline character
+    }
+    return offset + column;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(children: [
-      Container(
+    return Column(
+      children: [
+        Container(
           padding: const EdgeInsets.symmetric(horizontal: 8.0),
           height: widget.editorConfigService.config.uiFontSize * 3.0,
           decoration: BoxDecoration(
@@ -70,36 +111,55 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
                     .editorConfigService.themeService.currentTheme!.background
                 : Colors.white,
             border: Border(
-                bottom: BorderSide(
-                    color: !_isSearchActive
-                        ? widget.editorConfigService.themeService
-                                    .currentTheme !=
-                                null
-                            ? widget.editorConfigService.themeService
-                                .currentTheme!.border
-                            : Colors.grey[200]!
-                        : Colors.transparent)),
+              bottom: BorderSide(
+                color: !_isSearchActive
+                    ? widget.editorConfigService.themeService.currentTheme !=
+                            null
+                        ? widget.editorConfigService.themeService.currentTheme!
+                            .border
+                        : Colors.grey[200]!
+                    : Colors.transparent,
+              ),
+            ),
           ),
-          child: Row(children: [
-            _buildFilePath(widget.filePath),
-            const Spacer(),
-            _buildSearchToggle(),
-          ])),
-      if (_isSearchActive) _buildSearchPane(),
-      if (_isSearchActive && _isReplaceActive) _buildReplacePane(),
-    ]);
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildFilePath(widget.filePath),
+              ),
+              _buildSearchToggle(),
+            ],
+          ),
+        ),
+        if (_isSearchActive) _buildSearchPane(),
+        if (_isSearchActive && _isReplaceActive) _buildReplacePane(),
+      ],
+    );
   }
 
   Widget _buildFilePath(String path) {
-    return Text(
-      (path.isEmpty || path.substring(0, 6) == '__temp') ? 'untitled' : path,
-      style: TextStyle(
-        fontSize: widget.editorConfigService.config.uiFontSize,
-        color: widget.editorConfigService.themeService.currentTheme != null
-            ? widget.editorConfigService.themeService.currentTheme!.text
-            : Colors.black87,
-      ),
-      overflow: TextOverflow.ellipsis,
+    return Row(
+      children: [
+        Flexible(
+          child: Text(
+            (path.isEmpty || path.substring(0, 6) == '__temp')
+                ? 'untitled'
+                : path,
+            style: TextStyle(
+              fontSize: widget.editorConfigService.config.uiFontSize,
+              color: widget.editorConfigService.themeService.currentTheme !=
+                      null
+                  ? widget.editorConfigService.themeService.currentTheme!.text
+                  : Colors.black87,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        Flexible(
+          flex: 2,
+          child: _buildBreadcrumbs(),
+        ),
+      ],
     );
   }
 
@@ -455,5 +515,103 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
         ),
       ]),
     );
+  }
+
+  Widget _buildBreadcrumbs() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(width: 8),
+          for (int i = 0; i < _breadcrumbs.length; i++)
+            _buildBreadcrumbItem(_breadcrumbs[i].type, _breadcrumbs[i].name,
+                isLast: i == _breadcrumbs.length - 1),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBreadcrumbItem(String type, String name,
+      {required bool isLast}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          onTap: () {
+            _showSymbolPopup(context, type);
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  type,
+                  style: TextStyle(
+                    fontSize: widget.editorConfigService.config.uiFontSize,
+                    color: widget
+                        .editorConfigService.themeService.currentTheme?.text
+                        .withOpacity(0.5),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  name,
+                  style: TextStyle(
+                    fontSize: widget.editorConfigService.config.uiFontSize,
+                    color: widget
+                        .editorConfigService.themeService.currentTheme?.text
+                        .withOpacity(0.8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (!isLast)
+          Icon(
+            Icons.chevron_right,
+            size: widget.editorConfigService.config.uiFontSize,
+            color: widget.editorConfigService.themeService.currentTheme?.text
+                .withOpacity(0.5),
+          ),
+      ],
+    );
+  }
+
+  void _showSymbolPopup(BuildContext context, String type) {
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final Offset topLeft = button.localToGlobal(Offset.zero);
+
+    List<BreadcrumbItem> symbols = _getSymbolsOfType(type);
+
+    showMenu(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        topLeft.dx,
+        topLeft.dy + button.size.height,
+        topLeft.dx + button.size.width,
+        topLeft.dy + button.size.height + 10,
+      ),
+      items: [
+        PopupMenuItem(
+          child: SymbolPopup(
+            symbols: symbols,
+            onSymbolSelected: _jumpToSymbol,
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<BreadcrumbItem> _getSymbolsOfType(String type) {
+    String sourceCode = widget.editorState.buffer.lines.join('\n');
+    return _breadcrumbGenerator.getAllSymbols(sourceCode);
+  }
+
+  void _jumpToSymbol(BreadcrumbItem symbol) {
+    widget.editorState.editorCursorManager
+        .moveCursor(symbol.line, symbol.column);
   }
 }

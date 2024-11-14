@@ -58,14 +58,19 @@ class EditorStateProvider extends ChangeNotifier {
 
     if (scrollManager.gutterScrollController.offset !=
         scrollManager.editorVerticalScrollController.offset) {
-      scrollManager.gutterScrollController
-          .jumpTo(scrollManager.editorVerticalScrollController.offset);
+      scrollManager.gutterScrollController.animateTo(
+        scrollManager.editorVerticalScrollController.offset,
+        duration: Duration(milliseconds: 1),
+        curve: Curves.linear,
+      );
       activeEditor.updateVerticalScrollOffset(
           scrollManager.editorVerticalScrollController.offset);
     }
 
     activeEditor.updateHorizontalScrollOffset(
         scrollManager.editorHorizontalScrollController.offset);
+
+    notifyListeners();
   }
 
   void handleGutterScroll(int row, int col) {
@@ -82,11 +87,16 @@ class EditorStateProvider extends ChangeNotifier {
 
     if (scrollManager.editorVerticalScrollController.offset !=
         scrollManager.gutterScrollController.offset) {
-      scrollManager.editorVerticalScrollController
-          .jumpTo(scrollManager.gutterScrollController.offset);
+      scrollManager.editorVerticalScrollController.animateTo(
+        scrollManager.gutterScrollController.offset,
+        duration: Duration(milliseconds: 1),
+        curve: Curves.linear,
+      );
       activeEditor.updateVerticalScrollOffset(
           scrollManager.gutterScrollController.offset);
     }
+
+    notifyListeners();
   }
 
   ScrollController getTabBarScrollController(int row, int col) {

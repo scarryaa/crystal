@@ -7,6 +7,7 @@ import 'package:crystal/models/editor/cursor_shape.dart';
 import 'package:crystal/services/editor/folding_manager.dart';
 
 class EditorCursorManager {
+  Function(int line, int column)? onCursorChange;
   bool showCaret = true;
   CursorShape cursorShape = CursorShape.bar;
 
@@ -14,6 +15,12 @@ class EditorCursorManager {
   List<Cursor> get cursors => _cursors;
 
   bool get hasCursors => cursors.isNotEmpty;
+
+  void _notifyCursorChange() {
+    if (onCursorChange != null && cursors.isNotEmpty) {
+      onCursorChange!(cursors[0].line, cursors[0].column);
+    }
+  }
 
   int getCursorLine() {
     // Return the line number of the first cursor
@@ -29,10 +36,12 @@ class EditorCursorManager {
 
   void addCursor(Cursor cursor) {
     _cursors.add(cursor);
+    _notifyCursorChange();
   }
 
   void removeCursor(Cursor cursor) {
     _cursors.remove(cursor);
+    _notifyCursorChange();
   }
 
   void mergeCursorsIfNeeded() {
@@ -122,14 +131,23 @@ class EditorCursorManager {
     mergeCursorsIfNeeded();
   }
 
+  void moveCursor(int line, int column) {
+    clearAll();
+    _cursors.add(Cursor(0, 0));
+    _cursors[0].line = line;
+    _cursors[0].column = column;
+  }
+
   void moveUp(Buffer buffer, FoldingManager foldingManager) {
     _moveCursors(
         buffer, foldingManager, (line, fm) => fm.getPreviousVisibleLine(line));
+    _notifyCursorChange();
   }
 
   void moveDown(Buffer buffer, FoldingManager foldingManager) {
     _moveCursors(
         buffer, foldingManager, (line, fm) => fm.getNextVisibleLine(line));
+    _notifyCursorChange();
   }
 
   void moveLeft(Buffer buffer, FoldingManager foldingManager) {
@@ -145,6 +163,7 @@ class EditorCursorManager {
       }
     }
     mergeCursorsIfNeeded();
+    _notifyCursorChange();
   }
 
   void moveRight(Buffer buffer, FoldingManager foldingManager) {
@@ -161,6 +180,7 @@ class EditorCursorManager {
       }
     }
     mergeCursorsIfNeeded();
+    _notifyCursorChange();
   }
 
   void setAllCursors(List<Cursor> newCursors) {
@@ -170,6 +190,7 @@ class EditorCursorManager {
     }
 
     mergeCursorsIfNeeded();
+    _notifyCursorChange();
   }
 
   void backspace(Buffer buffer) {
@@ -224,6 +245,7 @@ class EditorCursorManager {
         }
       }
     }
+    _notifyCursorChange();
   }
 
   void backTab(Buffer buffer) {
@@ -237,6 +259,7 @@ class EditorCursorManager {
     }
 
     mergeCursorsIfNeeded();
+    _notifyCursorChange();
   }
 
   void paste(Buffer buffer, String pastedLines) {
@@ -274,6 +297,7 @@ class EditorCursorManager {
         cursor.column = splitLines.last.length;
       }
     }
+    _notifyCursorChange();
   }
 
   void delete(Buffer buffer) {
@@ -303,5 +327,6 @@ class EditorCursorManager {
     }
 
     mergeCursorsIfNeeded();
+    _notifyCursorChange();
   }
 }

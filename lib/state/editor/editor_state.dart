@@ -1,7 +1,9 @@
+import 'package:crystal/models/editor/breadcrumb_item.dart';
 import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/editor/command.dart';
 import 'package:crystal/models/editor/cursor_shape.dart';
 import 'package:crystal/models/selection.dart';
+import 'package:crystal/services/editor/breadcrumb_generator.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_cursor_manager.dart';
 import 'package:crystal/services/editor/editor_file_manager.dart';
@@ -19,6 +21,7 @@ import 'package:crystal/services/editor/undo_redo_manager.dart';
 import 'package:crystal/services/file_service.dart';
 import 'package:crystal/state/editor/editor_scroll_state.dart';
 import 'package:crystal/utils/utils.dart';
+import 'package:crystal/widgets/editor/editor_control_bar_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -49,6 +52,9 @@ class EditorState extends ChangeNotifier {
   final Future<void> Function(String) tapCallback;
   bool isPinned = false;
   String? relativePath = '';
+  late final BreadcrumbGenerator _breadcrumbGenerator;
+  List<BreadcrumbItem> _breadcrumbs = [];
+  List<BreadcrumbItem> get breadcrumbs => _breadcrumbs;
 
   EditorState({
     required this.resetGutterScroll,
@@ -116,6 +122,9 @@ class EditorState extends ChangeNotifier {
         buffer: buffer,
         foldingManager: foldingManager,
         notifyListeners: notifyListeners);
+
+    _breadcrumbGenerator = BreadcrumbGenerator();
+    editorCursorManager.onCursorChange = _updateBreadcrumbs;
   }
 
   // Getters
@@ -129,6 +138,24 @@ class EditorState extends ChangeNotifier {
   set showCaret(bool show) => editorCursorManager.showCaret = show;
 
   // Misc
+  void _updateBreadcrumbs(int line, int column) {
+    String sourceCode = buffer.lines.join('\n');
+    int cursorOffset = _calculateCursorOffset(sourceCode, line, column);
+
+    _breadcrumbs =
+        _breadcrumbGenerator.generateBreadcrumbs(sourceCode, cursorOffset);
+    notifyListeners();
+  }
+
+  int _calculateCursorOffset(String sourceCode, int line, int column) {
+    List<String> lines = sourceCode.split('\n');
+    int offset = 0;
+    for (int i = 0; i < line; i++) {
+      offset += lines[i].length + 1; // +1 for newline character
+    }
+    return offset + column;
+  }
+
   void restoreSelections(List<Selection> selections) {
     editorSelectionManager.clearAll();
     for (var selection in selections) {
@@ -290,6 +317,7 @@ class EditorState extends ChangeNotifier {
     scrollState.updateVerticalScrollOffset(0);
     scrollState.updateHorizontalScrollOffset(0);
     resetGutterScroll();
+    _updateBreadcrumbs(0, 0);
 
     notifyListeners();
   }

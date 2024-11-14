@@ -1,9 +1,9 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
-import 'package:crystal/providers/editor_state_provider.dart';
 import 'package:crystal/models/editor/split_view.dart';
+import 'package:crystal/providers/editor_state_provider.dart';
 import 'package:crystal/services/editor/editor_tab_manager.dart';
 import 'package:crystal/state/editor/editor_state.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/mockito.dart';
 
 class MockEditorTabManager extends Mock implements EditorTabManager {
   @override

@@ -199,6 +199,7 @@ class EditorSection extends StatelessWidget {
                               searchService.replaceNextMatch(newTerm, state),
                           replaceAllMatches: (newTerm) =>
                               searchService.replaceAllMatches(newTerm, state),
+                          editorState: state!,
                         ),
                       Expanded(
                         child: Container(

@@ -2,7 +2,7 @@ name: crystal
 description: "A modern code editor."
 publish_to: 'none'
 
-version: 0.6.1-beta.5
+version: 0.6.2-beta.1
 
 
 environment:
@@ -23,6 +23,7 @@ dependencies:
   xterm: ^4.0.0
   flutter_pty: ^0.4.1
   mockito: ^5.4.4
+  analyzer: ^6.7.0
 
 dev_dependencies:
   flutter_test:
