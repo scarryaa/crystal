@@ -67,7 +67,6 @@ class GutterPainter extends CustomPainter {
 
     // Calculate last visible line with proper bounds
     int lastVisibleLine = firstVisibleLine;
-    double currentHeight = 0;
 
     final lineHeight = editorLayoutService.config.lineHeight;
     final visibleLinesInViewport = (viewportHeight / lineHeight).ceil();
@@ -78,7 +77,7 @@ class GutterPainter extends CustomPainter {
 
     while (visibleLineCount < targetVisibleLines &&
         lastVisibleLine < editorState.buffer.lineCount) {
-      if (!editorState.foldingState.isLineHidden(lastVisibleLine)) {
+      if (!editorState.isLineHidden(lastVisibleLine)) {
         visibleLineCount++;
       }
       lastVisibleLine++;
@@ -90,7 +89,7 @@ class GutterPainter extends CustomPainter {
     _drawText(canvas, size, firstVisibleLine, lastVisibleLine);
 
     for (var i = firstVisibleLine; i < lastVisibleLine; i++) {
-      if (!editorState.foldingState.isLineHidden(i)) {
+      if (!editorState.isLineHidden(i)) {
         _drawFoldingIndicators(canvas, size, i);
       }
     }
@@ -110,7 +109,7 @@ class GutterPainter extends CustomPainter {
     if (line >= editorState.buffer.lines.length) return;
 
     final isFoldable = editorState.isFoldable(line);
-    final isFolded = editorState.foldingState.isLineFolded(line);
+    final isFolded = editorState.isLineFolded(line);
 
     if (!isFoldable && !isFolded) return;
 
@@ -122,7 +121,7 @@ class GutterPainter extends CustomPainter {
     // Calculate visual position for the indicator
     int visualLine = 0;
     for (int i = 0; i < line; i++) {
-      if (!editorState.foldingState.isLineHidden(i)) {
+      if (!editorState.isLineHidden(i)) {
         visualLine++;
       }
     }
@@ -138,13 +137,13 @@ class GutterPainter extends CustomPainter {
   }
 
   void _drawFoldPreview(Canvas canvas, int line, double y, double iconSize) {
-    final foldEnd = editorState.foldingState.foldingRanges[line];
+    final foldEnd = editorState.foldingRanges[line];
     if (foldEnd == null) return;
 
     // Count visible lines in fold
     int foldedLines = 0;
     for (int i = line + 1; i <= foldEnd; i++) {
-      if (!editorState.foldingState.isLineHidden(i)) {
+      if (!editorState.isLineHidden(i)) {
         foldedLines++;
       }
     }
@@ -245,7 +244,7 @@ class GutterPainter extends CustomPainter {
     int visualLine = 0;
 
     for (int i = 0; i < firstVisibleLine; i++) {
-      if (!editorState.foldingState.isLineHidden(i)) {
+      if (!editorState.isLineHidden(i)) {
         visualLine++;
       }
     }
@@ -254,7 +253,7 @@ class GutterPainter extends CustomPainter {
         currentLine < lastVisibleLine;
         currentLine++) {
       // Skip hidden lines
-      if (editorState.foldingState.isLineHidden(currentLine)) {
+      if (editorState.isLineHidden(currentLine)) {
         continue;
       }
 
@@ -285,13 +284,13 @@ class GutterPainter extends CustomPainter {
     // Convert buffer line to visual line
     int visualLine = 0;
     for (int i = 0; i < lineNumber; i++) {
-      if (!editorState.foldingState.isLineHidden(i)) {
+      if (!editorState.isLineHidden(i)) {
         visualLine++;
       }
     }
 
     // Only draw if line is not hidden
-    if (!editorState.foldingState.isLineHidden(lineNumber)) {
+    if (!editorState.isLineHidden(lineNumber)) {
       canvas.drawRect(
           Rect.fromLTWH(
             0,
@@ -314,8 +313,7 @@ class GutterPainter extends CustomPainter {
             oldDelegate.editorState.editorCursorManager.cursors ||
         editorConfigService.config.fontSize !=
             oldDelegate.editorConfigService.config.fontSize ||
-        editorState.foldingState.foldingRanges !=
-            oldDelegate.editorState.foldingState.foldingRanges ||
+        editorState.foldingRanges != oldDelegate.editorState.foldingRanges ||
         verticalOffset != oldDelegate.verticalOffset;
   }
 }

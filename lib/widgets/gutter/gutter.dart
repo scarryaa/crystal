@@ -49,7 +49,7 @@ class _GutterState extends State<Gutter> {
   int getActualLineCount() {
     int visibleCount = 0;
     for (int i = 0; i < editorState.buffer.lineCount; i++) {
-      if (!editorState.foldingState.isLineHidden(i)) {
+      if (!editorState.isLineHidden(i)) {
         visibleCount++;
       }
     }
@@ -67,7 +67,7 @@ class _GutterState extends State<Gutter> {
 
     while (visibleCount < viewportLineCount &&
         bufferLine < editorState.buffer.lineCount) {
-      if (!editorState.foldingState.isLineHidden(bufferLine)) {
+      if (!editorState.isLineHidden(bufferLine)) {
         visibleCount++;
       }
       bufferLine++;
@@ -77,11 +77,6 @@ class _GutterState extends State<Gutter> {
   }
 
   int? _getLineFromY(double y) {
-    // Get the first visible line based on scroll position
-    final firstVisibleLine = (widget.verticalScrollController.offset /
-            widget.editorLayoutService.config.lineHeight)
-        .floor();
-
     // Calculate which visual line was clicked
     double adjustedY = y + widget.verticalScrollController.offset;
     int targetVisualLine =
@@ -93,7 +88,7 @@ class _GutterState extends State<Gutter> {
 
     while (bufferLine < editorState.buffer.lineCount &&
         currentVisualLine <= targetVisualLine) {
-      if (!editorState.foldingState.isLineHidden(bufferLine)) {
+      if (!editorState.isLineHidden(bufferLine)) {
         if (currentVisualLine == targetVisualLine) {
           return bufferLine;
         }
@@ -133,15 +128,14 @@ class _GutterState extends State<Gutter> {
   }
 
   void _handleFoldingIconTap(int line) {
-    if (editorState.isFoldable(line) ||
-        editorState.foldingState.isLineFolded(line)) {
-      if (editorState.foldingState.isLineFolded(line)) {
+    if (editorState.isFoldable(line) || editorState.isLineFolded(line)) {
+      if (editorState.isLineFolded(line)) {
         // Get the existing fold end from foldingRanges
-        final foldEnd = editorState.foldingState.foldingRanges[line];
+        final foldEnd = editorState.foldingRanges[line];
         if (foldEnd != null) {
           // Store nested folds before unfolding
           Map<int, int> nestedFolds = {};
-          for (var entry in editorState.foldingState.foldingRanges.entries) {
+          for (var entry in editorState.foldingRanges.entries) {
             if (entry.key > line && entry.key < foldEnd) {
               nestedFolds[entry.key] = entry.value;
             }

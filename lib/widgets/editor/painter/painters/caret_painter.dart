@@ -20,21 +20,17 @@ class CaretPainter extends EditorPainterBase {
       {required int firstVisibleLine, required int lastVisibleLine}) {
     if (!editorState.showCaret) return;
 
-    // Add buffer to visible range
-    final extendedFirstLine = firstVisibleLine - 1;
-    final extendedLastLine = lastVisibleLine + 1;
-
     for (var cursor in editorState.editorCursorManager.cursors) {
       // Calculate visual line number
       int visualLine = 0;
       for (int i = 0; i < cursor.line; i++) {
-        if (!editorState.foldingState.isLineHidden(i)) {
+        if (!editorState.isLineHidden(i)) {
           visualLine++;
         }
       }
 
       // Check if cursor is in visible range
-      if (!editorState.foldingState.isLineHidden(cursor.line)) {
+      if (!editorState.isLineHidden(cursor.line)) {
         final line = editorState.buffer.getLine(cursor.line);
         final safeColumn = cursor.column.clamp(0, line.length);
         final textUpToCaret = line.substring(0, safeColumn);

@@ -26,9 +26,6 @@ class EditorInputHandler {
     final localY = details.localPosition.dy + verticalScrollControllerOffset;
     final localX = details.localPosition.dx + horizontalScrollControllerOffset;
 
-    // Get actual buffer position
-    final bufferLine = _getBufferLineFromY(localY, state);
-
     state.handleTap(
         localY, // Pass actual Y coordinate
         localX,
@@ -85,7 +82,8 @@ class EditorInputHandler {
 
     while (
         currentVisualLine < visualLine && bufferLine < state.buffer.lineCount) {
-      if (!state.foldingState.isLineHidden(bufferLine)) {
+      //TODO refactor to not expose state.foldingManager?
+      if (!state.foldingManager.isLineHidden(bufferLine)) {
         currentVisualLine++;
       }
       bufferLine++;
@@ -93,33 +91,11 @@ class EditorInputHandler {
 
     // Skip any hidden lines
     while (bufferLine < state.buffer.lineCount &&
-        state.foldingState.isLineHidden(bufferLine)) {
+        // TODO refactor?
+        state.foldingManager.isLineHidden(bufferLine)) {
       bufferLine++;
     }
 
-    return bufferLine.clamp(0, state.buffer.lineCount - 1);
-  }
-
-  int _getBufferLine(int visualLine, EditorState state) {
-    int currentVisualLine = 0;
-    int bufferLine = 0;
-
-    // Convert visual line to buffer line accounting for folded regions
-    while (
-        currentVisualLine < visualLine && bufferLine < state.buffer.lineCount) {
-      if (!state.foldingState.isLineHidden(bufferLine)) {
-        currentVisualLine++;
-      }
-      bufferLine++;
-    }
-
-    // Skip hidden lines
-    while (bufferLine < state.buffer.lineCount &&
-        state.foldingState.isLineHidden(bufferLine)) {
-      bufferLine++;
-    }
-
-    // Clamp to valid range
     return bufferLine.clamp(0, state.buffer.lineCount - 1);
   }
 }

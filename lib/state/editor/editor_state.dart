@@ -5,7 +5,6 @@ import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/editor/command.dart';
 import 'package:crystal/models/editor/cursor_shape.dart';
-import 'package:crystal/models/editor/folding_state.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_cursor_manager.dart';
@@ -39,7 +38,6 @@ import 'package:window_manager/window_manager.dart';
 
 class EditorState extends ChangeNotifier {
   late final FoldingManager foldingManager;
-  final FoldingState foldingState = FoldingState();
   final String id = UniqueKey().toString();
   EditorScrollState scrollState = EditorScrollState();
   final Buffer _buffer = Buffer();
@@ -57,7 +55,6 @@ class EditorState extends ChangeNotifier {
   final Future<void> Function(String) tapCallback;
   bool isPinned = false;
   String? relativePath = '';
-  final closingSymbols = ['}', ')', ']', '>'];
 
   EditorState({
     required this.resetGutterScroll,
@@ -69,16 +66,27 @@ class EditorState extends ChangeNotifier {
     String? path,
     this.relativePath,
   }) : path = path ?? generateUniqueTempPath() {
-    foldingManager = FoldingManager(_buffer);
+    foldingManager = FoldingManager(
+      _buffer,
+    );
   }
 
   // Getters
   bool get showCaret => editorCursorManager.showCaret;
   CursorShape get cursorShape => editorCursorManager.cursorShape;
   int get cursorLine => editorCursorManager.getCursorLine();
+  Map<int, int> get foldingRanges => foldingManager.foldingState.foldingRanges;
 
   // Setters
   set showCaret(bool show) => editorCursorManager.showCaret = show;
+
+  bool isLineHidden(int line) {
+    return foldingManager.isLineHidden(line);
+  }
+
+  bool isLineFolded(int line) {
+    return foldingManager.isLineHidden(line);
+  }
 
   void toggleFold(int startLine, int endLine, {Map<int, int>? nestedFolds}) {
     // Check if the region is currently folded
@@ -92,10 +100,7 @@ class EditorState extends ChangeNotifier {
       buffer.foldLines(startLine, endLine);
     }
 
-    // Toggle the fold in the folding state
-    foldingState.toggleFold(startLine, endLine, nestedFolds: nestedFolds);
-
-    // Recalculate visible lines
+    foldingManager.toggleFold(startLine, endLine);
     recalculateVisibleLines();
 
     notifyListeners();
@@ -153,7 +158,7 @@ class EditorState extends ChangeNotifier {
 
     while (currentVisualLine < visualLine &&
         currentBufferLine < _buffer.lineCount) {
-      if (!foldingState.isLineHidden(currentBufferLine)) {
+      if (!foldingManager.isLineHidden(currentBufferLine)) {
         currentVisualLine++;
       }
       currentBufferLine++;
@@ -296,7 +301,7 @@ class EditorState extends ChangeNotifier {
         final foldEnd = entry.value;
 
         // Check if selection contains closing bracket of fold
-        if (_selectionContainsFoldEnd(selection, foldEnd)) {
+        if (foldingManager.selectionContainsFoldEnd(selection, foldEnd)) {
           foldedRegionsToRemove.add(foldStart);
           continue;
         }
@@ -319,7 +324,7 @@ class EditorState extends ChangeNotifier {
     // Remove affected folded regions before deleting text
     for (final foldStart in foldedRegionsToRemove) {
       buffer.unfoldLines(foldStart);
-      foldingState.toggleFold(
+      foldingManager.toggleFold(
           foldStart, buffer.foldedRanges[foldStart] ?? foldStart);
     }
 
@@ -333,7 +338,7 @@ class EditorState extends ChangeNotifier {
     for (final entry in remainingFolds.entries) {
       if (entry.key >= buffer.lineCount || entry.value >= buffer.lineCount) {
         buffer.unfoldLines(entry.key);
-        foldingState.toggleFold(entry.key, entry.value);
+        foldingManager.toggleFold(entry.key, entry.value);
       }
     }
 
@@ -362,86 +367,9 @@ class EditorState extends ChangeNotifier {
       if (newEndLine == null || newEndLine != originalEndLine) {
         // Region is no longer valid, unfold it
         buffer.unfoldLines(startLine);
-        foldingState.toggleFold(startLine, originalEndLine);
+        foldingManager.toggleFold(startLine, originalEndLine);
       }
     }
-  }
-
-  bool _selectionContainsFoldEnd(Selection selection, int foldEndLine) {
-    final adjustedEndLine = foldEndLine + 1;
-    final endLineContent = buffer.getLine(adjustedEndLine);
-    if (endLineContent == null) return false;
-
-    // Find the last closing symbol in the line
-    String? closingSymbol;
-    int symbolIndex = -1;
-
-    for (final symbol in closingSymbols) {
-      final lastIndex = endLineContent.lastIndexOf(symbol);
-      if (lastIndex > symbolIndex) {
-        symbolIndex = lastIndex;
-        closingSymbol = symbol;
-      }
-    }
-
-    if (closingSymbol == null || symbolIndex == -1) return false;
-
-    // Check if the selection contains the closing symbol
-    if (selection.startLine == adjustedEndLine &&
-        selection.endLine == adjustedEndLine) {
-      // Single line selection
-      final selStart = min(selection.startColumn, selection.endColumn);
-      final selEnd = max(selection.startColumn, selection.endColumn);
-      return symbolIndex >= selStart && symbolIndex <= selEnd;
-    } else if (selection.startLine <= adjustedEndLine &&
-        selection.endLine >= adjustedEndLine) {
-      // Multi-line selection
-      if (selection.startLine == adjustedEndLine) {
-        // Check if selection start is before or at symbol
-        return selection.startColumn <= symbolIndex;
-      } else if (selection.endLine == adjustedEndLine) {
-        // Check if selection end is after or at symbol
-        return selection.endColumn >= symbolIndex;
-      }
-      return true; // Whole line is selected
-    }
-
-    return false;
-  }
-
-  bool _isCursorAtClosingSymbol(
-    Cursor cursor,
-    String lineContent,
-    int lineNumber,
-    bool isBackspace,
-  ) {
-    for (final symbol in closingSymbols) {
-      final symbolIndex = lineContent.lastIndexOf(symbol);
-      if (symbolIndex == -1) continue;
-
-      if (isBackspace) {
-        // For backspace, check if cursor is:
-        // 1. Right after the symbol
-        // 2. At the symbol
-        // 3. Just before the symbol (for line endings)
-        if (cursor.line == lineNumber &&
-            (cursor.column == symbolIndex + 1 ||
-                cursor.column == symbolIndex ||
-                cursor.column == symbolIndex - 1)) {
-          return true;
-        }
-      } else {
-        // For delete, check if cursor is:
-        // 1. Just before the symbol
-        // 2. At the symbol
-        if (cursor.line == lineNumber &&
-            (cursor.column == symbolIndex ||
-                cursor.column == symbolIndex - 1)) {
-          return true;
-        }
-      }
-    }
-    return false;
   }
 
   void backspace() {
@@ -450,66 +378,23 @@ class EditorState extends ChangeNotifier {
       return;
     }
 
-    // Check for opening brackets at cursor positions
-    for (var cursor in editorCursorManager.cursors) {
-      if (cursor.column > 0) {
-        final lineContent = buffer.getLine(cursor.line);
-        final charBeforeCursor = lineContent[cursor.column - 1];
-
-        // If character before cursor is an opening bracket and this line starts a fold
-        if ('{([<'.contains(charBeforeCursor) &&
-            buffer.foldedRanges.containsKey(cursor.line)) {
-          // Unfold before deleting
-          final foldEnd = buffer.foldedRanges[cursor.line]!;
-          buffer.unfoldLines(cursor.line);
-          foldingState.toggleFold(cursor.line, foldEnd);
-        }
-      }
-    }
-
-    // Check if any cursor is about to delete into a folded region
-    for (var cursor in editorCursorManager.cursors) {
-      // If cursor is at column 0 and previous line is folded or within a fold
-      if (cursor.column == 0 && cursor.line > 0) {
-        // Check each folded region
-        for (var entry in buffer.foldedRanges.entries) {
-          final foldStart = entry.key;
-          final foldEnd = entry.value;
-
-          // Check if the line before cursor is within or at the end of a fold
-          if (cursor.line - 1 >= foldStart && cursor.line - 1 <= foldEnd) {
-            // Unfold before performing backspace
-            buffer.unfoldLines(foldStart);
-            foldingState.toggleFold(foldStart, foldEnd + 1);
-            break;
-          }
-        }
-      }
-    }
-
-    // Check if any cursor is about to delete a closing symbol of a folded region
-    for (var cursor in editorCursorManager.cursors) {
-      // Check each folded region
-      for (var entry in buffer.foldedRanges.entries) {
-        final foldStart = entry.key;
-        final foldEnd = entry.value + 1;
-        // Get the actual content of the line ending
-        final lineContent = buffer.getLine(foldEnd);
-        if (_isCursorAtClosingSymbol(cursor, lineContent, foldEnd, true)) {
-          // Unfold before performing backspace
-          buffer.unfoldLines(foldStart);
-          foldingState.toggleFold(foldStart, foldEnd);
-          break;
-        }
-      }
-    }
-
-    final affectedLines =
-        editorCursorManager.cursors.map((cursor) => cursor.line).toSet();
-    editorCursorManager.backspace(_buffer);
-    _buffer.incrementVersion();
-    _updateFoldedRegionsAfterEdit(affectedLines);
+    _unfoldBeforeBackspace();
+    _performBackspace();
+    _updateFoldedRegions();
     notifyListeners();
+  }
+
+  void _unfoldBeforeBackspace() {
+    for (var cursor in editorCursorManager.cursors) {
+      foldingManager.unfoldAtCursor(cursor);
+      foldingManager.unfoldBeforeCursor(cursor);
+      foldingManager.unfoldAtClosingSymbol(cursor);
+    }
+  }
+
+  void _performBackspace() {
+    editorCursorManager.backspace(buffer);
+    buffer.incrementVersion();
   }
 
   void delete() {
@@ -518,47 +403,54 @@ class EditorState extends ChangeNotifier {
       return;
     }
 
-    // Check for opening brackets at cursor positions
-    for (var cursor in editorCursorManager.cursors) {
-      final lineContent = buffer.getLine(cursor.line);
-      if (cursor.column < lineContent.length) {
-        final charAtCursor = lineContent[cursor.column];
+    _unfoldBeforeDelete();
+    _performDelete();
+    _updateFoldedRegions();
+    notifyListeners();
+  }
 
-        // If character at cursor is an opening bracket and this line starts a fold
-        if ('{([<'.contains(charAtCursor) &&
-            buffer.foldedRanges.containsKey(cursor.line)) {
-          // Unfold before deleting
-          final foldEnd = buffer.foldedRanges[cursor.line]!;
-          buffer.unfoldLines(cursor.line);
-          foldingState.toggleFold(cursor.line, foldEnd);
-        }
+  void _unfoldBeforeDelete() {
+    for (var cursor in editorCursorManager.cursors) {
+      _unfoldAtCursorForDelete(cursor);
+      _unfoldAtClosingSymbolForDelete(cursor);
+    }
+  }
+
+  void _unfoldAtCursorForDelete(Cursor cursor) {
+    final lineContent = buffer.getLine(cursor.line);
+    if (cursor.column < lineContent.length) {
+      final charAtCursor = lineContent[cursor.column];
+
+      if ('{([<'.contains(charAtCursor) &&
+          foldingManager.isFolded(cursor.line)) {
+        foldingManager.unfold(cursor.line);
       }
     }
+  }
 
-    // Check if any cursor is about to delete a closing symbol of a folded region
-    for (var cursor in editorCursorManager.cursors) {
-      // Check each folded region
-      for (var entry in buffer.foldedRanges.entries) {
-        final foldStart = entry.key;
-        final foldEnd = entry.value + 1;
-        // Get the actual content of the line ending
-        final lineContent = buffer.getLine(foldEnd);
+  void _unfoldAtClosingSymbolForDelete(Cursor cursor) {
+    for (var entry in foldingManager.foldedRegions.entries) {
+      final foldStart = entry.key;
+      final foldEnd = entry.value;
+      final lineContent = buffer.getLine(foldEnd);
 
-        if (_isCursorAtClosingSymbol(cursor, lineContent, foldEnd, false)) {
-          // Unfold before performing delete
-          buffer.unfoldLines(foldStart);
-          foldingState.toggleFold(foldStart, foldEnd);
-          break;
-        }
+      if (foldingManager.isCursorAtClosingSymbol(
+          cursor, lineContent, foldEnd, false)) {
+        foldingManager.unfold(foldStart);
+        break;
       }
     }
+  }
 
+  void _performDelete() {
+    editorCursorManager.delete(buffer);
+    buffer.incrementVersion();
+  }
+
+  void _updateFoldedRegions() {
     final affectedLines =
         editorCursorManager.cursors.map((cursor) => cursor.line).toSet();
-    editorCursorManager.delete(buffer);
-    _buffer.incrementVersion();
-    _updateFoldedRegionsAfterEdit(affectedLines);
-    notifyListeners();
+    foldingManager.updateFoldedRegionsAfterEdit(affectedLines);
   }
 
   void cut() {
@@ -873,14 +765,14 @@ class EditorState extends ChangeNotifier {
     int bufferLine = 0;
 
     while (currentVisualLine < visualLine && bufferLine < buffer.lineCount) {
-      if (!foldingState.isLineHidden(bufferLine)) {
+      if (!foldingManager.isLineHidden(bufferLine)) {
         currentVisualLine++;
       }
       bufferLine++;
     }
 
     while (bufferLine < buffer.lineCount &&
-        foldingState.isLineHidden(bufferLine)) {
+        foldingManager.isLineHidden(bufferLine)) {
       bufferLine++;
     }
 
@@ -912,36 +804,56 @@ class EditorState extends ChangeNotifier {
   }
 
   void selectLine(bool extend, int lineNumber) {
-    if (lineNumber < 0 || lineNumber >= _buffer.lineCount) return;
+    if (!_isValidLineNumber(lineNumber)) return;
 
-    // Check if line is in a folded region
-    for (final entry in foldingState.foldingRanges.entries) {
-      if (lineNumber >= entry.key && lineNumber <= entry.value) {
-        // Select entire folded region
-        editorSelectionManager.selectLineRange(
-            buffer, extend, entry.key, entry.value);
-        editorCursorManager.clearAll();
-        editorCursorManager
-            .addCursor(Cursor(entry.value, _buffer.getLineLength(entry.value)));
-        notifyListeners();
-        return;
-      }
+    final foldedRegion = foldingManager.getFoldedRegionForLine(lineNumber);
+    if (foldedRegion != null) {
+      _selectFoldedRegion(extend, foldedRegion);
+    } else {
+      _selectSingleLine(extend, lineNumber);
     }
 
-    // Normal line selection if not in folded region
-    editorSelectionManager.selectLine(buffer, extend, lineNumber);
-    editorCursorManager.clearAll();
-    editorCursorManager
-        .addCursor(Cursor(lineNumber, _buffer.getLineLength(lineNumber)));
     notifyListeners();
   }
 
-  void moveCursorDown(bool isShiftPressed) {
+  bool _isValidLineNumber(int lineNumber) {
+    return lineNumber >= 0 && lineNumber < _buffer.lineCount;
+  }
+
+  void _selectFoldedRegion(bool extend, MapEntry<int, int> foldedRegion) {
+    editorSelectionManager.selectLineRange(
+      buffer,
+      extend,
+      foldedRegion.key,
+      foldedRegion.value,
+    );
+    _updateCursorForFoldedRegion(foldedRegion.value);
+  }
+
+  void _selectSingleLine(bool extend, int lineNumber) {
+    editorSelectionManager.selectLine(buffer, extend, lineNumber);
+    _updateCursorForSingleLine(lineNumber);
+  }
+
+  void _updateCursorForFoldedRegion(int endLine) {
+    editorCursorManager.clearAll();
+    editorCursorManager
+        .addCursor(Cursor(endLine, _buffer.getLineLength(endLine)));
+  }
+
+  void _updateCursorForSingleLine(int lineNumber) {
+    editorCursorManager.clearAll();
+    editorCursorManager
+        .addCursor(Cursor(lineNumber, _buffer.getLineLength(lineNumber)));
+  }
+
+  void _moveCursor(
+      bool isShiftPressed, void Function(Buffer, FoldingManager) moveFunction) {
     if (!editorSelectionManager.hasSelection() && isShiftPressed) {
       startSelection();
     }
 
-    editorCursorManager.moveDown(buffer, foldingState);
+    moveFunction(buffer, foldingManager);
 
     if (isShiftPressed) {
       updateSelection();
@@ -952,48 +864,19 @@ class EditorState extends ChangeNotifier {
   }
 
   void moveCursorUp(bool isShiftPressed) {
-    if (!editorSelectionManager.hasSelection() && isShiftPressed) {
-      startSelection();
-    }
-
-    editorCursorManager.moveUp(buffer, foldingState);
-
-    if (isShiftPressed) {
-      updateSelection();
-    } else {
-      clearSelection();
-    }
-    notifyListeners();
+    _moveCursor(isShiftPressed, editorCursorManager.moveUp);
   }
 
-  void moveCursorRight(bool isShiftPressed) {
-    if (!editorSelectionManager.hasSelection() && isShiftPressed) {
-      startSelection();
-    }
-
-    editorCursorManager.moveRight(buffer, foldingState);
-
-    if (isShiftPressed) {
-      updateSelection();
-    } else {
-      clearSelection();
-    }
-    notifyListeners();
+  void moveCursorDown(bool isShiftPressed) {
+    _moveCursor(isShiftPressed, editorCursorManager.moveDown);
   }
 
   void moveCursorLeft(bool isShiftPressed) {
-    if (!editorSelectionManager.hasSelection() && isShiftPressed) {
-      startSelection();
-    }
+    _moveCursor(isShiftPressed, editorCursorManager.moveLeft);
+  }
 
-    editorCursorManager.moveLeft(buffer, foldingState);
-
-    if (isShiftPressed) {
-      updateSelection();
-    } else {
-      clearSelection();
-    }
-    notifyListeners();
+  void moveCursorRight(bool isShiftPressed) {
+    _moveCursor(isShiftPressed, editorCursorManager.moveRight);
   }
 
   void updateVerticalScrollOffset(double offset) {

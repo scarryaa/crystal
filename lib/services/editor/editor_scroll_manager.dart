@@ -50,7 +50,7 @@ class EditorScrollManager {
     // Calculate visual line by counting only visible lines
     int visualLine = 0;
     for (int i = 0; i < cursorBufferLine; i++) {
-      if (!activeEditor.foldingState.isLineHidden(i)) {
+      if (!activeEditor.foldingManager.isLineHidden(i)) {
         visualLine++;
       }
     }

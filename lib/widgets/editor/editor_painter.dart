@@ -92,7 +92,7 @@ class EditorPainter extends CustomPainter {
             editorSyntaxHighlighter: editorSyntaxHighlighter,
             editorState: editorState,
           ),
-          foldedRegions: editorState.foldingState.foldingRanges,
+          foldedRegions: editorState.foldingRanges,
         ),
         super(repaint: editorState);
 
@@ -141,7 +141,7 @@ class EditorPainter extends CustomPainter {
       for (var cursor in editorState.editorCursorManager.cursors) {
         // Only highlight if line is not hidden and not already highlighted
         if (!_currentHighlightedLines.contains(cursor.line) &&
-            !editorState.foldingState.isLineHidden(cursor.line)) {
+            !editorState.isLineHidden(cursor.line)) {
           _highlightCurrentLine(canvas, size, cursor.line);
           _currentHighlightedLines.add(cursor.line);
         }
@@ -166,12 +166,12 @@ class EditorPainter extends CustomPainter {
 
   void _highlightCurrentLine(Canvas canvas, Size size, int lineNumber) {
     // Skip if line is hidden
-    if (editorState.foldingState.isLineHidden(lineNumber)) return;
+    if (editorState.isLineHidden(lineNumber)) return;
 
     // Calculate visual position
     int visualLine = 0;
     for (int i = 0; i < lineNumber; i++) {
-      if (!editorState.foldingState.isLineHidden(i)) {
+      if (!editorState.isLineHidden(i)) {
         visualLine++;
       }
     }
@@ -210,7 +210,6 @@ class EditorPainter extends CustomPainter {
         currentSearchTermMatch != oldDelegate.currentSearchTermMatch ||
         oldDelegate.editorState.editorCursorManager.cursors !=
             editorState.editorCursorManager.cursors ||
-        editorState.foldingState.foldingRanges !=
-            oldDelegate.editorState.foldingState.foldingRanges;
+        editorState.foldingRanges != oldDelegate.editorState.foldingRanges;
   }
 }

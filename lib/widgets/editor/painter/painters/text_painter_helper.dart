@@ -77,7 +77,7 @@ class TextPainterHelper {
 
     // Count visual lines before first visible line
     for (int i = 0; i < firstVisibleLine; i++) {
-      if (!editorState.foldingState.isLineHidden(i)) {
+      if (!editorState.isLineHidden(i)) {
         visualLine++;
       }
     }
@@ -87,7 +87,7 @@ class TextPainterHelper {
     for (int i = firstVisibleLine;
         paintedLines < targetVisibleLines + bufferLines && i < lines.length;
         i++) {
-      if (editorState.foldingState.isLineHidden(i)) continue;
+      if (editorState.isLineHidden(i)) continue;
 
       if (i >= 0 && i < lines.length) {
         final line = lines[i];
@@ -137,7 +137,7 @@ class TextPainterHelper {
   }
 
   bool isLineHidden(int line) {
-    return editorState.foldingState.isLineHidden(line);
+    return editorState.isLineHidden(line);
   }
 
   void dispose() {

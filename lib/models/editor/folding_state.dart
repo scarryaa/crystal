@@ -92,8 +92,6 @@ class IntervalTree {
       node.right = _delete(node.right, interval);
     }
 
-    if (node == null) return null;
-
     node.height = 1 + _max(_getHeight(node.left), _getHeight(node.right));
     node.max = _max(
         node.interval.end, _max(_maxValue(node.left), _maxValue(node.right)));

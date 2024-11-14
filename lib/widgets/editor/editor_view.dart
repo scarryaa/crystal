@@ -195,7 +195,7 @@ class EditorViewState extends State<EditorView> {
     final lines = widget.state.buffer.lineCount;
 
     for (int i = 0; i < lines; i++) {
-      if (!widget.state.foldingState.isLineHidden(i)) {
+      if (!widget.state.isLineHidden(i)) {
         visibleCount++;
       }
     }

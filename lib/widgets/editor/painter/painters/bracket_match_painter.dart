@@ -39,26 +39,6 @@ class BracketMatchPainter extends EditorPainterBase {
     return null;
   }
 
-  void _handleFoldedRegions(
-      int startLine, int endLine, void Function() callback) {
-    int currentLine = startLine;
-    while (currentLine <= endLine) {
-      if (editorState.foldingState.isLineHidden(currentLine)) {
-        var foldStartLine = _getFoldStartLine(currentLine);
-        var foldEndLine = _getFoldEndLine(currentLine);
-        if (foldStartLine != null && foldEndLine != null) {
-          callback();
-          currentLine = foldEndLine + 1;
-        } else {
-          currentLine++;
-        }
-      } else {
-        callback();
-        currentLine++;
-      }
-    }
-  }
-
   Position? _findMatchingBracketPosition(
       int startLine, int startColumn, String bracket) {
     final isOpen = _isOpenBracket(bracket);
@@ -71,7 +51,7 @@ class BracketMatchPainter extends EditorPainterBase {
       // Search forward
       int currentLine = startLine;
       while (currentLine < editorState.buffer.lineCount) {
-        if (editorState.foldingState.isLineHidden(currentLine)) {
+        if (editorState.isLineHidden(currentLine)) {
           var foldEnd = _getFoldEndLine(currentLine);
           if (foldEnd != null) {
             // Check the last visible line of the fold
@@ -109,7 +89,7 @@ class BracketMatchPainter extends EditorPainterBase {
       // Search backward
       int currentLine = startLine;
       while (currentLine >= 0) {
-        if (editorState.foldingState.isLineHidden(currentLine)) {
+        if (editorState.isLineHidden(currentLine)) {
           var foldStart = _getFoldStartLine(currentLine);
           if (foldStart != null) {
             // Check the first visible line of the fold
@@ -158,7 +138,6 @@ class BracketMatchPainter extends EditorPainterBase {
   }) {
     if (cursors.isEmpty) return;
 
-    final config = editorLayoutService.config;
     final theme = editorConfigService.themeService.currentTheme;
     _bracketPaint.color =
         theme?.primary.withOpacity(0.3) ?? Colors.blue.withOpacity(0.3);
@@ -302,7 +281,7 @@ class BracketMatchPainter extends EditorPainterBase {
   int _getVisualLine(int bufferLine) {
     int visualLine = 0;
     for (int i = 0; i < bufferLine; i++) {
-      if (!editorState.foldingState.isLineHidden(i)) {
+      if (!editorState.isLineHidden(i)) {
         visualLine++;
       }
     }

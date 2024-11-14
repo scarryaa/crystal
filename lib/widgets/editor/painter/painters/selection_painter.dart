@@ -8,7 +8,6 @@ class SelectionPainter {
   final TextPainter _textPainter;
   final EditorLayoutService editorLayoutService;
   final EditorConfigService editorConfigService;
-  final Map<String, double> _widthCache = {};
 
   // Reuse the same TextStyle
   late final TextStyle _measureStyle;
@@ -27,23 +26,6 @@ class SelectionPainter {
       fontWeight: FontWeight.normal,
     );
     _textPainter.text = TextSpan(style: _measureStyle);
-  }
-
-  double _measureLineWidth(String line) {
-    // Use cached width if available
-    if (_widthCache.containsKey(line)) {
-      return _widthCache[line]!;
-    }
-
-    // Reuse the same TextPainter instance
-    _textPainter.text = TextSpan(text: line, style: _measureStyle);
-    _textPainter.layout();
-
-    final width = _textPainter.width;
-    // Cache the result
-    if (_widthCache.length > 1000) _widthCache.clear(); // Prevent memory leaks
-    _widthCache[line] = width;
-    return width;
   }
 
   void _paintSelectionLine(
@@ -122,7 +104,7 @@ class SelectionPainter {
     int endColumn,
     int visualLine,
   ) {
-    if (editorState.foldingState.isLineHidden(line)) return;
+    if (editorState.isLineHidden(line)) return;
 
     _paintSelectionLine(
         canvas,
@@ -159,7 +141,7 @@ class SelectionPainter {
     int visualLine = startLine;
 
     // Handle start line
-    if (!editorState.foldingState.isLineHidden(startLine)) {
+    if (!editorState.isLineHidden(startLine)) {
       _paintSelectionLine(
           canvas, startLine, startColumn, null, visualLine, selectionPaint);
     }
@@ -168,7 +150,7 @@ class SelectionPainter {
     for (int line = startLine + 1; line < endLine; line++) {
       if (line >= editorState.buffer.lineCount) break;
 
-      if (!editorState.foldingState.isLineHidden(line)) {
+      if (!editorState.isLineHidden(line)) {
         visualLine++;
         _paintSelectionLine(canvas, line, 0, null, visualLine, selectionPaint);
       }
@@ -176,7 +158,7 @@ class SelectionPainter {
 
     // Paint end line if within bounds
     if (endLine < editorState.buffer.lineCount &&
-        !editorState.foldingState.isLineHidden(endLine)) {
+        !editorState.isLineHidden(endLine)) {
       visualLine++;
       _paintSelectionLine(
           canvas, endLine, 0, endColumn, visualLine, selectionPaint);
@@ -260,13 +242,13 @@ class SelectionPainter {
     int visualLine = 0;
 
     for (int i = 0; i < firstVisibleLine; i++) {
-      if (!editorState.foldingState.isLineHidden(i)) {
+      if (!editorState.isLineHidden(i)) {
         visualLine++;
       }
     }
 
     for (int i = firstVisibleLine; i < editorState.buffer.lineCount; i++) {
-      if (!editorState.foldingState.isLineHidden(i)) {
+      if (!editorState.isLineHidden(i)) {
         visualLines[i] = visualLine++;
       }
     }
