@@ -9,42 +9,64 @@ import 'package:flutter/material.dart';
 class TextPaintingCache {
   final Map<String, TextSpan> _spanCache = {};
   final Map<String, TextPainter> _painterCache = {};
-  final int maxSize = 1000; // Adjust based on memory constraints
+  final Map<String, RegExp> _patternCache = {};
+  final int maxSize = 1000;
+
+  // Add line hash cache to avoid recomputing spans for unchanged lines
+  final Map<String, int> _lineHashes = {};
 
   void clear() {
     _spanCache.clear();
     _painterCache.clear();
+    _lineHashes.clear();
   }
 
   TextPainter getPainter(String line, TextStyle baseStyle,
       EditorSyntaxHighlighter highlighter, double maxWidth) {
-    if (!_painterCache.containsKey(line)) {
-      if (_painterCache.length > maxSize) {
-        // Remove oldest entries when cache is full
-        final keysToRemove = _painterCache.keys.take(maxSize ~/ 4).toList();
-        for (final key in keysToRemove) {
-          _painterCache.remove(key);
-          _spanCache.remove(key);
-        }
-      }
+    final lineHash = line.hashCode;
 
-      TextSpan span = _spanCache.putIfAbsent(line, () {
-        highlighter.highlight(line);
-        return TextSpan(
-          children: [highlighter.buildTextSpan(line)],
-          style: baseStyle,
-        );
-      });
-
-      final painter = TextPainter(
-        text: span,
-        textDirection: TextDirection.ltr,
-      );
-      painter.layout();
-      _painterCache[line] = painter;
+    // Check if line content hasn't changed
+    if (_lineHashes[line] == lineHash && _painterCache.containsKey(line)) {
+      return _painterCache[line]!;
     }
 
-    return _painterCache[line]!;
+    if (_painterCache.length > maxSize) {
+      // Use LRU cache eviction instead of removing oldest entries
+      final keysToRemove = _painterCache.keys.take(maxSize ~/ 10).toList();
+      for (final key in keysToRemove) {
+        _painterCache[key]?.dispose(); // Properly dispose painters
+        _painterCache.remove(key);
+        _spanCache.remove(key);
+        _lineHashes.remove(key);
+      }
+    }
+
+    TextSpan span = _spanCache.putIfAbsent(line, () {
+      highlighter.highlight(line);
+      return TextSpan(
+        children: [highlighter.buildTextSpan(line)],
+        style: baseStyle,
+      );
+    });
+
+    final painter = TextPainter(
+      text: span,
+      textDirection: TextDirection.ltr,
+      textWidthBasis: TextWidthBasis.longestLine,
+    );
+    painter.layout(maxWidth: maxWidth);
+
+    _painterCache[line] = painter;
+    _lineHashes[line] = lineHash;
+
+    return painter;
+  }
+
+  void dispose() {
+    for (final painter in _painterCache.values) {
+      painter.dispose();
+    }
+    clear();
   }
 }
 

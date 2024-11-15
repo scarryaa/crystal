@@ -12,6 +12,7 @@ class EditorSyntaxHighlighter {
   final EditorConfigService editorConfigService;
   final Set<(int, int)> highlightedRegions = {};
   final String fileName;
+  final Map<String, RegExp> _patternCache = {};
 
   final Map<String, List<HighlightedText>> _highlightCache = {};
   static const int _maxCacheSize = 100;
@@ -166,20 +167,28 @@ class EditorSyntaxHighlighter {
 
   void _highlightWord(String text, String word, Color color,
       {bool Function(int)? skipIf, required int priority}) {
-    final pattern = RegExp('\\b$word\\b');
+    // Use the class-level cache instead
+    final pattern =
+        _patternCache.putIfAbsent(word, () => RegExp('\\b$word\\b'));
+
+    if (!text.contains(word)) {
+      return;
+    }
+
     final matches = pattern.allMatches(text);
     for (final match in matches) {
-      if (skipIf == null || !skipIf(match.start)) {
-        if (!_isRegionHighlighted(match.start, match.end)) {
-          highlightedText.add(HighlightedText(
-            text: word,
-            color: color,
-            start: match.start,
-            end: match.end,
-            priority: priority,
-          ));
-        }
+      if ((skipIf?.call(match.start) ?? false) ||
+          _isRegionHighlighted(match.start, match.end)) {
+        continue;
       }
+
+      highlightedText.add(HighlightedText(
+        text: word,
+        color: color,
+        start: match.start,
+        end: match.end,
+        priority: priority,
+      ));
     }
   }
 
