@@ -138,6 +138,37 @@ class EditorKeyboardHandler {
             });
             return KeyEventResult.handled;
           }
+        case LogicalKeyboardKey.home:
+          if (isControlPressed) {
+            // Control+Home moves to document start
+            getState().moveCursorToDocumentStart(isShiftPressed);
+          } else {
+            // Home moves to line start
+            getState().moveCursorToLineStart(isShiftPressed);
+          }
+          scrollToCursor();
+          return KeyEventResult.handled;
+
+        case LogicalKeyboardKey.end:
+          if (isControlPressed) {
+            // Control+End moves to document end
+            getState().moveCursorToDocumentEnd(isShiftPressed);
+          } else {
+            // End moves to line end
+            getState().moveCursorToLineEnd(isShiftPressed);
+          }
+          scrollToCursor();
+          return KeyEventResult.handled;
+
+        case LogicalKeyboardKey.pageUp:
+          getState().moveCursorPageUp(isShiftPressed);
+          scrollToCursor();
+          return KeyEventResult.handled;
+
+        case LogicalKeyboardKey.pageDown:
+          getState().moveCursorPageDown(isShiftPressed);
+          scrollToCursor();
+          return KeyEventResult.handled;
         case LogicalKeyboardKey.keyP:
           if (isControlPressed) {
             showCommandPalette();

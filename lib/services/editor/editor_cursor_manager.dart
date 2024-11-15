@@ -46,6 +46,80 @@ class EditorCursorManager extends ChangeNotifier {
     _notifyCursorChange();
   }
 
+  void moveToLineStart(Buffer buffer) {
+    for (var cursor in cursors) {
+      final line = buffer.getLine(cursor.line);
+      final firstNonWhitespace = line.indexOf(RegExp(r'\S'));
+      final targetColumn = firstNonWhitespace == -1 ? 0 : firstNonWhitespace;
+
+      // If already at first non-whitespace, go to start of line
+      if (cursor.column == targetColumn && targetColumn > 0) {
+        cursor.column = 0;
+      } else {
+        cursor.column = targetColumn;
+      }
+    }
+    mergeCursorsIfNeeded();
+    _notifyCursorChange();
+  }
+
+  void moveToLineEnd(Buffer buffer) {
+    for (var cursor in cursors) {
+      cursor.column = buffer.getLineLength(cursor.line);
+    }
+    mergeCursorsIfNeeded();
+    _notifyCursorChange();
+  }
+
+  void moveToDocumentStart(Buffer buffer) {
+    for (var cursor in cursors) {
+      cursor.line = 0;
+      cursor.column = 0;
+    }
+    mergeCursorsIfNeeded();
+    _notifyCursorChange();
+  }
+
+  void moveToDocumentEnd(Buffer buffer) {
+    for (var cursor in cursors) {
+      cursor.line = buffer.lineCount - 1;
+      cursor.column = buffer.getLineLength(buffer.lineCount - 1);
+    }
+    mergeCursorsIfNeeded();
+    _notifyCursorChange();
+  }
+
+  void movePageUp(Buffer buffer, FoldingManager foldingManager) {
+    const pageSize = 20; // This should come from scroll state
+    for (var cursor in cursors) {
+      int targetLine = math.max(0, cursor.line - pageSize);
+      while (
+          targetLine < cursor.line && foldingManager.isLineHidden(targetLine)) {
+        targetLine++;
+      }
+      cursor.line = targetLine;
+      cursor.column = math.min(cursor.column, buffer.getLineLength(targetLine));
+    }
+    mergeCursorsIfNeeded();
+    _notifyCursorChange();
+  }
+
+  void movePageDown(Buffer buffer, FoldingManager foldingManager) {
+    const pageSize = 20; // This should come from scroll state
+    final lastLine = buffer.lineCount - 1;
+    for (var cursor in cursors) {
+      int targetLine = math.min(lastLine, cursor.line + pageSize);
+      while (
+          targetLine > cursor.line && foldingManager.isLineHidden(targetLine)) {
+        targetLine--;
+      }
+      cursor.line = targetLine;
+      cursor.column = math.min(cursor.column, buffer.getLineLength(targetLine));
+    }
+    mergeCursorsIfNeeded();
+    _notifyCursorChange();
+  }
+
   void mergeCursorsIfNeeded() {
     final uniqueCursors = <Cursor>[];
 

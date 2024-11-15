@@ -2,7 +2,7 @@ name: crystal
 description: "A modern code editor."
 publish_to: 'none'
 
-version: 0.8.1-beta.1
+version: 0.8.2-beta.1
 
 
 environment:

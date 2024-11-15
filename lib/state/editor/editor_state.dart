@@ -421,6 +421,30 @@ class EditorState extends ChangeNotifier {
   }
 
   // Cursor methods
+  void moveCursorToLineStart(bool isShiftPressed) {
+    cursorMovementHandler.moveCursorToLineStart(isShiftPressed);
+  }
+
+  void moveCursorToLineEnd(bool isShiftPressed) {
+    cursorMovementHandler.moveCursorToLineEnd(isShiftPressed);
+  }
+
+  void moveCursorToDocumentStart(bool isShiftPressed) {
+    cursorMovementHandler.moveCursorToDocumentStart(isShiftPressed);
+  }
+
+  void moveCursorToDocumentEnd(bool isShiftPressed) {
+    cursorMovementHandler.moveCursorToDocumentEnd(isShiftPressed);
+  }
+
+  void moveCursorPageUp(bool isShiftPressed) {
+    cursorMovementHandler.moveCursorPageUp(isShiftPressed);
+  }
+
+  void moveCursorPageDown(bool isShiftPressed) {
+    cursorMovementHandler.moveCursorPageDown(isShiftPressed);
+  }
+
   void moveCursorUp(bool isShiftPressed) =>
       cursorMovementHandler.moveCursorUp(isShiftPressed);
   void moveCursorDown(bool isShiftPressed) =>

@@ -40,6 +40,42 @@ class CursorMovementHandler {
     notifyListeners();
   }
 
+  void moveCursorToLineStart(bool isShiftPressed) {
+    _moveCursor(isShiftPressed, (buffer, foldingManager) {
+      editorCursorManager.moveToLineStart(buffer);
+    });
+  }
+
+  void moveCursorToLineEnd(bool isShiftPressed) {
+    _moveCursor(isShiftPressed, (buffer, foldingManager) {
+      editorCursorManager.moveToLineEnd(buffer);
+    });
+  }
+
+  void moveCursorToDocumentStart(bool isShiftPressed) {
+    _moveCursor(isShiftPressed, (buffer, foldingManager) {
+      editorCursorManager.moveToDocumentStart(buffer);
+    });
+  }
+
+  void moveCursorToDocumentEnd(bool isShiftPressed) {
+    _moveCursor(isShiftPressed, (buffer, foldingManager) {
+      editorCursorManager.moveToDocumentEnd(buffer);
+    });
+  }
+
+  void moveCursorPageUp(bool isShiftPressed) {
+    _moveCursor(isShiftPressed, (buffer, foldingManager) {
+      editorCursorManager.movePageUp(buffer, foldingManager);
+    });
+  }
+
+  void moveCursorPageDown(bool isShiftPressed) {
+    _moveCursor(isShiftPressed, (buffer, foldingManager) {
+      editorCursorManager.movePageDown(buffer, foldingManager);
+    });
+  }
+
   void moveCursorUp(bool isShiftPressed) {
     _moveCursor(isShiftPressed, editorCursorManager.moveUp);
   }
