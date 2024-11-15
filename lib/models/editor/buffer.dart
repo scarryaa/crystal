@@ -6,22 +6,17 @@ class Buffer {
 
   int get version => _version;
   bool get isDirty {
-    StringBuffer originalBuffer = StringBuffer();
+    // Direct string comparison of lines
     List<String> originalLines = _originalContent.split('\n');
-    int currentLine = 0;
+    List<String> currentLines = List<String>.from(_lines);
 
-    while (currentLine < originalLines.length) {
-      originalBuffer.writeln(originalLines[currentLine]);
-      if (isLineFolded(currentLine)) {
-        // Skip folded lines
-        currentLine = _foldedRanges[currentLine]! + 1;
-      } else {
-        currentLine++;
-      }
+    if (originalLines.length != currentLines.length) return true;
+
+    for (int i = 0; i < originalLines.length; i++) {
+      if (originalLines[i] != currentLines[i]) return true;
     }
 
-    String processedOriginal = originalBuffer.toString().trimRight();
-    return processedOriginal != content;
+    return false;
   }
 
   List<String> get lines => _lines;
