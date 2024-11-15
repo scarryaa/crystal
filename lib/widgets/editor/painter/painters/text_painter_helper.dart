@@ -76,6 +76,7 @@ class TextPainterHelper {
   final EditorLayoutService editorLayoutService;
   final EditorSyntaxHighlighter editorSyntaxHighlighter;
   final EditorState editorState;
+  final TextPaintingCache _paintingCache = TextPaintingCache();
 
   TextPainterHelper({
     required this.editorConfigService,
@@ -86,13 +87,15 @@ class TextPainterHelper {
           textDirection: TextDirection.ltr,
         );
 
-  void paintText(
-    Canvas canvas,
-    Size size,
-    int firstVisibleLine,
-    int lastVisibleLine,
-    List<String> lines,
-  ) {
+  TextStyle get _baseStyle => TextStyle(
+        fontFamily: editorConfigService.config.fontFamily,
+        fontSize: editorConfigService.config.fontSize,
+        height: editorLayoutService.config.lineHeight /
+            editorConfigService.config.fontSize,
+      );
+
+  void paintText(Canvas canvas, Size size, int firstVisibleLine,
+      int lastVisibleLine, List<String> lines) {
     canvas.save();
     final lineHeight = editorLayoutService.config.lineHeight;
     int visualLine = 0;
@@ -115,24 +118,14 @@ class TextPainterHelper {
 
       final line = lines[i];
 
-      editorSyntaxHighlighter.highlight(line);
+      // Use the cache instead of direct highlighting
+      final painter = _paintingCache.getPainter(
+          line, _baseStyle, editorSyntaxHighlighter, size.width);
 
-      _textPainter.text = TextSpan(
-        children: [editorSyntaxHighlighter.buildTextSpan(line)],
-        style: TextStyle(
-          fontFamily: editorConfigService.config.fontFamily,
-          fontSize: editorConfigService.config.fontSize,
-          height: editorLayoutService.config.lineHeight /
-              editorConfigService.config.fontSize,
-        ),
-      );
-
-      _textPainter.layout();
-      final halfLineHeightDiff = (lineHeight - _textPainter.height) / 2;
-
+      final halfLineHeightDiff = (lineHeight - painter.height) / 2;
       final yPosition = (visualLine * lineHeight) + halfLineHeightDiff;
 
-      _textPainter.paint(
+      painter.paint(
         canvas,
         Offset(0, yPosition),
       );

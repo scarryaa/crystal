@@ -6,6 +6,134 @@ import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_syntax_highlighter.dart';
 import 'package:flutter/material.dart';
 
+class MinimapCache {
+  final Map<String, List<InlineSpan>> _highlightCache = {};
+  final Map<String, int> _lineHashes = {};
+  static const int maxSize = 1000;
+
+  void clear() {
+    _highlightCache.clear();
+    _lineHashes.clear();
+  }
+
+  List<InlineSpan> getHighlights(
+    String line,
+    EditorSyntaxHighlighter highlighter,
+  ) {
+    final lineHash = line.hashCode;
+
+    // Return cached highlights if line hasn't changed
+    if (_lineHashes[line] == lineHash && _highlightCache.containsKey(line)) {
+      return _highlightCache[line]!;
+    }
+
+    // Cache eviction if needed
+    if (_highlightCache.length > maxSize) {
+      final keysToRemove = _highlightCache.keys.take(maxSize ~/ 10).toList();
+      for (final key in keysToRemove) {
+        _highlightCache.remove(key);
+        _lineHashes.remove(key);
+      }
+    }
+
+    // Generate new highlights
+    highlighter.highlight(line);
+    final highlights = highlighter.buildTextSpan(line).children ?? [];
+
+    // Cache the results
+    _highlightCache[line] = highlights;
+    _lineHashes[line] = lineHash;
+
+    return highlights;
+  }
+}
+
+class MinimapPainter extends CustomPainter {
+  final Buffer buffer;
+  final EditorLayoutService layoutService;
+  final EditorConfigService editorConfigService;
+  final double scale;
+  final String fileName;
+  final MinimapCache _cache = MinimapCache();
+  late final EditorSyntaxHighlighter syntaxHighlighter;
+
+  MinimapPainter({
+    required this.buffer,
+    required this.layoutService,
+    required this.editorConfigService,
+    required this.scale,
+    required this.fileName,
+  }) {
+    syntaxHighlighter = EditorSyntaxHighlighter(
+      editorLayoutService: layoutService,
+      editorConfigService: editorConfigService,
+      fileName: fileName,
+    );
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final contentScale = scale * 0.1;
+    final scaledLineHeight = layoutService.config.lineHeight * contentScale;
+    final characterScale = scale * 0.5;
+
+    for (int i = 0; i < buffer.lines.length; i++) {
+      final line = buffer.lines[i];
+      final yPosition = i * scaledLineHeight;
+
+      if (yPosition > size.height) break;
+
+      // Get cached highlights
+      final highlights = _cache.getHighlights(line, syntaxHighlighter);
+
+      double currentX = 0;
+
+      // Draw each highlighted segment
+      for (final span in highlights) {
+        final textSpan = span as TextSpan;
+        final paint = Paint()
+          ..color = textSpan.style?.color ?? syntaxHighlighter.defaultTextColor
+          ..strokeWidth = 1.0;
+
+        final segmentWidth =
+            (textSpan.text?.length ?? 0).toDouble() * characterScale;
+
+        canvas.drawLine(
+          Offset(currentX, yPosition),
+          Offset(currentX + segmentWidth, yPosition),
+          paint,
+        );
+
+        currentX += segmentWidth;
+      }
+
+      // Draw any remaining unhighlighted text
+      if (currentX < line.length * characterScale) {
+        final paint = Paint()
+          ..color = syntaxHighlighter.defaultTextColor
+          ..strokeWidth = 1.0;
+
+        canvas.drawLine(
+          Offset(currentX, yPosition),
+          Offset(line.length.toDouble() * characterScale, yPosition),
+          paint,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant MinimapPainter oldDelegate) {
+    return buffer != oldDelegate.buffer ||
+        fileName != oldDelegate.fileName ||
+        scale != oldDelegate.scale;
+  }
+
+  void dispose() {
+    _cache.clear();
+  }
+}
+
 class Minimap extends StatefulWidget {
   final Buffer buffer;
   final double viewportHeight;
@@ -172,80 +300,4 @@ class _MinimapState extends State<Minimap> {
       ),
     );
   }
-}
-
-class MinimapPainter extends CustomPainter {
-  final Buffer buffer;
-  final EditorLayoutService layoutService;
-  final EditorConfigService editorConfigService;
-  final double scale;
-  final String fileName;
-
-  MinimapPainter({
-    required this.buffer,
-    required this.layoutService,
-    required this.editorConfigService,
-    required this.scale,
-    required this.fileName,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final syntaxHighlighter = EditorSyntaxHighlighter(
-        editorLayoutService: layoutService,
-        editorConfigService: editorConfigService,
-        fileName: fileName);
-
-    // Use small scale directly without height adjustment
-    final contentScale = scale * 0.1;
-    final scaledLineHeight = layoutService.config.lineHeight * contentScale;
-    final characterScale = scale * 0.5;
-
-    for (int i = 0; i < buffer.lines.length; i++) {
-      final line = buffer.lines[i];
-      final yPosition = i * scaledLineHeight;
-
-      // Skip lines that would be drawn outside the visible area
-      if (yPosition > size.height) break;
-
-      // Highlight the current line
-      syntaxHighlighter.highlight(line);
-      final highlights = syntaxHighlighter.highlightedText;
-
-      double currentX = 0;
-
-      // Draw each highlighted segment
-      for (final highlight in highlights) {
-        final paint = Paint()
-          ..color = highlight.color
-          ..strokeWidth = 1.0;
-
-        final segmentWidth = highlight.text.length.toDouble() * characterScale;
-
-        canvas.drawLine(
-          Offset(currentX, yPosition),
-          Offset(currentX + segmentWidth, yPosition),
-          paint,
-        );
-
-        currentX += segmentWidth;
-      }
-
-      // Draw any remaining unhighlighted text
-      if (currentX < line.length * characterScale) {
-        final paint = Paint()
-          ..color = syntaxHighlighter.defaultTextColor
-          ..strokeWidth = 1.0;
-
-        canvas.drawLine(
-          Offset(currentX, yPosition),
-          Offset(line.length.toDouble() * characterScale, yPosition),
-          paint,
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
