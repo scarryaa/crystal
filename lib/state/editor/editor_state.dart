@@ -1,3 +1,4 @@
+import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/breadcrumb_item.dart';
 import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/editor/command.dart';
@@ -189,43 +190,61 @@ class EditorState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void updateCompletions() {
-    final cursor = editorCursorManager.cursors.first;
-    final line = buffer.getLine(cursor.line);
-    final prefix = _getPrefix(line, cursor.column);
-
-    if (prefix.isNotEmpty) {
-      suggestions = _completionService.getSuggestions(prefix).toSet().toList();
-
-      showCompletions = suggestions.isNotEmpty &&
-          (suggestions.length > 1 || suggestions[0].label != prefix);
-    } else {
-      showCompletions = false;
-    }
-    notifyListeners();
-  }
-
   String _getPrefix(String line, int column) {
     final pattern = RegExp(r'\w+$');
     final match = pattern.firstMatch(line.substring(0, column));
     return match?.group(0) ?? '';
   }
 
+  void updateCompletions() {
+    if (editorCursorManager.cursors.isEmpty) {
+      showCompletions = false;
+      suggestions = [];
+      notifyListeners();
+      return;
+    }
+
+    // Get prefixes for all cursors
+    final prefixes = editorCursorManager.cursors.map((cursor) {
+      final line = buffer.getLine(cursor.line);
+      return _getPrefix(line, cursor.column);
+    }).toSet();
+
+    // Only show completions if all cursors have the same non-empty prefix
+    if (prefixes.length == 1 && prefixes.first.isNotEmpty) {
+      suggestions = _completionService.getSuggestions(prefixes.first);
+      showCompletions = suggestions.isNotEmpty &&
+          (suggestions.length > 1 || suggestions[0].label != prefixes.first);
+    } else {
+      showCompletions = false;
+      suggestions = [];
+    }
+
+    notifyListeners();
+  }
+
   void acceptCompletion(CompletionItem item) {
-    final cursor = editorCursorManager.cursors.first;
-    final line = buffer.getLine(cursor.line);
-    final prefix = _getPrefix(line, cursor.column);
+    // Sort cursors from bottom to top to maintain correct positions
+    final sortedCursors = List<Cursor>.from(editorCursorManager.cursors)
+      ..sort((a, b) => b.line.compareTo(a.line));
 
-    final newLine = line.substring(0, cursor.column - prefix.length) +
-        item.label +
-        line.substring(cursor.column);
+    for (var cursor in sortedCursors) {
+      final line = buffer.getLine(cursor.line);
+      final prefix = _getPrefix(line, cursor.column);
 
-    buffer.setLine(cursor.line, newLine);
-    editorCursorManager.moveCursor(
-        cursor.line, cursor.column - prefix.length + item.label.length);
+      if (prefix.isEmpty) continue;
+
+      final newLine = line.substring(0, cursor.column - prefix.length) +
+          item.label +
+          line.substring(cursor.column);
+
+      buffer.setLine(cursor.line, newLine);
+      cursor.column = cursor.column - prefix.length + item.label.length;
+    }
 
     showCompletions = false;
     resetSuggestionSelection();
+    editorCursorManager.mergeCursorsIfNeeded();
     notifyListeners();
   }
 
