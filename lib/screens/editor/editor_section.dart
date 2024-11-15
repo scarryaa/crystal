@@ -257,15 +257,22 @@ class EditorSection extends StatelessWidget {
                                       saveFileAs: () => splitView.activeEditor!
                                           .saveFileAs(
                                               splitView.activeEditor!.path),
-                                      saveFile: () => splitView.activeEditor!.saveFile(
-                                          splitView.activeEditor!.path),
+                                      saveFile: () => splitView.activeEditor!
+                                          .saveFile(
+                                              splitView.activeEditor!.path),
                                       openNewTab: openNewTab,
                                       activeEditorIndex: () =>
                                           splitView.activeEditorIndex,
-                                      verticalScrollController:
-                                          scrollManager.editorVerticalScrollController,
-                                      horizontalScrollController: scrollManager.editorHorizontalScrollController,
-                                      fileName: path.split(splitView.activeEditor!.path).last)
+                                      verticalScrollController: scrollManager
+                                          .editorVerticalScrollController,
+                                      horizontalScrollController: scrollManager
+                                          .editorHorizontalScrollController,
+                                      fileName: path
+                                          .split(splitView.activeEditor!.path)
+                                          .last,
+                                      isDirty: () => splitView
+                                          .activeEditor!.buffer.isDirty,
+                                    )
                                   : Container(
                                       color: editorConfigService.themeService
                                               .currentTheme?.background ??

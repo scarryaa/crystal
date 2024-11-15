@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:crystal/services/dialog_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -11,6 +12,7 @@ class ShortcutHandler {
   VoidCallback requestEditorFocus;
   Future<void> Function() saveFileAs;
   Future<void> Function() saveFile;
+  bool Function() isDirty;
 
   ShortcutHandler({
     required this.openSettings,
@@ -20,6 +22,7 @@ class ShortcutHandler {
     required this.requestEditorFocus,
     required this.saveFileAs,
     required this.saveFile,
+    required this.isDirty,
   });
 
   KeyEventResult handleKeyEvent(FocusNode node, KeyEvent event) {
@@ -34,24 +37,28 @@ class ShortcutHandler {
           openSettings();
           return KeyEventResult.handled;
 
-        // Note: check for 'less' here instead of shift + ctrl + comma due
-        // to the way LogicalKeyboardKey recognizes the key ('left' instead of 'comma')
         case LogicalKeyboardKey.less:
           if (isControlPressed) {
             openDefaultSettings();
             return KeyEventResult.handled;
           }
+          break;
+
         case LogicalKeyboardKey.keyW:
           if (isControlPressed) {
-            closeTab();
+            _handleCloseTab();
             return KeyEventResult.handled;
           }
+          break;
+
         case LogicalKeyboardKey.keyN:
           if (isControlPressed) {
             openNewTab();
             requestEditorFocus();
             return KeyEventResult.handled;
           }
+          break;
+
         case LogicalKeyboardKey.keyS:
           if (isControlPressed && isShiftPressed) {
             saveFileAs();
@@ -60,9 +67,31 @@ class ShortcutHandler {
             saveFile();
             return KeyEventResult.handled;
           }
+          break;
       }
     }
 
     return KeyEventResult.ignored;
+  }
+
+  void _handleCloseTab() async {
+    if (isDirty()) {
+      final response = await DialogService().showSavePrompt();
+      switch (response) {
+        case 'Save & Exit':
+          await saveFile();
+          closeTab();
+          break;
+        case 'Exit without Saving':
+          closeTab();
+          break;
+        case 'Cancel':
+        default:
+          // Do nothing, continue editing
+          break;
+      }
+    } else {
+      closeTab();
+    }
   }
 }

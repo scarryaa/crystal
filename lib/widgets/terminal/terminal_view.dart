@@ -240,7 +240,8 @@ class _EditorTerminalViewState extends State<EditorTerminalView>
                               final isActive = _tabController.index == index;
 
                               return DragTarget<int>(
-                                onAccept: (draggedIndex) {
+                                onAcceptWithDetails: (details) {
+                                  final draggedIndex = details.data;
                                   setState(() {
                                     final draggedTab =
                                         _tabs.removeAt(draggedIndex);

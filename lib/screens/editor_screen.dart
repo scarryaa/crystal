@@ -209,30 +209,6 @@ class EditorScreenState extends State<EditorScreen> {
     editorState.getScrollManager(0, 0);
   }
 
-  void _cleanupScrollManager(int row, int col) {
-    final editorState = context.read<EditorStateProvider>();
-    final splitIndex = editorState.getSplitIndex(row, col);
-    if (_scrollManagers.containsKey(splitIndex)) {
-      _scrollManagers[splitIndex]!.dispose();
-      _scrollManagers.remove(splitIndex);
-    }
-
-    // Remap remaining scroll managers
-    final newScrollManagers = <int, EditorScrollManager>{};
-    for (int r = 0; r < editorTabManager.horizontalSplits.length; r++) {
-      for (int c = 0; c < editorTabManager.horizontalSplits[r].length; c++) {
-        final oldIndex = editorState.getSplitIndex(r, c);
-        final newIndex = editorState.getSplitIndex(r, c);
-        if (_scrollManagers.containsKey(oldIndex)) {
-          newScrollManagers[newIndex] = _scrollManagers[oldIndex]!;
-        }
-      }
-    }
-    _scrollManagers
-      ..clear()
-      ..addAll(newScrollManagers);
-  }
-
   void _scrollToCursor(int row, int col) {
     final editorState = context.read<EditorStateProvider>();
     // Validate indices before proceeding
@@ -279,6 +255,7 @@ class EditorScreenState extends State<EditorScreen> {
           onEditorClosed(editorTabManager.activeSplitView.activeEditorIndex);
         }
       },
+      isDirty: () => editorTabManager.activeEditor!.buffer.isDirty,
       openNewTab: () {
         openNewTab();
       },

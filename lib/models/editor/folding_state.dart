@@ -152,10 +152,10 @@ class IntervalTree {
 
   IntervalNode _rotateLeft(IntervalNode x) {
     IntervalNode y = x.right!;
-    IntervalNode? T2 = y.left;
+    IntervalNode? t2 = y.left;
 
     y.left = x;
-    x.right = T2;
+    x.right = t2;
 
     x.height = _max(_getHeight(x.left), _getHeight(x.right)) + 1;
     y.height = _max(_getHeight(y.left), _getHeight(y.right)) + 1;
@@ -168,10 +168,10 @@ class IntervalTree {
 
   IntervalNode _rotateRight(IntervalNode y) {
     IntervalNode x = y.left!;
-    IntervalNode? T2 = x.right;
+    IntervalNode? t2 = x.right;
 
     x.right = y;
-    y.left = T2;
+    y.left = t2;
 
     y.height = _max(_getHeight(y.left), _getHeight(y.right)) + 1;
     x.height = _max(_getHeight(x.left), _getHeight(x.right)) + 1;

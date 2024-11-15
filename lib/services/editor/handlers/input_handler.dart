@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/selection.dart';
+import 'package:crystal/services/dialog_service.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_cursor_manager.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
@@ -25,6 +26,7 @@ class InputHandler {
   final Function() redo;
   final Function(String)? onDirectoryChanged;
   final FileService fileService;
+  final String path;
 
   InputHandler({
     required this.buffer,
@@ -38,6 +40,7 @@ class InputHandler {
     required this.redo,
     required this.onDirectoryChanged,
     required this.fileService,
+    required this.path,
   });
 
   void handleDragStart(double dy, double dx,
@@ -108,8 +111,23 @@ class InputHandler {
         break;
       case LogicalKeyboardKey.keyQ:
         if (isControlPressed) {
-          // TODO: check for unsaved files
-          exit(0);
+          if (buffer.isDirty) {
+            final response = await DialogService().showSavePrompt();
+            switch (response) {
+              case 'Save & Exit':
+                FileService.saveFile(path, buffer.content);
+                exit(0);
+              case 'Exit without Saving':
+                exit(0);
+              case 'Cancel':
+              default:
+                // Do nothing, continue editing
+                break;
+            }
+          } else {
+            exit(0);
+          }
+          return true;
         }
         break;
       case LogicalKeyboardKey.keyO:

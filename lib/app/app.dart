@@ -7,6 +7,7 @@ import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_tab_manager.dart';
 import 'package:crystal/services/file_service.dart';
 import 'package:crystal/services/notification_service.dart';
+import 'package:crystal/widgets/dialog_listener.dart';
 import 'package:crystal/widgets/notification_overlay.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -228,8 +229,9 @@ class _AppState extends State<App> {
                   ),
                 ),
               ),
-              home: MultiProvider(
-                  providers: [
+              home: DialogListener(
+                  child: MultiProvider(
+                      providers: [
                     ChangeNotifierProvider(
                       create: (context) => EditorStateProvider(
                         editorTabManager: EditorTabManager(
@@ -239,40 +241,41 @@ class _AppState extends State<App> {
                       ),
                     )
                   ],
-                  child: Stack(children: [
-                    Column(
-                      children: [
-                        Material(
-                            child: AppMenuBar(
-                          onDirectoryChanged: _handleDirectoryChanged,
-                          fileService: widget.fileService,
-                          editorConfigService: widget.editorConfigService,
-                          editorKey: _editorKey,
-                        )),
-                        Expanded(
-                          child: AppLayout(
-                            editorConfigService: widget.editorConfigService,
-                            onDirectoryChanged: _handleDirectoryChanged,
-                            fileService: widget.fileService,
-                            editorKey: _editorKey,
-                            child: EditorScreen(
-                              key: _editorKey,
-                              lineHeightMultipler: 1.5,
-                              verticalPaddingLines: 5,
-                              horizontalPadding: 100,
-                              fileService: widget.fileService,
+                      child: Stack(children: [
+                        Column(
+                          children: [
+                            Material(
+                                child: AppMenuBar(
                               onDirectoryChanged: _handleDirectoryChanged,
+                              fileService: widget.fileService,
+                              editorConfigService: widget.editorConfigService,
+                              editorKey: _editorKey,
+                            )),
+                            Expanded(
+                              child: AppLayout(
+                                editorConfigService: widget.editorConfigService,
+                                onDirectoryChanged: _handleDirectoryChanged,
+                                fileService: widget.fileService,
+                                editorKey: _editorKey,
+                                child: EditorScreen(
+                                  key: _editorKey,
+                                  lineHeightMultipler: 1.5,
+                                  verticalPaddingLines: 5,
+                                  horizontalPadding: 100,
+                                  fileService: widget.fileService,
+                                  onDirectoryChanged: _handleDirectoryChanged,
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
-                    NotificationOverlay(
-                      notifications: widget.notificationService.notifications,
-                      onDismiss: widget.notificationService.dismiss,
-                      editorConfigService: widget.editorConfigService,
-                    ),
-                  ])));
+                        NotificationOverlay(
+                          notifications:
+                              widget.notificationService.notifications,
+                          onDismiss: widget.notificationService.dismiss,
+                          editorConfigService: widget.editorConfigService,
+                        ),
+                      ]))));
         });
   }
 }

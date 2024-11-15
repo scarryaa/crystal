@@ -62,7 +62,9 @@ class LanguageDetectionService {
     'pyi': Python(), // Type hint files
 
     // Web framework specific
+    // ignore: equal_keys_in_map
     'jsx': JavaScript(),
+    // ignore: equal_keys_in_map
     'tsx': TypeScript(),
     'mjs': JavaScript(), // ES modules
     'cjs': JavaScript(), // CommonJS modules
@@ -135,7 +137,6 @@ class LanguageDetectionService {
 
 // Base classes for different language types
 abstract class IndentationBasedLanguage extends Language {
-  @override
   bool get usesIndentationFolding => true;
 
   @override
@@ -146,7 +147,6 @@ abstract class IndentationBasedLanguage extends Language {
 }
 
 abstract class BraceBasedLanguage extends Language {
-  @override
   bool get usesIndentationFolding => false;
 
   @override
@@ -1783,7 +1783,6 @@ class UnknownLanguage extends Language {
   List<String> get types => [];
   @override
   List<String> get symbols => [];
-  @override
   bool get usesIndentationFolding => false;
   @override
   RegExp get stringLiteral => RegExp(r'".*?"');

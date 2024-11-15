@@ -1,5 +1,3 @@
-import 'package:path/path.dart' as p;
-
 import 'package:crystal/models/editor/breadcrumb_item.dart';
 import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/editor/command.dart';
@@ -26,6 +24,7 @@ import 'package:crystal/state/editor/editor_scroll_state.dart';
 import 'package:crystal/utils/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
 
 class EditorState extends ChangeNotifier {
   late final CommandHandler commandHandler;
@@ -85,7 +84,7 @@ class EditorState extends ChangeNotifier {
 
     foldingManager = FoldingManager(
       _buffer,
-      useIndentationFolding: detectedLanguage != null &&
+      useIndentationFolding:
           indentationBasedLanguages.contains(detectedLanguage.toLowerCase),
     );
     textManipulator = TextManipulator(
@@ -122,6 +121,7 @@ class EditorState extends ChangeNotifier {
       redo: commandHandler.redo,
       onDirectoryChanged: onDirectoryChanged,
       fileService: fileService,
+      path: path ?? '',
     );
     cursorMovementHandler = CursorMovementHandler(
       buffer: buffer,

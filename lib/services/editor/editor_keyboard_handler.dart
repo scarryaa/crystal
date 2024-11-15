@@ -1,3 +1,4 @@
+import 'package:crystal/services/dialog_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,6 +14,7 @@ class EditorKeyboardHandler {
   VoidCallback openDefaultConfig;
   VoidCallback openNewTab;
   Function(int lineIndex) updateSingleLineWidth;
+  bool Function() isDirty;
 
   final EditorState Function() getState;
   final Function() activeEditorIndex;
@@ -32,7 +34,29 @@ class EditorKeyboardHandler {
     required this.searchTerm,
     required this.activeEditorIndex,
     required this.updateSingleLineWidth,
+    required this.isDirty,
   });
+
+  Future<void> _handleCloseTab() async {
+    if (isDirty()) {
+      final response = await DialogService().showSavePrompt();
+      switch (response) {
+        case 'Save & Exit':
+          await saveFile();
+          onEditorClosed(activeEditorIndex());
+          break;
+        case 'Exit without Saving':
+          onEditorClosed(activeEditorIndex());
+          break;
+        case 'Cancel':
+        default:
+          // Do nothing, continue editing
+          break;
+      }
+    } else {
+      onEditorClosed(activeEditorIndex());
+    }
+  }
 
   Future<KeyEventResult> handleKeyEvent(FocusNode node, KeyEvent event) async {
     if (event is KeyDownEvent || event is KeyRepeatEvent) {
@@ -106,7 +130,7 @@ class EditorKeyboardHandler {
           }
         case LogicalKeyboardKey.keyW:
           if (isControlPressed) {
-            onEditorClosed(activeEditorIndex());
+            await _handleCloseTab();
             return KeyEventResult.handled;
           }
         case LogicalKeyboardKey.keyN:

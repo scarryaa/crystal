@@ -29,6 +29,7 @@ class EditorView extends StatefulWidget {
   final List<SearchMatch> searchTermMatches;
   final Function activeEditorIndex;
   final String fileName;
+  final bool Function() isDirty;
 
   const EditorView({
     super.key,
@@ -48,6 +49,7 @@ class EditorView extends StatefulWidget {
     required this.editorConfigService,
     required this.activeEditorIndex,
     required this.fileName,
+    required this.isDirty,
   });
 
   @override
@@ -97,6 +99,7 @@ class EditorViewState extends State<EditorView> {
       saveFileAs: widget.saveFileAs,
       saveFile: widget.saveFile,
       updateSingleLineWidth: updateSingleLineWidth,
+      isDirty: widget.isDirty,
     );
 
     editorSyntaxHighlighter = EditorSyntaxHighlighter(
