@@ -385,26 +385,28 @@ class EditorScreenState extends State<EditorScreen> {
     final editorKey = editorState.getEditorViewKey(targetRow, targetCol);
 
     setState(() {
-      final verticalOffset =
-          editorTabManager.activeEditor?.scrollState.verticalOffset ?? 0.0;
-      final horizontalOffset =
-          editorTabManager.activeEditor?.scrollState.horizontalOffset ?? 0.0;
-
       editorTabManager.closeEditor(
         index,
         row: targetRow,
         col: targetCol,
       );
-
-      // Only update scroll positions if there's still an active editor
-      scrollManager.editorVerticalScrollController.jumpTo(verticalOffset);
-      scrollManager.editorHorizontalScrollController.jumpTo(horizontalOffset);
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (editorKey.currentState != null && mounted) {
+        final verticalOffset =
+            editorTabManager.activeEditor?.scrollState.verticalOffset ?? 0.0;
+        final horizontalOffset =
+            editorTabManager.activeEditor?.scrollState.horizontalOffset ?? 0.0;
+
         editorKey.currentState!.updateCachedMaxLineWidth();
-        if (mounted) setState(() {});
+        if (mounted) {
+          setState(() {
+            scrollManager.editorVerticalScrollController.jumpTo(verticalOffset);
+            scrollManager.editorHorizontalScrollController
+                .jumpTo(horizontalOffset);
+          });
+        }
       }
     });
   }
