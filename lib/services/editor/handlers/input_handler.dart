@@ -10,6 +10,7 @@ import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/services/editor/editor_selection_manager.dart';
 import 'package:crystal/services/editor/folding_manager.dart';
 import 'package:crystal/services/file_service.dart';
+import 'package:crystal/state/editor/editor_state.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
@@ -27,6 +28,7 @@ class InputHandler {
   final Function(String)? onDirectoryChanged;
   final FileService fileService;
   final String path;
+  final List<EditorState> editors;
 
   InputHandler({
     required this.buffer,
@@ -41,6 +43,7 @@ class InputHandler {
     required this.onDirectoryChanged,
     required this.fileService,
     required this.path,
+    required this.editors,
   });
 
   void handleDragStart(double dy, double dx,
@@ -121,10 +124,12 @@ class InputHandler {
 
       case LogicalKeyboardKey.keyQ:
         if (isWindowsControlKey || isMacCommandKey) {
-          // Quit handling logic
-          return true;
+          final success = await _handleMultipleTabsSave(editors);
+          if (success) {
+            exit(0);
+          }
         }
-        break;
+        return true;
 
       case LogicalKeyboardKey.keyO:
         if (isWindowsControlKey || isMacCommandKey) {
@@ -139,6 +144,44 @@ class InputHandler {
         break;
     }
     return false;
+  }
+
+  Future<bool> _handleMultipleTabsSave(List<EditorState> editors) async {
+    // Filter to only get dirty editors
+    final dirtyEditors = editors.where((e) => e.buffer.isDirty).toList();
+
+    if (dirtyEditors.isEmpty) {
+      return true;
+    }
+
+    // Show prompt with multiple files message
+    final response = await DialogService().showMultipleFilesPrompt(
+        message:
+            'You have ${dirtyEditors.length} unsaved files. What would you like to do?',
+        options: ['Save All', 'Save None', 'Cancel']);
+
+    switch (response) {
+      case 'Save All':
+        try {
+          // Attempt to save all dirty editors
+          for (final editor in dirtyEditors) {
+            await editor.save();
+          }
+          return true;
+        } catch (e) {
+          // Handle save error
+          return false;
+        }
+
+      case 'Save None':
+        // Proceed without saving any files
+        return true;
+
+      case 'Cancel':
+      default:
+        // User cancelled or unknown response
+        return false;
+    }
   }
 
   void handleTap(double dy, double dx, Function(String) measureLineWidth,

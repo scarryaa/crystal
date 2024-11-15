@@ -155,6 +155,7 @@ class _EditorTabBarState extends State<EditorTabBar> {
         resetGutterScroll: activeEditor.resetGutterScroll,
         fileService: widget.fileService,
         onDirectoryChanged: widget.onDirectoryChanged,
+        editors: widget.editors,
       );
 
       newEditor.openFile(activeEditor.buffer.content);
@@ -178,6 +179,7 @@ class _EditorTabBarState extends State<EditorTabBar> {
         resetGutterScroll: activeEditor.resetGutterScroll,
         fileService: widget.fileService,
         onDirectoryChanged: widget.onDirectoryChanged,
+        editors: widget.editors,
       );
 
       newEditor.openFile(activeEditor.buffer.content);

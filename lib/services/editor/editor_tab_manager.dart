@@ -220,6 +220,7 @@ class EditorTabManager extends ChangeNotifier {
       resetGutterScroll: source.resetGutterScroll,
       fileService: fileService,
       onDirectoryChanged: onDirectoryChanged,
+      editors: editors,
     );
 
     newEditor.openFile(source.buffer.content);

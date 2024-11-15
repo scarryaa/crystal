@@ -64,6 +64,7 @@ class EditorState extends ChangeNotifier {
   bool showCompletions = false;
   int selectedSuggestionIndex = 0;
   final ValueNotifier<int> selectedSuggestionIndexNotifier = ValueNotifier(0);
+  final List<EditorState> editors;
 
   EditorState({
     required this.resetGutterScroll,
@@ -74,6 +75,7 @@ class EditorState extends ChangeNotifier {
     required this.fileService,
     String? path,
     this.relativePath,
+    required this.editors,
   }) : path = path ?? generateUniqueTempPath() {
     final filename = path != null && path.isNotEmpty ? p.split(path).last : '';
 
@@ -133,6 +135,7 @@ class EditorState extends ChangeNotifier {
       onDirectoryChanged: onDirectoryChanged,
       fileService: fileService,
       path: path ?? '',
+      editors: editors,
     );
     cursorMovementHandler = CursorMovementHandler(
       buffer: buffer,

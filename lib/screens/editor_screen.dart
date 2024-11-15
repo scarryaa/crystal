@@ -120,6 +120,10 @@ class EditorScreenState extends State<EditorScreen> {
       tapCallback: tapCallback,
       onDirectoryChanged: widget.onDirectoryChanged,
       fileService: widget.fileService,
+      editors: editorTabManager
+          .horizontalSplits[editorTabManager.activeRow]
+              [editorTabManager.activeCol]
+          .editors,
     );
 
     editorTabManager.addEditor(newEditor, row: targetRow, col: targetCol);
@@ -174,6 +178,10 @@ class EditorScreenState extends State<EditorScreen> {
         tapCallback: tapCallback,
         onDirectoryChanged: widget.onDirectoryChanged,
         fileService: widget.fileService,
+        editors: editorTabManager
+            .horizontalSplits[editorTabManager.activeRow]
+                [editorTabManager.activeCol]
+            .editors,
       );
 
       editorTabManager.focusSplitView(targetRow, targetCol);
