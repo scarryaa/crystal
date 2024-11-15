@@ -278,7 +278,8 @@ class EditorKeyboardHandler {
       default:
         if (event.character != null &&
             event.character!.length == 1 &&
-            event.logicalKey != LogicalKeyboardKey.escape) {
+            event.logicalKey != LogicalKeyboardKey.escape &&
+            _isValidCharacter(event)) {
           final currentLine = state.cursorLine;
           state.insertChar(event.character!);
           updateSingleLineWidth(currentLine);
@@ -286,8 +287,26 @@ class EditorKeyboardHandler {
           onSearchTermChanged(searchTerm);
           return KeyEventResult.handled;
         }
+        return KeyEventResult.ignored;
+    }
+  }
+
+  bool _isValidCharacter(KeyEvent event) {
+    // Filter out control characters and invalid input
+    if (event.character == null) return false;
+
+    // Check for control key combinations on Mac
+    if (Platform.isMacOS && HardwareKeyboard.instance.isMetaPressed) {
+      return false;
     }
 
-    return KeyEventResult.ignored;
+    // Check for control key combinations on other platforms
+    if (!Platform.isMacOS && HardwareKeyboard.instance.isControlPressed) {
+      return false;
+    }
+
+    // Only allow printable characters
+    final charCode = event.character!.codeUnitAt(0);
+    return charCode >= 32 && charCode < 127 || charCode > 127;
   }
 }
