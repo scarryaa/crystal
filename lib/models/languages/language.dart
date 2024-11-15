@@ -7,4 +7,5 @@ abstract class Language {
   RegExp get numberLiteral;
   RegExp get commentSingle;
   RegExp get commentMulti;
+  String get toLowerCase;
 }

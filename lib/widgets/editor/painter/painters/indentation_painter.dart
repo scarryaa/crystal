@@ -19,23 +19,6 @@ class IndentationPainter extends EditorPainterBase {
     required super.editorConfigService,
   });
 
-  bool _hasMixedIndentation(String line) {
-    // Only check the leading whitespace
-    int i = 0;
-    bool hasSpaces = false;
-    bool hasTabs = false;
-
-    // Count only leading whitespace
-    while (i < line.length && (line[i] == ' ' || line[i] == '\t')) {
-      if (line[i] == ' ') hasSpaces = true;
-      if (line[i] == '\t') hasTabs = true;
-      i++;
-    }
-
-    // Mixed indentation is only when both tabs and spaces are used for indentation
-    return hasSpaces && hasTabs;
-  }
-
   void _drawDottedLine(Canvas canvas, Offset start, Offset end, Paint paint) {
     const double dashLength = 3;
     const double spaceLength = 3;

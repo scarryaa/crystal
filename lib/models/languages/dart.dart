@@ -5,6 +5,9 @@ class Dart extends Language {
   String get name => 'Dart';
 
   @override
+  String get toLowerCase => name.toLowerCase();
+
+  @override
   List<String> get keywords => [
         'abstract',
         'as',

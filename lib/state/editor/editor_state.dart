@@ -1,3 +1,5 @@
+import 'package:path/path.dart' as p;
+
 import 'package:crystal/models/editor/breadcrumb_item.dart';
 import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/editor/command.dart';
@@ -19,6 +21,7 @@ import 'package:crystal/services/editor/handlers/selection_handler.dart';
 import 'package:crystal/services/editor/handlers/text_manipulator.dart';
 import 'package:crystal/services/editor/undo_redo_manager.dart';
 import 'package:crystal/services/file_service.dart';
+import 'package:crystal/services/language_detection_service.dart';
 import 'package:crystal/state/editor/editor_scroll_state.dart';
 import 'package:crystal/utils/utils.dart';
 import 'package:flutter/material.dart';
@@ -65,8 +68,25 @@ class EditorState extends ChangeNotifier {
     String? path,
     this.relativePath,
   }) : path = path ?? generateUniqueTempPath() {
+    final filename = p.split(path ?? '').last;
+    final detectedLanguage =
+        LanguageDetectionService.getLanguageFromFilename(filename);
+    const indentationBasedLanguages = {
+      'python',
+      'yaml',
+      'yml',
+      'pug',
+      'sass',
+      'haml',
+      'markdown',
+      'gherkin',
+      'nim'
+    };
+
     foldingManager = FoldingManager(
       _buffer,
+      useIndentationFolding: detectedLanguage != null &&
+          indentationBasedLanguages.contains(detectedLanguage.toLowerCase),
     );
     textManipulator = TextManipulator(
       editorSelectionManager: editorSelectionManager,

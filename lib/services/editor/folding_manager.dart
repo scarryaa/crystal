@@ -11,7 +11,10 @@ class FoldingManager extends ChangeNotifier {
   final Buffer buffer;
   final closingSymbols = ['}', ')', ']', '>'];
 
-  FoldingManager(this.buffer);
+  // Add support for different folding strategies
+  final bool useIndentationFolding;
+
+  FoldingManager(this.buffer, {this.useIndentationFolding = false});
 
   bool isFolded(int line) => foldingState.isLineFolded(line);
 
@@ -24,6 +27,116 @@ class FoldingManager extends ChangeNotifier {
       fold(startLine, endLine);
     }
     notifyListeners();
+  }
+
+  // Get the indentation level of a line
+  int _getIndentationLevel(String line) {
+    final match = RegExp(r'^\s*').firstMatch(line);
+    if (match == null) return 0;
+
+    final indent = match.group(0) ?? '';
+    // For tab indentation
+    if (indent.contains('\t')) {
+      return indent.length;
+    }
+    // For space indentation (assuming 2 or 4 spaces)
+    return (indent.length / 2)
+        .floor(); // Adjust divisor based on your space count
+  }
+
+  // Find the end of an indentation-based block
+  int? _getIndentationBlockEnd(int startLine, List<String> lines) {
+    if (startLine >= lines.length) return null;
+
+    final startIndentation = _getIndentationLevel(lines[startLine]);
+
+    // Skip empty starting lines
+    if (lines[startLine].trim().isEmpty) return null;
+
+    for (int i = startLine + 1; i < lines.length; i++) {
+      final currentLine = lines[i].trimRight();
+
+      // Skip empty lines
+      if (currentLine.isEmpty) continue;
+
+      final currentIndentation = _getIndentationLevel(lines[i]);
+
+      // If we find a line with same or less indentation,
+      // the block ends at the previous line
+      if (currentIndentation <= startIndentation) {
+        return i - 1;
+      }
+    }
+
+    // If we reach the end, the block ends at the last line
+    return lines.length - 1;
+  }
+
+  int? getFoldableRegionEnd(int line, List<String> lines) {
+    if (line >= lines.length) return null;
+
+    // If using indentation-based folding
+    if (useIndentationFolding) {
+      return _getIndentationBlockEnd(line, lines);
+    }
+
+    // Original bracket-based folding logic
+    const openingBracket = '{';
+    const closingBracket = '}';
+    int bracketCount = 0;
+    bool foundOpeningBracket = false;
+
+    // Check if the current line contains an opening bracket
+    if (!lines[line].contains(openingBracket)) return null;
+
+    // Find the position of the first opening bracket on the current line
+    int openingPosition = lines[line].indexOf(openingBracket);
+
+    for (int i = line; i < lines.length; i++) {
+      final currentLine = lines[i];
+
+      for (int j = i == line ? openingPosition : 0;
+          j < currentLine.length;
+          j++) {
+        if (currentLine[j] == openingBracket) {
+          bracketCount++;
+          foundOpeningBracket = true;
+        } else if (currentLine[j] == closingBracket) {
+          bracketCount--;
+        }
+
+        if (foundOpeningBracket && bracketCount == 0) {
+          return i > line ? i : null;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  // Check if a line can be folded
+  bool canFold(int line) {
+    if (line >= buffer.lines.length) return false;
+
+    if (useIndentationFolding) {
+      // For indentation-based folding, check if there's a nested block
+      final currentLine = buffer.getLine(line).trimRight();
+      if (currentLine.isEmpty) return false;
+
+      final currentIndentation = _getIndentationLevel(currentLine);
+
+      // Check if next non-empty line has greater indentation
+      for (int i = line + 1; i < buffer.lines.length; i++) {
+        final nextLine = buffer.getLine(i).trimRight();
+        if (nextLine.isEmpty) continue;
+
+        return _getIndentationLevel(nextLine) > currentIndentation;
+      }
+      return false;
+    } else {
+      // For bracket-based folding, check if there's a valid folding region
+      return getFoldableRegionEnd(line, buffer.lines) != null;
+    }
   }
 
   void fold(int startLine, int endLine) {
@@ -71,43 +184,6 @@ class FoldingManager extends ChangeNotifier {
 
   bool isLineHidden(int line) {
     return foldingState.isLineHidden(line);
-  }
-
-  int? getFoldableRegionEnd(int line, List<String> lines) {
-    if (line >= lines.length) return null;
-
-    const openingBracket = '{';
-    const closingBracket = '}';
-    int bracketCount = 0;
-    bool foundOpeningBracket = false;
-
-    // Check if the current line contains an opening bracket
-    if (!lines[line].contains(openingBracket)) return null;
-
-    // Find the position of the first opening bracket on the current line
-    int openingPosition = lines[line].indexOf(openingBracket);
-
-    for (int i = line; i < lines.length; i++) {
-      final currentLine = lines[i];
-
-      for (int j = i == line ? openingPosition : 0;
-          j < currentLine.length;
-          j++) {
-        if (currentLine[j] == openingBracket) {
-          bracketCount++;
-          foundOpeningBracket = true;
-        } else if (currentLine[j] == closingBracket) {
-          bracketCount--;
-        }
-
-        if (foundOpeningBracket && bracketCount == 0) {
-          // Only return if the closing bracket is not on the same line as the opening bracket
-          return i > line ? i : null;
-        }
-      }
-    }
-
-    return null; // No matching closing bracket found
   }
 
   bool isLineFolded(int line) {
