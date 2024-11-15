@@ -9,7 +9,7 @@ class BreadcrumbGenerator {
   List<BreadcrumbItem> _allSymbols = [];
 
   List<BreadcrumbItem> getAllSymbols(String sourceCode) {
-    final result = parseString(content: sourceCode);
+    final result = parseString(content: sourceCode, throwIfDiagnostics: false);
     final unit = result.unit;
     final lineInfo = result.lineInfo;
 
@@ -29,7 +29,7 @@ class BreadcrumbGenerator {
     List<BreadcrumbItem> breadcrumbs = [];
 
     // Parse the code
-    final result = parseString(content: sourceCode);
+    final result = parseString(content: sourceCode, throwIfDiagnostics: false);
     final unit = result.unit;
     final lineInfo = result.lineInfo;
 
