@@ -174,6 +174,42 @@ class EditorTabManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  void closeTabsToRight(int index, {required int row, required int col}) {
+    if (index < horizontalSplits[row][col].editors.length - 1) {
+      horizontalSplits[row][col]
+          .editors
+          .removeRange(index + 1, horizontalSplits[row][col].editors.length);
+      _updateActiveEditor(row, col);
+      notifyListeners();
+    }
+  }
+
+  void closeTabsToLeft(int index, {required int row, required int col}) {
+    if (index > 0) {
+      horizontalSplits[row][col].editors.removeRange(0, index);
+      horizontalSplits[row][col].activeEditorIndex = 0;
+      _updateActiveEditor(row, col);
+      notifyListeners();
+    }
+  }
+
+  void closeOtherTabs(int index, {required int row, required int col}) {
+    final keepEditor = horizontalSplits[row][col].editors[index];
+    horizontalSplits[row][col].editors.clear();
+    horizontalSplits[row][col].editors.add(keepEditor);
+    horizontalSplits[row][col].activeEditorIndex = 0;
+    _updateActiveEditor(row, col);
+    notifyListeners();
+  }
+
+  void _updateActiveEditor(int row, int col) {
+    if (horizontalSplits[row][col].activeEditorIndex >=
+        horizontalSplits[row][col].editors.length) {
+      horizontalSplits[row][col].activeEditorIndex =
+          horizontalSplits[row][col].editors.length - 1;
+    }
+  }
+
   EditorState _copyEditorState(EditorState source) {
     final newEditor = EditorState(
       editorConfigService: source.editorConfigService,

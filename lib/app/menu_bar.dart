@@ -105,7 +105,7 @@ class _AppMenuBarState extends State<AppMenuBar> {
   }
 
   void _showMenu(
-      BuildContext context, List<MenuItemData> items, Offset position) {
+      BuildContext context, List<MenuBarItemData> items, Offset position) {
     final theme = widget.editorConfigService.themeService.currentTheme!;
 
     _overlayEntry?.remove();
@@ -146,7 +146,7 @@ class _AppMenuBarState extends State<AppMenuBar> {
   }
 
   Widget _buildMenuItem(
-      BuildContext context, MenuItemData item, dynamic theme) {
+      BuildContext context, MenuBarItemData item, dynamic theme) {
     if (item.isDivider) {
       return Divider(
         height: 1,
@@ -283,7 +283,7 @@ class _AppMenuBarState extends State<AppMenuBar> {
               _MenuButton(
                 label: 'File',
                 items: [
-                  MenuItemData(
+                  MenuBarItemData(
                     label: 'Open Directory...',
                     shortcut: const SingleActivator(LogicalKeyboardKey.keyO,
                         meta: true),
@@ -295,13 +295,13 @@ class _AppMenuBarState extends State<AppMenuBar> {
                       }
                     },
                   ),
-                  MenuItemData(
+                  MenuBarItemData(
                     label: 'Check for Updates...',
                     onTap: () => _checkForUpdates(context),
                   ),
                   if (Platform.isMacOS) ...[
-                    MenuItemData(isDivider: true),
-                    MenuItemData(
+                    MenuBarItemData(isDivider: true),
+                    MenuBarItemData(
                       label: 'Quit',
                       shortcut: const SingleActivator(LogicalKeyboardKey.keyQ,
                           meta: true),
@@ -315,7 +315,7 @@ class _AppMenuBarState extends State<AppMenuBar> {
               _MenuButton(
                 label: 'Edit',
                 items: [
-                  MenuItemData(
+                  MenuBarItemData(
                     label: 'Undo',
                     shortcut: const SingleActivator(LogicalKeyboardKey.keyZ,
                         meta: true),
@@ -328,7 +328,7 @@ class _AppMenuBarState extends State<AppMenuBar> {
                       }
                     },
                   ),
-                  MenuItemData(
+                  MenuBarItemData(
                     label: 'Redo',
                     shortcut: const SingleActivator(LogicalKeyboardKey.keyZ,
                         meta: true, shift: true),
@@ -348,7 +348,7 @@ class _AppMenuBarState extends State<AppMenuBar> {
               _MenuButton(
                 label: 'View',
                 items: [
-                  MenuItemData(
+                  MenuBarItemData(
                     label: 'Increase Font Size',
                     shortcut: const SingleActivator(LogicalKeyboardKey.equal,
                         meta: true),
@@ -358,7 +358,7 @@ class _AppMenuBarState extends State<AppMenuBar> {
                       widget.editorConfigService.saveConfig();
                     },
                   ),
-                  MenuItemData(
+                  MenuBarItemData(
                     label: 'Decrease Font Size',
                     shortcut: const SingleActivator(LogicalKeyboardKey.minus,
                         meta: true),
@@ -413,8 +413,8 @@ class _AppMenuBarState extends State<AppMenuBar> {
 
 class _MenuButton extends StatefulWidget {
   final String label;
-  final List<MenuItemData> items;
-  final Function(BuildContext, List<MenuItemData>, Offset) onShow;
+  final List<MenuBarItemData> items;
+  final Function(BuildContext, List<MenuBarItemData>, Offset) onShow;
   final dynamic theme;
 
   const _MenuButton({
@@ -469,13 +469,13 @@ class _MenuButtonState extends State<_MenuButton> {
   }
 }
 
-class MenuItemData {
+class MenuBarItemData {
   final String label;
   final SingleActivator? shortcut;
   final VoidCallback? onTap;
   final bool isDivider;
 
-  MenuItemData({
+  MenuBarItemData({
     this.label = '',
     this.shortcut,
     this.onTap,

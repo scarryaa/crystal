@@ -136,6 +136,12 @@ class EditorSection extends StatelessWidget {
                                 row: row,
                                 col: col,
                               ),
+                              onCloseTabsToRight: (index) => editorTabManager
+                                  .closeTabsToRight(index, row: row, col: col),
+                              onCloseTabsToLeft: (index) => editorTabManager
+                                  .closeTabsToLeft(index, row: row, col: col),
+                              onCloseOtherTabs: (index) => editorTabManager
+                                  .closeOtherTabs(index, row: row, col: col),
                               editorConfigService: editorConfigService,
                               editors: splitView.editors,
                               activeEditorIndex: splitView.activeEditorIndex,

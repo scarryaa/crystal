@@ -27,6 +27,9 @@ class EditorTabBar extends StatefulWidget {
   final FileService fileService;
   final Function(String)? onDirectoryChanged;
   final ScrollController tabBarScrollController;
+  final Function(int) onCloseTabsToRight;
+  final Function(int) onCloseTabsToLeft;
+  final Function(int) onCloseOtherTabs;
 
   const EditorTabBar({
     super.key,
@@ -48,6 +51,9 @@ class EditorTabBar extends StatefulWidget {
     required this.tabBarScrollController,
     required this.fileService,
     required this.onDirectoryChanged,
+    required this.onCloseTabsToRight,
+    required this.onCloseTabsToLeft,
+    required this.onCloseOtherTabs,
   });
 
   @override
@@ -263,6 +269,12 @@ class _EditorTabBarState extends State<EditorTabBar> {
                           onClose: () => _handleEditorClosed(index),
                           onPin: () => widget.onPin(index),
                           isPinned: editor.isPinned,
+                          onCloseTabsToRight: () =>
+                              widget.onCloseTabsToRight(index),
+                          onCloseTabsToLeft: () =>
+                              widget.onCloseTabsToLeft(index),
+                          onCloseOtherTabs: () =>
+                              widget.onCloseOtherTabs(index),
                         ),
                       );
                     },

@@ -1,5 +1,7 @@
+import 'package:crystal/models/menu_item_data.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
+import 'package:crystal/widgets/context_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 
@@ -14,6 +16,9 @@ class EditorTab extends StatelessWidget {
   final VoidCallback onClose;
   final VoidCallback onPin;
   final EditorConfigService editorConfigService;
+  final VoidCallback onCloseTabsToRight;
+  final VoidCallback onCloseTabsToLeft;
+  final VoidCallback onCloseOtherTabs;
 
   const EditorTab({
     required this.editor,
@@ -23,59 +28,71 @@ class EditorTab extends StatelessWidget {
     required this.onClose,
     required this.onPin,
     required this.editorConfigService,
+    required this.onCloseTabsToRight,
+    required this.onCloseTabsToLeft,
+    required this.onCloseOtherTabs,
     super.key,
   });
 
   void _showContextMenu(BuildContext context, TapDownDetails details) {
+    final theme = editorConfigService.themeService.currentTheme;
+    final isMacOS = Theme.of(context).platform == TargetPlatform.macOS;
+    final isLinux = Theme.of(context).platform == TargetPlatform.linux;
+
+    final menuItems = [
+      MenuItemData(
+        icon: isPinned ? Icons.push_pin : Icons.push_pin_outlined,
+        text: isPinned ? 'Unpin Tab' : 'Pin Tab',
+        shortcut: '',
+        onTap: onPin,
+        showDivider: true,
+      ),
+      MenuItemData(
+        icon: Icons.close,
+        text: 'Close',
+        shortcut: isMacOS
+            ? '⌘W'
+            : isLinux
+                ? 'Ctrl+W'
+                : 'Ctrl+W',
+        onTap: onClose,
+      ),
+      MenuItemData(
+        icon: Icons.arrow_right,
+        text: 'Close Tabs to the Right',
+        onTap: onCloseTabsToRight,
+      ),
+      MenuItemData(
+        icon: Icons.arrow_left,
+        text: 'Close Tabs to the Left',
+        onTap: onCloseTabsToLeft,
+      ),
+      MenuItemData(
+        icon: Icons.close_fullscreen,
+        text: 'Close Other Tabs',
+        onTap: onCloseOtherTabs,
+      ),
+    ];
+
     final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final position = RelativeRect.fromRect(
       Rect.fromPoints(details.globalPosition, details.globalPosition),
       Offset.zero & overlay.size,
     );
 
-    final theme = editorConfigService.themeService.currentTheme;
-    final textColor = theme?.text ?? Colors.black87;
-    final backgroundColor = theme?.background ?? Colors.white;
-
-    showMenu(
+    showDialog(
       context: context,
-      position: position,
-      color: backgroundColor.withRed(30).withBlue(30).withGreen(30),
-      items: [
-        _buildMenuItem(
-          icon: isPinned ? Icons.push_pin : Icons.push_pin_outlined,
-          text: isPinned ? 'Unpin Tab' : 'Pin Tab',
-          onTap: onPin,
-          textColor: textColor,
-        ),
-        _buildMenuItem(
-          icon: Icons.close,
-          text: 'Close',
-          onTap: onClose,
-          textColor: textColor,
-        ),
-      ],
-    );
-  }
-
-  PopupMenuItem _buildMenuItem({
-    required IconData icon,
-    required String text,
-    required VoidCallback onTap,
-    required Color textColor,
-  }) {
-    return PopupMenuItem(
-      onTap: onTap,
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: textColor),
-          const SizedBox(width: _kSpacing),
-          Text(
-            text,
-            style: TextStyle(color: textColor),
-          ),
-        ],
-      ),
+      barrierColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return ContextMenu(
+          menuItems: menuItems,
+          textColor: theme?.text ?? Colors.black87,
+          backgroundColor: theme?.background ?? Colors.white,
+          hoverColor: theme?.backgroundLight ?? Colors.black12,
+          dividerColor: theme?.border ?? Colors.grey[300]!,
+          position: position,
+        );
+      },
     );
   }
 
