@@ -195,8 +195,10 @@ class EditorState extends ChangeNotifier {
     final prefix = _getPrefix(line, cursor.column);
 
     if (prefix.isNotEmpty) {
-      suggestions = _completionService.getSuggestions(prefix);
-      showCompletions = suggestions.isNotEmpty;
+      suggestions = _completionService.getSuggestions(prefix).toSet().toList();
+
+      showCompletions = suggestions.isNotEmpty &&
+          (suggestions.length > 1 || suggestions[0].label != prefix);
     } else {
       showCompletions = false;
     }

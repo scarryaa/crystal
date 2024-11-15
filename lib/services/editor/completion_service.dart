@@ -9,8 +9,22 @@ class CompletionService {
 
   List<CompletionItem> getSuggestions(String prefix) {
     final suggestions = <CompletionItem>[];
-    suggestions.addAll(_getKeywordSuggestions(prefix));
-    suggestions.addAll(_getLocalSuggestions(prefix));
+    final seenLabels = <String>{};
+
+    for (final item in _getKeywordSuggestions(prefix)) {
+      if (!seenLabels.contains(item.label)) {
+        suggestions.add(item);
+        seenLabels.add(item.label);
+      }
+    }
+
+    for (final item in _getLocalSuggestions(prefix)) {
+      if (!seenLabels.contains(item.label)) {
+        suggestions.add(item);
+        seenLabels.add(item.label);
+      }
+    }
+
     return suggestions;
   }
 
@@ -29,10 +43,16 @@ class CompletionService {
   List<CompletionItem> _getLocalSuggestions(String prefix) {
     final pattern = RegExp(r'\b\w+\b');
     final matches = pattern.allMatches(editor.buffer.content);
+    final uniqueWords = <String>{};
 
-    return matches
-        .map((m) => m.group(0)!)
-        .where((word) => word.startsWith(prefix))
+    for (final match in matches) {
+      final word = match.group(0)!;
+      if (word.startsWith(prefix)) {
+        uniqueWords.add(word);
+      }
+    }
+
+    return uniqueWords
         .map((word) => CompletionItem(
               label: word,
               kind: CompletionItemKind.variable,
