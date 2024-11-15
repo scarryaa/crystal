@@ -67,7 +67,8 @@ class EditorState extends ChangeNotifier {
     String? path,
     this.relativePath,
   }) : path = path ?? generateUniqueTempPath() {
-    final filename = p.split(path ?? '').last;
+    final filename = path != null && path.isNotEmpty ? p.split(path).last : '';
+
     final detectedLanguage =
         LanguageDetectionService.getLanguageFromFilename(filename);
     const indentationBasedLanguages = {
