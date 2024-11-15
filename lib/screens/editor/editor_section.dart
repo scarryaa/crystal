@@ -286,8 +286,10 @@ class EditorSection extends StatelessWidget {
                                               .split(
                                                   splitView.activeEditor!.path)
                                               .last,
-                                          isDirty: () => splitView
-                                              .activeEditor!.buffer.isDirty,
+                                          isDirty: () =>
+                                              splitView.activeEditor?.buffer
+                                                  .isDirty ??
+                                              false,
                                           suggestions: editorTabManager
                                                   .activeEditor?.suggestions ??
                                               [],

@@ -221,6 +221,7 @@ class EditorTabManager extends ChangeNotifier {
       fileService: fileService,
       onDirectoryChanged: onDirectoryChanged,
       editors: editors,
+      editorTabManager: this,
     );
 
     newEditor.openFile(source.buffer.content);

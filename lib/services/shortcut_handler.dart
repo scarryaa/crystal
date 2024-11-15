@@ -14,6 +14,8 @@ class ShortcutHandler {
   Future<void> Function() saveFile;
   bool Function() isDirty;
   VoidCallback showCommandPalette;
+  VoidCallback splitVertically;
+  VoidCallback splitHorizontally;
 
   ShortcutHandler({
     required this.openSettings,
@@ -25,6 +27,8 @@ class ShortcutHandler {
     required this.saveFile,
     required this.isDirty,
     required this.showCommandPalette,
+    required this.splitVertically,
+    required this.splitHorizontally,
   });
 
   KeyEventResult handleKeyEvent(FocusNode node, KeyEvent event) {
@@ -35,6 +39,16 @@ class ShortcutHandler {
       final bool isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
 
       switch (event.logicalKey) {
+        case LogicalKeyboardKey.backslash:
+          if (isControlPressed) {
+            if (isShiftPressed) {
+              splitHorizontally();
+            } else {
+              splitVertically();
+            }
+            return KeyEventResult.handled;
+          }
+          break;
         case LogicalKeyboardKey.comma:
           openSettings();
           return KeyEventResult.handled;

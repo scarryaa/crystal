@@ -29,6 +29,8 @@ class InputHandler {
   final FileService fileService;
   final String path;
   List<EditorState> editors;
+  VoidCallback splitVertically;
+  VoidCallback splitHorizontally;
 
   InputHandler({
     required this.buffer,
@@ -44,6 +46,8 @@ class InputHandler {
     required this.fileService,
     required this.path,
     required this.editors,
+    required this.splitHorizontally,
+    required this.splitVertically,
   });
 
   void handleDragStart(double dy, double dx,
@@ -95,6 +99,17 @@ class InputHandler {
       case LogicalKeyboardKey.insert:
         editorCursorManager.toggleInsertMode();
         return Future.value(true);
+      case LogicalKeyboardKey.backslash:
+        if (isControlPressed) {
+          splitVertically();
+          return true;
+        }
+        break;
+      case LogicalKeyboardKey.bar:
+        if (isControlPressed) {
+          splitHorizontally();
+          return true;
+        }
       case LogicalKeyboardKey.add:
         if (isControlPressed) {
           return _handleFontSizeIncrease();

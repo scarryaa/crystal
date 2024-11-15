@@ -156,6 +156,7 @@ class _EditorTabBarState extends State<EditorTabBar> {
         fileService: widget.fileService,
         onDirectoryChanged: widget.onDirectoryChanged,
         editors: widget.editors,
+        editorTabManager: widget.editorTabManager,
       );
 
       newEditor.openFile(activeEditor.buffer.content);
@@ -180,6 +181,7 @@ class _EditorTabBarState extends State<EditorTabBar> {
         fileService: widget.fileService,
         onDirectoryChanged: widget.onDirectoryChanged,
         editors: widget.editors,
+        editorTabManager: widget.editorTabManager,
       );
 
       newEditor.openFile(activeEditor.buffer.content);

@@ -124,6 +124,7 @@ class EditorScreenState extends State<EditorScreen> {
           .horizontalSplits[editorTabManager.activeRow]
               [editorTabManager.activeCol]
           .editors,
+      editorTabManager: editorTabManager,
     );
 
     editorTabManager.addEditor(newEditor, row: targetRow, col: targetCol);
@@ -182,6 +183,7 @@ class EditorScreenState extends State<EditorScreen> {
             .horizontalSplits[editorTabManager.activeRow]
                 [editorTabManager.activeCol]
             .editors,
+        editorTabManager: editorTabManager,
       );
 
       editorTabManager.focusSplitView(targetRow, targetCol);
@@ -308,6 +310,8 @@ class EditorScreenState extends State<EditorScreen> {
           editorTabManager.activeEditor!.requestFocus();
         }
       },
+      splitVertically: editorTabManager.addVerticalSplit,
+      splitHorizontally: editorTabManager.addHorizontalSplit,
     );
   }
 
@@ -388,34 +392,76 @@ class EditorScreenState extends State<EditorScreen> {
       return;
     }
 
-    final scrollManager = editorState.getScrollManager(targetRow, targetCol);
-    final editorKey = editorState.getEditorViewKey(targetRow, targetCol);
+    // Find next focus target before closing the editor
+    final nextFocusTarget = _determineNextFocusTarget(targetRow, targetCol);
 
     setState(() {
+      // Close the editor first
       editorTabManager.closeEditor(
         index,
         row: targetRow,
         col: targetCol,
       );
-    });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (editorKey.currentState != null && mounted) {
-        final verticalOffset =
-            editorTabManager.activeEditor?.scrollState.verticalOffset ?? 0.0;
-        final horizontalOffset =
-            editorTabManager.activeEditor?.scrollState.horizontalOffset ?? 0.0;
-
-        editorKey.currentState!.updateCachedMaxLineWidth();
-        if (mounted) {
-          setState(() {
-            scrollManager.editorVerticalScrollController.jumpTo(verticalOffset);
-            scrollManager.editorHorizontalScrollController
-                .jumpTo(horizontalOffset);
-          });
+      // Only try to focus next editor if there are any editors left
+      if (nextFocusTarget != null) {
+        final (nextRow, nextCol) = nextFocusTarget;
+        if (nextRow < editorTabManager.horizontalSplits.length &&
+            nextCol < editorTabManager.horizontalSplits[nextRow].length) {
+          final nextSplitView =
+              editorTabManager.horizontalSplits[nextRow][nextCol];
+          if (nextSplitView.editors.isNotEmpty) {
+            editorTabManager.setActiveEditor(
+              0, // Always set to first editor to avoid index out of range
+              row: nextRow,
+              col: nextCol,
+            );
+          }
         }
       }
     });
+  }
+
+  (int, int)? _determineNextFocusTarget(int currentRow, int currentCol) {
+    final splits = editorTabManager.horizontalSplits;
+
+    // Helper function to check if a split view has editors
+    bool hasSplitViewEditors(int row, int col) {
+      return row < splits.length &&
+          col < splits[row].length &&
+          splits[row][col].editors.isNotEmpty;
+    }
+
+    // Try to focus the next editor in the same row
+    if (currentCol + 1 < splits[currentRow].length &&
+        hasSplitViewEditors(currentRow, currentCol + 1)) {
+      return (currentRow, currentCol + 1);
+    }
+
+    // Try to focus the previous editor in the same row
+    if (currentCol > 0 && hasSplitViewEditors(currentRow, currentCol - 1)) {
+      return (currentRow, currentCol - 1);
+    }
+
+    // Try to focus an editor in the next row
+    if (currentRow + 1 < splits.length) {
+      for (int col = 0; col < splits[currentRow + 1].length; col++) {
+        if (hasSplitViewEditors(currentRow + 1, col)) {
+          return (currentRow + 1, col);
+        }
+      }
+    }
+
+    // Try to focus an editor in the previous row
+    if (currentRow > 0) {
+      for (int col = 0; col < splits[currentRow - 1].length; col++) {
+        if (hasSplitViewEditors(currentRow - 1, col)) {
+          return (currentRow - 1, col);
+        }
+      }
+    }
+
+    return null;
   }
 
   @override

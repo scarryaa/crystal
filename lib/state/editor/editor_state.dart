@@ -12,6 +12,7 @@ import 'package:crystal/services/editor/editor_cursor_manager.dart';
 import 'package:crystal/services/editor/editor_file_manager.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/services/editor/editor_selection_manager.dart';
+import 'package:crystal/services/editor/editor_tab_manager.dart';
 import 'package:crystal/services/editor/folding_manager.dart';
 import 'package:crystal/services/editor/handlers/command_handler.dart';
 import 'package:crystal/services/editor/handlers/cursor_movement_handler.dart';
@@ -65,6 +66,7 @@ class EditorState extends ChangeNotifier {
   int selectedSuggestionIndex = 0;
   final ValueNotifier<int> selectedSuggestionIndexNotifier = ValueNotifier(0);
   final List<EditorState> editors;
+  final EditorTabManager editorTabManager;
 
   EditorState({
     required this.resetGutterScroll,
@@ -76,6 +78,7 @@ class EditorState extends ChangeNotifier {
     String? path,
     this.relativePath,
     required this.editors,
+    required this.editorTabManager,
   }) : path = path ?? generateUniqueTempPath() {
     final filename = path != null && path.isNotEmpty ? p.split(path).last : '';
 
@@ -136,6 +139,8 @@ class EditorState extends ChangeNotifier {
       fileService: fileService,
       path: path ?? '',
       editors: editors,
+      splitHorizontally: editorTabManager.addHorizontalSplit,
+      splitVertically: editorTabManager.addVerticalSplit,
     );
     cursorMovementHandler = CursorMovementHandler(
       buffer: buffer,
