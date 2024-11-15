@@ -22,6 +22,7 @@ class EditorControlBarView extends StatefulWidget {
   final bool isRegexActive;
   final EditorConfigService editorConfigService;
   final EditorState editorState;
+  final Function() scrollToCursor;
 
   const EditorControlBarView({
     super.key,
@@ -41,6 +42,7 @@ class EditorControlBarView extends StatefulWidget {
     required this.replaceAllMatches,
     required this.editorConfigService,
     required this.editorState,
+    required this.scrollToCursor,
   });
 
   @override
@@ -627,6 +629,7 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
 
   void _jumpToSymbol(BreadcrumbItem symbol) {
     widget.editorState.editorCursorManager
-        .moveCursor(symbol.line, symbol.column);
+        .moveCursor(symbol.line - 1, symbol.column - 1);
+    widget.scrollToCursor();
   }
 }

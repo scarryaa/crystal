@@ -200,6 +200,7 @@ class EditorSection extends StatelessWidget {
                           replaceAllMatches: (newTerm) =>
                               searchService.replaceAllMatches(newTerm, state),
                           editorState: state!,
+                          scrollToCursor: () => scrollToCursor(row, col),
                         ),
                       Expanded(
                         child: Container(
