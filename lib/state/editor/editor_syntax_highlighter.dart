@@ -36,6 +36,10 @@ class EditorSyntaxHighlighter {
 
   void highlight(String text) {
     if (_lastProcessedText == text) return;
+    if (language.name == 'Unknown') {
+      highlightedText.clear();
+      return;
+    }
 
     if (_highlightCache.containsKey(text)) {
       highlightedText.clear();
