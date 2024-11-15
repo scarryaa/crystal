@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:crystal/models/editor/editor_command.dart';
 import 'package:crystal/providers/file_explorer_provider.dart';
 import 'package:crystal/providers/terminal_provider.dart';
@@ -44,18 +46,31 @@ class CommandPaletteService {
     _initializeCommands();
   }
 
+  String _getPlatformShortcut(String windowsShortcut) {
+    if (Platform.isMacOS) {
+      return windowsShortcut
+          .replaceAll('Ctrl+', '⌘')
+          .replaceAll('Shift+', '⇧')
+          .replaceAll('Alt+', '⌥');
+    } else if (Platform.isLinux) {
+      return windowsShortcut;
+    } else {
+      return windowsShortcut;
+    }
+  }
+
   void _initializeCommands() {
     _commands = [
       EditorCommand(
         id: 'new_tab',
         label: 'New Tab',
-        shortcut: 'Ctrl+N',
+        shortcut: _getPlatformShortcut('Ctrl+N'),
         action: () => _openNewTab?.call(),
       ),
       EditorCommand(
         id: 'save_file',
         label: 'Save File',
-        shortcut: 'Ctrl+S',
+        shortcut: _getPlatformShortcut('Ctrl+S'),
         action: () async {
           if (_editorTabManager?.activeEditor != null) {
             await _editorTabManager!.activeEditor!.saveFile(
@@ -67,7 +82,7 @@ class CommandPaletteService {
       EditorCommand(
         id: 'save_as',
         label: 'Save As...',
-        shortcut: 'Ctrl+Shift+S',
+        shortcut: _getPlatformShortcut('Ctrl+Shift+S'),
         action: () async {
           if (_editorTabManager?.activeEditor != null) {
             await _editorTabManager!.activeEditor!.saveFileAs(
@@ -79,7 +94,7 @@ class CommandPaletteService {
       EditorCommand(
         id: 'close_tab',
         label: 'Close Tab',
-        shortcut: 'Ctrl+W',
+        shortcut: _getPlatformShortcut('Ctrl+W'),
         action: () {
           if (_editorTabManager!.activeSplitView.activeEditorIndex >= 0) {
             _onEditorClosed?.call(
@@ -91,19 +106,19 @@ class CommandPaletteService {
       EditorCommand(
         id: 'split_vertical',
         label: 'Split Editor Vertical',
-        shortcut: 'Ctrl+\\',
+        shortcut: _getPlatformShortcut('Ctrl+\\'),
         action: () => _editorTabManager?.addVerticalSplit(),
       ),
       EditorCommand(
         id: 'split_horizontal',
         label: 'Split Editor Horizontal',
-        shortcut: 'Ctrl+Shift+\\',
+        shortcut: _getPlatformShortcut('Ctrl+Shift+\\'),
         action: () => _editorTabManager?.addHorizontalSplit(),
       ),
       EditorCommand(
         id: 'toggle_terminal',
         label: 'Toggle Terminal',
-        shortcut: 'Ctrl+`',
+        shortcut: _getPlatformShortcut('Ctrl+`'),
         action: () {
           if (_context != null) {
             Provider.of<TerminalProvider>(_context!, listen: false).toggle();
@@ -113,7 +128,7 @@ class CommandPaletteService {
       EditorCommand(
         id: 'toggle_file_explorer',
         label: 'Toggle File Explorer',
-        shortcut: 'Ctrl+B',
+        shortcut: _getPlatformShortcut('Ctrl+B'),
         action: () {
           if (_context != null) {
             Provider.of<FileExplorerProvider>(_context!, listen: false)

@@ -88,58 +88,52 @@ class InputHandler {
 
   Future<bool> handleSpecialKeys(bool isControlPressed, bool isShiftPressed,
       LogicalKeyboardKey key) async {
+    bool isMacCommandKey = Platform.isMacOS && isControlPressed;
+    bool isWindowsControlKey = !Platform.isMacOS && isControlPressed;
+
     switch (key) {
       case LogicalKeyboardKey.insert:
         editorCursorManager.toggleInsertMode();
         return Future.value(true);
+
       case LogicalKeyboardKey.add:
-        if (isControlPressed) {
+        if (isWindowsControlKey || isMacCommandKey) {
           return _handleFontSizeIncrease();
         }
         break;
+
       case LogicalKeyboardKey.minus:
-        if (isControlPressed) {
+        if (isWindowsControlKey || isMacCommandKey) {
           return _handleFontSizeDecrease();
         }
         break;
+
       case LogicalKeyboardKey.keyZ:
-        if (isControlPressed && isShiftPressed) {
+        if ((isWindowsControlKey || isMacCommandKey) && isShiftPressed) {
           redo();
           return true;
         }
-        if (isControlPressed) {
+        if (isWindowsControlKey || isMacCommandKey) {
           undo();
           return true;
         }
         break;
+
       case LogicalKeyboardKey.keyQ:
-        if (isControlPressed) {
-          if (buffer.isDirty) {
-            final response = await DialogService().showSavePrompt();
-            switch (response) {
-              case 'Save & Exit':
-                FileService.saveFile(path, buffer.content);
-                exit(0);
-              case 'Exit without Saving':
-                exit(0);
-              case 'Cancel':
-              default:
-                // Do nothing, continue editing
-                break;
-            }
-          } else {
-            exit(0);
-          }
+        if (isWindowsControlKey || isMacCommandKey) {
+          // Quit handling logic
           return true;
         }
         break;
+
       case LogicalKeyboardKey.keyO:
-        if (isControlPressed) {
+        if (isWindowsControlKey || isMacCommandKey) {
           return _handleDirectoryChange();
         }
         break;
+
       case LogicalKeyboardKey.keyF:
-        if (isControlPressed) {
+        if (isWindowsControlKey || isMacCommandKey) {
           return _handleFullScreenToggle();
         }
         break;
