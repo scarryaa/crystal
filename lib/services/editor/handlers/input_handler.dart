@@ -28,7 +28,7 @@ class InputHandler {
   final Function(String)? onDirectoryChanged;
   final FileService fileService;
   final String path;
-  final List<EditorState> editors;
+  List<EditorState> editors;
 
   InputHandler({
     required this.buffer,
@@ -91,54 +91,45 @@ class InputHandler {
 
   Future<bool> handleSpecialKeys(bool isControlPressed, bool isShiftPressed,
       LogicalKeyboardKey key) async {
-    bool isMacCommandKey = Platform.isMacOS && isControlPressed;
-    bool isWindowsControlKey = !Platform.isMacOS && isControlPressed;
-
     switch (key) {
       case LogicalKeyboardKey.insert:
         editorCursorManager.toggleInsertMode();
         return Future.value(true);
-
       case LogicalKeyboardKey.add:
-        if (isWindowsControlKey || isMacCommandKey) {
+        if (isControlPressed) {
           return _handleFontSizeIncrease();
         }
         break;
-
       case LogicalKeyboardKey.minus:
-        if (isWindowsControlKey || isMacCommandKey) {
+        if (isControlPressed) {
           return _handleFontSizeDecrease();
         }
         break;
-
       case LogicalKeyboardKey.keyZ:
-        if ((isWindowsControlKey || isMacCommandKey) && isShiftPressed) {
+        if (isControlPressed && isShiftPressed) {
           redo();
           return true;
         }
-        if (isWindowsControlKey || isMacCommandKey) {
+        if (isControlPressed) {
           undo();
           return true;
         }
         break;
-
       case LogicalKeyboardKey.keyQ:
-        if (isWindowsControlKey || isMacCommandKey) {
+        if (isControlPressed) {
           final success = await _handleMultipleTabsSave(editors);
           if (success) {
             exit(0);
           }
         }
-        return true;
-
+        break;
       case LogicalKeyboardKey.keyO:
-        if (isWindowsControlKey || isMacCommandKey) {
+        if (isControlPressed) {
           return _handleDirectoryChange();
         }
         break;
-
       case LogicalKeyboardKey.keyF:
-        if (isWindowsControlKey || isMacCommandKey) {
+        if (isControlPressed) {
           return _handleFullScreenToggle();
         }
         break;
