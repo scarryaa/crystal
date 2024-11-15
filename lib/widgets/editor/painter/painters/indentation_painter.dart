@@ -118,7 +118,7 @@ class IndentationPainter extends EditorPainterBase {
     int tabCount = 0;
     bool isMixed = false;
 
-    // Only count leading whitespace
+    // Count all spaces and tabs at the start of the line
     for (int i = 0; i < line.length; i++) {
       if (line[i] == ' ') {
         spaceCount++;
@@ -131,7 +131,11 @@ class IndentationPainter extends EditorPainterBase {
       }
     }
 
-    // Convert tabs to spaces based on tab size and return both count and mixed status
+    // If line only contains whitespace, still count the indentation
+    if (line.trim().isEmpty && spaceCount > 0) {
+      return (spaceCount, false); // Don't mark empty lines as mixed indentation
+    }
+
     return (spaceCount + (tabCount * defaultTabSize), isMixed);
   }
 
@@ -147,16 +151,17 @@ class IndentationPainter extends EditorPainterBase {
     final line = lines[lineIndex];
     final (currentIndent, isMixed) = _countIndentation(line);
 
-    // For empty lines, use contextual indent but don't show mixed warning
-    if (line.trim().isEmpty) {
+    // For empty lines, use contextual indent from surrounding lines
+    if (line.isEmpty) {
+      // Look ahead and behind for indent context
       final contextIndent =
           _getContextualIndent(lines, lineIndex, previousIndentContext);
 
+      // Draw indentation guides for each level up to the contextual indent
       for (int space = 0; space < contextIndent; space += defaultTabSize) {
         final xPosition = space * editorLayoutService.config.charWidth;
         final isHighlighted =
             _isIndentHighlighted(space, lineIndex, highlightedIndentRanges);
-
         _drawIndentLine(
           canvas,
           size,
@@ -168,12 +173,11 @@ class IndentationPainter extends EditorPainterBase {
       return contextIndent;
     }
 
-    // For non-empty lines, draw indent guides with mixed indentation warning if needed
+    // Draw indentation for all lines, including empty ones with spaces
     for (int space = 0; space < currentIndent; space += defaultTabSize) {
       final xPosition = space * editorLayoutService.config.charWidth;
       final isHighlighted =
           _isIndentHighlighted(space, lineIndex, highlightedIndentRanges);
-
       _drawIndentLine(
         canvas,
         size,
