@@ -234,7 +234,7 @@ class MinimapPainter extends CustomPainter {
       // Draw any remaining unhighlighted text
       if (currentX < line.length * characterScale) {
         final paint = Paint()
-          ..color = EditorSyntaxHighlighter.defaultTextColor
+          ..color = syntaxHighlighter.defaultTextColor
           ..strokeWidth = 1.0;
 
         canvas.drawLine(

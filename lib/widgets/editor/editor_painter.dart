@@ -88,11 +88,10 @@ class EditorPainter extends CustomPainter {
           editorLayoutService: editorLayoutService,
           editorConfigService: editorConfigService,
           textPainterHelper: TextPainterHelper(
-            editorConfigService: editorConfigService,
-            editorLayoutService: editorLayoutService,
-            editorSyntaxHighlighter: editorSyntaxHighlighter,
-            editorState: editorState,
-          ),
+              editorConfigService: editorConfigService,
+              editorLayoutService: editorLayoutService,
+              editorSyntaxHighlighter: editorSyntaxHighlighter,
+              editorState: editorState),
           foldedRegions: editorState.foldingRanges,
         ),
         currentLineHighlightPainter = CurrentLineHighlightPainter(

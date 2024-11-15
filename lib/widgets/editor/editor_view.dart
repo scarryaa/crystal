@@ -62,9 +62,21 @@ class EditorViewState extends State<EditorView> {
   double _cachedMaxLineWidth = 0;
   Timer? _caretTimer;
   late final EditorInputHandler editorInputHandler;
-  late final EditorSyntaxHighlighter editorSyntaxHighlighter;
+  EditorSyntaxHighlighter? editorSyntaxHighlighter;
   late final EditorKeyboardHandler editorKeyboardHandler;
   EditorPainter? editorPainter;
+
+  @override
+  void didUpdateWidget(EditorView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.fileName != widget.fileName) {
+      editorSyntaxHighlighter = EditorSyntaxHighlighter(
+        editorConfigService: widget.editorConfigService,
+        editorLayoutService: widget.editorLayoutService,
+        fileName: widget.fileName,
+      );
+    }
+  }
 
   @override
   void initState() {
@@ -107,6 +119,7 @@ class EditorViewState extends State<EditorView> {
       editorLayoutService: widget.editorLayoutService,
       fileName: widget.fileName,
     );
+    print(widget.fileName);
     updateCachedMaxLineWidth();
     _startCaretBlinking();
 
@@ -228,7 +241,7 @@ class EditorViewState extends State<EditorView> {
     editorPainter = EditorPainter(
       editorConfigService: widget.editorConfigService,
       editorLayoutService: widget.editorLayoutService,
-      editorSyntaxHighlighter: editorSyntaxHighlighter,
+      editorSyntaxHighlighter: editorSyntaxHighlighter!,
       editorState: widget.state,
       searchTerm: widget.searchTerm,
       searchTermMatches: widget.searchTermMatches,

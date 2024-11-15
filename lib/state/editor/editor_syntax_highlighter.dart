@@ -10,29 +10,41 @@ class EditorSyntaxHighlighter {
   final Language language;
   final EditorLayoutService editorLayoutService;
   final EditorConfigService editorConfigService;
-  final Set<(int, int)> highlightedRegions = {}; // Track highlighted regions
+  final Set<(int, int)> highlightedRegions = {};
+  final String fileName;
 
-  static final Map<String, List<HighlightedText>> _highlightCache = {};
-  static const int _maxCacheSize = 100; // Limit cache size
+  final Map<String, List<HighlightedText>> _highlightCache = {};
+  static const int _maxCacheSize = 100;
   String? _lastProcessedText;
 
+  final Color keywordColor = const Color(0xFF6B8EFF);
+  final Color typeColor = const Color(0xFF66B2B2);
+  final Color stringColor = const Color(0xFF7CB073);
+  final Color commentColor = const Color(0xFFB0B0B0);
+  final Color numberColor = const Color(0xFFFFB366);
+  final Color symbolColor = const Color(0xFFD4A6E3);
+  late Color defaultTextColor;
+
   EditorSyntaxHighlighter({
-    required String fileName,
+    required this.fileName,
     required this.editorLayoutService,
     required this.editorConfigService,
   }) : language = LanguageDetectionService.getLanguageFromFilename(fileName) {
-    defaultTextColor = editorConfigService.themeService.currentTheme != null
-        ? editorConfigService.themeService.currentTheme!.text
-        : Colors.black;
+    defaultTextColor =
+        editorConfigService.themeService.currentTheme?.text ?? Colors.black;
   }
 
-  static const keywordColor = Color(0xFF6B8EFF);
-  static const typeColor = Color(0xFF66B2B2);
-  static Color stringColor = const Color(0xFF7CB073);
-  static const commentColor = Color(0xFFB0B0B0);
-  static const numberColor = Color(0xFFFFB366);
-  static const symbolColor = Color(0xFFD4A6E3);
-  static Color defaultTextColor = Colors.black;
+  EditorSyntaxHighlighter clone() {
+    print(fileName);
+    final cloned = EditorSyntaxHighlighter(
+      fileName: fileName,
+      editorLayoutService: editorLayoutService,
+      editorConfigService: editorConfigService,
+    );
+    // Force a fresh highlight
+    cloned._lastProcessedText = null;
+    return cloned;
+  }
 
   void highlight(String text) {
     if (_lastProcessedText == text) return;
@@ -127,11 +139,11 @@ class EditorSyntaxHighlighter {
     _highlightCache[text] = highlights;
   }
 
-  static void clearCache() {
+  void clearCache() {
     _highlightCache.clear();
   }
 
-  static void removeFromCache(String text) {
+  void removeFromCache(String text) {
     _highlightCache.remove(text);
   }
 
