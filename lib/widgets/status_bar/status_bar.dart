@@ -1,7 +1,7 @@
+import 'package:crystal/providers/editor_state_provider.dart';
 import 'package:crystal/providers/file_explorer_provider.dart';
 import 'package:crystal/providers/terminal_provider.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
-import 'package:crystal/state/editor/editor_state.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -117,23 +117,29 @@ class StatusBar extends StatelessWidget {
 
   Widget _buildCursorInfo(BuildContext context,
       EditorConfigService editorConfigService, Color themeColor) {
-    return Consumer<EditorState?>(
-      builder: (context, state, _) {
+    return Consumer<EditorStateProvider>(
+      builder: (context, editorStateProvider, _) {
+        final state = editorStateProvider.editorTabManager.activeEditor;
         if (state == null) return const SizedBox();
 
-        final cursorInfo = state.editorCursorManager.cursors.length > 1
-            ? '${state.editorCursorManager.cursors.length} cursors'
-            : '${state.editorCursorManager.cursors.first.line + 1}:${state.editorCursorManager.cursors.first.column + 1}';
+        return ListenableBuilder(
+          listenable: state.editorCursorManager,
+          builder: (context, _) {
+            final cursorInfo = state.editorCursorManager.cursors.length > 1
+                ? '${state.editorCursorManager.cursors.length} cursors'
+                : '${state.editorCursorManager.cursors.first.line + 1}:${state.editorCursorManager.cursors.first.column + 1}';
 
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0),
-          child: Text(
-            cursorInfo,
-            style: TextStyle(
-              color: themeColor,
-              fontSize: editorConfigService.config.uiFontSize,
-            ),
-          ),
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Text(
+                cursorInfo,
+                style: TextStyle(
+                  color: themeColor,
+                  fontSize: editorConfigService.config.uiFontSize,
+                ),
+              ),
+            );
+          },
         );
       },
     );

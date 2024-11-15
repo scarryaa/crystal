@@ -5,8 +5,9 @@ import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/editor/cursor_shape.dart';
 import 'package:crystal/services/editor/folding_manager.dart';
+import 'package:flutter/material.dart';
 
-class EditorCursorManager {
+class EditorCursorManager extends ChangeNotifier {
   Function(int line, int column)? onCursorChange;
   bool showCaret = true;
   CursorShape cursorShape = CursorShape.bar;
@@ -20,6 +21,7 @@ class EditorCursorManager {
     if (onCursorChange != null && cursors.isNotEmpty) {
       onCursorChange!(cursors[0].line, cursors[0].column);
     }
+    notifyListeners();
   }
 
   int getCursorLine() {
