@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:crystal/models/editor/completion_item.dart';
 import 'package:crystal/models/editor/config/config_paths.dart';
 import 'package:crystal/models/editor/search_match.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
@@ -9,6 +10,7 @@ import 'package:crystal/services/editor/editor_keyboard_handler.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/state/editor/editor_syntax_highlighter.dart';
+import 'package:crystal/widgets/editor/completion_widget.dart';
 import 'package:crystal/widgets/editor/editor_painter.dart';
 import 'package:flutter/material.dart';
 
@@ -30,6 +32,9 @@ class EditorView extends StatefulWidget {
   final Function activeEditorIndex;
   final String fileName;
   final bool Function() isDirty;
+  final List<CompletionItem> suggestions;
+  final Function(CompletionItem) onCompletionSelect;
+  final int selectedSuggestionIndex;
 
   const EditorView({
     super.key,
@@ -50,6 +55,9 @@ class EditorView extends StatefulWidget {
     required this.activeEditorIndex,
     required this.fileName,
     required this.isDirty,
+    required this.suggestions,
+    required this.onCompletionSelect,
+    required this.selectedSuggestionIndex,
   });
 
   @override
@@ -119,13 +127,23 @@ class EditorViewState extends State<EditorView> {
       editorLayoutService: widget.editorLayoutService,
       fileName: widget.fileName,
     );
-    print(widget.fileName);
     updateCachedMaxLineWidth();
     _startCaretBlinking();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
     });
+  }
+
+  Offset _getCompletionOverlayPosition() {
+    final cursor = widget.state.editorCursorManager.cursors.first;
+    final lineHeight = widget.editorLayoutService.config.lineHeight;
+
+    final x = cursor.column * widget.editorLayoutService.config.charWidth;
+    final y =
+        (cursor.line + 1) * lineHeight - widget.verticalScrollController.offset;
+
+    return Offset(x, y);
   }
 
   void updateSingleLineWidth(int lineIndex) {
@@ -255,79 +273,96 @@ class EditorViewState extends State<EditorView> {
     return ListenableBuilder(
         listenable: widget.editorConfigService.themeService,
         builder: (context, _) {
-          return Container(
-              color: widget.editorConfigService.themeService.currentTheme
-                      ?.background ??
-                  Colors.white,
-              child: Focus(
-                  focusNode: _focusNode,
-                  onKeyEvent: (node, event) {
-                    _handleKeyEventAsync(node, event);
-                    return KeyEventResult.handled;
-                  },
-                  autofocus: true,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTapDown: (details) => editorInputHandler.handleTap(
-                        details,
-                        widget.verticalScrollController.offset,
-                        widget.horizontalScrollController.offset,
-                        editorPainter,
-                        widget.state),
-                    onPanStart: (details) => editorInputHandler.handleDragStart(
-                        details,
-                        widget.verticalScrollController.offset,
-                        widget.horizontalScrollController.offset,
-                        editorPainter,
-                        widget.state),
-                    onPanUpdate: (details) =>
-                        editorInputHandler.handleDragUpdate(
-                            details,
-                            widget.verticalScrollController.offset,
-                            widget.horizontalScrollController.offset,
-                            editorPainter,
-                            widget.state),
-                    child: ScrollbarTheme(
-                        data: ScrollbarThemeData(
-                          thumbColor: WidgetStateProperty.all(widget
-                                      .editorConfigService
-                                      .themeService
-                                      .currentTheme !=
-                                  null
-                              ? widget.editorConfigService.themeService
-                                  .currentTheme!.border
-                                  .withOpacity(0.65)
-                              : Colors.grey[600]!.withOpacity(0.65)),
-                        ),
-                        child: Scrollbar(
-                            controller: widget.verticalScrollController,
-                            thickness: 10,
-                            radius: const Radius.circular(0),
-                            child: Scrollbar(
-                                controller: widget.horizontalScrollController,
-                                thickness: 10,
-                                radius: const Radius.circular(0),
-                                notificationPredicate: (notification) =>
-                                    notification.depth == 1,
-                                child: ScrollConfiguration(
-                                  behavior: const ScrollBehavior()
-                                      .copyWith(scrollbars: false),
-                                  child: SingleChildScrollView(
-                                    controller: widget.verticalScrollController,
+          return Stack(children: [
+            Container(
+                color: widget.editorConfigService.themeService.currentTheme
+                        ?.background ??
+                    Colors.white,
+                child: Focus(
+                    focusNode: _focusNode,
+                    onKeyEvent: (node, event) {
+                      _handleKeyEventAsync(node, event);
+                      return KeyEventResult.handled;
+                    },
+                    autofocus: true,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTapDown: (details) => editorInputHandler.handleTap(
+                          details,
+                          widget.verticalScrollController.offset,
+                          widget.horizontalScrollController.offset,
+                          editorPainter,
+                          widget.state),
+                      onPanStart: (details) =>
+                          editorInputHandler.handleDragStart(
+                              details,
+                              widget.verticalScrollController.offset,
+                              widget.horizontalScrollController.offset,
+                              editorPainter,
+                              widget.state),
+                      onPanUpdate: (details) =>
+                          editorInputHandler.handleDragUpdate(
+                              details,
+                              widget.verticalScrollController.offset,
+                              widget.horizontalScrollController.offset,
+                              editorPainter,
+                              widget.state),
+                      child: ScrollbarTheme(
+                          data: ScrollbarThemeData(
+                            thumbColor: WidgetStateProperty.all(widget
+                                        .editorConfigService
+                                        .themeService
+                                        .currentTheme !=
+                                    null
+                                ? widget.editorConfigService.themeService
+                                    .currentTheme!.border
+                                    .withOpacity(0.65)
+                                : Colors.grey[600]!.withOpacity(0.65)),
+                          ),
+                          child: Scrollbar(
+                              controller: widget.verticalScrollController,
+                              thickness: 10,
+                              radius: const Radius.circular(0),
+                              child: Scrollbar(
+                                  controller: widget.horizontalScrollController,
+                                  thickness: 10,
+                                  radius: const Radius.circular(0),
+                                  notificationPredicate: (notification) =>
+                                      notification.depth == 1,
+                                  child: ScrollConfiguration(
+                                    behavior: const ScrollBehavior()
+                                        .copyWith(scrollbars: false),
                                     child: SingleChildScrollView(
                                       controller:
-                                          widget.horizontalScrollController,
-                                      scrollDirection: Axis.horizontal,
-                                      child: RepaintBoundary(
-                                        child: CustomPaint(
-                                          painter: editorPainter,
-                                          size: Size(width, height),
+                                          widget.verticalScrollController,
+                                      child: SingleChildScrollView(
+                                        controller:
+                                            widget.horizontalScrollController,
+                                        scrollDirection: Axis.horizontal,
+                                        child: RepaintBoundary(
+                                          child: CustomPaint(
+                                            painter: editorPainter,
+                                            size: Size(width, height),
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                )))),
-                  )));
+                                  )))),
+                    ))),
+            if (widget.state.showCompletions)
+              ListenableBuilder(
+                listenable: widget.state,
+                builder: (context, _) {
+                  return CompletionOverlay(
+                    suggestions: widget.suggestions,
+                    onSelect: widget.onCompletionSelect,
+                    position: _getCompletionOverlayPosition(),
+                    selectedIndex: widget.selectedSuggestionIndex,
+                    editorConfigService: widget.editorConfigService,
+                  );
+                },
+              )
+          ]);
         });
   }
 

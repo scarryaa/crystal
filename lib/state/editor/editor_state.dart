@@ -1,9 +1,11 @@
 import 'package:crystal/models/editor/breadcrumb_item.dart';
 import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/editor/command.dart';
+import 'package:crystal/models/editor/completion_item.dart';
 import 'package:crystal/models/editor/cursor_shape.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/services/editor/breadcrumb_generator.dart';
+import 'package:crystal/services/editor/completion_service.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_cursor_manager.dart';
 import 'package:crystal/services/editor/editor_file_manager.dart';
@@ -56,6 +58,11 @@ class EditorState extends ChangeNotifier {
   late final BreadcrumbGenerator _breadcrumbGenerator;
   List<BreadcrumbItem> _breadcrumbs = [];
   List<BreadcrumbItem> get breadcrumbs => _breadcrumbs;
+  late final CompletionService _completionService;
+  List<CompletionItem> suggestions = [];
+  bool showCompletions = false;
+  int selectedSuggestionIndex = 0;
+  final ValueNotifier<int> selectedSuggestionIndexNotifier = ValueNotifier(0);
 
   EditorState({
     required this.resetGutterScroll,
@@ -82,6 +89,8 @@ class EditorState extends ChangeNotifier {
       'gherkin',
       'nim'
     };
+
+    _completionService = CompletionService(this);
 
     foldingManager = FoldingManager(
       _buffer,
@@ -156,6 +165,66 @@ class EditorState extends ChangeNotifier {
 
   // Setters
   set showCaret(bool show) => editorCursorManager.showCaret = show;
+
+  // Completions
+  void selectNextSuggestion() {
+    if (showCompletions && suggestions.isNotEmpty) {
+      selectedSuggestionIndexNotifier.value =
+          (selectedSuggestionIndexNotifier.value + 1) % suggestions.length;
+      notifyListeners();
+    }
+  }
+
+  void selectPreviousSuggestion() {
+    if (showCompletions && suggestions.isNotEmpty) {
+      selectedSuggestionIndexNotifier.value =
+          (selectedSuggestionIndexNotifier.value - 1 + suggestions.length) %
+              suggestions.length;
+      notifyListeners();
+    }
+  }
+
+  void resetSuggestionSelection() {
+    selectedSuggestionIndexNotifier.value = 0;
+    notifyListeners();
+  }
+
+  void updateCompletions() {
+    final cursor = editorCursorManager.cursors.first;
+    final line = buffer.getLine(cursor.line);
+    final prefix = _getPrefix(line, cursor.column);
+
+    if (prefix.isNotEmpty) {
+      suggestions = _completionService.getSuggestions(prefix);
+      showCompletions = suggestions.isNotEmpty;
+    } else {
+      showCompletions = false;
+    }
+    notifyListeners();
+  }
+
+  String _getPrefix(String line, int column) {
+    final pattern = RegExp(r'\w+$');
+    final match = pattern.firstMatch(line.substring(0, column));
+    return match?.group(0) ?? '';
+  }
+
+  void acceptCompletion(CompletionItem item) {
+    final cursor = editorCursorManager.cursors.first;
+    final line = buffer.getLine(cursor.line);
+    final prefix = _getPrefix(line, cursor.column);
+
+    final newLine = line.substring(0, cursor.column - prefix.length) +
+        item.label +
+        line.substring(cursor.column);
+
+    buffer.setLine(cursor.line, newLine);
+    editorCursorManager.moveCursor(
+        cursor.line, cursor.column - prefix.length + item.label.length);
+
+    showCompletions = false;
+    notifyListeners();
+  }
 
   // Misc
   void _updateBreadcrumbs(int line, int column) {
@@ -250,19 +319,60 @@ class EditorState extends ChangeNotifier {
       foldingHandler.toggleFold(startLine, endLine);
 
   // Buffer / Text manipulation
-  void insertNewLine() => textManipulator.insertNewLine();
-  void backspace() => textManipulator.backspace();
-  void delete() => textManipulator.delete();
-  void backTab() => textManipulator.backTab();
-  void insertTab() => textManipulator.insertTab();
-  void insertChar(String c) => textManipulator.insertChar(c);
+  void insertNewLine() {
+    textManipulator.insertNewLine();
+    updateCompletions();
+  }
+
+  void backspace() {
+    textManipulator.backspace();
+    updateCompletions();
+  }
+
+  void delete() {
+    textManipulator.delete();
+    updateCompletions();
+  }
+
+  void backTab() {
+    textManipulator.backTab();
+    updateCompletions();
+  }
+
+  void insertTab() {
+    textManipulator.insertTab();
+    updateCompletions();
+  }
+
+  void insertChar(String c) {
+    textManipulator.insertChar(c);
+    updateCompletions();
+  }
 
   // Undo/redo management
-  void paste() => commandHandler.paste();
-  void copy() => commandHandler.copy();
-  void cut() => commandHandler.cut();
-  void undo() => commandHandler.undo();
-  void redo() => commandHandler.redo();
+  void paste() {
+    commandHandler.paste();
+    updateCompletions();
+  }
+
+  void copy() {
+    commandHandler.copy();
+  }
+
+  void cut() {
+    commandHandler.cut();
+    updateCompletions();
+  }
+
+  void undo() {
+    commandHandler.undo();
+    updateCompletions();
+  }
+
+  void redo() {
+    commandHandler.redo();
+    updateCompletions();
+  }
 
   // Input management
   void handleTap(double dy, double dx, Function(String) measureLineWidth,

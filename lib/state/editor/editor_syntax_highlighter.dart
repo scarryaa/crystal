@@ -35,7 +35,6 @@ class EditorSyntaxHighlighter {
   }
 
   EditorSyntaxHighlighter clone() {
-    print(fileName);
     final cloned = EditorSyntaxHighlighter(
       fileName: fileName,
       editorLayoutService: editorLayoutService,

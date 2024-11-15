@@ -30,6 +30,7 @@ class EditorSection extends StatelessWidget {
   final Function(int, int) scrollToCursor;
   final FileService fileService;
   final Function(String)? onDirectoryChanged;
+  final int selectedSuggestionIndex;
 
   const EditorSection({
     super.key,
@@ -45,6 +46,7 @@ class EditorSection extends StatelessWidget {
     required this.scrollToCursor,
     required this.fileService,
     required this.onDirectoryChanged,
+    required this.selectedSuggestionIndex,
   });
 
   @override
@@ -243,42 +245,60 @@ class EditorSection extends StatelessWidget {
                             Expanded(
                               child: splitView.editors.isNotEmpty &&
                                       splitView.activeEditor != null
-                                  ? EditorView(
-                                      key: editorViewKey,
-                                      editorConfigService: editorConfigService,
-                                      editorLayoutService:
-                                          EditorLayoutService.instance,
-                                      state: splitView.activeEditor!,
-                                      searchTerm: searchService.searchTerm,
-                                      searchTermMatches:
-                                          searchService.searchTermMatches,
-                                      currentSearchTermMatch:
-                                          searchService.currentSearchTermMatch,
-                                      onSearchTermChanged: (newTerm) =>
-                                          searchService.updateSearchMatches(
-                                              newTerm, splitView.activeEditor),
-                                      scrollToCursor: () =>
-                                          scrollToCursor(row, col),
-                                      onEditorClosed: onEditorClosed,
-                                      saveFileAs: () => splitView.activeEditor!
-                                          .saveFileAs(
-                                              splitView.activeEditor!.path),
-                                      saveFile: () => splitView.activeEditor!
-                                          .saveFile(
-                                              splitView.activeEditor!.path),
-                                      openNewTab: openNewTab,
-                                      activeEditorIndex: () =>
-                                          splitView.activeEditorIndex,
-                                      verticalScrollController: scrollManager
-                                          .editorVerticalScrollController,
-                                      horizontalScrollController: scrollManager
-                                          .editorHorizontalScrollController,
-                                      fileName: path
-                                          .split(splitView.activeEditor!.path)
-                                          .last,
-                                      isDirty: () => splitView
-                                          .activeEditor!.buffer.isDirty,
-                                    )
+                                  ? ValueListenableBuilder<int>(
+                                      valueListenable: splitView.activeEditor!
+                                          .selectedSuggestionIndexNotifier,
+                                      builder: (context, selectedIndex, _) {
+                                        return EditorView(
+                                          key: editorViewKey,
+                                          editorConfigService:
+                                              editorConfigService,
+                                          editorLayoutService:
+                                              EditorLayoutService.instance,
+                                          state: splitView.activeEditor!,
+                                          searchTerm: searchService.searchTerm,
+                                          searchTermMatches:
+                                              searchService.searchTermMatches,
+                                          currentSearchTermMatch: searchService
+                                              .currentSearchTermMatch,
+                                          onSearchTermChanged: (newTerm) =>
+                                              searchService.updateSearchMatches(
+                                                  newTerm,
+                                                  splitView.activeEditor),
+                                          scrollToCursor: () =>
+                                              scrollToCursor(row, col),
+                                          onEditorClosed: onEditorClosed,
+                                          saveFileAs: () => splitView
+                                              .activeEditor!
+                                              .saveFileAs(
+                                                  splitView.activeEditor!.path),
+                                          saveFile: () =>
+                                              splitView.activeEditor!.saveFile(
+                                                  splitView.activeEditor!.path),
+                                          openNewTab: openNewTab,
+                                          activeEditorIndex: () =>
+                                              splitView.activeEditorIndex,
+                                          verticalScrollController: scrollManager
+                                              .editorVerticalScrollController,
+                                          horizontalScrollController: scrollManager
+                                              .editorHorizontalScrollController,
+                                          fileName: path
+                                              .split(
+                                                  splitView.activeEditor!.path)
+                                              .last,
+                                          isDirty: () => splitView
+                                              .activeEditor!.buffer.isDirty,
+                                          suggestions: editorTabManager
+                                                  .activeEditor?.suggestions ??
+                                              [],
+                                          selectedSuggestionIndex:
+                                              selectedIndex,
+                                          onCompletionSelect: (item) {
+                                            editorTabManager.activeEditor
+                                                ?.acceptCompletion(item);
+                                          },
+                                        );
+                                      })
                                   : Container(
                                       color: editorConfigService.themeService
                                               .currentTheme?.background ??

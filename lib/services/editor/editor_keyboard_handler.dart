@@ -60,10 +60,33 @@ class EditorKeyboardHandler {
 
   Future<KeyEventResult> handleKeyEvent(FocusNode node, KeyEvent event) async {
     if (event is KeyDownEvent || event is KeyRepeatEvent) {
+      final state = getState();
       final bool isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
       final bool isControlPressed =
           HardwareKeyboard.instance.isControlPressed ||
               HardwareKeyboard.instance.isMetaPressed;
+
+      if (state.showCompletions) {
+        switch (event.logicalKey) {
+          case LogicalKeyboardKey.arrowDown:
+            state.selectNextSuggestion();
+            return KeyEventResult.handled;
+          case LogicalKeyboardKey.arrowUp:
+            state.selectPreviousSuggestion();
+            return KeyEventResult.handled;
+          case LogicalKeyboardKey.tab:
+          case LogicalKeyboardKey.enter:
+            if (state.suggestions.isNotEmpty) {
+              state.acceptCompletion(state
+                  .suggestions[state.selectedSuggestionIndexNotifier.value]);
+              return KeyEventResult.handled;
+            }
+            break;
+          case LogicalKeyboardKey.escape:
+            state.showCompletions = false;
+            return KeyEventResult.handled;
+        }
+      }
 
       // Special keys
       if (await getState().handleSpecialKeys(
@@ -154,12 +177,16 @@ class EditorKeyboardHandler {
 
       switch (event.logicalKey) {
         case LogicalKeyboardKey.arrowDown:
-          getState().moveCursorDown(isShiftPressed);
-          scrollToCursor();
+          if (!state.showCompletions) {
+            state.moveCursorDown(isShiftPressed);
+            scrollToCursor();
+          }
           return KeyEventResult.handled;
         case LogicalKeyboardKey.arrowUp:
-          getState().moveCursorUp(isShiftPressed);
-          scrollToCursor();
+          if (!state.showCompletions) {
+            state.moveCursorUp(isShiftPressed);
+            scrollToCursor();
+          }
           return KeyEventResult.handled;
         case LogicalKeyboardKey.arrowLeft:
           getState().moveCursorLeft(isShiftPressed);

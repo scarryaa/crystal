@@ -560,6 +560,10 @@ class EditorScreenState extends State<EditorScreen> {
                                                                             widget.onDirectoryChanged,
                                                                         fileService:
                                                                             widget.fileService,
+                                                                        selectedSuggestionIndex: editorTabManager.activeEditor ==
+                                                                                null
+                                                                            ? 0
+                                                                            : editorTabManager.activeEditor!.selectedSuggestionIndex,
                                                                       )),
                                                         );
                                                 },
