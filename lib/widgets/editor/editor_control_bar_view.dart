@@ -67,6 +67,10 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
   }
 
   void _populateSymbols() {
+    if (!widget.filePath.toLowerCase().endsWith('.dart')) {
+      return;
+    }
+
     String sourceCode = widget.editorState.buffer.lines.join('\n');
     _breadcrumbGenerator.getAllSymbols(sourceCode);
   }
@@ -80,6 +84,13 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
   }
 
   void _updateBreadcrumbs(int line, int column) {
+    if (!widget.filePath.toLowerCase().endsWith('.dart')) {
+      setState(() {
+        _breadcrumbs = [];
+      });
+      return;
+    }
+
     String sourceCode = widget.editorState.buffer.lines.join('\n');
     int cursorOffset = _calculateCursorOffset(sourceCode, line, column);
 
@@ -518,6 +529,10 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
   }
 
   Widget _buildBreadcrumbs() {
+    if (!widget.filePath.toLowerCase().endsWith('.dart')) {
+      return const SizedBox.shrink();
+    }
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(

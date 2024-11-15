@@ -42,11 +42,13 @@ class EditorScreen extends StatefulWidget {
 
 class EditorScreenState extends State<EditorScreen> {
   late final EditorConfigService _editorConfigService;
-  late final EditorTabManager editorTabManager;
   late final ShortcutHandler _shortcutHandler;
   late final Future<void> _initializationFuture;
   late SearchService searchService;
   final Map<int, EditorScrollManager> _scrollManagers = {};
+
+  EditorTabManager get editorTabManager =>
+      context.read<EditorStateProvider>().editorTabManager;
 
   void scrollToTab(int index) {
     final editorState = context.read<EditorStateProvider>();
@@ -196,11 +198,6 @@ class EditorScreenState extends State<EditorScreen> {
   void initState() {
     super.initState();
     final editorState = context.read<EditorStateProvider>();
-    editorTabManager = EditorTabManager(
-      onSplitViewClosed: _cleanupScrollManager,
-      onDirectoryChanged: widget.onDirectoryChanged,
-      fileService: widget.fileService,
-    );
     _initializationFuture = _initializeServices();
     searchService = SearchService(
       scrollToCursor: () => _scrollToCursor(
@@ -209,7 +206,6 @@ class EditorScreenState extends State<EditorScreen> {
       ),
     );
 
-    // Initialize scroll manager for the first split view
     editorState.getScrollManager(0, 0);
   }
 

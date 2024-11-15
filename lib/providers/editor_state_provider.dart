@@ -58,11 +58,8 @@ class EditorStateProvider extends ChangeNotifier {
 
     if (scrollManager.gutterScrollController.offset !=
         scrollManager.editorVerticalScrollController.offset) {
-      scrollManager.gutterScrollController.animateTo(
-        scrollManager.editorVerticalScrollController.offset,
-        duration: Duration(milliseconds: 1),
-        curve: Curves.linear,
-      );
+      scrollManager.gutterScrollController
+          .jumpTo(scrollManager.editorVerticalScrollController.offset);
       activeEditor.updateVerticalScrollOffset(
           scrollManager.editorVerticalScrollController.offset);
     }
@@ -87,11 +84,8 @@ class EditorStateProvider extends ChangeNotifier {
 
     if (scrollManager.editorVerticalScrollController.offset !=
         scrollManager.gutterScrollController.offset) {
-      scrollManager.editorVerticalScrollController.animateTo(
-        scrollManager.gutterScrollController.offset,
-        duration: Duration(milliseconds: 1),
-        curve: Curves.linear,
-      );
+      scrollManager.editorVerticalScrollController
+          .jumpTo(scrollManager.gutterScrollController.offset);
       activeEditor.updateVerticalScrollOffset(
           scrollManager.gutterScrollController.offset);
     }

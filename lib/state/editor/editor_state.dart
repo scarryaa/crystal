@@ -21,7 +21,6 @@ import 'package:crystal/services/editor/undo_redo_manager.dart';
 import 'package:crystal/services/file_service.dart';
 import 'package:crystal/state/editor/editor_scroll_state.dart';
 import 'package:crystal/utils/utils.dart';
-import 'package:crystal/widgets/editor/editor_control_bar_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -139,6 +138,11 @@ class EditorState extends ChangeNotifier {
 
   // Misc
   void _updateBreadcrumbs(int line, int column) {
+    if (!path.toLowerCase().endsWith('.dart')) {
+      _breadcrumbs = [];
+      return;
+    }
+
     String sourceCode = buffer.lines.join('\n');
     int cursorOffset = _calculateCursorOffset(sourceCode, line, column);
 
