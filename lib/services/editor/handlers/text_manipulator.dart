@@ -65,13 +65,33 @@ class TextManipulator {
       var currentCursor = sortedCursors[i];
       affectedLines.add(currentCursor.line);
 
-      _adjustLaterCursors(sortedCursors, i, c.length);
+      String currentLine = buffer.getLine(currentCursor.line);
+      String newLine;
 
-      executeCommand(TextInsertCommand(
-          buffer, c, currentCursor.line, currentCursor.column, currentCursor));
+      if (editorCursorManager.insertMode) {
+        // Insert mode - insert character
+        newLine = currentLine.substring(0, currentCursor.column) +
+            c +
+            currentLine.substring(currentCursor.column);
+      } else {
+        // Overwrite mode - replace character
+        if (currentCursor.column >= currentLine.length) {
+          newLine = currentLine + c;
+        } else {
+          newLine = currentLine.substring(0, currentCursor.column) +
+              c +
+              currentLine.substring(currentCursor.column + 1);
+        }
+      }
+
+      buffer.setLine(currentCursor.line, newLine);
+      _adjustLaterCursors(sortedCursors, i, c.length);
+      currentCursor.column++;
     }
 
     _updateFoldedRegionsAfterEdit(affectedLines);
+    buffer.incrementVersion();
+    notifyListeners();
   }
 
   void insertNewLine() {

@@ -89,6 +89,9 @@ class InputHandler {
   Future<bool> handleSpecialKeys(bool isControlPressed, bool isShiftPressed,
       LogicalKeyboardKey key) async {
     switch (key) {
+      case LogicalKeyboardKey.insert:
+        editorCursorManager.toggleInsertMode();
+        return Future.value(true);
       case LogicalKeyboardKey.add:
         if (isControlPressed) {
           return _handleFontSizeIncrease();

@@ -11,11 +11,20 @@ class EditorCursorManager extends ChangeNotifier {
   Function(int line, int column)? onCursorChange;
   bool showCaret = true;
   CursorShape cursorShape = CursorShape.bar;
+  bool _insertMode = true;
+  bool get insertMode => _insertMode;
 
   List<Cursor> _cursors = [];
   List<Cursor> get cursors => _cursors;
 
   bool get hasCursors => cursors.isNotEmpty;
+
+  void toggleInsertMode() {
+    _insertMode = !_insertMode;
+    // Toggle cursor shape based on mode
+    cursorShape = _insertMode ? CursorShape.bar : CursorShape.block;
+    notifyListeners();
+  }
 
   void _notifyCursorChange() {
     if (onCursorChange != null && cursors.isNotEmpty) {
