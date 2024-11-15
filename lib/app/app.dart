@@ -264,6 +264,8 @@ class _AppState extends State<App> {
                                   horizontalPadding: 100,
                                   fileService: widget.fileService,
                                   onDirectoryChanged: _handleDirectoryChanged,
+                                  notificationService:
+                                      widget.notificationService,
                                 ),
                               ),
                             ),

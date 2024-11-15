@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:crystal/models/editor/config/config_paths.dart';
+import 'package:crystal/models/notifcation_type.dart';
+import 'package:crystal/models/notification_action.dart';
 import 'package:crystal/providers/editor_state_provider.dart';
 import 'package:crystal/providers/file_explorer_provider.dart';
 import 'package:crystal/providers/terminal_provider.dart';
@@ -12,6 +14,7 @@ import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/services/editor/editor_scroll_manager.dart';
 import 'package:crystal/services/editor/editor_tab_manager.dart';
 import 'package:crystal/services/file_service.dart';
+import 'package:crystal/services/notification_service.dart';
 import 'package:crystal/services/search_service.dart';
 import 'package:crystal/services/shortcut_handler.dart';
 import 'package:crystal/state/editor/editor_state.dart';
@@ -26,6 +29,7 @@ class EditorScreen extends StatefulWidget {
   final double lineHeightMultipler;
   final Function(String)? onDirectoryChanged;
   final FileService fileService;
+  final NotificationService notificationService;
 
   const EditorScreen({
     super.key,
@@ -34,6 +38,7 @@ class EditorScreen extends StatefulWidget {
     required this.lineHeightMultipler,
     required this.onDirectoryChanged,
     required this.fileService,
+    required this.notificationService,
   });
 
   @override
@@ -137,6 +142,7 @@ class EditorScreenState extends State<EditorScreen> {
 
   Future<void> tapCallback(String path, {int? row, int? col}) async {
     final editorState = context.read<EditorStateProvider>();
+    final notificationService = widget.notificationService;
     final targetRow = row ?? editorTabManager.activeRow;
     final targetCol = col ?? editorTabManager.activeCol;
 
@@ -146,52 +152,60 @@ class EditorScreenState extends State<EditorScreen> {
         .indexWhere((editor) => editor.path == path);
 
     if (editorIndex != -1) {
-      // File is already open in current split, just focus it
       editorTabManager.focusSplitView(targetRow, targetCol);
       onActiveEditorChanged(editorIndex, row: targetRow, col: targetCol);
       scrollToTab(editorIndex);
       return;
     }
 
-    // File is not open in current split, create new editor
-    final scrollManager = editorState.getScrollManager(targetRow, targetCol);
-    final editorKey = editorState.getEditorViewKey(targetRow, targetCol);
+    try {
+      final scrollManager = editorState.getScrollManager(targetRow, targetCol);
+      final editorKey = editorState.getEditorViewKey(targetRow, targetCol);
 
-    String content = await File(path).readAsString();
-    final relativePath = widget.fileService
-        .getRelativePath(path, widget.fileService.rootDirectory);
+      String content = await File(path).readAsString();
+      final relativePath = widget.fileService
+          .getRelativePath(path, widget.fileService.rootDirectory);
 
-    final newEditor = EditorState(
-      editorConfigService: _editorConfigService,
-      editorLayoutService: EditorLayoutService.instance,
-      resetGutterScroll: () => scrollManager.resetGutterScroll(),
-      path: path,
-      relativePath: relativePath,
-      tapCallback: tapCallback,
-      onDirectoryChanged: widget.onDirectoryChanged,
-      fileService: widget.fileService,
-    );
+      final newEditor = EditorState(
+        editorConfigService: _editorConfigService,
+        editorLayoutService: EditorLayoutService.instance,
+        resetGutterScroll: () => scrollManager.resetGutterScroll(),
+        path: path,
+        relativePath: relativePath,
+        tapCallback: tapCallback,
+        onDirectoryChanged: widget.onDirectoryChanged,
+        fileService: widget.fileService,
+      );
 
-    editorTabManager.focusSplitView(targetRow, targetCol);
+      editorTabManager.focusSplitView(targetRow, targetCol);
+      setState(() {
+        editorTabManager.addEditor(newEditor, row: targetRow, col: targetCol);
+        editorTabManager.activeEditor!.openFile(content);
+      });
 
-    setState(() {
-      editorTabManager.addEditor(newEditor, row: targetRow, col: targetCol);
-      editorTabManager.activeEditor!.openFile(content);
-    });
+      searchService.updateSearchMatches(
+        searchService.searchTerm,
+        editorTabManager.activeEditor,
+      );
 
-    searchService.updateSearchMatches(
-      searchService.searchTerm,
-      editorTabManager.activeEditor,
-    );
+      final newEditorIndex = editorTabManager
+              .horizontalSplits[targetRow][targetCol].editors.length -
+          1;
+      scrollToTab(newEditorIndex);
 
-    // Get the new editor's index after adding it
-    final newEditorIndex =
-        editorTabManager.horizontalSplits[targetRow][targetCol].editors.length -
-            1;
-    scrollToTab(newEditorIndex);
-
-    WidgetsBinding.instance.addPostFrameCallback(
-        (_) => editorKey.currentState!.updateCachedMaxLineWidth());
+      WidgetsBinding.instance.addPostFrameCallback(
+          (_) => editorKey.currentState!.updateCachedMaxLineWidth());
+    } catch (e) {
+      notificationService.show(
+        'Failed to open file: ${e.toString()}',
+        type: NotificationType.error,
+        duration: const Duration(seconds: 5),
+        action: NotificationAction(
+          label: 'Retry',
+          onPressed: () => tapCallback(path, row: row, col: col),
+        ),
+      );
+    }
   }
 
   @override

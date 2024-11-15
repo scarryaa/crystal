@@ -89,6 +89,8 @@ class NotificationCard extends StatelessWidget {
           horizontal: 16,
           vertical: 12,
         ),
+        constraints:
+            const BoxConstraints(maxWidth: 400), // Add max width constraint
         decoration: BoxDecoration(
           color: _getColor(),
           border: Border.all(
@@ -98,44 +100,56 @@ class NotificationCard extends StatelessWidget {
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start, // Align to top
           children: [
-            Text(
-              notification.message,
-              style: TextStyle(
-                color:
-                    theme?.text ?? Theme.of(context).textTheme.bodyLarge?.color,
-                fontFamily: editorConfigService.config.uiFontFamily,
-                fontSize: editorConfigService.config.uiFontSize,
+            Flexible(
+              // Wrap text in Flexible
+              child: Text(
+                notification.message,
+                style: TextStyle(
+                  color: theme?.text ??
+                      Theme.of(context).textTheme.bodyLarge?.color,
+                  fontFamily: editorConfigService.config.uiFontFamily,
+                  fontSize: editorConfigService.config.uiFontSize,
+                ),
+                softWrap: true, // Enable soft wrapping
+                overflow: TextOverflow.visible,
               ),
             ),
             const SizedBox(width: 12),
-            if (notification.action != null) ...[
-              TextButton(
-                onPressed: () {
-                  notification.action!.onPressed();
-                  onDismiss();
-                },
-                child: Text(
-                  notification.action!.label,
-                  style: TextStyle(
-                    color:
-                        editorConfigService.themeService.currentTheme!.primary,
-                    fontFamily: editorConfigService.config.uiFontFamily,
-                    fontSize: editorConfigService.config.uiFontSize,
+            Column(
+              // Use Column for action and close button
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (notification.action != null)
+                  TextButton(
+                    onPressed: () {
+                      notification.action!.onPressed();
+                      onDismiss();
+                    },
+                    child: Text(
+                      notification.action!.label,
+                      style: TextStyle(
+                        color: notification.type == NotificationType.error
+                            ? Colors.white
+                            : editorConfigService
+                                .themeService.currentTheme!.primary,
+                        fontFamily: editorConfigService.config.uiFontFamily,
+                        fontSize: editorConfigService.config.uiFontSize,
+                      ),
+                    ),
                   ),
+                IconButton(
+                  icon: Icon(
+                    Icons.close,
+                    color: theme?.text ?? Theme.of(context).iconTheme.color,
+                    size: editorConfigService.config.uiFontSize,
+                  ),
+                  onPressed: onDismiss,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
                 ),
-              ),
-              const SizedBox(width: 8),
-            ],
-            IconButton(
-              icon: Icon(
-                Icons.close,
-                color: theme?.text ?? Theme.of(context).iconTheme.color,
-                size: editorConfigService.config.uiFontSize,
-              ),
-              onPressed: onDismiss,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
+              ],
             ),
           ],
         ),
