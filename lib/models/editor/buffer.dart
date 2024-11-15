@@ -5,7 +5,22 @@ class Buffer {
   final Map<int, int> _foldedRanges = {};
 
   int get version => _version;
+  bool _isDirty = false;
+
+  set isDirty(bool value) {
+    if (value) {
+      _isDirty = true;
+    } else {
+      _isDirty = false;
+      // When marking as clean, update the original content to match current content
+      _originalContent = content;
+    }
+    incrementVersion();
+  }
+
   bool get isDirty {
+    if (_isDirty) return true;
+
     // Direct string comparison of lines
     List<String> originalLines = _originalContent.split('\n');
     List<String> currentLines = List<String>.from(_lines);
@@ -154,20 +169,12 @@ class Buffer {
   void incrementVersion() => _version++;
 
   void setContent(String content) {
-    // Split content into lines and update the editor state
     _lines = content.split('\n');
     if (lines.isEmpty) {
       _lines = [''];
     }
-
-    // Process content the same way as the content getter
-    StringBuffer buffer = StringBuffer();
-    for (int i = 0; i < _lines.length; i++) {
-      buffer.writeln(_lines[i]);
-    }
-
+    _originalContent = content;
     incrementVersion();
-    _originalContent = buffer.toString().trimRight();
   }
 
   void replace(int lineNumber, int index, int length, String newTerm) {
@@ -183,15 +190,7 @@ class Buffer {
   }
 
   void setOriginalContent(String content) {
-    // Process the content the same way as the content getter
-    StringBuffer buffer = StringBuffer();
-    List<String> lines = content.split('\n');
-
-    for (int i = 0; i < lines.length; i++) {
-      buffer.writeln(lines[i]);
-    }
-
-    _originalContent = buffer.toString().trimRight();
+    _originalContent = content;
     incrementVersion();
   }
 }

@@ -1,4 +1,5 @@
 import 'package:crystal/models/menu_item_data.dart';
+import 'package:crystal/services/dialog_service.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/widgets/context_menu.dart';
@@ -19,6 +20,7 @@ class EditorTab extends StatelessWidget {
   final VoidCallback onCloseTabsToRight;
   final VoidCallback onCloseTabsToLeft;
   final VoidCallback onCloseOtherTabs;
+  final List<EditorState> editors;
 
   const EditorTab({
     required this.editor,
@@ -31,6 +33,7 @@ class EditorTab extends StatelessWidget {
     required this.onCloseTabsToRight,
     required this.onCloseTabsToLeft,
     required this.onCloseOtherTabs,
+    required this.editors,
     super.key,
   });
 
@@ -55,22 +58,22 @@ class EditorTab extends StatelessWidget {
             : isLinux
                 ? 'Ctrl+W'
                 : 'Ctrl+W',
-        onTap: onClose,
+        onTap: () => _handleClose(),
       ),
       MenuItemData(
         icon: Icons.arrow_right,
         text: 'Close Tabs to the Right',
-        onTap: onCloseTabsToRight,
+        onTap: () => _handleCloseTabsToRight(),
       ),
       MenuItemData(
         icon: Icons.arrow_left,
         text: 'Close Tabs to the Left',
-        onTap: onCloseTabsToLeft,
+        onTap: () => _handleCloseTabsToLeft(),
       ),
       MenuItemData(
         icon: Icons.close_fullscreen,
         text: 'Close Other Tabs',
-        onTap: onCloseOtherTabs,
+        onTap: () => _handleCloseOtherTabs(),
       ),
     ];
 
@@ -118,6 +121,27 @@ class EditorTab extends StatelessWidget {
     );
   }
 
+  Future<void> _handleClose() async {
+    if (editor.buffer.isDirty) {
+      final response = await DialogService().showSavePrompt();
+      switch (response) {
+        case 'Save & Exit':
+          await editor.save();
+          onClose();
+          break;
+        case 'Exit without Saving':
+          onClose();
+          break;
+        case 'Cancel':
+        default:
+          // Do nothing, continue editing
+          break;
+      }
+    } else {
+      onClose();
+    }
+  }
+
   Widget _buildActionButton() {
     final theme = editorConfigService.themeService.currentTheme;
     final color = isActive
@@ -126,7 +150,7 @@ class EditorTab extends StatelessWidget {
 
     return MouseRegion(
       child: GestureDetector(
-        onTap: isPinned ? onPin : onClose,
+        onTap: isPinned ? onPin : () => _handleClose(),
         child: Container(
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
@@ -135,7 +159,7 @@ class EditorTab extends StatelessWidget {
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: isPinned ? onPin : onClose,
+              onTap: isPinned ? onPin : () => _handleClose(),
               hoverColor: theme?.backgroundLight ?? Colors.black12,
               borderRadius: BorderRadius.circular(8),
               child: Padding(
@@ -160,6 +184,87 @@ class EditorTab extends StatelessWidget {
     return p.basename(editor.path);
   }
 
+  Future<void> _handleCloseTabsToRight() async {
+    final parentEditors = editors;
+    final currentIndex = parentEditors.indexOf(editor);
+
+    final tabsToRight = currentIndex < 0
+        ? <EditorState>[]
+        : parentEditors.sublist(currentIndex + 1).cast<EditorState>();
+
+    final success = await _handleMultipleTabsSave(tabsToRight);
+    if (success) {
+      onCloseTabsToRight();
+    }
+  }
+
+  Future<void> _handleCloseTabsToLeft() async {
+    final parentEditors = editors;
+    final currentIndex = parentEditors.indexOf(editor);
+
+    final tabsToLeft = currentIndex <= 0
+        ? <EditorState>[]
+        : parentEditors.sublist(0, currentIndex).cast<EditorState>();
+
+    final success = await _handleMultipleTabsSave(tabsToLeft);
+    if (success) {
+      onCloseTabsToLeft();
+    }
+  }
+
+  Future<void> _handleCloseOtherTabs() async {
+    final parentEditors = editors;
+    final currentIndex = parentEditors.indexOf(editor);
+
+    final otherTabs = <EditorState>[
+      ...parentEditors.sublist(0, currentIndex).cast<EditorState>(),
+      ...parentEditors.sublist(currentIndex + 1).cast<EditorState>()
+    ];
+
+    final success = await _handleMultipleTabsSave(otherTabs);
+    if (success) {
+      onCloseOtherTabs();
+    }
+  }
+
+  Future<bool> _handleMultipleTabsSave(List<EditorState> editors) async {
+    // Filter to only get dirty editors
+    final dirtyEditors = editors.where((e) => e.buffer.isDirty).toList();
+
+    if (dirtyEditors.isEmpty) {
+      return true;
+    }
+
+    // Show prompt with multiple files message
+    final response = await DialogService().showMultipleFilesPrompt(
+        message:
+            'You have ${dirtyEditors.length} unsaved files. What would you like to do?',
+        options: ['Save All', 'Save None', 'Cancel']);
+
+    switch (response) {
+      case 'Save All':
+        try {
+          // Attempt to save all dirty editors
+          for (final editor in dirtyEditors) {
+            await editor.save();
+          }
+          return true;
+        } catch (e) {
+          // Handle save error
+          return false;
+        }
+
+      case 'Save None':
+        // Proceed without saving any files
+        return true;
+
+      case 'Cancel':
+      default:
+        // User cancelled or unknown response
+        return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = editorConfigService.themeService.currentTheme;
@@ -175,7 +280,7 @@ class EditorTab extends StatelessWidget {
             child: InkWell(
               onTap: onTap,
               child: GestureDetector(
-                onTertiaryTapDown: (_) => onClose(),
+                onTertiaryTapDown: (_) => _handleClose(),
                 onSecondaryTapDown: (details) =>
                     _showContextMenu(context, details),
                 child: Container(

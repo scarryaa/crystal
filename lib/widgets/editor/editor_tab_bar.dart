@@ -244,7 +244,6 @@ class _EditorTabBarState extends State<EditorTabBar> {
           ),
           height: widget.editorConfigService.config.uiFontSize * 2.5,
           child: Listener(
-            // Add this Listener widget
             onPointerSignal: _handleMouseScroll,
             child: Row(
               children: [
@@ -258,25 +257,25 @@ class _EditorTabBarState extends State<EditorTabBar> {
                     itemBuilder: (context, index) {
                       final editor = widget.editors[index];
                       return ReorderableDragStartListener(
-                        key: ValueKey(editor.id),
-                        index: index,
-                        child: EditorTab(
-                          key: _getKeyForEditor(editor),
-                          editorConfigService: widget.editorConfigService,
-                          editor: editor,
-                          isActive: index == widget.activeEditorIndex,
-                          onTap: () => widget.onActiveEditorChanged(index),
-                          onClose: () => _handleEditorClosed(index),
-                          onPin: () => widget.onPin(index),
-                          isPinned: editor.isPinned,
-                          onCloseTabsToRight: () =>
-                              widget.onCloseTabsToRight(index),
-                          onCloseTabsToLeft: () =>
-                              widget.onCloseTabsToLeft(index),
-                          onCloseOtherTabs: () =>
-                              widget.onCloseOtherTabs(index),
-                        ),
-                      );
+                          key: ValueKey(editor.id),
+                          index: index,
+                          child: EditorTab(
+                            key: _getKeyForEditor(editor),
+                            editorConfigService: widget.editorConfigService,
+                            editor: editor,
+                            editors: widget.editors,
+                            isActive: index == widget.activeEditorIndex,
+                            onTap: () => widget.onActiveEditorChanged(index),
+                            onClose: () => _handleEditorClosed(index),
+                            onPin: () => widget.onPin(index),
+                            isPinned: editor.isPinned,
+                            onCloseTabsToRight: () =>
+                                widget.onCloseTabsToRight(index),
+                            onCloseTabsToLeft: () =>
+                                widget.onCloseTabsToLeft(index),
+                            onCloseOtherTabs: () =>
+                                widget.onCloseOtherTabs(index),
+                          ));
                     },
                   ),
                 ),

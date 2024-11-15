@@ -223,6 +223,48 @@ class EditorState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Saving methods
+  Future<void> save() async {
+    if (path.isEmpty || path.substring(0, 6) == '__temp') {
+      // For new untitled files, we need to use saveFileAs
+      await saveFileAs(path);
+    } else {
+      await saveFile(path);
+    }
+
+    // After successful save, mark buffer as clean
+    _buffer.isDirty = false;
+    notifyListeners();
+  }
+
+  Future<bool> saveFile(String path) async {
+    try {
+      final success = await editorFileManager.saveFile(path);
+      if (success) {
+        _buffer.isDirty = false;
+        notifyListeners();
+      }
+      return success;
+    } catch (e) {
+      // Handle error appropriately
+      return false;
+    }
+  }
+
+  Future<bool> saveFileAs(String path) async {
+    try {
+      final success = await editorFileManager.saveFileAs(path);
+      if (success) {
+        _buffer.isDirty = false;
+        notifyListeners();
+      }
+      return success;
+    } catch (e) {
+      // Handle error appropriately
+      return false;
+    }
+  }
+
   void acceptCompletion(CompletionItem item) {
     // Sort cursors from bottom to top to maintain correct positions
     final sortedCursors = List<Cursor>.from(editorCursorManager.cursors)
@@ -483,10 +525,6 @@ class EditorState extends ChangeNotifier {
       scrollHandler.updateVerticalScrollOffset(offset);
   void updateHorizontalScrollOffset(double offset) =>
       scrollHandler.updateHorizontalScrollOffset(offset);
-
-  // File management
-  Future<bool> saveFile(path) => editorFileManager.saveFile(path);
-  Future<bool> saveFileAs(path) => editorFileManager.saveFileAs(path);
 
   void openFile(String content) {
     // Reset cursor and selection

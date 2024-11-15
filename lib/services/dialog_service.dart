@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:crystal/models/dialog_request.dart';
 
 class DialogService {
@@ -18,6 +17,15 @@ class DialogService {
         title: 'Unsaved Changes',
         message: 'Would you like to save your changes before exiting?',
         actions: ['Cancel', 'Save & Exit', 'Exit without Saving']));
+    return responseController.stream.first;
+  }
+
+  Future<String> showMultipleFilesPrompt({
+    required String message,
+    required List<String> options,
+  }) {
+    _dialogController.add(DialogRequest(
+        title: 'Unsaved Changes', message: message, actions: options));
     return responseController.stream.first;
   }
 }
