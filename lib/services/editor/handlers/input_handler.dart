@@ -2,10 +2,12 @@ import 'dart:io';
 
 import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/buffer.dart';
+import 'package:crystal/models/editor/events/event_models.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/services/dialog_service.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_cursor_manager.dart';
+import 'package:crystal/services/editor/editor_event_bus.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/services/editor/editor_selection_manager.dart';
 import 'package:crystal/services/editor/folding_manager.dart';
@@ -54,6 +56,11 @@ class InputHandler {
       Function(String line) measureLineWidth, bool isAltPressed) {
     handleTap(dy, dx, measureLineWidth, isAltPressed);
     editorSelectionManager.startSelection(editorCursorManager.cursors);
+    EditorEventBus.emit(SelectionEvent(
+        selections: editorSelectionManager.selections,
+        hasSelection: editorSelectionManager.hasSelection(),
+        selectedText: editorSelectionManager.getSelectedText(buffer)));
+
     notifyListeners();
   }
 
@@ -68,7 +75,6 @@ class InputHandler {
     bool isFolded = false;
     int? foldStart;
     int? foldEnd;
-
     for (final entry in buffer.foldedRanges.entries) {
       if (bufferLine >= entry.key && bufferLine <= entry.value) {
         isFolded = true;
@@ -80,7 +86,6 @@ class InputHandler {
 
     String lineText = buffer.getLine(bufferLine);
     int targetColumn = _getColumnAtX(dx, lineText, measureLineWidth);
-
     editorCursorManager.clearAll();
     editorCursorManager.addCursor(Cursor(bufferLine, targetColumn));
 
@@ -90,6 +95,18 @@ class InputHandler {
       editorSelectionManager.updateSelection(editorCursorManager.cursors);
     }
 
+    EditorEventBus.emit(CursorEvent(
+        cursors: editorCursorManager.cursors,
+        line: bufferLine,
+        column: targetColumn,
+        hasSelection: editorSelectionManager.hasSelection(),
+        selections: editorSelectionManager.selections));
+
+    EditorEventBus.emit(SelectionEvent(
+        selections: editorSelectionManager.selections,
+        hasSelection: editorSelectionManager.hasSelection(),
+        selectedText: editorSelectionManager.getSelectedText(buffer)));
+
     notifyListeners();
   }
 
@@ -98,51 +115,74 @@ class InputHandler {
     switch (key) {
       case LogicalKeyboardKey.insert:
         editorCursorManager.toggleInsertMode();
+        EditorEventBus.emit(
+            InsertModeEvent(isInsertMode: editorCursorManager.insertMode));
         return Future.value(true);
+
       case LogicalKeyboardKey.backslash:
         if (isControlPressed) {
           splitVertically();
+          EditorEventBus.emit(LayoutEvent(
+            type: LayoutChange.verticalSplit,
+            data: {},
+          ));
+
           return true;
         }
         break;
+
       case LogicalKeyboardKey.bar:
         if (isControlPressed) {
           splitHorizontally();
-          return true;
+          EditorEventBus.emit(LayoutEvent(
+            type: LayoutChange.horizontalSplit,
+            data: {},
+          ));
         }
+
       case LogicalKeyboardKey.add:
         if (isControlPressed) {
           return _handleFontSizeIncrease();
         }
         break;
+
       case LogicalKeyboardKey.minus:
         if (isControlPressed) {
           return _handleFontSizeDecrease();
         }
         break;
+
       case LogicalKeyboardKey.keyZ:
         if (isControlPressed && isShiftPressed) {
           redo();
+          EditorEventBus.emit(
+              TextEvent(content: buffer.content, isDirty: buffer.isDirty));
           return true;
         }
         if (isControlPressed) {
           undo();
+          EditorEventBus.emit(
+              TextEvent(content: buffer.content, isDirty: buffer.isDirty));
           return true;
         }
         break;
+
       case LogicalKeyboardKey.keyQ:
         if (isControlPressed) {
           final success = await _handleMultipleTabsSave(editors);
           if (success) {
+            EditorEventBus.emit(EditorClosingEvent(saveStatus: success));
             exit(0);
           }
         }
         break;
+
       case LogicalKeyboardKey.keyO:
         if (isControlPressed) {
           return _handleDirectoryChange();
         }
         break;
+
       case LogicalKeyboardKey.keyF:
         if (isControlPressed) {
           return _handleFullScreenToggle();
@@ -150,6 +190,31 @@ class InputHandler {
         break;
     }
     return false;
+  }
+
+  void handleTap(double dy, double dx, Function(String) measureLineWidth,
+      bool isAltPressed) {
+    int visualLine = dy ~/ editorLayoutService.config.lineHeight;
+    int bufferLine = _getBufferLineFromVisualLine(visualLine);
+    String lineText = buffer.getLine(bufferLine);
+    int targetColumn = _getColumnAtX(dx, lineText, measureLineWidth);
+
+    if (!isAltPressed) {
+      editorCursorManager.clearAll();
+      editorCursorManager.addCursor(Cursor(bufferLine, targetColumn));
+      editorSelectionManager.clearAll();
+    } else {
+      _handleMultiCursor(bufferLine, targetColumn);
+    }
+
+    EditorEventBus.emit(CursorEvent(
+        cursors: editorCursorManager.cursors,
+        line: bufferLine,
+        column: targetColumn,
+        hasSelection: editorSelectionManager.hasSelection(),
+        selections: editorSelectionManager.selections));
+
+    notifyListeners();
   }
 
   Future<bool> _handleMultipleTabsSave(List<EditorState> editors) async {
@@ -188,23 +253,6 @@ class InputHandler {
         // User cancelled or unknown response
         return false;
     }
-  }
-
-  void handleTap(double dy, double dx, Function(String) measureLineWidth,
-      bool isAltPressed) {
-    int visualLine = dy ~/ editorLayoutService.config.lineHeight;
-    int bufferLine = _getBufferLineFromVisualLine(visualLine);
-    String lineText = buffer.getLine(bufferLine);
-    int targetColumn = _getColumnAtX(dx, lineText, measureLineWidth);
-
-    if (!isAltPressed) {
-      editorCursorManager.clearAll();
-      editorCursorManager.addCursor(Cursor(bufferLine, targetColumn));
-      editorSelectionManager.clearAll();
-    } else {
-      _handleMultiCursor(bufferLine, targetColumn);
-    }
-    notifyListeners();
   }
 
   // Private helper methods
@@ -288,17 +336,32 @@ class InputHandler {
         editorConfigService.config.fontSize *
             editorLayoutService.config.lineHeightMultiplier;
     editorConfigService.saveConfig();
+
+    EditorEventBus.emit(FontChangeEvent(
+      fontSize: editorConfigService.config.fontSize,
+      fontFamily: editorConfigService.config.fontFamily,
+      lineHeight: editorLayoutService.config.lineHeight,
+    ));
+
     notifyListeners();
   }
 
   Future<bool> _handleDirectoryChange() async {
     String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
-    onDirectoryChanged!(selectedDirectory ?? fileService.rootDirectory);
+    final directory = selectedDirectory ?? fileService.rootDirectory;
+    onDirectoryChanged!(directory);
+
+    EditorEventBus.emit(DirectoryChangeEvent(path: directory));
+
     return true;
   }
 
   Future<bool> _handleFullScreenToggle() async {
-    await windowManager.setFullScreen(!await windowManager.isFullScreen());
+    final isFullScreen = !await windowManager.isFullScreen();
+    await windowManager.setFullScreen(isFullScreen);
+
+    EditorEventBus.emit(FullscreenChangeEvent(isFullScreen: isFullScreen));
+
     return true;
   }
 
