@@ -26,6 +26,7 @@ class EditorInputHandler {
     final localY = details.localPosition.dy + verticalScrollControllerOffset;
     final localX = details.localPosition.dx + horizontalScrollControllerOffset;
 
+    state.showCompletions = false;
     state.handleTap(
         localY, // Pass actual Y coordinate
         localX,
