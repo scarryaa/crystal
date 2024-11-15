@@ -10,7 +10,7 @@ class CompletionOverlay extends StatefulWidget {
   final int selectedIndex;
   final EditorConfigService editorConfigService;
 
-  final itemHeight = 8.0 + 8.0 + (20.0) + (12.0);
+  final itemHeight = 8.0 + 8.0 + 20.0 + 18.0;
 
   const CompletionOverlay({
     required this.suggestions,
