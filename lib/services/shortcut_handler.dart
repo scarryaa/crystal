@@ -13,6 +13,7 @@ class ShortcutHandler {
   Future<void> Function() saveFileAs;
   Future<void> Function() saveFile;
   bool Function() isDirty;
+  VoidCallback showCommandPalette;
 
   ShortcutHandler({
     required this.openSettings,
@@ -23,6 +24,7 @@ class ShortcutHandler {
     required this.saveFileAs,
     required this.saveFile,
     required this.isDirty,
+    required this.showCommandPalette,
   });
 
   KeyEventResult handleKeyEvent(FocusNode node, KeyEvent event) {
@@ -36,21 +38,18 @@ class ShortcutHandler {
         case LogicalKeyboardKey.comma:
           openSettings();
           return KeyEventResult.handled;
-
         case LogicalKeyboardKey.less:
           if (isControlPressed) {
             openDefaultSettings();
             return KeyEventResult.handled;
           }
           break;
-
         case LogicalKeyboardKey.keyW:
           if (isControlPressed) {
             _handleCloseTab();
             return KeyEventResult.handled;
           }
           break;
-
         case LogicalKeyboardKey.keyN:
           if (isControlPressed) {
             openNewTab();
@@ -58,7 +57,6 @@ class ShortcutHandler {
             return KeyEventResult.handled;
           }
           break;
-
         case LogicalKeyboardKey.keyS:
           if (isControlPressed && isShiftPressed) {
             saveFileAs();
@@ -68,9 +66,14 @@ class ShortcutHandler {
             return KeyEventResult.handled;
           }
           break;
+        case LogicalKeyboardKey.keyP:
+          if (isControlPressed && !isShiftPressed) {
+            showCommandPalette();
+            return KeyEventResult.handled;
+          }
+          break;
       }
     }
-
     return KeyEventResult.ignored;
   }
 

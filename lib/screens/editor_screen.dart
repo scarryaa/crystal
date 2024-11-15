@@ -4,11 +4,10 @@ import 'package:crystal/models/editor/config/config_paths.dart';
 import 'package:crystal/models/notifcation_type.dart';
 import 'package:crystal/models/notification_action.dart';
 import 'package:crystal/providers/editor_state_provider.dart';
-import 'package:crystal/providers/file_explorer_provider.dart';
-import 'package:crystal/providers/terminal_provider.dart';
 import 'package:crystal/screens/editor/editor_section.dart';
 import 'package:crystal/screens/editor/file_explorer/file_explorer_container.dart';
 import 'package:crystal/screens/editor/terminal/terminal_section.dart';
+import 'package:crystal/services/command_palette_service.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/services/editor/editor_scroll_manager.dart';
@@ -212,7 +211,15 @@ class EditorScreenState extends State<EditorScreen> {
   void initState() {
     super.initState();
     final editorState = context.read<EditorStateProvider>();
-    _initializationFuture = _initializeServices();
+    _initializationFuture = _initializeServices().then((_) {
+      CommandPaletteService.instance.initialize(
+        context: context,
+        editorConfigService: _editorConfigService,
+        editorTabManager: editorTabManager,
+        onEditorClosed: onEditorClosed,
+        openNewTab: openNewTab,
+      );
+    });
     searchService = SearchService(
       scrollToCursor: () => _scrollToCursor(
         editorTabManager.activeRow,
@@ -269,6 +276,7 @@ class EditorScreenState extends State<EditorScreen> {
           onEditorClosed(editorTabManager.activeSplitView.activeEditorIndex);
         }
       },
+      showCommandPalette: CommandPaletteService.instance.showCommandPalette,
       isDirty: () => editorTabManager.activeEditor!.buffer.isDirty,
       openNewTab: () {
         openNewTab();
@@ -433,52 +441,35 @@ class EditorScreenState extends State<EditorScreen> {
           return Center(child: Text('Error: ${snapshot.error}'));
         }
 
-        return MultiProvider(
-            providers: [
-              ChangeNotifierProvider.value(
-                value: _editorConfigService,
-              ),
-              ChangeNotifierProvider(
-                create: (_) => FileExplorerProvider(
-                  configService: _editorConfigService,
-                ),
-              ),
-              ChangeNotifierProvider(
-                create: (_) => TerminalProvider(
-                  editorConfigService: _editorConfigService,
-                ),
-              ),
-            ],
-            child: ListenableBuilder(
-              listenable:
-                  Listenable.merge([_editorConfigService, editorTabManager]),
-              builder: (context, child) {
-                bool isFileExplorerOnLeft =
-                    _editorConfigService.config.isFileExplorerOnLeft;
+        return ListenableBuilder(
+          listenable:
+              Listenable.merge([_editorConfigService, editorTabManager]),
+          builder: (context, child) {
+            bool isFileExplorerOnLeft =
+                _editorConfigService.config.isFileExplorerOnLeft;
 
-                return Focus(
-                  autofocus: true,
-                  onKeyEvent: (node, event) =>
-                      _shortcutHandler.handleKeyEvent(node, event),
-                  child: Material(
-                    child: Column(
-                      children: [
-                        Expanded(
-                          child: Row(
-                            children: [
-                              if (isFileExplorerOnLeft)
-                                FileExplorerContainer(
-                                    editorConfigService: _editorConfigService,
-                                    fileService: widget.fileService,
-                                    tapCallback: tapCallback,
-                                    onDirectoryChanged:
-                                        widget.onDirectoryChanged),
-                              Expanded(
-                                child: Column(
-                                  children: [
-                                    Expanded(
-                                      child: editorTabManager
-                                              .horizontalSplits.isEmpty
+            return Focus(
+              autofocus: true,
+              onKeyEvent: (node, event) =>
+                  _shortcutHandler.handleKeyEvent(node, event),
+              child: Material(
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          if (isFileExplorerOnLeft)
+                            FileExplorerContainer(
+                                editorConfigService: _editorConfigService,
+                                fileService: widget.fileService,
+                                tapCallback: tapCallback,
+                                onDirectoryChanged: widget.onDirectoryChanged),
+                          Expanded(
+                            child: Column(
+                              children: [
+                                Expanded(
+                                  child:
+                                      editorTabManager.horizontalSplits.isEmpty
                                           ? Container()
                                           : ResizableSplitContainer(
                                               direction: Axis.vertical,
@@ -569,30 +560,28 @@ class EditorScreenState extends State<EditorScreen> {
                                                 },
                                               ),
                                             ),
-                                    ),
-                                    TerminalSection(
-                                        editorConfigService:
-                                            _editorConfigService),
-                                  ],
                                 ),
-                              ),
-                              if (!isFileExplorerOnLeft)
-                                FileExplorerContainer(
-                                    editorConfigService: _editorConfigService,
-                                    fileService: widget.fileService,
-                                    tapCallback: tapCallback,
-                                    onDirectoryChanged:
-                                        widget.onDirectoryChanged),
-                            ],
+                                TerminalSection(
+                                    editorConfigService: _editorConfigService),
+                              ],
+                            ),
                           ),
-                        ),
-                        const StatusBar(),
-                      ],
+                          if (!isFileExplorerOnLeft)
+                            FileExplorerContainer(
+                                editorConfigService: _editorConfigService,
+                                fileService: widget.fileService,
+                                tapCallback: tapCallback,
+                                onDirectoryChanged: widget.onDirectoryChanged),
+                        ],
+                      ),
                     ),
-                  ),
-                );
-              },
-            ));
+                    const StatusBar(),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
       },
     );
   }

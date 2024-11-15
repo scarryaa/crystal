@@ -15,6 +15,7 @@ class EditorKeyboardHandler {
   VoidCallback openNewTab;
   Function(int lineIndex) updateSingleLineWidth;
   bool Function() isDirty;
+  VoidCallback showCommandPalette;
 
   final EditorState Function() getState;
   final Function() activeEditorIndex;
@@ -35,6 +36,7 @@ class EditorKeyboardHandler {
     required this.activeEditorIndex,
     required this.updateSingleLineWidth,
     required this.isDirty,
+    required this.showCommandPalette,
   });
 
   Future<void> _handleCloseTab() async {
@@ -134,6 +136,11 @@ class EditorKeyboardHandler {
               scrollToCursor();
               onSearchTermChanged(searchTerm);
             });
+            return KeyEventResult.handled;
+          }
+        case LogicalKeyboardKey.keyP:
+          if (isControlPressed) {
+            showCommandPalette();
             return KeyEventResult.handled;
           }
         case LogicalKeyboardKey.keyA:

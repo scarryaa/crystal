@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:crystal/models/editor/completion_item.dart';
 import 'package:crystal/models/editor/config/config_paths.dart';
 import 'package:crystal/models/editor/search_match.dart';
+import 'package:crystal/services/command_palette_service.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_input_handler.dart';
 import 'package:crystal/services/editor/editor_keyboard_handler.dart';
@@ -120,6 +121,7 @@ class EditorViewState extends State<EditorView> {
       saveFile: widget.saveFile,
       updateSingleLineWidth: updateSingleLineWidth,
       isDirty: widget.isDirty,
+      showCommandPalette: CommandPaletteService.instance.showCommandPalette,
     );
 
     editorSyntaxHighlighter = EditorSyntaxHighlighter(

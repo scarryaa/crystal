@@ -2,6 +2,8 @@ import 'package:crystal/app/app_layout.dart';
 import 'package:crystal/app/menu_bar.dart';
 import 'package:crystal/main.dart';
 import 'package:crystal/providers/editor_state_provider.dart';
+import 'package:crystal/providers/file_explorer_provider.dart';
+import 'package:crystal/providers/terminal_provider.dart';
 import 'package:crystal/screens/editor_screen.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_tab_manager.dart';
@@ -232,6 +234,23 @@ class _AppState extends State<App> {
               home: DialogListener(
                   child: MultiProvider(
                       providers: [
+                    ChangeNotifierProvider.value(
+                      value: widget.editorConfigService,
+                    ),
+                    ChangeNotifierProvider(
+                      create: (_) => FileExplorerProvider(
+                        configService: widget.editorConfigService,
+                      ),
+                    ),
+                    ChangeNotifierProvider(
+                      create: (_) => TerminalProvider(
+                        editorConfigService: widget.editorConfigService,
+                      ),
+                    ),
+                    ChangeNotifierProvider(
+                      create: (context) => TerminalProvider(
+                          editorConfigService: widget.editorConfigService),
+                    ),
                     ChangeNotifierProvider(
                       create: (context) => EditorStateProvider(
                         editorTabManager: EditorTabManager(
