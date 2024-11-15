@@ -14,6 +14,7 @@ class Minimap extends StatefulWidget {
   final EditorConfigService editorConfigService;
   final Function(double) onScroll;
   final double totalContentHeight;
+  final String fileName;
 
   const Minimap({
     super.key,
@@ -24,6 +25,7 @@ class Minimap extends StatefulWidget {
     required this.editorConfigService,
     required this.onScroll,
     required this.totalContentHeight,
+    required this.fileName,
   });
 
   @override
@@ -53,7 +55,9 @@ class _MinimapState extends State<Minimap> {
         widget.buffer.lines.length * widget.layoutService.config.lineHeight;
 
     // Only allow interaction if content is taller than viewport
-    if (totalContentHeight <= widget.viewportHeight) {
+    if (totalContentHeight <=
+        widget.viewportHeight +
+            EditorLayoutService.instance.config.verticalPadding) {
       setState(() {
         _currentScrollPosition = 0;
       });
@@ -125,6 +129,7 @@ class _MinimapState extends State<Minimap> {
                         layoutService: widget.layoutService,
                         editorConfigService: widget.editorConfigService,
                         scale: scale,
+                        fileName: widget.fileName,
                       ),
                     ),
                   ),
@@ -174,20 +179,22 @@ class MinimapPainter extends CustomPainter {
   final EditorLayoutService layoutService;
   final EditorConfigService editorConfigService;
   final double scale;
+  final String fileName;
 
   MinimapPainter({
     required this.buffer,
     required this.layoutService,
     required this.editorConfigService,
     required this.scale,
+    required this.fileName,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final syntaxHighlighter = EditorSyntaxHighlighter(
-      editorLayoutService: layoutService,
-      editorConfigService: editorConfigService,
-    );
+        editorLayoutService: layoutService,
+        editorConfigService: editorConfigService,
+        fileName: fileName);
 
     // Use small scale directly without height adjustment
     final contentScale = scale * 0.1;

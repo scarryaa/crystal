@@ -1,8 +1,8 @@
 import 'package:crystal/models/highlighted_text.dart';
-import 'package:crystal/models/languages/dart.dart';
 import 'package:crystal/models/languages/language.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
+import 'package:crystal/services/language_detection_service.dart';
 import 'package:flutter/material.dart';
 
 class EditorSyntaxHighlighter {
@@ -16,10 +16,10 @@ class EditorSyntaxHighlighter {
   String? _lastProcessedText;
 
   EditorSyntaxHighlighter({
-    Language? language,
+    required String fileName,
     required this.editorLayoutService,
     required this.editorConfigService,
-  }) : language = language ?? Dart() {
+  }) : language = LanguageDetectionService.getLanguageFromFilename(fileName) {
     defaultTextColor = editorConfigService.themeService.currentTheme != null
         ? editorConfigService.themeService.currentTheme!.text
         : Colors.black;

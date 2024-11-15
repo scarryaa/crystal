@@ -8,40 +8,72 @@ import 'package:provider/provider.dart';
 class StatusBar extends StatelessWidget {
   const StatusBar({super.key});
 
+  Widget _buildLanguageInfo(BuildContext context,
+      EditorConfigService editorConfigService, Color themeColor) {
+    return Consumer<EditorStateProvider>(
+      builder: (context, editorStateProvider, _) {
+        return ListenableBuilder(
+          listenable: editorStateProvider.editorTabManager,
+          builder: (context, _) {
+            final language = editorStateProvider.getDetectedLanguage();
+            if (language == null) return const SizedBox();
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Text(
+                language,
+                style: TextStyle(
+                  color: themeColor,
+                  fontSize: editorConfigService.config.uiFontSize,
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final editorConfigService = context.watch<EditorConfigService>();
+    return Consumer<EditorConfigService>(
+      builder: (context, editorConfigService, _) {
+        if (!editorConfigService.isLoaded) {
+          return _buildLoadingBar();
+        }
 
-    if (!editorConfigService.isLoaded) {
-      return _buildLoadingBar();
-    }
+        final themeColor =
+            editorConfigService.themeService.currentTheme?.text ??
+                Colors.black87;
+        final primary =
+            editorConfigService.themeService.currentTheme?.primary ??
+                Colors.blue;
+        final backgroundColor =
+            editorConfigService.themeService.currentTheme?.background ??
+                Colors.white;
+        final borderColor =
+            editorConfigService.themeService.currentTheme?.border ??
+                Colors.grey[300]!;
 
-    final themeColor =
-        editorConfigService.themeService.currentTheme?.text ?? Colors.black87;
-    final primary =
-        editorConfigService.themeService.currentTheme?.primary ?? Colors.blue;
-    final backgroundColor =
-        editorConfigService.themeService.currentTheme?.background ??
-            Colors.white;
-    final borderColor = editorConfigService.themeService.currentTheme?.border ??
-        Colors.grey[300]!;
-
-    return Container(
-      height: editorConfigService.config.uiFontSize * 1.8,
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        border: Border.all(color: borderColor),
-      ),
-      child: Row(
-        children: [
-          _buildFileExplorerToggle(
-              context, editorConfigService, primary, themeColor),
-          _buildTerminalToggle(
-              context, editorConfigService, primary, themeColor),
-          const Spacer(),
-          _buildCursorInfo(context, editorConfigService, themeColor),
-        ],
-      ),
+        return Container(
+          height: editorConfigService.config.uiFontSize * 1.8,
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            border: Border.all(color: borderColor),
+          ),
+          child: Row(
+            children: [
+              _buildFileExplorerToggle(
+                  context, editorConfigService, primary, themeColor),
+              _buildTerminalToggle(
+                  context, editorConfigService, primary, themeColor),
+              const Spacer(),
+              _buildLanguageInfo(context, editorConfigService, themeColor),
+              _buildCursorInfo(context, editorConfigService, themeColor),
+            ],
+          ),
+        );
+      },
     );
   }
 

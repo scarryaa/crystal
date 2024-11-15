@@ -28,6 +28,7 @@ class EditorView extends StatefulWidget {
   final int currentSearchTermMatch;
   final List<SearchMatch> searchTermMatches;
   final Function activeEditorIndex;
+  final String fileName;
 
   const EditorView({
     super.key,
@@ -46,6 +47,7 @@ class EditorView extends StatefulWidget {
     required this.editorLayoutService,
     required this.editorConfigService,
     required this.activeEditorIndex,
+    required this.fileName,
   });
 
   @override
@@ -98,8 +100,10 @@ class EditorViewState extends State<EditorView> {
     );
 
     editorSyntaxHighlighter = EditorSyntaxHighlighter(
-        editorConfigService: widget.editorConfigService,
-        editorLayoutService: widget.editorLayoutService);
+      editorConfigService: widget.editorConfigService,
+      editorLayoutService: widget.editorLayoutService,
+      fileName: widget.fileName,
+    );
     updateCachedMaxLineWidth();
     _startCaretBlinking();
 

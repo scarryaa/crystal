@@ -15,6 +15,7 @@ Crystal aims to be a lightweight yet powerful code editor.
 - Integrated Terminal
 - Code Folding
 - Breadcrumbs (Dart only for now)
+- Minimap
 
 ### Planned Features
 - Multiple Themes

@@ -14,6 +14,7 @@ import 'package:crystal/widgets/editor/editor_view.dart';
 import 'package:crystal/widgets/editor/minimap.dart';
 import 'package:crystal/widgets/gutter/gutter.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
 
 class EditorSection extends StatelessWidget {
@@ -256,17 +257,15 @@ class EditorSection extends StatelessWidget {
                                       saveFileAs: () => splitView.activeEditor!
                                           .saveFileAs(
                                               splitView.activeEditor!.path),
-                                      saveFile: () => splitView.activeEditor!
-                                          .saveFile(
-                                              splitView.activeEditor!.path),
+                                      saveFile: () => splitView.activeEditor!.saveFile(
+                                          splitView.activeEditor!.path),
                                       openNewTab: openNewTab,
                                       activeEditorIndex: () =>
                                           splitView.activeEditorIndex,
-                                      verticalScrollController: scrollManager
-                                          .editorVerticalScrollController,
-                                      horizontalScrollController: scrollManager
-                                          .editorHorizontalScrollController,
-                                    )
+                                      verticalScrollController:
+                                          scrollManager.editorVerticalScrollController,
+                                      horizontalScrollController: scrollManager.editorHorizontalScrollController,
+                                      fileName: path.split(splitView.activeEditor!.path).last)
                                   : Container(
                                       color: editorConfigService.themeService
                                               .currentTheme?.background ??
@@ -278,30 +277,33 @@ class EditorSection extends StatelessWidget {
                               LayoutBuilder(
                                 builder: (context, constraints) {
                                   return Minimap(
-                                    buffer: splitView.activeEditor!.buffer,
-                                    viewportHeight: constraints.maxHeight,
-                                    scrollPosition: scrollManager
+                                      buffer: splitView.activeEditor!.buffer,
+                                      viewportHeight: constraints.maxHeight,
+                                      scrollPosition: scrollManager
+                                              .editorVerticalScrollController
+                                              .hasClients
+                                          ? scrollManager
+                                              .editorVerticalScrollController
+                                              .position
+                                              .pixels
+                                          : 0.0,
+                                      layoutService:
+                                          EditorLayoutService.instance,
+                                      editorConfigService: editorConfigService,
+                                      onScroll: (position) {
+                                        if (scrollManager
                                             .editorVerticalScrollController
-                                            .hasClients
-                                        ? scrollManager
-                                            .editorVerticalScrollController
-                                            .position
-                                            .pixels
-                                        : 0.0,
-                                    layoutService: EditorLayoutService.instance,
-                                    editorConfigService: editorConfigService,
-                                    onScroll: (position) {
-                                      if (scrollManager
-                                          .editorVerticalScrollController
-                                          .hasClients) {
-                                        scrollManager
-                                            .editorVerticalScrollController
-                                            .jumpTo(position);
-                                      }
-                                    },
-                                    totalContentHeight:
-                                        totalContentHeight.toDouble(),
-                                  );
+                                            .hasClients) {
+                                          scrollManager
+                                              .editorVerticalScrollController
+                                              .jumpTo(position);
+                                        }
+                                      },
+                                      totalContentHeight:
+                                          totalContentHeight.toDouble(),
+                                      fileName: path
+                                          .split(splitView.activeEditor!.path)
+                                          .last);
                                 },
                               ),
                           ],

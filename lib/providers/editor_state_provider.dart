@@ -1,7 +1,9 @@
 import 'package:crystal/services/editor/editor_scroll_manager.dart';
 import 'package:crystal/services/editor/editor_tab_manager.dart';
+import 'package:crystal/services/language_detection_service.dart';
 import 'package:crystal/widgets/editor/editor_view.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as path;
 
 class EditorStateProvider extends ChangeNotifier {
   final Map<String, GlobalKey<EditorViewState>> _editorViewKeys = {};
@@ -21,6 +23,16 @@ class EditorStateProvider extends ChangeNotifier {
       index += editorTabManager.horizontalSplits[i].length;
     }
     return index + col;
+  }
+
+  String? getDetectedLanguage() {
+    final activeEditor = editorTabManager.activeEditor;
+    if (activeEditor != null) {
+      return LanguageDetectionService.getLanguageFromFilename(
+              path.split(activeEditor.path).last)
+          .name;
+    }
+    return null;
   }
 
   GlobalKey<EditorViewState> getEditorViewKey(int row, int col) {

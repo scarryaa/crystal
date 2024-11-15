@@ -2,6 +2,9 @@ import 'package:crystal/models/languages/language.dart';
 
 class Dart extends Language {
   @override
+  String get name => 'Dart';
+
+  @override
   List<String> get keywords => [
         'abstract',
         'as',
