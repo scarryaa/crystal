@@ -77,16 +77,40 @@ class _CompletionOverlayState extends State<CompletionOverlay> {
   Widget build(BuildContext context) {
     final theme = widget.editorConfigService.themeService.currentTheme;
 
+    // Get screen size
+    final screenSize = MediaQuery.of(context).size;
+
+    // Calculate overlay dimensions
+    const overlayWidth = 300.0;
+    const overlayHeight = 200.0;
+
+    // Calculate if overlay would be cut off
+    final wouldBeCutOffRight =
+        widget.position.dx + overlayWidth > screenSize.width;
+    final wouldBeCutOffBottom =
+        widget.position.dy + overlayHeight > screenSize.height;
+
+    // Adjust position if necessary
+    final adjustedLeft = wouldBeCutOffRight
+        ? screenSize.width - overlayWidth - 10 // 10px padding from right edge
+        : widget.position.dx;
+
+    final spaceAbove = widget.position.dy;
+
+    final adjustedTop = wouldBeCutOffBottom && spaceAbove > overlayHeight
+        ? widget.position.dy - overlayHeight - 25 // Show above
+        : widget.position.dy; // Show below
+
     return Positioned(
-      left: widget.position.dx,
-      top: widget.position.dy,
+      left: adjustedLeft,
+      top: adjustedTop,
       child: Material(
         elevation: 8,
         borderRadius: BorderRadius.circular(8),
         child: Container(
           constraints: const BoxConstraints(
-            maxHeight: 200,
-            maxWidth: 300,
+            maxHeight: overlayHeight,
+            maxWidth: overlayWidth,
           ),
           decoration: BoxDecoration(
             color: theme!.background,
