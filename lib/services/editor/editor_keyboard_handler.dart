@@ -84,6 +84,7 @@ class EditorKeyboardHandler {
             break;
           case LogicalKeyboardKey.escape:
             state.showCompletions = false;
+            state.resetSuggestionSelection();
             return KeyEventResult.handled;
         }
       }

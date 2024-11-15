@@ -223,6 +223,7 @@ class EditorState extends ChangeNotifier {
         cursor.line, cursor.column - prefix.length + item.label.length);
 
     showCompletions = false;
+    resetSuggestionSelection();
     notifyListeners();
   }
 
