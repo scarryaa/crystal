@@ -21,6 +21,7 @@ class EditorTab extends StatelessWidget {
   final VoidCallback onCloseTabsToLeft;
   final VoidCallback onCloseOtherTabs;
   final List<EditorState> editors;
+  final Function() isDirty;
 
   const EditorTab({
     required this.editor,
@@ -34,6 +35,7 @@ class EditorTab extends StatelessWidget {
     required this.onCloseTabsToLeft,
     required this.onCloseOtherTabs,
     required this.editors,
+    required this.isDirty,
     super.key,
   });
 
@@ -100,7 +102,7 @@ class EditorTab extends StatelessWidget {
   }
 
   Widget _buildStatusIndicator() {
-    if (!editor.buffer.isDirty) {
+    if (!isDirty()) {
       return SizedBox(
           width: editorConfigService.config.uiFontSize / 2,
           height: editorConfigService.config.uiFontSize / 2);
@@ -122,7 +124,7 @@ class EditorTab extends StatelessWidget {
   }
 
   Future<void> _handleClose() async {
-    if (editor.buffer.isDirty) {
+    if (isDirty()) {
       final response = await DialogService().showSavePrompt();
       switch (response) {
         case 'Save & Exit':

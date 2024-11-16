@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:crystal/models/editor/command_palette_mode.dart';
 import 'package:crystal/services/dialog_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,7 +14,7 @@ class ShortcutHandler {
   Future<void> Function() saveFileAs;
   Future<void> Function() saveFile;
   bool Function() isDirty;
-  VoidCallback showCommandPalette;
+  void Function([CommandPaletteMode mode]) showCommandPalette;
   VoidCallback splitVertically;
   VoidCallback splitHorizontally;
 
@@ -82,7 +83,10 @@ class ShortcutHandler {
           break;
         case LogicalKeyboardKey.keyP:
           if (isControlPressed && !isShiftPressed) {
-            showCommandPalette();
+            showCommandPalette(CommandPaletteMode.files);
+            return KeyEventResult.handled;
+          } else if (isShiftPressed) {
+            showCommandPalette(CommandPaletteMode.commands);
             return KeyEventResult.handled;
           }
           break;

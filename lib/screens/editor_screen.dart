@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:crystal/models/editor/command_palette_mode.dart';
 import 'package:crystal/models/editor/config/config_paths.dart';
 import 'package:crystal/models/notifcation_type.dart';
 import 'package:crystal/models/notification_action.dart';
@@ -144,6 +145,61 @@ class EditorScreenState extends State<EditorScreen> {
     });
   }
 
+  void openFile(String filePath, {int? row, int? col}) {
+    final editorState = context.read<EditorStateProvider>();
+    final targetRow = row ?? editorTabManager.activeRow;
+    final targetCol = col ?? editorTabManager.activeCol;
+
+    // Check if there's already a tab open with this file
+    final existingEditor = editorTabManager.findEditorWithFile(filePath);
+
+    if (existingEditor != null) {
+      // If the file is already open, just focus that tab
+      int editorIndex = editorTabManager
+          .horizontalSplits[editorTabManager.activeRow]
+              [editorTabManager.activeCol]
+          .editors
+          .indexOf(existingEditor);
+
+      editorTabManager.setActiveEditor(editorIndex);
+      return;
+    }
+
+    // If we need a new tab, create one
+    final scrollManager = editorState.getScrollManager(targetRow, targetCol);
+    editorTabManager.focusSplitView(targetRow, targetCol);
+
+    final newEditor = EditorState(
+      editorConfigService: _editorConfigService,
+      editorLayoutService: EditorLayoutService.instance,
+      resetGutterScroll: () => scrollManager.resetGutterScroll(),
+      tapCallback: tapCallback,
+      onDirectoryChanged: widget.onDirectoryChanged,
+      fileService: widget.fileService,
+      editors: editorTabManager
+          .horizontalSplits[editorTabManager.activeRow]
+              [editorTabManager.activeCol]
+          .editors,
+      editorTabManager: editorTabManager,
+    );
+
+    editorTabManager.addEditor(newEditor, row: targetRow, col: targetCol);
+
+    setState(() {
+      editorTabManager.activeEditor!.tapCallback(filePath);
+      searchService.onSearchTermChanged(
+          searchService.searchTerm, editorTabManager.activeEditor);
+    });
+
+    final editorKey = editorState.getEditorViewKey(targetRow, targetCol);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (editorKey.currentState != null) {
+        editorKey.currentState!.updateCachedMaxLineWidth();
+        setState(() {});
+      }
+    });
+  }
+
   Future<void> tapCallback(String path, {int? row, int? col}) async {
     final editorState = context.read<EditorStateProvider>();
     final notificationService = widget.notificationService;
@@ -223,11 +279,13 @@ class EditorScreenState extends State<EditorScreen> {
     final editorState = context.read<EditorStateProvider>();
     _initializationFuture = _initializeServices().then((_) {
       CommandPaletteService.instance.initialize(
+        // ignore: use_build_context_synchronously
         context: context,
         editorConfigService: _editorConfigService,
         editorTabManager: editorTabManager,
         onEditorClosed: onEditorClosed,
-        openNewTab: openNewTab,
+        openFile: openFile,
+        fileService: widget.fileService,
       );
     });
     searchService = SearchService(
@@ -286,7 +344,9 @@ class EditorScreenState extends State<EditorScreen> {
           onEditorClosed(editorTabManager.activeSplitView.activeEditorIndex);
         }
       },
-      showCommandPalette: CommandPaletteService.instance.showCommandPalette,
+      showCommandPalette: (
+              [CommandPaletteMode mode = CommandPaletteMode.commands]) =>
+          CommandPaletteService.instance.showCommandPalette(mode),
       isDirty: () => editorTabManager.activeEditor!.buffer.isDirty,
       openNewTab: () {
         openNewTab();
@@ -382,7 +442,6 @@ class EditorScreenState extends State<EditorScreen> {
   }
 
   void onEditorClosed(int index, {int? row, int? col}) {
-    final editorState = context.read<EditorStateProvider>();
     final targetRow = row ?? editorTabManager.activeRow;
     final targetCol = col ?? editorTabManager.activeCol;
 

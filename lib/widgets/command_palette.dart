@@ -1,3 +1,4 @@
+import 'package:crystal/models/editor/command_palette_mode.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -24,12 +25,14 @@ class CommandPalette extends StatefulWidget {
   final List<CommandItem> commands;
   final Function(CommandItem) onSelect;
   final EditorConfigService editorConfigService;
-  final double itemHeight = 8.0 + 8.0 + 20.0 + 18.0;
+  final CommandPaletteMode initialMode;
+  static const double kItemHeight = 44.0;
 
   const CommandPalette({
     required this.commands,
     required this.onSelect,
     required this.editorConfigService,
+    this.initialMode = CommandPaletteMode.commands,
     super.key,
   });
 
@@ -74,18 +77,18 @@ class _CommandPaletteState extends State<CommandPalette> {
     if (!_scrollController.hasClients) return;
 
     const double containerHeight = 200;
-    final double targetOffset = _selectedIndex * widget.itemHeight;
-
+    final double targetOffset = _selectedIndex * CommandPalette.kItemHeight;
     final double visibleStart = _scrollController.offset;
     final double visibleEnd =
         visibleStart + _scrollController.position.viewportDimension;
-
     final double maxScroll = _scrollController.position.maxScrollExtent;
-    double scrollTo = targetOffset - (containerHeight - widget.itemHeight) / 2;
+
+    double scrollTo =
+        targetOffset - (containerHeight - CommandPalette.kItemHeight) / 2;
     scrollTo = scrollTo.clamp(0.0, maxScroll);
 
     if (targetOffset < visibleStart ||
-        targetOffset + widget.itemHeight > visibleEnd) {
+        targetOffset + CommandPalette.kItemHeight > visibleEnd) {
       _scrollController.animateTo(
         scrollTo,
         duration: const Duration(milliseconds: 50),
@@ -237,20 +240,21 @@ class _CommandItemWidgetState extends State<CommandItemWidget> {
   @override
   Widget build(BuildContext context) {
     final theme = widget.editorConfigService.themeService.currentTheme;
-
     return MouseRegion(
       onEnter: (_) => setState(() => isHovered = true),
       onExit: (_) => setState(() => isHovered = false),
       child: InkWell(
         onTap: () => widget.onSelect(widget.item),
         child: Container(
+          height: CommandPalette.kItemHeight,
           color: widget.isSelected
               ? theme!.primary.withOpacity(0.2)
               : isHovered
                   ? theme!.primary.withOpacity(0.1)
                   : Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 widget.item.icon,
@@ -259,30 +263,18 @@ class _CommandItemWidgetState extends State<CommandItemWidget> {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          widget.item.label,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: theme!.text,
-                          ),
-                        ),
-                        Text(
-                          widget.item.category,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: theme.textLight,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      widget.item.label,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: theme!.text,
+                      ),
                     ),
                     Text(
-                      widget.item.detail,
+                      widget.item.category,
                       style: TextStyle(
                         fontSize: 12,
                         color: theme.textLight,

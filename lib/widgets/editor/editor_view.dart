@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:crystal/models/editor/command_palette_mode.dart';
 import 'package:crystal/models/editor/completion_item.dart';
 import 'package:crystal/models/editor/config/config_paths.dart';
 import 'package:crystal/models/editor/search_match.dart';
@@ -121,7 +122,9 @@ class EditorViewState extends State<EditorView> {
       saveFile: widget.saveFile,
       updateSingleLineWidth: updateSingleLineWidth,
       isDirty: widget.isDirty,
-      showCommandPalette: CommandPaletteService.instance.showCommandPalette,
+      showCommandPalette: (
+              [CommandPaletteMode mode = CommandPaletteMode.commands]) =>
+          CommandPaletteService.instance.showCommandPalette(mode),
     );
 
     editorSyntaxHighlighter = EditorSyntaxHighlighter(

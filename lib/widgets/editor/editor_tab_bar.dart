@@ -235,7 +235,10 @@ class _EditorTabBarState extends State<EditorTabBar> {
   Widget build(BuildContext context) {
     return ListenableBuilder(
       key: widget.tabScrollKey,
-      listenable: widget.editorConfigService,
+      listenable: Listenable.merge([
+        widget.editorConfigService,
+        widget.editorTabManager.activeEditor,
+      ]),
       builder: (context, child) {
         return Container(
           decoration: BoxDecoration(
@@ -273,6 +276,7 @@ class _EditorTabBarState extends State<EditorTabBar> {
                             onClose: () => _handleEditorClosed(index),
                             onPin: () => widget.onPin(index),
                             isPinned: editor.isPinned,
+                            isDirty: () => editor.buffer.isDirty,
                             onCloseTabsToRight: () =>
                                 widget.onCloseTabsToRight(index),
                             onCloseTabsToLeft: () =>

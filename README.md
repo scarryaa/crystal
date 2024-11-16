@@ -16,12 +16,12 @@ Crystal aims to be a lightweight yet powerful code editor.
 - Code Folding
 - Breadcrumbs (Dart only for now)
 - Minimap
+- Code Completion/Suggestions (basic)
 
 ### Planned Features
 - Multiple Themes
 - Git Integration
 - Extensions
-- Code Completion/Suggestions
 - Custom Keybindings
 - Integrated Debugger (?)
 - Remote Development (?)

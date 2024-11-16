@@ -233,6 +233,19 @@ class EditorTabManager extends ChangeNotifier {
     return newEditor;
   }
 
+  EditorState? findEditorWithFile(String filePath) {
+    for (var row in horizontalSplits) {
+      for (var col in row) {
+        for (var editor in col.editors) {
+          if (editor.path == filePath) {
+            return editor;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
   void focusSplitView(int row, int col) {
     if (row >= 0 &&
         row < _splitViews.length &&

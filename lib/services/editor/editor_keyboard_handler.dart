@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:crystal/models/editor/command_palette_mode.dart';
 import 'package:crystal/services/dialog_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +17,7 @@ class EditorKeyboardHandler {
   VoidCallback openNewTab;
   Function(int lineIndex) updateSingleLineWidth;
   bool Function() isDirty;
-  VoidCallback showCommandPalette;
+  void Function([CommandPaletteMode mode]) showCommandPalette;
   final EditorState Function() getState;
   final Function() activeEditorIndex;
   String searchTerm;
@@ -164,7 +165,11 @@ class EditorKeyboardHandler {
         return KeyEventResult.handled;
       case LogicalKeyboardKey.keyP:
         if (isControlPressed) {
-          showCommandPalette();
+          if (isShiftPressed) {
+            showCommandPalette(CommandPaletteMode.commands);
+            return KeyEventResult.handled;
+          }
+          showCommandPalette(CommandPaletteMode.files);
           return KeyEventResult.handled;
         }
       case LogicalKeyboardKey.keyA:

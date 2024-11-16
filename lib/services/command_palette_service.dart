@@ -1,13 +1,17 @@
 import 'dart:io';
 
+import 'package:crystal/models/editor/command_palette_mode.dart';
 import 'package:crystal/models/editor/editor_command.dart';
 import 'package:crystal/providers/file_explorer_provider.dart';
 import 'package:crystal/providers/terminal_provider.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_tab_manager.dart';
+import 'package:crystal/services/file_service.dart';
 import 'package:crystal/widgets/command_palette.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CommandPaletteService {
   static final CommandPaletteService _instance = CommandPaletteService._();
@@ -17,32 +21,41 @@ class CommandPaletteService {
 
   List<EditorCommand> _commands = [];
   List<EditorCommand> get commands => _commands;
+  List<String> get recentFiles => _recentFiles;
 
   BuildContext? _context;
   EditorConfigService? _editorConfigService;
   EditorTabManager? _editorTabManager;
   Function(int)? _onEditorClosed;
+  FileService? _fileService;
+  Function(String)? _openFile;
   Function()? _openNewTab;
+  static const String _recentFilesKey = 'recent_files';
+  static const int _maxRecentFiles = 10;
+  List<String> _recentFiles = [];
 
   bool get isInitialized =>
       _context != null &&
       _editorConfigService != null &&
       _editorTabManager != null &&
       _onEditorClosed != null &&
-      _openNewTab != null;
+      _openFile != null;
 
   void initialize({
     required BuildContext context,
     required EditorConfigService editorConfigService,
     required EditorTabManager editorTabManager,
     required Function(int) onEditorClosed,
-    required Function() openNewTab,
+    required Function(String) openFile,
+    required FileService fileService,
   }) {
     _context = context;
     _editorConfigService = editorConfigService;
     _editorTabManager = editorTabManager;
     _onEditorClosed = onEditorClosed;
-    _openNewTab = openNewTab;
+    _openFile = openFile;
+    _fileService = fileService;
+    _loadRecentFiles();
     _initializeCommands();
   }
 
@@ -59,8 +72,64 @@ class CommandPaletteService {
     }
   }
 
+  Future<void> _loadRecentFiles() async {
+    final prefs = await SharedPreferences.getInstance();
+    final recentFilesJson = prefs.getStringList(_recentFilesKey) ?? [];
+    _recentFiles = recentFilesJson;
+  }
+
+  Future<void> _saveRecentFiles() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_recentFilesKey, _recentFiles);
+  }
+
+  static void addRecentFile(String filePath) {
+    instance._recentFiles.remove(filePath); // Remove if exists
+    instance._recentFiles.insert(0, filePath); // Add to start
+    if (instance._recentFiles.length > _maxRecentFiles) {
+      instance._recentFiles = instance._recentFiles.sublist(0, _maxRecentFiles);
+    }
+    instance._saveRecentFiles();
+  }
+
+  Future<void> openFile(String filePath) async {
+    try {
+      final file = File(filePath);
+      final normalizedPath = file.absolute.path;
+
+      if (await file.exists()) {
+        if (_editorTabManager?.activeEditor == null) {
+          // Create a new editor since there isn't one
+          _openFile?.call(normalizedPath);
+          _editorTabManager!.closeEditor(0);
+        } else {
+          // We have an active editor, open new tab
+          _editorTabManager!.activeEditor!.tapCallback(normalizedPath);
+          addRecentFile(normalizedPath);
+        }
+      } else {
+        throw Exception('File does not exist: $normalizedPath');
+      }
+    } catch (e) {
+      print('Error opening file: $e');
+    }
+  }
+
   void _initializeCommands() {
     _commands = [
+      EditorCommand(
+        id: 'open_file',
+        label: 'Open File',
+        shortcut: _getPlatformShortcut('Ctrl+O'),
+        action: () async {
+          FilePickerResult? result = await FilePicker.platform.pickFiles();
+
+          if (result != null && result.files.isNotEmpty) {
+            String filePath = result.files.first.path!;
+            await openFile(filePath);
+          }
+        },
+      ),
       EditorCommand(
         id: 'new_tab',
         label: 'New Tab',
@@ -139,11 +208,44 @@ class CommandPaletteService {
     ];
   }
 
-  void showCommandPalette() {
+  CommandItem _convertToCommandItem(EditorCommand command) {
+    IconData icon;
+    Color iconColor;
+
+    if (command.id.startsWith('recent_')) {
+      icon = Icons.history;
+      iconColor = Colors.grey;
+    } else {
+      icon = Icons.code;
+      iconColor = Colors.blue;
+    }
+
+    return CommandItem(
+      id: command.id,
+      label: command.label,
+      detail: command.shortcut ?? command.detail ?? '',
+      category: command.category ?? 'Editor',
+      icon: icon,
+      iconColor: iconColor,
+    );
+  }
+
+  void showCommandPalette(
+      [CommandPaletteMode mode = CommandPaletteMode.commands]) {
     if (!isInitialized) {
       throw Exception('CommandPaletteService must be initialized before use');
     }
 
+    _initializeCommands();
+
+    if (mode == CommandPaletteMode.files) {
+      _showFilesPalette();
+    } else {
+      _showCommandsPalette();
+    }
+  }
+
+  void _showCommandsPalette() {
     showDialog(
       context: _context!,
       builder: (context) => CommandPalette(
@@ -161,14 +263,63 @@ class CommandPaletteService {
     );
   }
 
-  CommandItem _convertToCommandItem(EditorCommand command) {
-    return CommandItem(
-      id: command.id,
-      label: command.label,
-      detail: command.shortcut ?? '',
-      category: 'Editor',
-      icon: Icons.code,
-      iconColor: Colors.blue,
+  Future<void> _showFilesPalette() async {
+    final List<CommandItem> fileItems = [];
+
+    // Add recent files first
+    for (final filePath in _recentFiles) {
+      fileItems.add(CommandItem(
+        id: 'recent_${filePath.hashCode}',
+        label: File(filePath).uri.pathSegments.last,
+        detail: filePath,
+        category: 'Recent Files',
+        icon: Icons.history,
+        iconColor: Colors.grey,
+      ));
+    }
+
+    // Get current working directory or project root
+    final Directory rootDir = Directory(_fileService?.rootDirectory ?? '');
+
+    try {
+      final List<FileSystemEntity> entities = await rootDir.list().toList();
+      // Filter to only include files
+      final filteredEntities =
+          entities.where((entity) => entity is File).toList();
+      // Sort files
+      filteredEntities.sort((a, b) => a.path.compareTo(b.path));
+
+      for (final entity in filteredEntities) {
+        final name = entity.uri.pathSegments.last;
+        fileItems.add(CommandItem(
+          id: entity.path,
+          label: name,
+          detail: "",
+          category: 'Files',
+          icon: Icons.insert_drive_file,
+          iconColor: Colors.blue,
+        ));
+      }
+    } catch (e) {
+      print('Error listing directory: $e');
+    }
+
+    showDialog(
+      context: _context!,
+      builder: (context) => CommandPalette(
+        commands: fileItems,
+        onSelect: (item) async {
+          if (item.id != 'separator') {
+            final file = File(item.detail);
+            if (await file.exists()) {
+              await openFile(item.detail);
+              Navigator.pop(context);
+            }
+          }
+        },
+        editorConfigService: _editorConfigService!,
+        initialMode: CommandPaletteMode.files,
+      ),
     );
   }
 }

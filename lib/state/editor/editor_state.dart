@@ -6,6 +6,7 @@ import 'package:crystal/models/editor/completion_item.dart';
 import 'package:crystal/models/editor/cursor_shape.dart';
 import 'package:crystal/models/editor/events/event_models.dart';
 import 'package:crystal/models/selection.dart';
+import 'package:crystal/services/command_palette_service.dart';
 import 'package:crystal/services/editor/breadcrumb_generator.dart';
 import 'package:crystal/services/editor/completion_service.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
@@ -297,6 +298,7 @@ class EditorState extends ChangeNotifier {
 
     // After successful save, mark buffer as clean
     _buffer.isDirty = false;
+
     notifyListeners();
   }
 
@@ -632,6 +634,8 @@ class EditorState extends ChangeNotifier {
     }
   }
 
+  bool get isEmpty => buffer.isEmpty;
+
   void openFile(String content) {
     editorCursorManager.reset();
     clearSelection();
@@ -641,6 +645,11 @@ class EditorState extends ChangeNotifier {
     resetGutterScroll();
     _updateBreadcrumbs(0, 0);
     _emitFileChangedEvent();
+
+    if (path.isNotEmpty && !path.startsWith('__temp')) {
+      CommandPaletteService.addRecentFile(path);
+    }
+
     notifyListeners();
   }
 }
