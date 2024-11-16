@@ -26,6 +26,27 @@ class GitService {
     }
   }
 
+  Future<String?> getRepositoryUrl() async {
+    if (!_isInitialized) throw GitException('Git not initialized');
+    try {
+      final result =
+          await _gitDir.runCommand(['config', '--get', 'remote.origin.url']);
+      String url = (result.stdout as String).trim();
+
+      // Convert SSH URL to HTTPS if needed
+      if (url.startsWith('git@')) {
+        url = url
+            .replaceFirst(':', '/')
+            .replaceFirst('git@', 'https://')
+            .replaceAll('.git', '');
+      }
+
+      return url;
+    } catch (e) {
+      return null;
+    }
+  }
+
   Future<String?> _findGitRoot(String startPath) async {
     Directory current = Directory(startPath);
 

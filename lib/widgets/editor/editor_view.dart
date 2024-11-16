@@ -387,6 +387,7 @@ class EditorViewState extends State<EditorView> {
                                           blameInfo: blameInfo!,
                                           editorState: widget.state,
                                           size: Size(width, height),
+                                          gitService: gitService,
                                         ),
                                       ),
                                   ],

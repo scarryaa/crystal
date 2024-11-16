@@ -1,9 +1,12 @@
 import 'package:crystal/models/git_models.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
+import 'package:crystal/services/git_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/widgets/editor/painter/painters/blame_painter.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class BlameInfoWidget extends StatefulWidget {
   final EditorConfigService editorConfigService;
@@ -11,6 +14,7 @@ class BlameInfoWidget extends StatefulWidget {
   final List<BlameLine> blameInfo;
   final EditorState editorState;
   final Size size;
+  final GitService gitService;
 
   const BlameInfoWidget({
     super.key,
@@ -19,6 +23,7 @@ class BlameInfoWidget extends StatefulWidget {
     required this.blameInfo,
     required this.editorState,
     required this.size,
+    required this.gitService,
   });
 
   @override
@@ -30,6 +35,7 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
   BlameLine? _hoveredBlame;
   final Map<int, double> _lineWidths = {};
   late BlamePainter _blamePainter;
+  bool _isHoveringPopup = false;
 
   @override
   void initState() {
@@ -87,6 +93,11 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
     return _lineWidths[lineIndex]!;
   }
 
+  String _formatDateTime(DateTime dateTime) {
+    return "${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} "
+        "${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}";
+  }
+
   void _showBlamePopup(BuildContext context, Offset position, BlameLine blame) {
     if (_hoveredBlame == blame) return;
     _hideBlamePopup();
@@ -97,7 +108,7 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
     // Get screen size
     final screenSize = MediaQuery.of(context).size;
     const popupWidth = 400.0;
-    const popupHeight = 200.0; // Approximate height, adjust as needed
+    const popupHeight = 150.0;
 
     // Calculate position adjustments
     double left = position.dx;
@@ -105,136 +116,166 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
 
     // Adjust horizontal position if it would go offscreen
     if (left + popupWidth > screenSize.width) {
-      left = screenSize.width - popupWidth - 16; // 16px padding from edge
+      left = screenSize.width - popupWidth - 16;
     }
 
     // Adjust vertical position if it would go offscreen
     if (top + popupHeight > screenSize.height) {
-      top = position.dy - popupHeight - 8; // Show above cursor
+      top = position.dy - popupHeight - 8;
     }
 
     _overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        left: left,
-        top: top,
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: popupWidth),
-            decoration: BoxDecoration(
-              color: theme!.background,
-              border: Border.all(
-                color: theme.border,
-              ),
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: theme.border.withOpacity(0.2),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Header
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: theme.text.withOpacity(0.1),
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(8),
-                      topRight: Radius.circular(8),
+        builder: (context) => Positioned(
+              left: left,
+              top: top,
+              child: Material(
+                color: Colors.transparent,
+                child: MouseRegion(
+                  onEnter: (_) => setState(() => _isHoveringPopup = true),
+                  onExit: (_) => setState(() => _isHoveringPopup = false),
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: popupWidth),
+                    decoration: BoxDecoration(
+                      color: theme!.background,
+                      border: Border.all(
+                        color: theme.border,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: theme.border.withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Header
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: theme.text.withOpacity(0.1),
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(8),
+                              topRight: Radius.circular(8),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                backgroundColor: theme.text.withOpacity(0.2),
+                                radius: 16,
+                                child: Text(
+                                  blame.author[0].toUpperCase(),
+                                  style: TextStyle(
+                                    color: theme.text,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      blame.author,
+                                      style: TextStyle(
+                                        color: theme.text,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                      _formatDateTime(blame.timestamp),
+                                      style: TextStyle(
+                                        color: theme.text.withOpacity(0.7),
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Content
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Commit hash
+                              Row(
+                                children: [
+                                  MouseRegion(
+                                    cursor: SystemMouseCursors.click,
+                                    child: GestureDetector(
+                                      onTap: () async {
+                                        final repoUrl = await widget.gitService
+                                            .getRepositoryUrl();
+                                        if (repoUrl != null) {
+                                          final uri = Uri.parse(
+                                              '$repoUrl/commit/${blame.commitHash}');
+                                          if (await canLaunchUrl(uri)) {
+                                            await launchUrl(uri);
+                                          }
+                                        }
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: theme.text.withOpacity(0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          blame.commitHash.substring(0, 7),
+                                          style: TextStyle(
+                                            color: theme.text,
+                                            fontFamily: widget
+                                                .editorConfigService
+                                                .config
+                                                .fontFamily,
+                                            fontSize: 12,
+                                            decoration:
+                                                TextDecoration.underline,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  IconButton(
+                                    icon: const Icon(Icons.copy, size: 16),
+                                    onPressed: () {
+                                      Clipboard.setData(ClipboardData(
+                                          text: blame.commitHash));
+                                    },
+                                    tooltip: 'Copy commit hash',
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(
+                                      minWidth: 24,
+                                      minHeight: 24,
+                                    ),
+                                    color: theme.text.withOpacity(0.7),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        backgroundColor: theme.text.withOpacity(0.2),
-                        radius: 16,
-                        child: Text(
-                          blame.author[0].toUpperCase(),
-                          style: TextStyle(
-                            color: theme.text,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              blame.author,
-                              style: TextStyle(
-                                color: theme.text,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              blame.timestamp.toString(),
-                              style: TextStyle(
-                                color: theme.text.withOpacity(0.7),
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
-                // Content
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Commit hash
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: theme.text.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              blame.commitHash.substring(0, 7),
-                              style: TextStyle(
-                                color: theme.text,
-                                fontFamily: widget
-                                    .editorConfigService.config.fontFamily,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      // Commit message
-                      Text(
-                        blame.message,
-                        style: TextStyle(
-                          color: theme.text,
-                          height: 1.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+              ),
+            ));
 
     Overlay.of(context).insert(_overlayEntry!);
   }
@@ -303,8 +344,10 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
   }
 
   void _hideBlamePopup() {
-    _overlayEntry?.remove();
-    _overlayEntry = null;
-    _hoveredBlame = null;
+    if (!_isHoveringPopup) {
+      _overlayEntry?.remove();
+      _overlayEntry = null;
+      _hoveredBlame = null;
+    }
   }
 }
