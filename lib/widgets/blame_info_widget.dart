@@ -320,11 +320,17 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
       future: _getAvatarUrl(email),
       builder: (context, snapshot) {
         if (snapshot.hasData) {
-          return CircleAvatar(
-            backgroundColor: theme.text.withOpacity(0.2),
-            radius: 16,
-            backgroundImage: NetworkImage(snapshot.data!),
-            onBackgroundImageError: (_, __) {},
+          return Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: theme.text.withOpacity(0.2),
+              image: DecorationImage(
+                image: NetworkImage(snapshot.data!),
+                fit: BoxFit.cover,
+              ),
+            ),
           );
         }
         return CircleAvatar(
