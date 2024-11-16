@@ -8,7 +8,7 @@ env:
   FLUTTER_VERSION: '3.24.4'
   FLUTTER_CHANNEL: 'stable'
   APP_NAME: 'crystal'
-  APP_VERSION: v0.9.0-beta.6
+  APP_VERSION: v0.9.1-beta.1
  
 
 on:

@@ -1,11 +1,13 @@
 import 'dart:math';
 
 import 'package:crystal/models/editor/search_match.dart';
+import 'package:crystal/models/git_models.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/state/editor/editor_syntax_highlighter.dart';
 import 'package:crystal/widgets/editor/painter/painters/background_painter.dart';
+import 'package:crystal/widgets/editor/painter/painters/blame_painter.dart';
 import 'package:crystal/widgets/editor/painter/painters/bracket_match_painter.dart';
 import 'package:crystal/widgets/editor/painter/painters/caret_painter.dart';
 import 'package:crystal/widgets/editor/painter/painters/current_line_highlight_painter.dart';
@@ -35,6 +37,8 @@ class EditorPainter extends CustomPainter {
   late final SelectionPainter selectionPainter;
   final BracketMatchPainter bracketMatchPainter;
   final bool isFocused;
+  final List<BlameLine> blameInfo;
+  late final BlamePainter blamePainter;
 
   EditorPainter({
     required this.editorState,
@@ -46,6 +50,7 @@ class EditorPainter extends CustomPainter {
     required this.editorLayoutService,
     required this.editorConfigService,
     required this.isFocused,
+    required this.blameInfo,
   })  : backgroundPainter = BackgroundPainter(
             backgroundColor:
                 editorConfigService.themeService.currentTheme != null
@@ -99,7 +104,12 @@ class EditorPainter extends CustomPainter {
             editorLayoutService: editorLayoutService,
             editorConfigService: editorConfigService),
         super(repaint: editorState) {
-    print(editorState.path);
+    blamePainter = BlamePainter(
+      editorConfigService: editorConfigService,
+      editorLayoutService: editorLayoutService,
+      blameInfo: blameInfo,
+      editorState: editorState,
+    );
   }
 
   @override
@@ -156,6 +166,13 @@ class EditorPainter extends CustomPainter {
     // Highlight current line
     currentLineHighlightPainter.paint(canvas, size,
         firstVisibleLine: firstVisibleLine, lastVisibleLine: lastVisibleLine);
+
+    blamePainter.paint(
+      canvas,
+      size,
+      firstVisibleLine: firstVisibleLine,
+      lastVisibleLine: lastVisibleLine,
+    );
   }
 
   double measureLineWidth(String line) {
@@ -179,6 +196,7 @@ class EditorPainter extends CustomPainter {
         currentSearchTermMatch != oldDelegate.currentSearchTermMatch ||
         oldDelegate.editorState.editorCursorManager.cursors !=
             editorState.editorCursorManager.cursors ||
-        editorState.foldingRanges != oldDelegate.editorState.foldingRanges;
+        editorState.foldingRanges != oldDelegate.editorState.foldingRanges ||
+        oldDelegate.blameInfo != blameInfo;
   }
 }

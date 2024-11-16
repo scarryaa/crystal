@@ -5,11 +5,13 @@ import 'package:crystal/models/editor/command_palette_mode.dart';
 import 'package:crystal/models/editor/completion_item.dart';
 import 'package:crystal/models/editor/config/config_paths.dart';
 import 'package:crystal/models/editor/search_match.dart';
+import 'package:crystal/models/git_models.dart';
 import 'package:crystal/services/command_palette_service.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_input_handler.dart';
 import 'package:crystal/services/editor/editor_keyboard_handler.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
+import 'package:crystal/services/git_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/state/editor/editor_syntax_highlighter.dart';
 import 'package:crystal/widgets/editor/completion_widget.dart';
@@ -75,6 +77,8 @@ class EditorViewState extends State<EditorView> {
   EditorSyntaxHighlighter? editorSyntaxHighlighter;
   late final EditorKeyboardHandler editorKeyboardHandler;
   EditorPainter? editorPainter;
+  List<BlameLine>? blameInfo;
+  final gitService = GitService();
 
   @override
   void didUpdateWidget(EditorView oldWidget) {
@@ -85,12 +89,15 @@ class EditorViewState extends State<EditorView> {
         editorLayoutService: widget.editorLayoutService,
         fileName: widget.fileName,
       );
+      _initializeGit();
     }
   }
 
   @override
   void initState() {
     super.initState();
+
+    _initializeGit();
 
     _focusNode.addListener(() {
       setState(() {
@@ -138,6 +145,26 @@ class EditorViewState extends State<EditorView> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
     });
+  }
+
+  Future<void> _initializeGit() async {
+    try {
+      await gitService.initialize(widget.state.path);
+      final blame = await gitService.getBlame(widget.state.path);
+      if (mounted) {
+        // Add mounted check for safety
+        setState(() {
+          blameInfo = blame;
+        });
+      }
+    } catch (e) {
+      debugPrint('Git initialization failed: $e');
+      if (mounted) {
+        setState(() {
+          blameInfo = [];
+        });
+      }
+    }
   }
 
   Offset _getCompletionOverlayPosition() {
@@ -271,6 +298,7 @@ class EditorViewState extends State<EditorView> {
       currentSearchTermMatch: widget.currentSearchTermMatch,
       viewportHeight: MediaQuery.of(context).size.height,
       isFocused: _isFocused,
+      blameInfo: blameInfo ?? [],
     );
     widget.state.scrollState
         .updateViewportHeight(MediaQuery.of(context).size.height);

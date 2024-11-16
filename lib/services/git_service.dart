@@ -50,17 +50,91 @@ class GitService {
 
   bool get isInitialized => _isInitialized;
 
-  // Get blame information for a file
   Future<List<BlameLine>> getBlame(String filePath) async {
     if (!_isInitialized) throw GitException('Git not initialized');
 
     try {
-      final result =
-          await _gitDir.runCommand(['blame', '--porcelain', filePath]);
-      return _parseBlameOutput(result.stdout as String);
+      final result = await _gitDir.runCommand([
+        'blame',
+        '--porcelain',
+        '-w', // Ignore whitespace
+        '--show-name',
+        '--show-email',
+        filePath
+      ]);
+      final output = result.stdout as String;
+
+      return _parseBlameOutput(output);
     } catch (e) {
       throw GitException('Failed to get blame: $e');
     }
+  }
+
+  List<BlameLine> _parseBlameOutput(String output) {
+    final List<BlameLine> blameLines = [];
+    final lines = output.split('\n');
+    int currentLine = 0;
+
+    // Cache for commit metadata
+    final Map<String, (String, DateTime)> commitCache = {};
+
+    while (currentLine < lines.length) {
+      final line = lines[currentLine];
+
+      // Start of a new blame entry
+      if (line.startsWith(RegExp(r'^[0-9a-f]{40}'))) {
+        final commit = line.substring(0, 40);
+        String author;
+        DateTime timestamp;
+        String content = '';
+
+        // Check if we already have metadata for this commit
+        if (commitCache.containsKey(commit)) {
+          (author, timestamp) = commitCache[commit]!;
+          // Skip until content line (starts with tab)
+          while (currentLine < lines.length &&
+              !lines[currentLine].startsWith('\t')) {
+            currentLine++;
+          }
+        } else {
+          // Parse new commit metadata
+          author = 'Unknown';
+          timestamp = DateTime.now();
+          currentLine++;
+
+          // Parse header lines
+          while (currentLine < lines.length &&
+              !lines[currentLine].startsWith('\t')) {
+            final headerLine = lines[currentLine];
+            if (headerLine.startsWith('author ')) {
+              author = headerLine.substring(7).trim();
+            } else if (headerLine.startsWith('author-time ')) {
+              timestamp = DateTime.fromMillisecondsSinceEpoch(
+                  int.parse(headerLine.substring(11).trim()) * 1000);
+            }
+            currentLine++;
+          }
+
+          // Cache the metadata for this commit
+          commitCache[commit] = (author, timestamp);
+        }
+
+        // Get content line
+        if (currentLine < lines.length && lines[currentLine].startsWith('\t')) {
+          content = lines[currentLine].substring(1);
+          blameLines.add(BlameLine(
+            commitHash: commit,
+            author: author,
+            timestamp: timestamp,
+            content: content,
+            lineNumber: blameLines.length + 1,
+          ));
+        }
+      }
+      currentLine++;
+    }
+
+    return blameLines;
   }
 
   // Get diff for a specific file
@@ -134,48 +208,6 @@ class GitService {
     } catch (e) {
       throw GitException('Failed to get commit history: $e');
     }
-  }
-
-  List<BlameLine> _parseBlameOutput(String output) {
-    final List<BlameLine> blameLines = [];
-    final lines = output.split('\n');
-    int currentLine = 0;
-
-    while (currentLine < lines.length) {
-      if (lines[currentLine].startsWith(RegExp(r'^[0-9a-f]{40}'))) {
-        final commit = lines[currentLine].substring(0, 40);
-        String author = '';
-        DateTime timestamp = DateTime.now();
-        String content = '';
-        int lineNumber = 0;
-
-        // Parse header lines
-        while (!lines[currentLine].startsWith('\t')) {
-          if (lines[currentLine].startsWith('author ')) {
-            author = lines[currentLine].substring(7);
-          } else if (lines[currentLine].startsWith('author-time ')) {
-            timestamp = DateTime.fromMillisecondsSinceEpoch(
-                int.parse(lines[currentLine].substring(11)) * 1000);
-          }
-          currentLine++;
-        }
-
-        // Get content
-        content = lines[currentLine].substring(1);
-        lineNumber = blameLines.length + 1;
-
-        blameLines.add(BlameLine(
-          commitHash: commit,
-          author: author,
-          timestamp: timestamp,
-          content: content,
-          lineNumber: lineNumber,
-        ));
-      }
-      currentLine++;
-    }
-
-    return blameLines;
   }
 
   FileDiff _parseDiffOutput(String output) {
