@@ -1,4 +1,6 @@
+import 'package:colorful_iconify_flutter/icons/vscode_icons.dart';
 import 'package:flutter/material.dart';
+import 'package:iconify_flutter/iconify_flutter.dart';
 
 class FileItem extends StatefulWidget {
   final bool isDirectory;
@@ -29,6 +31,85 @@ class FileItem extends StatefulWidget {
 class _FileItemState extends State<FileItem> {
   bool _hovered = false;
 
+  String _getFileIcon() {
+    if (widget.isDirectory) {
+      return VscodeIcons.default_folder;
+    }
+
+    // Get file extension
+    final extension = widget.fileName.split('.').last.toLowerCase();
+
+    // Map common file extensions to VSCode icons
+    switch (extension) {
+      case 'dart':
+        return VscodeIcons.file_type_dartlang;
+      case 'js':
+        return VscodeIcons.file_type_js;
+      case 'jsx':
+        return VscodeIcons.file_type_reactjs;
+      case 'ts':
+        return VscodeIcons.file_type_typescript;
+      case 'tsx':
+        return VscodeIcons.file_type_reactts;
+      case 'py':
+        return VscodeIcons.file_type_python;
+      case 'java':
+        return VscodeIcons.file_type_java;
+      case 'html':
+        return VscodeIcons.file_type_html;
+      case 'css':
+        return VscodeIcons.file_type_css;
+      case 'scss':
+        return VscodeIcons.file_type_scss;
+      case 'json':
+        return VscodeIcons.file_type_json;
+      case 'xml':
+        return VscodeIcons.file_type_xml;
+      case 'md':
+        return VscodeIcons.file_type_markdown;
+      case 'yaml':
+      case 'yml':
+        return VscodeIcons.file_type_yaml;
+      case 'php':
+        return VscodeIcons.file_type_php;
+      case 'cpp':
+        return VscodeIcons.file_type_cpp;
+      case 'c':
+        return VscodeIcons.file_type_c;
+      case 'cs':
+        return VscodeIcons.file_type_csharp;
+      case 'go':
+        return VscodeIcons.file_type_go;
+      case 'rs':
+        return VscodeIcons.file_type_rust;
+      case 'swift':
+        return VscodeIcons.file_type_swift;
+      case 'kt':
+        return VscodeIcons.file_type_kotlin;
+      case 'rb':
+        return VscodeIcons.file_type_ruby;
+      case 'sql':
+        return VscodeIcons.file_type_sql;
+      case 'pdf':
+        return VscodeIcons.file_type_pdf2;
+      case 'zip':
+      case 'rar':
+      case '7z':
+        return VscodeIcons.file_type_zip;
+      case 'gitignore':
+        return VscodeIcons.file_type_git;
+      case 'svg':
+        return VscodeIcons.file_type_svg;
+      case 'png':
+      case 'jpg':
+      case 'jpeg':
+      case 'gif':
+        return VscodeIcons.file_type_image;
+      default:
+        return VscodeIcons.default_file;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
@@ -54,8 +135,8 @@ class _FileItemState extends State<FileItem> {
               padding: EdgeInsets.only(left: 8.0 * widget.level),
               child: Row(
                 children: [
-                  Icon(
-                    widget.isDirectory ? Icons.folder : Icons.insert_drive_file,
+                  Iconify(
+                    _getFileIcon(),
                     size: 16,
                     color: _hovered
                         ? widget.highlightColor
