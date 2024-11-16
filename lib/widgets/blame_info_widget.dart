@@ -31,7 +31,6 @@ class BlameInfoWidget extends StatefulWidget {
 }
 
 class _BlameInfoWidgetState extends State<BlameInfoWidget> {
-  final Map<String, String> _avatarUrlCache = {};
   Offset? _lastMousePosition;
   Offset? _currentMousePosition;
   OverlayEntry? _overlayEntry;
@@ -99,29 +98,6 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
   String _formatDateTime(DateTime dateTime) {
     return "${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} "
         "${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}";
-  }
-
-  Future<String> _getAvatarUrl(String email) async {
-    if (_avatarUrlCache.containsKey(email)) {
-      return _avatarUrlCache[email]!;
-    }
-
-    try {
-      if (_hoveredBlame == null) {
-        return '';
-      }
-
-      final commitDetails =
-          await widget.gitService.getCommitDetails(_hoveredBlame!.commitHash);
-      if (commitDetails.authorAvatarUrl.isNotEmpty) {
-        _avatarUrlCache[email] = commitDetails.authorAvatarUrl;
-        return commitDetails.authorAvatarUrl;
-      }
-    } catch (e) {
-      print('Error getting avatar: $e');
-    }
-
-    return '';
   }
 
   void _showBlamePopup(BuildContext context, Offset position, BlameLine blame) {
@@ -316,6 +292,25 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
     } catch (e) {
       print('Error showing popup: $e');
       _hideBlamePopup(); // Hide popup if anything fails
+    }
+  }
+
+  Future<String> _getAvatarUrl(String email) async {
+    // Use GitService's cache directly
+    if (widget.gitService.avatarUrlCache.containsKey(email)) {
+      return widget.gitService.avatarUrlCache[email]!;
+    }
+
+    try {
+      if (_hoveredBlame == null) {
+        return '';
+      }
+      final commitDetails =
+          await widget.gitService.getCommitDetails(_hoveredBlame!.commitHash);
+      return commitDetails.authorAvatarUrl;
+    } catch (e) {
+      print('Error getting avatar: $e');
+      return '';
     }
   }
 

@@ -15,6 +15,9 @@ class GitService {
   Stream<void> get onGitStatusChanged => _statusController.stream;
   StreamSubscription? _gitWatcher;
   Timer? _debounceTimer;
+  static final Map<String, String> _avatarUrlCache = {};
+
+  Map<String, String> get avatarUrlCache => _avatarUrlCache;
 
   // Store file status information
   final Map<String, FileStatus> _fileStatuses = {};
@@ -81,6 +84,36 @@ class GitService {
     }
   }
 
+  Future<String> _fetchAvatarUrl(String repoUrl, String email) async {
+    if (_avatarUrlCache.containsKey(email)) {
+      return _avatarUrlCache[email]!;
+    }
+
+    try {
+      // Convert GitHub URL to API format
+      final uri = Uri.parse(repoUrl);
+      final apiUrl = 'https://api.github.com/repos${uri.path}/commits';
+
+      final response = await http.get(Uri.parse(apiUrl));
+      if (response.statusCode == 200) {
+        final commits = jsonDecode(response.body) as List;
+        for (var commit in commits) {
+          if (commit['commit']['author']['email'] == email) {
+            final avatarUrl = commit['author']['avatar_url'];
+            if (avatarUrl != null) {
+              _avatarUrlCache[email] = avatarUrl;
+              return avatarUrl;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Error fetching avatar: $e');
+    }
+
+    return '';
+  }
+
   Future<String?> _findGitRoot(String startPath) async {
     Directory current = Directory(startPath);
 
@@ -108,7 +141,6 @@ class GitService {
     if (!_isInitialized) throw GitException('Git not initialized');
 
     try {
-      // Get basic commit info from git
       final result = await _gitDir.runCommand(
           ['show', '-s', '--format=%H|%an|%ae|%at|%s|%b', commitHash]);
 
@@ -116,36 +148,20 @@ class GitService {
       final parts = output.split('|');
 
       if (parts.length >= 6) {
-        // Get repository URL to construct GitHub API URL
-        final repoUrl = await getRepositoryUrl();
-        String avatarUrl = '';
+        final email = parts[2];
+        String avatarUrl = _avatarUrlCache[email] ?? '';
 
-        if (repoUrl != null) {
-          // Extract owner and repo from URL
-          final uri = Uri.parse(repoUrl);
-          final pathSegments = uri.pathSegments;
-          if (pathSegments.length >= 2) {
-            final owner = pathSegments[0];
-            final repo = pathSegments[1];
-
-            // Call GitHub API to get commit details
-            final response = await http.get(
-              Uri.parse(
-                  'https://api.github.com/repos/$owner/$repo/commits/$commitHash'),
-              headers: {'Accept': 'application/vnd.github.v3+json'},
-            );
-
-            if (response.statusCode == 200) {
-              final data = jsonDecode(response.body);
-              avatarUrl = data['author']?['avatar_url'] ?? '';
-            }
+        if (avatarUrl.isEmpty) {
+          final repoUrl = await getRepositoryUrl();
+          if (repoUrl != null) {
+            avatarUrl = await _fetchAvatarUrl(repoUrl, email);
           }
         }
 
         return CommitDetails(
           hash: parts[0],
           author: parts[1],
-          email: parts[2],
+          email: email,
           timestamp:
               DateTime.fromMillisecondsSinceEpoch(int.parse(parts[3]) * 1000),
           subject: parts[4],
@@ -153,7 +169,6 @@ class GitService {
           authorAvatarUrl: avatarUrl,
         );
       }
-
       throw GitException('Invalid commit format');
     } catch (e) {
       throw GitException('Failed to get commit details: $e');
