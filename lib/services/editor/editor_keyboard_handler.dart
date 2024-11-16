@@ -16,7 +16,7 @@ class EditorKeyboardHandler {
   VoidCallback openDefaultConfig;
   VoidCallback openNewTab;
   Function(int lineIndex) updateSingleLineWidth;
-  bool Function() isDirty;
+  final bool isDirty;
   void Function([CommandPaletteMode mode]) showCommandPalette;
   final EditorState Function() getState;
   final Function() activeEditorIndex;
@@ -41,7 +41,7 @@ class EditorKeyboardHandler {
   });
 
   Future<void> _handleCloseTab() async {
-    if (isDirty()) {
+    if (isDirty) {
       final response = await DialogService().showSavePrompt();
       switch (response) {
         case 'Save & Exit':

@@ -238,6 +238,7 @@ class _EditorTabBarState extends State<EditorTabBar> {
       listenable: Listenable.merge([
         widget.editorConfigService,
         widget.editorTabManager.activeEditor,
+        ...widget.editors.map((e) => e.buffer),
       ]),
       builder: (context, child) {
         return Container(
@@ -276,7 +277,7 @@ class _EditorTabBarState extends State<EditorTabBar> {
                             onClose: () => _handleEditorClosed(index),
                             onPin: () => widget.onPin(index),
                             isPinned: editor.isPinned,
-                            isDirty: () => editor.buffer.isDirty,
+                            isDirty: editor.buffer.isDirty,
                             onCloseTabsToRight: () =>
                                 widget.onCloseTabsToRight(index),
                             onCloseTabsToLeft: () =>

@@ -21,7 +21,7 @@ class EditorTab extends StatelessWidget {
   final VoidCallback onCloseTabsToLeft;
   final VoidCallback onCloseOtherTabs;
   final List<EditorState> editors;
-  final Function() isDirty;
+  final bool isDirty;
 
   const EditorTab({
     required this.editor,
@@ -102,7 +102,7 @@ class EditorTab extends StatelessWidget {
   }
 
   Widget _buildStatusIndicator() {
-    if (!isDirty()) {
+    if (!isDirty) {
       return SizedBox(
           width: editorConfigService.config.uiFontSize / 2,
           height: editorConfigService.config.uiFontSize / 2);
@@ -124,7 +124,7 @@ class EditorTab extends StatelessWidget {
   }
 
   Future<void> _handleClose() async {
-    if (isDirty()) {
+    if (isDirty) {
       final response = await DialogService().showSavePrompt();
       switch (response) {
         case 'Save & Exit':
@@ -272,7 +272,8 @@ class EditorTab extends StatelessWidget {
     final theme = editorConfigService.themeService.currentTheme;
 
     return ListenableBuilder(
-        listenable: Listenable.merge([editorConfigService, editor]),
+        listenable:
+            Listenable.merge([editorConfigService, editor, editor.buffer]),
         builder: (context, child) {
           return Semantics(
             // TODO add tab index?

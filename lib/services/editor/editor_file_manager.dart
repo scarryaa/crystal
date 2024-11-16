@@ -6,14 +6,12 @@ import 'package:path/path.dart' as p;
 class EditorFileManager {
   final Buffer buffer;
   final FileService fileService;
-
   EditorFileManager(this.buffer, this.fileService);
 
   Future<bool> saveFile(String path) async {
     if (path.isEmpty || path.startsWith('__temp')) {
       return saveFileAs(path);
     }
-
     final String content = buffer.lines.join('\n');
     return writeFileToDisk(path, content);
   }
@@ -24,11 +22,9 @@ class EditorFileManager {
           dialogTitle: 'Save As',
           fileName: p.basename(path).contains('__temp') ? '' : p.basename(path),
           initialDirectory: p.dirname(path));
-
       if (outputFile == null) {
         return false; // User cancelled
       }
-
       final String content = buffer.lines.join('\n');
       return writeFileToDisk(outputFile, content);
     } catch (e) {
@@ -40,6 +36,7 @@ class EditorFileManager {
     try {
       FileService.saveFile(path, content);
       buffer.setOriginalContent(content);
+      buffer.clearDirty();
       return true;
     } catch (e) {
       // Handle error
@@ -49,5 +46,7 @@ class EditorFileManager {
 
   void openFile(String content) {
     buffer.setContent(content);
+    buffer.setOriginalContent(content);
+    buffer.clearDirty();
   }
 }

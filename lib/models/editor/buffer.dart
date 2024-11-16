@@ -1,37 +1,62 @@
-class Buffer {
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+
+class Buffer extends ChangeNotifier {
   int _version = 1;
   List<String> _lines = [''];
+  List<String> _originalLines = [''];
   String _originalContent = '';
   final Map<int, int> _foldedRanges = {};
-
-  int get version => _version;
   bool _isDirty = false;
-
-  set isDirty(bool value) {
-    if (value) {
-      _isDirty = true;
-    } else {
-      _isDirty = false;
-      // When marking as clean, update the original content to match current content
-      _originalContent = content;
-    }
-    incrementVersion();
-  }
 
   bool get isDirty {
     if (_isDirty) return true;
-
-    // Direct string comparison of lines
-    List<String> originalLines = _originalContent.split('\n');
-    List<String> currentLines = List<String>.from(_lines);
-
-    if (originalLines.length != currentLines.length) return true;
-
-    for (int i = 0; i < originalLines.length; i++) {
-      if (originalLines[i] != currentLines[i]) return true;
+    if (_lines.length != _originalLines.length) return true;
+    for (int i = 0; i < _lines.length; i++) {
+      if (_lines[i] != _originalLines[i]) return true;
     }
-
     return false;
+  }
+
+  void setContent(String content) {
+    _lines = content.split('\n');
+    if (_lines.isEmpty) {
+      _lines = [''];
+    }
+    _originalLines = List.from(_lines);
+    _isDirty = false;
+    incrementVersion();
+  }
+
+  void incrementVersion() {
+    _version++;
+    notifyListeners();
+  }
+
+  void clearDirty() {
+    _originalLines = List.from(_lines);
+    _isDirty = false;
+    notifyListeners();
+  }
+
+  void setOriginalContent(String content) {
+    _originalLines = content.split('\n');
+    if (_originalLines.isEmpty) {
+      _originalLines = [''];
+    }
+    notifyListeners();
+  }
+
+  int get version => _version;
+
+  set isDirty(bool value) {
+    if (_isDirty != value) {
+      _isDirty = value;
+      if (!value) {
+        _originalContent = content;
+      }
+      notifyListeners();
+    }
   }
 
   List<String> get lines => _lines;
@@ -166,17 +191,6 @@ class Buffer {
 
   int getLineLength(int lineNumber) => _lines[lineNumber].length;
 
-  void incrementVersion() => _version++;
-
-  void setContent(String content) {
-    _lines = content.split('\n');
-    if (lines.isEmpty) {
-      _lines = [''];
-    }
-    _originalContent = content;
-    incrementVersion();
-  }
-
   void replace(int lineNumber, int index, int length, String newTerm) {
     _lines[lineNumber] = _lines[lineNumber].substring(0, index) +
         newTerm +
@@ -186,11 +200,6 @@ class Buffer {
 
   void setLine(int lineNumber, String content) {
     _lines[lineNumber] = content;
-    incrementVersion();
-  }
-
-  void setOriginalContent(String content) {
-    _originalContent = content;
     incrementVersion();
   }
 }

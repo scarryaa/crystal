@@ -33,7 +33,7 @@ class EditorView extends StatefulWidget {
   final List<SearchMatch> searchTermMatches;
   final Function activeEditorIndex;
   final String fileName;
-  final bool Function() isDirty;
+  final bool isDirty;
   final List<CompletionItem> suggestions;
   final Function(CompletionItem) onCompletionSelect;
   final int selectedSuggestionIndex;

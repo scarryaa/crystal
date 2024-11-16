@@ -31,7 +31,6 @@ class TextPaintingCache {
     }
 
     if (_painterCache.length > maxSize) {
-      // Use LRU cache eviction instead of removing oldest entries
       final keysToRemove = _painterCache.keys.take(maxSize ~/ 10).toList();
       for (final key in keysToRemove) {
         _painterCache[key]?.dispose(); // Properly dispose painters
@@ -118,7 +117,6 @@ class TextPainterHelper {
 
       final line = lines[i];
 
-      // Use the cache instead of direct highlighting
       final painter = _paintingCache.getPainter(
           line, _baseStyle, editorSyntaxHighlighter, size.width);
 
