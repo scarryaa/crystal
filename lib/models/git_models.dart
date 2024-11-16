@@ -1,14 +1,18 @@
 class BlameLine {
-  final String commitHash;
   final String author;
+  final String commitHash;
   final DateTime timestamp;
+  final String message;
+  final String email;
   final String content;
   final int lineNumber;
 
   BlameLine({
-    required this.commitHash,
     required this.author,
+    required this.commitHash,
     required this.timestamp,
+    required this.message,
+    required this.email,
     required this.content,
     required this.lineNumber,
   });

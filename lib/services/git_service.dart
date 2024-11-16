@@ -76,56 +76,62 @@ class GitService {
     int currentLine = 0;
 
     // Cache for commit metadata
-    final Map<String, (String, DateTime)> commitCache = {};
+    final Map<String, (String, String, DateTime, String)> commitCache = {};
 
     while (currentLine < lines.length) {
       final line = lines[currentLine];
 
-      // Start of a new blame entry
       if (line.startsWith(RegExp(r'^[0-9a-f]{40}'))) {
         final commit = line.substring(0, 40);
         String author;
+        String email;
         DateTime timestamp;
+        String message;
         String content = '';
 
-        // Check if we already have metadata for this commit
         if (commitCache.containsKey(commit)) {
-          (author, timestamp) = commitCache[commit]!;
-          // Skip until content line (starts with tab)
+          (author, email, timestamp, message) = commitCache[commit]!;
           while (currentLine < lines.length &&
               !lines[currentLine].startsWith('\t')) {
             currentLine++;
           }
         } else {
-          // Parse new commit metadata
           author = 'Unknown';
+          email = '';
+          message = '';
           timestamp = DateTime.now();
           currentLine++;
 
-          // Parse header lines
           while (currentLine < lines.length &&
               !lines[currentLine].startsWith('\t')) {
             final headerLine = lines[currentLine];
             if (headerLine.startsWith('author ')) {
               author = headerLine.substring(7).trim();
+            } else if (headerLine.startsWith('author-mail ')) {
+              email = headerLine
+                  .substring(12)
+                  .trim()
+                  .replaceAll(RegExp(r'[<>]'), '');
             } else if (headerLine.startsWith('author-time ')) {
               timestamp = DateTime.fromMillisecondsSinceEpoch(
                   int.parse(headerLine.substring(11).trim()) * 1000);
+            } else if (headerLine.startsWith('summary ')) {
+              message = headerLine.substring(8).trim();
             }
             currentLine++;
           }
 
-          // Cache the metadata for this commit
-          commitCache[commit] = (author, timestamp);
+          commitCache[commit] = (author, email, timestamp, message);
         }
 
-        // Get content line
         if (currentLine < lines.length && lines[currentLine].startsWith('\t')) {
           content = lines[currentLine].substring(1);
           blameLines.add(BlameLine(
             commitHash: commit,
             author: author,
+            email: email,
             timestamp: timestamp,
+            message: message,
             content: content,
             lineNumber: blameLines.length + 1,
           ));
@@ -133,7 +139,6 @@ class GitService {
       }
       currentLine++;
     }
-
     return blameLines;
   }
 

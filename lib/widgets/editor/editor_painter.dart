@@ -166,13 +166,6 @@ class EditorPainter extends CustomPainter {
     // Highlight current line
     currentLineHighlightPainter.paint(canvas, size,
         firstVisibleLine: firstVisibleLine, lastVisibleLine: lastVisibleLine);
-
-    blamePainter.paint(
-      canvas,
-      size,
-      firstVisibleLine: firstVisibleLine,
-      lastVisibleLine: lastVisibleLine,
-    );
   }
 
   double measureLineWidth(String line) {

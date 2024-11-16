@@ -4,12 +4,12 @@ import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:flutter/material.dart';
 
-class BlamePainter {
+class BlamePainter extends CustomPainter {
   final EditorConfigService editorConfigService;
   final EditorLayoutService editorLayoutService;
   final List<BlameLine> blameInfo;
-  final double rightPadding;
   final EditorState editorState;
+  final double rightPadding;
 
   final Map<String, TextPainter> _textPainterCache = {};
 
@@ -21,46 +21,49 @@ class BlamePainter {
     this.rightPadding = 8.0,
   });
 
-  void paint(
-    Canvas canvas,
-    Size size, {
-    required int firstVisibleLine,
-    required int lastVisibleLine,
-  }) {
+  double getBlameTextWidth(String text) {
+    final textPainter = _getTextPainter(text);
+    return textPainter.width;
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
     if (blameInfo.isEmpty) return;
 
-    final cursorLine = editorState.cursorLine;
-    if (cursorLine < firstVisibleLine || cursorLine >= lastVisibleLine) return;
-    if (cursorLine >= blameInfo.length) return;
-
+    final cursorLine = editorState.editorCursorManager.cursors.first.line;
     final lineHeight = editorLayoutService.config.lineHeight;
 
-    final blame = blameInfo[cursorLine];
-    final blameText = _formatBlameInfo(blame);
-    final textPainter = _getTextPainter(blameText);
+    // Only paint if cursor line is within blame info range
+    if (cursorLine >= 0 && cursorLine < blameInfo.length) {
+      final lineY = (cursorLine * lineHeight);
 
-    // Calculate the current line's text width
-    final lineText = editorState.buffer.getLine(cursorLine);
-    final lineTextPainter = TextPainter(
-      text: TextSpan(
-        text: lineText,
-        style: TextStyle(
-          fontSize: editorConfigService.config.fontSize,
-          fontFamily: editorConfigService.config.fontFamily,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
+      // Only paint if cursor line is visible
+      if (lineY >= -lineHeight && lineY <= size.height) {
+        final blame = blameInfo[cursorLine];
+        final blameText = _formatBlameInfo(blame);
+        final textPainter = _getTextPainter(blameText);
 
-    final double y = (cursorLine * lineHeight);
-    final double x = lineTextPainter.width + 50;
+        final lineText = editorState.buffer.getLine(cursorLine);
+        final lineTextPainter = TextPainter(
+          text: TextSpan(
+            text: lineText,
+            style: TextStyle(
+              fontSize: editorConfigService.config.fontSize,
+              fontFamily: editorConfigService.config.fontFamily,
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
 
-    textPainter.paint(
-      canvas,
-      Offset(x, y + (lineHeight - textPainter.height) / 2),
-    );
+        final x = lineTextPainter.width + 50;
+        textPainter.paint(
+          canvas,
+          Offset(x, lineY + (lineHeight - textPainter.height) / 2),
+        );
 
-    lineTextPainter.dispose();
+        lineTextPainter.dispose();
+      }
+    }
   }
 
   String _formatBlameInfo(BlameLine blame) {
@@ -114,5 +117,14 @@ class BlamePainter {
       painter.dispose();
     }
     _textPainterCache.clear();
+  }
+
+  @override
+  bool shouldRepaint(BlamePainter oldDelegate) {
+    return blameInfo != oldDelegate.blameInfo ||
+        editorState.scrollState != oldDelegate.editorState.scrollState ||
+        editorState.buffer.version != oldDelegate.editorState.buffer.version ||
+        editorState.editorCursorManager.cursors.first.line !=
+            oldDelegate.editorState.editorCursorManager.cursors.first.line;
   }
 }

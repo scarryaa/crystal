@@ -14,6 +14,7 @@ import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/services/git_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/state/editor/editor_syntax_highlighter.dart';
+import 'package:crystal/widgets/blame_info_widget.dart';
 import 'package:crystal/widgets/editor/completion_widget.dart';
 import 'package:crystal/widgets/editor/editor_painter.dart';
 import 'package:flutter/material.dart';
@@ -308,80 +309,98 @@ class EditorViewState extends State<EditorView> {
         builder: (context, _) {
           return Stack(children: [
             Container(
-                color: widget.editorConfigService.themeService.currentTheme
-                        ?.background ??
-                    Colors.white,
-                child: Focus(
-                    focusNode: _focusNode,
-                    onKeyEvent: (node, event) {
-                      _handleKeyEventAsync(node, event);
-                      return KeyEventResult.handled;
-                    },
-                    autofocus: true,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTapDown: (details) => editorInputHandler.handleTap(
-                          details,
-                          widget.verticalScrollController.offset,
-                          widget.horizontalScrollController.offset,
-                          editorPainter,
-                          widget.state),
-                      onPanStart: (details) =>
-                          editorInputHandler.handleDragStart(
-                              details,
-                              widget.verticalScrollController.offset,
-                              widget.horizontalScrollController.offset,
-                              editorPainter,
-                              widget.state),
-                      onPanUpdate: (details) =>
-                          editorInputHandler.handleDragUpdate(
-                              details,
-                              widget.verticalScrollController.offset,
-                              widget.horizontalScrollController.offset,
-                              editorPainter,
-                              widget.state),
-                      child: ScrollbarTheme(
-                          data: ScrollbarThemeData(
-                            thumbColor: WidgetStateProperty.all(widget
-                                        .editorConfigService
-                                        .themeService
-                                        .currentTheme !=
-                                    null
-                                ? widget.editorConfigService.themeService
-                                    .currentTheme!.border
-                                    .withOpacity(0.65)
-                                : Colors.grey[600]!.withOpacity(0.65)),
-                          ),
-                          child: Scrollbar(
-                              controller: widget.verticalScrollController,
-                              thickness: 10,
-                              radius: const Radius.circular(0),
-                              child: Scrollbar(
-                                  controller: widget.horizontalScrollController,
-                                  thickness: 10,
-                                  radius: const Radius.circular(0),
-                                  notificationPredicate: (notification) =>
-                                      notification.depth == 1,
-                                  child: ScrollConfiguration(
-                                    behavior: const ScrollBehavior()
-                                        .copyWith(scrollbars: false),
-                                    child: SingleChildScrollView(
-                                      controller:
-                                          widget.verticalScrollController,
-                                      child: SingleChildScrollView(
-                                        controller:
-                                            widget.horizontalScrollController,
-                                        scrollDirection: Axis.horizontal,
-                                        child: RepaintBoundary(
-                                          child: CustomPaint(
-                                            painter: editorPainter,
-                                            size: Size(width, height),
-                                          ),
+              color: widget.editorConfigService.themeService.currentTheme
+                      ?.background ??
+                  Colors.white,
+              child: Focus(
+                focusNode: _focusNode,
+                onKeyEvent: (node, event) {
+                  _handleKeyEventAsync(node, event);
+                  return KeyEventResult.handled;
+                },
+                autofocus: true,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTapDown: (details) => editorInputHandler.handleTap(
+                      details,
+                      widget.verticalScrollController.offset,
+                      widget.horizontalScrollController.offset,
+                      editorPainter,
+                      widget.state),
+                  onPanStart: (details) => editorInputHandler.handleDragStart(
+                      details,
+                      widget.verticalScrollController.offset,
+                      widget.horizontalScrollController.offset,
+                      editorPainter,
+                      widget.state),
+                  onPanUpdate: (details) => editorInputHandler.handleDragUpdate(
+                      details,
+                      widget.verticalScrollController.offset,
+                      widget.horizontalScrollController.offset,
+                      editorPainter,
+                      widget.state),
+                  child: ScrollbarTheme(
+                    data: ScrollbarThemeData(
+                      thumbColor: WidgetStateProperty.all(widget
+                                  .editorConfigService
+                                  .themeService
+                                  .currentTheme !=
+                              null
+                          ? widget.editorConfigService.themeService
+                              .currentTheme!.border
+                              .withOpacity(0.65)
+                          : Colors.grey[600]!.withOpacity(0.65)),
+                    ),
+                    child: Scrollbar(
+                      controller: widget.verticalScrollController,
+                      thickness: 10,
+                      radius: const Radius.circular(0),
+                      child: Scrollbar(
+                        controller: widget.horizontalScrollController,
+                        thickness: 10,
+                        radius: const Radius.circular(0),
+                        notificationPredicate: (notification) =>
+                            notification.depth == 1,
+                        child: ScrollConfiguration(
+                          behavior: const ScrollBehavior()
+                              .copyWith(scrollbars: false),
+                          child: SingleChildScrollView(
+                            controller: widget.verticalScrollController,
+                            child: SingleChildScrollView(
+                              controller: widget.horizontalScrollController,
+                              scrollDirection: Axis.horizontal,
+                              child: RepaintBoundary(
+                                child: Stack(
+                                  children: [
+                                    CustomPaint(
+                                      painter: editorPainter,
+                                      size: Size(width, height),
+                                    ),
+                                    if (blameInfo != null &&
+                                        blameInfo!.isNotEmpty)
+                                      Positioned.fill(
+                                        child: BlameInfoWidget(
+                                          editorConfigService:
+                                              widget.editorConfigService,
+                                          editorLayoutService:
+                                              widget.editorLayoutService,
+                                          blameInfo: blameInfo!,
+                                          editorState: widget.state,
+                                          size: Size(width, height),
                                         ),
                                       ),
-                                    ),
-                                  )))),
-                    ))),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
             if (widget.state.showCompletions)
               ListenableBuilder(
                 listenable: widget.state,
