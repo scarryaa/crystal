@@ -12,6 +12,7 @@ import 'package:crystal/widgets/file_explorer/indent_painter.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
+import 'package:watcher/watcher.dart';
 
 class FileExplorer extends StatefulWidget {
   final FileService fileService;
@@ -40,6 +41,8 @@ class _FileExplorerState extends State<FileExplorer> {
   String? currentDirectory;
   double width = 150;
   StreamSubscription? _gitStatusSubscription;
+  DirectoryWatcher? _directoryWatcher;
+  StreamSubscription? _watcherSubscription;
 
   bool _hasModifiedChildren(String dirPath, Map<String, FileStatus> statuses) {
     return statuses.entries.any((entry) {
@@ -53,6 +56,28 @@ class _FileExplorerState extends State<FileExplorer> {
     await widget.gitService.initialize(widget.fileService.rootDirectory);
   }
 
+  Future<void> _initializeWatcher() async {
+    await _watcherSubscription?.cancel();
+    await _directoryWatcher?.ready;
+
+    if (widget.fileService.rootDirectory.isNotEmpty) {
+      _directoryWatcher = DirectoryWatcher(widget.fileService.rootDirectory);
+      _watcherSubscription =
+          _directoryWatcher!.events.listen((WatchEvent event) {
+        // Debounce the updates to prevent rapid consecutive refreshes
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) {
+            setState(() {
+              widget.fileService.filesFuture = widget.fileService
+                  .enumerateFiles(widget.fileService.rootDirectory);
+              _updateFileStatuses();
+            });
+          }
+        });
+      });
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -61,6 +86,7 @@ class _FileExplorerState extends State<FileExplorer> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _initializeGit();
       await _updateFileStatuses();
+      await _initializeWatcher();
     });
 
     _gitStatusSubscription = widget.gitService.onGitStatusChanged.listen((_) {
@@ -73,6 +99,7 @@ class _FileExplorerState extends State<FileExplorer> {
     _verticalController.dispose();
     _horizontalController.dispose();
     _gitStatusSubscription?.cancel();
+    _watcherSubscription?.cancel();
     super.dispose();
   }
 
@@ -187,6 +214,19 @@ class _FileExplorerState extends State<FileExplorer> {
         widget.fileService.filesFuture =
             widget.fileService.enumerateFiles(widget.fileService.rootDirectory);
       });
+    }
+  }
+
+  Future<void> _handleDirectoryChanged(String newDirectory) async {
+    setState(() {
+      Directory.current = newDirectory;
+      currentDirectory = newDirectory;
+    });
+
+    await _initializeWatcher();
+
+    if (widget.onDirectoryChanged != null) {
+      widget.onDirectoryChanged!(newDirectory);
     }
   }
 
@@ -306,18 +346,7 @@ class _FileExplorerState extends State<FileExplorer> {
                   child: FutureBuilder<List<FileSystemEntity>>(
                     future: widget.fileService.filesFuture,
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                          child: CircularProgressIndicator(),
-                        );
-                      } else if (snapshot.hasError) {
-                        return Center(
-                          child: Text(
-                            'Error: ${snapshot.error}',
-                            style: const TextStyle(color: Colors.red),
-                          ),
-                        );
-                      } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
                         return Center(
                           child: TextButton(
                             onPressed: () async {
@@ -325,14 +354,8 @@ class _FileExplorerState extends State<FileExplorer> {
                                   await FilePicker.platform.getDirectoryPath();
 
                               if (selectedDirectory != null) {
-                                setState(() {
-                                  Directory.current = selectedDirectory;
-                                  currentDirectory = selectedDirectory;
-                                });
-
-                                if (widget.onDirectoryChanged != null) {
-                                  widget.onDirectoryChanged!(selectedDirectory);
-                                }
+                                await _handleDirectoryChanged(
+                                    selectedDirectory);
                               }
                             },
                             child: Text(
