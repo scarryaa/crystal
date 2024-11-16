@@ -142,7 +142,7 @@ class _CommandPaletteState extends State<CommandPalette> {
               child: Container(
                 width: screenSize.width,
                 height: screenSize.height,
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withOpacity(0.1),
               ),
             ),
             // Command palette
@@ -265,7 +265,6 @@ class _CommandItemWidgetState extends State<CommandItemWidget> {
               Expanded(
                 child: Row(
                   children: [
-                    // Label with truncation
                     Expanded(
                       flex: 2,
                       child: Text(
@@ -278,7 +277,6 @@ class _CommandItemWidgetState extends State<CommandItemWidget> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    // Category with truncation
                     Expanded(
                       child: Text(
                         widget.item.category,

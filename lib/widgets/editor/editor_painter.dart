@@ -98,7 +98,9 @@ class EditorPainter extends CustomPainter {
             editorState: editorState,
             editorLayoutService: editorLayoutService,
             editorConfigService: editorConfigService),
-        super(repaint: editorState);
+        super(repaint: editorState) {
+    print(editorState.path);
+  }
 
   @override
   void paint(Canvas canvas, Size size) {

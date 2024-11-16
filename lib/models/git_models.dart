@@ -1,0 +1,79 @@
+class BlameLine {
+  final String commitHash;
+  final String author;
+  final DateTime timestamp;
+  final String content;
+  final int lineNumber;
+
+  BlameLine({
+    required this.commitHash,
+    required this.author,
+    required this.timestamp,
+    required this.content,
+    required this.lineNumber,
+  });
+}
+
+class FileDiff {
+  final List<DiffHunk> hunks;
+  final String filePath;
+
+  FileDiff({
+    required this.hunks,
+    required this.filePath,
+  });
+}
+
+class DiffHunk {
+  final int oldStart;
+  final int oldLength;
+  final int newStart;
+  final int newLength;
+  final List<DiffLine> lines;
+
+  DiffHunk({
+    required this.oldStart,
+    required this.oldLength,
+    required this.newStart,
+    required this.newLength,
+    required this.lines,
+  });
+}
+
+class DiffLine {
+  final DiffLineType type;
+  final String content;
+
+  DiffLine({
+    required this.type,
+    required this.content,
+  });
+}
+
+enum DiffLineType { addition, deletion, context }
+
+class CommitInfo {
+  final String hash;
+  final String author;
+  final String email;
+  final DateTime timestamp;
+  final String message;
+
+  CommitInfo({
+    required this.hash,
+    required this.author,
+    required this.email,
+    required this.timestamp,
+    required this.message,
+  });
+}
+
+enum FileStatus { modified, added, deleted, renamed, unmodified, untracked }
+
+class GitException implements Exception {
+  final String message;
+  GitException(this.message);
+
+  @override
+  String toString() => 'GitException: $message';
+}

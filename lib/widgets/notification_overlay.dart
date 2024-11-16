@@ -90,7 +90,7 @@ class NotificationCard extends StatelessWidget {
           vertical: 12,
         ),
         constraints:
-            const BoxConstraints(maxWidth: 400), // Add max width constraint
+            const BoxConstraints(maxWidth: 400),
         decoration: BoxDecoration(
           color: _getColor(),
           border: Border.all(
@@ -100,10 +100,9 @@ class NotificationCard extends StatelessWidget {
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start, // Align to top
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Flexible(
-              // Wrap text in Flexible
               child: Text(
                 notification.message,
                 style: TextStyle(
@@ -118,7 +117,6 @@ class NotificationCard extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Column(
-              // Use Column for action and close button
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (notification.action != null)
