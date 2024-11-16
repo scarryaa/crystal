@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
@@ -38,6 +39,7 @@ class _FileExplorerState extends State<FileExplorer> {
   Map<String, bool> expandedDirs = {};
   String? currentDirectory;
   double width = 150;
+  StreamSubscription? _gitStatusSubscription;
 
   bool _hasModifiedChildren(String dirPath, Map<String, FileStatus> statuses) {
     return statuses.entries.any((entry) {
@@ -60,12 +62,17 @@ class _FileExplorerState extends State<FileExplorer> {
       await _initializeGit();
       await _updateFileStatuses();
     });
+
+    _gitStatusSubscription = widget.gitService.onGitStatusChanged.listen((_) {
+      _updateFileStatuses();
+    });
   }
 
   @override
   void dispose() {
     _verticalController.dispose();
     _horizontalController.dispose();
+    _gitStatusSubscription?.cancel();
     super.dispose();
   }
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -8,24 +9,55 @@ import 'package:path/path.dart' as path;
 
 class GitService {
   late GitDir _gitDir;
+  StreamSubscription? _fileWatcher;
   bool _isInitialized = false;
+  final _statusController = StreamController<void>.broadcast();
+  Stream<void> get onGitStatusChanged => _statusController.stream;
+  StreamSubscription? _gitWatcher;
+  Timer? _debounceTimer;
 
   // Store file status information
   final Map<String, FileStatus> _fileStatuses = {};
 
   Future<void> initialize(String filePath) async {
     try {
-      // Find the git root directory by walking up the directory tree
+      // Find git root and initialize as before
       final gitRoot = await _findGitRoot(filePath);
       if (gitRoot == null) {
         throw GitException('Not a git repository');
       }
-
       _gitDir = await GitDir.fromExisting(gitRoot);
       _isInitialized = true;
+
+      // Watch .git directory for git operations
+      final gitDir = Directory(path.join(filePath, '.git'));
+      _gitWatcher = gitDir.watch(recursive: true).listen((event) {
+        if (event.path.endsWith('index') ||
+            event.path.endsWith('HEAD') ||
+            event.path.contains('refs/heads')) {
+          _debounceAndNotify();
+        }
+      });
+
+      // Watch project directory for file changes
+      final projectDir = Directory(filePath);
+      _fileWatcher = projectDir.watch(recursive: true).listen((event) {
+        // Only react to file modifications
+        if (event.type == FileSystemEvent.modify &&
+            !event.path.contains('.git')) {
+          _debounceAndNotify();
+        }
+      });
     } catch (e) {
       throw GitException('Failed to initialize Git: $e');
     }
+  }
+
+  void _debounceAndNotify() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 100), () {
+      _statusController.add(null);
+    });
   }
 
   Future<String?> getRepositoryUrl() async {
@@ -423,5 +455,12 @@ class GitService {
     }
 
     return commits;
+  }
+
+  void dispose() {
+    _debounceTimer?.cancel();
+    _gitWatcher?.cancel();
+    _fileWatcher?.cancel();
+    _statusController.close();
   }
 }
