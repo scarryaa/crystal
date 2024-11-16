@@ -18,6 +18,26 @@ class BlameLine {
   });
 }
 
+class CommitDetails {
+  final String hash;
+  final String author;
+  final String email;
+  final DateTime timestamp;
+  final String subject;
+  final String body;
+  final String authorAvatarUrl;
+
+  CommitDetails({
+    required this.hash,
+    required this.author,
+    required this.email,
+    required this.timestamp,
+    required this.subject,
+    required this.body,
+    required this.authorAvatarUrl,
+  });
+}
+
 class FileDiff {
   final List<DiffHunk> hunks;
   final String filePath;

@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:crystal/models/git_models.dart';
 import 'package:git/git.dart';
+import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 
 class GitService {
@@ -70,6 +72,61 @@ class GitService {
   }
 
   bool get isInitialized => _isInitialized;
+  Future<CommitDetails> getCommitDetails(String commitHash) async {
+    if (!_isInitialized) throw GitException('Git not initialized');
+
+    try {
+      // Get basic commit info from git
+      final result = await _gitDir.runCommand(
+          ['show', '-s', '--format=%H|%an|%ae|%at|%s|%b', commitHash]);
+
+      final output = (result.stdout as String).trim();
+      final parts = output.split('|');
+
+      if (parts.length >= 6) {
+        // Get repository URL to construct GitHub API URL
+        final repoUrl = await getRepositoryUrl();
+        String avatarUrl = '';
+
+        if (repoUrl != null) {
+          // Extract owner and repo from URL
+          final uri = Uri.parse(repoUrl);
+          final pathSegments = uri.pathSegments;
+          if (pathSegments.length >= 2) {
+            final owner = pathSegments[0];
+            final repo = pathSegments[1];
+
+            // Call GitHub API to get commit details
+            final response = await http.get(
+              Uri.parse(
+                  'https://api.github.com/repos/$owner/$repo/commits/$commitHash'),
+              headers: {'Accept': 'application/vnd.github.v3+json'},
+            );
+
+            if (response.statusCode == 200) {
+              final data = jsonDecode(response.body);
+              avatarUrl = data['author']?['avatar_url'] ?? '';
+            }
+          }
+        }
+
+        return CommitDetails(
+          hash: parts[0],
+          author: parts[1],
+          email: parts[2],
+          timestamp:
+              DateTime.fromMillisecondsSinceEpoch(int.parse(parts[3]) * 1000),
+          subject: parts[4],
+          body: parts[5],
+          authorAvatarUrl: avatarUrl,
+        );
+      }
+
+      throw GitException('Invalid commit format');
+    } catch (e) {
+      throw GitException('Failed to get commit details: $e');
+    }
+  }
 
   Future<List<BlameLine>> getBlame(String filePath) async {
     if (!_isInitialized) throw GitException('Git not initialized');
@@ -84,6 +141,7 @@ class GitService {
         filePath
       ]);
       final output = result.stdout as String;
+      print(output);
 
       return _parseBlameOutput(output);
     } catch (e) {

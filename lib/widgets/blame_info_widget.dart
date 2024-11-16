@@ -31,6 +31,9 @@ class BlameInfoWidget extends StatefulWidget {
 }
 
 class _BlameInfoWidgetState extends State<BlameInfoWidget> {
+  final Map<String, String> _avatarUrlCache = {};
+  Offset? _lastMousePosition;
+  Offset? _currentMousePosition;
   OverlayEntry? _overlayEntry;
   BlameLine? _hoveredBlame;
   final Map<int, double> _lineWidths = {};
@@ -98,7 +101,28 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
         "${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}";
   }
 
+  Future<String> _getAvatarUrl(String email) async {
+    if (_avatarUrlCache.containsKey(email)) {
+      return _avatarUrlCache[email]!;
+    }
+
+    try {
+      final commitDetails =
+          await widget.gitService.getCommitDetails(_hoveredBlame!.commitHash);
+      if (commitDetails.authorAvatarUrl.isNotEmpty) {
+        _avatarUrlCache[email] = commitDetails.authorAvatarUrl;
+        return commitDetails.authorAvatarUrl;
+      }
+    } catch (e) {
+      print('Error getting avatar: $e');
+    }
+
+    return '';
+  }
+
   void _showBlamePopup(BuildContext context, Offset position, BlameLine blame) {
+    _lastMousePosition = position;
+
     if (_hoveredBlame == blame) return;
     _hideBlamePopup();
     _hoveredBlame = blame;
@@ -112,7 +136,7 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
 
     // Calculate position adjustments
     double left = position.dx;
-    double top = position.dy + 20;
+    double top = position.dy + 10;
 
     // Adjust horizontal position if it would go offscreen
     if (left + popupWidth > screenSize.width) {
@@ -121,7 +145,7 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
 
     // Adjust vertical position if it would go offscreen
     if (top + popupHeight > screenSize.height) {
-      top = position.dy - popupHeight - 8;
+      top = position.dy - popupHeight + 20;
     }
 
     _overlayEntry = OverlayEntry(
@@ -131,8 +155,17 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
               child: Material(
                 color: Colors.transparent,
                 child: MouseRegion(
-                  onEnter: (_) => setState(() => _isHoveringPopup = true),
-                  onExit: (_) => setState(() => _isHoveringPopup = false),
+                  onEnter: (_) => setState(() {
+                    _isHoveringPopup = true;
+                    Future.delayed(const Duration(milliseconds: 50), () {
+                      if (mounted) setState(() => _isHoveringPopup = true);
+                    });
+                  }),
+                  onExit: (_) => setState(() {
+                    Future.delayed(const Duration(milliseconds: 50), () {
+                      if (mounted) setState(() => _isHoveringPopup = false);
+                    });
+                  }),
                   child: Container(
                     constraints: const BoxConstraints(maxWidth: popupWidth),
                     decoration: BoxDecoration(
@@ -165,17 +198,7 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
                           ),
                           child: Row(
                             children: [
-                              CircleAvatar(
-                                backgroundColor: theme.text.withOpacity(0.2),
-                                radius: 16,
-                                child: Text(
-                                  blame.author[0].toUpperCase(),
-                                  style: TextStyle(
-                                    color: theme.text,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
+                              _buildAvatar(blame.email),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Column(
@@ -280,10 +303,39 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
     Overlay.of(context).insert(_overlayEntry!);
   }
 
+  Widget _buildAvatar(String email) {
+    final theme = widget.editorConfigService.themeService.currentTheme!;
+    return FutureBuilder<String>(
+      future: _getAvatarUrl(email),
+      builder: (context, snapshot) {
+        if (snapshot.hasData) {
+          return CircleAvatar(
+            backgroundColor: theme.text.withOpacity(0.2),
+            radius: 16,
+            backgroundImage: NetworkImage(snapshot.data!),
+            onBackgroundImageError: (_, __) {},
+          );
+        }
+        return CircleAvatar(
+          backgroundColor: theme.text.withOpacity(0.2),
+          radius: 16,
+          child: Text(
+            email[0].toUpperCase(),
+            style: TextStyle(
+              color: theme.text,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
       onHover: (event) {
+        _currentMousePosition = event.position;
         final lineHeight = widget.editorLayoutService.config.lineHeight;
         final cursorLine = (event.localPosition.dy / lineHeight).floor();
 
@@ -344,10 +396,15 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
   }
 
   void _hideBlamePopup() {
-    if (!_isHoveringPopup) {
-      _overlayEntry?.remove();
-      _overlayEntry = null;
-      _hoveredBlame = null;
+    if (!_isHoveringPopup &&
+        _lastMousePosition != null &&
+        _currentMousePosition != null) {
+      final distance = (_lastMousePosition! - _currentMousePosition!).distance;
+      if (distance > 20) {
+        _overlayEntry?.remove();
+        _overlayEntry = null;
+        _hoveredBlame = null;
+      }
     }
   }
 }
