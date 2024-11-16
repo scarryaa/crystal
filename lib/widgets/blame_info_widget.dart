@@ -416,7 +416,17 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
 
   @override
   void dispose() {
-    GestureBinding.instance.pointerRouter.removeGlobalRoute((event) {});
+    void routeHandler(PointerEvent event) {
+      if (event is PointerDownEvent) {
+        if (!_isHoveringPopup) {
+          _hideBlamePopupImmediately();
+        }
+      }
+    }
+
+    GestureBinding.instance.pointerRouter.addGlobalRoute(routeHandler);
+    GestureBinding.instance.pointerRouter.removeGlobalRoute(routeHandler);
+
     _hideBlamePopup();
     super.dispose();
   }
