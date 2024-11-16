@@ -125,186 +125,207 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
   }
 
   void _showBlamePopup(BuildContext context, Offset position, BlameLine blame) {
-    _lastMousePosition = position;
+    try {
+      _lastMousePosition = position;
 
-    if (_hoveredBlame == blame) return;
-    _hideBlamePopup();
-    _hoveredBlame = blame;
+      if (_hoveredBlame == blame) return;
+      _hideBlamePopup();
+      _hoveredBlame = blame;
 
-    final theme = widget.editorConfigService.themeService.currentTheme;
+      final theme = widget.editorConfigService.themeService.currentTheme;
 
-    // Get screen size
-    final screenSize = MediaQuery.of(context).size;
-    const popupWidth = 400.0;
-    const popupHeight = 150.0;
+      // Get screen size
+      final screenSize = MediaQuery.of(context).size;
+      const popupWidth = 400.0;
+      const popupHeight = 150.0;
 
-    // Calculate position adjustments
-    double left = position.dx;
-    double top = position.dy + 10;
+      // Calculate position adjustments
+      double left = position.dx;
+      double top = position.dy + 10;
 
-    // Adjust horizontal position if it would go offscreen
-    if (left + popupWidth > screenSize.width) {
-      left = screenSize.width - popupWidth - 16;
-    }
+      // Adjust horizontal position if it would go offscreen
+      if (left + popupWidth > screenSize.width) {
+        left = screenSize.width - popupWidth - 16;
+      }
 
-    // Adjust vertical position if it would go offscreen
-    if (top + popupHeight > screenSize.height) {
-      top = position.dy - popupHeight + 20;
-    }
+      // Adjust vertical position if it would go offscreen
+      if (top + popupHeight > screenSize.height) {
+        top = position.dy - popupHeight + 20;
+      }
 
-    _overlayEntry = OverlayEntry(
-        builder: (context) => Positioned(
-              left: left,
-              top: top,
-              child: Material(
-                color: Colors.transparent,
-                child: MouseRegion(
-                  onEnter: (_) => setState(() {
-                    _isHoveringPopup = true;
-                    Future.delayed(const Duration(milliseconds: 50), () {
-                      if (mounted) setState(() => _isHoveringPopup = true);
-                    });
-                  }),
-                  onExit: (_) => setState(() {
-                    Future.delayed(const Duration(milliseconds: 50), () {
-                      if (mounted) setState(() => _isHoveringPopup = false);
-                    });
-                  }),
-                  child: Container(
-                    constraints: const BoxConstraints(maxWidth: popupWidth),
-                    decoration: BoxDecoration(
-                      color: theme!.background,
-                      border: Border.all(
-                        color: theme.border,
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [
-                        BoxShadow(
-                          color: theme.border.withOpacity(0.2),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
+      _overlayEntry = OverlayEntry(
+          builder: (context) => Positioned(
+                left: left,
+                top: top,
+                child: Material(
+                  color: Colors.transparent,
+                  child: MouseRegion(
+                    onEnter: (_) => setState(() {
+                      _isHoveringPopup = true;
+                      Future.delayed(const Duration(milliseconds: 50), () {
+                        if (mounted) setState(() => _isHoveringPopup = true);
+                      });
+                    }),
+                    onExit: (_) => setState(() {
+                      Future.delayed(const Duration(milliseconds: 50), () {
+                        if (mounted) setState(() => _isHoveringPopup = false);
+                      });
+                    }),
+                    child: Container(
+                      constraints: const BoxConstraints(maxWidth: popupWidth),
+                      decoration: BoxDecoration(
+                        color: theme!.background,
+                        border: Border.all(
+                          color: theme.border,
                         ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Header
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: theme.text.withOpacity(0.1),
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(8),
-                              topRight: Radius.circular(8),
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: theme.border.withOpacity(0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Header
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: theme.text.withOpacity(0.1),
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(8),
+                                topRight: Radius.circular(8),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                _buildAvatar(blame.email),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        blame.author,
+                                        style: TextStyle(
+                                          color: theme.text,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        _formatDateTime(blame.timestamp),
+                                        style: TextStyle(
+                                          color: theme.text.withOpacity(0.7),
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              _buildAvatar(blame.email),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                          // Content
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Commit message row
+                                if (blame.message.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: Text(
+                                      blame.message,
+                                      style: TextStyle(
+                                        color: theme.text.withOpacity(0.9),
+                                        fontSize: 13,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                // Commit hash row
+                                Row(
                                   children: [
-                                    Text(
-                                      blame.author,
-                                      style: TextStyle(
-                                        color: theme.text,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    Text(
-                                      _formatDateTime(blame.timestamp),
-                                      style: TextStyle(
-                                        color: theme.text.withOpacity(0.7),
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Content
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Commit hash
-                              Row(
-                                children: [
-                                  MouseRegion(
-                                    cursor: SystemMouseCursors.click,
-                                    child: GestureDetector(
-                                      onTap: () async {
-                                        final repoUrl = await widget.gitService
-                                            .getRepositoryUrl();
-                                        if (repoUrl != null) {
-                                          final uri = Uri.parse(
-                                              '$repoUrl/commit/${blame.commitHash}');
-                                          if (await canLaunchUrl(uri)) {
-                                            await launchUrl(uri);
+                                    MouseRegion(
+                                      cursor: SystemMouseCursors.click,
+                                      child: GestureDetector(
+                                        onTap: () async {
+                                          final repoUrl = await widget
+                                              .gitService
+                                              .getRepositoryUrl();
+                                          if (repoUrl != null) {
+                                            final uri = Uri.parse(
+                                                '$repoUrl/commit/${blame.commitHash}');
+                                            if (await canLaunchUrl(uri)) {
+                                              await launchUrl(uri);
+                                            }
                                           }
-                                        }
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 6,
-                                          vertical: 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: theme.text.withOpacity(0.1),
-                                          borderRadius:
-                                              BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          blame.commitHash.substring(0, 7),
-                                          style: TextStyle(
-                                            color: theme.text,
-                                            fontFamily: widget
-                                                .editorConfigService
-                                                .config
-                                                .fontFamily,
-                                            fontSize: 12,
-                                            decoration:
-                                                TextDecoration.underline,
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: theme.text.withOpacity(0.1),
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            blame.commitHash.substring(0, 7),
+                                            style: TextStyle(
+                                              color: theme.text,
+                                              fontFamily: widget
+                                                  .editorConfigService
+                                                  .config
+                                                  .fontFamily,
+                                              fontSize: 12,
+                                              decoration:
+                                                  TextDecoration.underline,
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  IconButton(
-                                    icon: const Icon(Icons.copy, size: 16),
-                                    onPressed: () {
-                                      Clipboard.setData(ClipboardData(
-                                          text: blame.commitHash));
-                                    },
-                                    tooltip: 'Copy commit hash',
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(
-                                      minWidth: 24,
-                                      minHeight: 24,
+                                    const SizedBox(width: 8),
+                                    IconButton(
+                                      icon: const Icon(Icons.copy, size: 16),
+                                      onPressed: () {
+                                        Clipboard.setData(ClipboardData(
+                                            text: blame.commitHash));
+                                      },
+                                      tooltip: 'Copy commit hash',
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(
+                                        minWidth: 24,
+                                        minHeight: 24,
+                                      ),
+                                      color: theme.text.withOpacity(0.7),
                                     ),
-                                    color: theme.text.withOpacity(0.7),
-                                  ),
-                                ],
-                              ),
-                            ],
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ));
+              ));
 
-    Overlay.of(context).insert(_overlayEntry!);
+      Overlay.of(context).insert(_overlayEntry!);
+    } catch (e) {
+      print('Error showing popup: $e');
+      _hideBlamePopup(); // Hide popup if anything fails
+    }
   }
 
   Widget _buildAvatar(String email) {
