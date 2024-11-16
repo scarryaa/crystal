@@ -31,6 +31,7 @@ class EditorScreen extends StatefulWidget {
   final Function(String)? onDirectoryChanged;
   final FileService fileService;
   final NotificationService notificationService;
+  final GitService gitService;
 
   const EditorScreen({
     super.key,
@@ -40,6 +41,7 @@ class EditorScreen extends StatefulWidget {
     required this.onDirectoryChanged,
     required this.fileService,
     required this.notificationService,
+    required this.gitService,
   });
 
   @override
@@ -52,7 +54,6 @@ class EditorScreenState extends State<EditorScreen> {
   late final Future<void> _initializationFuture;
   late SearchService searchService;
   final Map<int, EditorScrollManager> _scrollManagers = {};
-  final gitService = GitService();
 
   EditorTabManager get editorTabManager =>
       context.read<EditorStateProvider>().editorTabManager;
@@ -128,6 +129,7 @@ class EditorScreenState extends State<EditorScreen> {
               [editorTabManager.activeCol]
           .editors,
       editorTabManager: editorTabManager,
+      gitService: widget.gitService,
     );
 
     editorTabManager.addEditor(newEditor, row: targetRow, col: targetCol);
@@ -183,6 +185,7 @@ class EditorScreenState extends State<EditorScreen> {
               [editorTabManager.activeCol]
           .editors,
       editorTabManager: editorTabManager,
+      gitService: widget.gitService,
     );
 
     editorTabManager.addEditor(newEditor, row: targetRow, col: targetCol);
@@ -252,6 +255,7 @@ class EditorScreenState extends State<EditorScreen> {
                 [editorTabManager.activeCol]
             .editors,
         editorTabManager: editorTabManager,
+        gitService: widget.gitService,
       );
 
       editorTabManager.focusSplitView(targetRow, targetCol);
@@ -589,7 +593,7 @@ class EditorScreenState extends State<EditorScreen> {
                               fileService: widget.fileService,
                               tapCallback: tapCallback,
                               onDirectoryChanged: widget.onDirectoryChanged,
-                              gitService: gitService,
+                              gitService: widget.gitService,
                             ),
                           Expanded(
                             child: Column(
@@ -683,7 +687,7 @@ class EditorScreenState extends State<EditorScreen> {
                                                                             ? 0
                                                                             : editorTabManager.activeEditor!.selectedSuggestionIndex,
                                                                         gitService:
-                                                                            gitService,
+                                                                            widget.gitService,
                                                                       )),
                                                         );
                                                 },
@@ -701,7 +705,7 @@ class EditorScreenState extends State<EditorScreen> {
                               fileService: widget.fileService,
                               tapCallback: tapCallback,
                               onDirectoryChanged: widget.onDirectoryChanged,
-                              gitService: gitService,
+                              gitService: widget.gitService,
                             ),
                         ],
                       ),

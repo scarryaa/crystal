@@ -16,11 +16,28 @@ class GitService {
   StreamSubscription? _gitWatcher;
   Timer? _debounceTimer;
   static final Map<String, String> _avatarUrlCache = {};
+  final Map<int, FileStatus> _lineStatuses = {};
+  List<String> _originalContent = [];
 
   Map<String, String> get avatarUrlCache => _avatarUrlCache;
+  final _lineStatusController =
+      StreamController<Map<int, FileStatus>>.broadcast();
+  Stream<Map<int, FileStatus>> get onLineStatusChanged =>
+      _lineStatusController.stream;
 
   // Store file status information
   final Map<String, FileStatus> _fileStatuses = {};
+
+  Future<void> updateDocumentChanges(
+      String filePath, List<String> newContent) async {
+    if (!_isInitialized) throw GitException('Git not initialized');
+
+    // TODO
+  }
+
+  Map<int, FileStatus> getLineStatuses() {
+    return Map.from(_lineStatuses);
+  }
 
   Future<void> initialize(String filePath) async {
     try {
@@ -54,6 +71,12 @@ class GitService {
     } catch (e) {
       throw GitException('Failed to initialize Git: $e');
     }
+  }
+
+  Future<void> setOriginalContent(String filePath) async {
+    // Store original content
+    final result = await _gitDir.runCommand(['show', 'HEAD:$filePath']);
+    _originalContent = (result.stdout as String).split('\n');
   }
 
   void _debounceAndNotify() {

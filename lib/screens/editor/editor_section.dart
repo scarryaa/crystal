@@ -181,6 +181,7 @@ class EditorSection extends StatelessWidget {
                               tabBarScrollController: tabBarScrollController,
                               onDirectoryChanged: onDirectoryChanged,
                               fileService: fileService,
+                              gitService: gitService,
                             ),
                           ),
                         ],
@@ -244,6 +245,7 @@ class EditorSection extends StatelessWidget {
                                             .offset);
                                   });
                                 },
+                                gitService: gitService,
                               ),
                             Expanded(
                               child: splitView.editors.isNotEmpty &&

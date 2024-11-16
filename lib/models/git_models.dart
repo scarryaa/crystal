@@ -74,7 +74,7 @@ class DiffLine {
   });
 }
 
-enum DiffLineType { addition, deletion, context }
+enum DiffLineType { addition, deletion, context, modification }
 
 class CommitInfo {
   final String hash;

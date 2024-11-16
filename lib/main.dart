@@ -6,6 +6,7 @@ import 'package:crystal/app/updater.dart';
 import 'package:crystal/models/notification_action.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/file_service.dart';
+import 'package:crystal/services/git_service.dart';
 import 'package:crystal/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
@@ -109,12 +110,14 @@ void main(List<String> arguments) {
     final fileService = FileService(
       configService: editorConfigService,
     );
+    final gitService = GitService();
 
     // Run the app first
     runApp(App(
       notificationService: notificationService,
       editorConfigService: editorConfigService,
       fileService: fileService,
+      gitService: gitService,
     ));
 
     // Check for updates after app is running

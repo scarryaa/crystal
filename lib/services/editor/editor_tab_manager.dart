@@ -1,5 +1,6 @@
 import 'package:crystal/models/editor/split_view.dart';
 import 'package:crystal/services/file_service.dart';
+import 'package:crystal/services/git_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:flutter/material.dart';
 
@@ -7,11 +8,13 @@ class EditorTabManager extends ChangeNotifier {
   final Function(int, int)? onSplitViewClosed;
   final FileService fileService;
   final Function(String)? onDirectoryChanged;
+  final GitService gitService;
 
   EditorTabManager({
     this.onSplitViewClosed,
     required this.fileService,
     required this.onDirectoryChanged,
+    required this.gitService,
   });
 
   final List<List<SplitView>> _splitViews = [
@@ -222,6 +225,7 @@ class EditorTabManager extends ChangeNotifier {
       onDirectoryChanged: onDirectoryChanged,
       editors: editors,
       editorTabManager: this,
+      gitService: gitService,
     );
 
     newEditor.openFile(source.buffer.content);

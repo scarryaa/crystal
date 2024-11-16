@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:math';
 
+import 'package:crystal/models/git_models.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
+import 'package:crystal/services/git_service.dart';
 import 'package:crystal/widgets/gutter/gutter_painter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,6 +17,7 @@ class Gutter extends StatefulWidget {
   final EditorLayoutService editorLayoutService;
   final EditorConfigService editorConfigService;
   final VoidCallback onFoldToggled;
+  final GitService gitService;
 
   const Gutter({
     super.key,
@@ -22,6 +26,7 @@ class Gutter extends StatefulWidget {
     required this.editorLayoutService,
     required this.editorConfigService,
     required this.onFoldToggled,
+    required this.gitService,
   });
 
   @override
@@ -33,6 +38,15 @@ class _GutterState extends State<Gutter> {
   int? hoveredLine;
   double? hoverX;
   double? hoverY;
+  Map<int, FileStatus> _lineStatuses = {};
+  StreamSubscription? _gitChangeSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribeToGitChanges();
+    _updateGitStatus();
+  }
 
   double get gutterWidth {
     final lineCount = editorState.buffer.lineCount;
@@ -48,6 +62,51 @@ class _GutterState extends State<Gutter> {
     );
     textPainter.layout();
     return textPainter.width + 64.0;
+  }
+
+  void _subscribeToGitChanges() {
+    _gitChangeSubscription = widget.gitService.onLineStatusChanged.listen((_) {
+      _lineStatuses = widget.gitService.getLineStatuses();
+      setState(() {});
+    });
+  }
+
+  Future<void> _updateGitStatus() async {
+    // Add mounted check before setState
+    if (!mounted) return;
+
+    final filePath = editorState.path;
+    final diff = await widget.gitService.getFileDiff(filePath);
+
+    // Add another mounted check after async operation
+    if (!mounted) return;
+
+    final newStatuses = <int, FileStatus>{};
+    for (final hunk in diff.hunks) {
+      for (var i = 0; i < hunk.lines.length; i++) {
+        final line = hunk.lines[i];
+        final lineNumber = hunk.newStart + i;
+
+        switch (line.type) {
+          case DiffLineType.addition:
+            newStatuses[lineNumber] = FileStatus.added;
+            break;
+          case DiffLineType.deletion:
+            newStatuses[lineNumber] = FileStatus.deleted;
+            break;
+          case DiffLineType.modification:
+            newStatuses[lineNumber] = FileStatus.modified;
+            break;
+          case DiffLineType.context:
+            newStatuses[lineNumber] = FileStatus.unmodified;
+            break;
+        }
+      }
+    }
+
+    setState(() {
+      _lineStatuses = newStatuses;
+    });
   }
 
   int getActualLineCount() {
@@ -278,6 +337,7 @@ class _GutterState extends State<Gutter> {
                               hoveredLine: hoveredLine,
                               hoverX: hoverX,
                               hoverY: hoverY,
+                              lineStatuses: _lineStatuses,
                             ),
                           ),
                         ),
@@ -287,5 +347,12 @@ class _GutterState extends State<Gutter> {
                 )));
       },
     );
+  }
+
+  @override
+  void dispose() {
+    // Cancel the subscription in dispose
+    _gitChangeSubscription?.cancel();
+    super.dispose();
   }
 }

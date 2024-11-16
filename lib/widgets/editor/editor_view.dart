@@ -92,6 +92,7 @@ class EditorViewState extends State<EditorView> {
         fileName: widget.fileName,
       );
       _initializeGit();
+      widget.gitService.setOriginalContent(widget.state.relativePath ?? '');
     }
   }
 

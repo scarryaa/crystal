@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:crystal/models/git_models.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
@@ -16,6 +17,7 @@ class GutterPainter extends CustomPainter {
   final int? hoveredLine;
   final double? hoverX;
   final double? hoverY;
+  final Map<int, FileStatus> lineStatuses;
 
   final TextStyle _defaultStyle;
   final TextStyle _highlightStyle;
@@ -31,6 +33,7 @@ class GutterPainter extends CustomPainter {
     this.hoverY,
     Color? textColor,
     Color? highlightColor,
+    required this.lineStatuses,
   })  : _defaultStyle = TextStyle(
           color: textColor ?? Colors.grey[600],
           fontSize: editorConfigService.config.fontSize,
@@ -43,6 +46,32 @@ class GutterPainter extends CustomPainter {
         ),
         super(repaint: editorState) {
     _gutterWidth = _calculateGutterWidth();
+  }
+
+  void _drawGitDiffIndicator(Canvas canvas, int line, double y) {
+    final status = lineStatuses[line];
+    if (status == null) return;
+
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    // Set color based on git status
+    paint.color = switch (status) {
+      FileStatus.added => Colors.green.withOpacity(0.7),
+      FileStatus.modified => Colors.blue.withOpacity(0.7),
+      FileStatus.deleted => Colors.red.withOpacity(0.7),
+      _ => Colors.transparent,
+    };
+
+    // Draw indicator strip
+    canvas.drawRect(
+      Rect.fromLTWH(
+        0, // Left edge of gutter
+        y,
+        4, // Width of indicator
+        editorLayoutService.config.lineHeight,
+      ),
+      paint,
+    );
   }
 
   bool _isIconHovered(double iconX, double iconY, double iconSize) {
@@ -142,6 +171,9 @@ class GutterPainter extends CustomPainter {
               ),
               highlightPaint);
         }
+
+        _drawGitDiffIndicator(canvas, currentLine,
+            visualLine * editorLayoutService.config.lineHeight);
 
         // Draw line number
         final lineNumber = (currentLine + 1).toString();

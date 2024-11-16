@@ -26,6 +26,7 @@ import 'package:crystal/services/editor/handlers/selection_handler.dart';
 import 'package:crystal/services/editor/handlers/text_manipulator.dart';
 import 'package:crystal/services/editor/undo_redo_manager.dart';
 import 'package:crystal/services/file_service.dart';
+import 'package:crystal/services/git_service.dart';
 import 'package:crystal/services/language_detection_service.dart';
 import 'package:crystal/state/editor/editor_scroll_state.dart';
 import 'package:crystal/utils/utils.dart';
@@ -70,6 +71,7 @@ class EditorState extends ChangeNotifier {
   final ValueNotifier<int> selectedSuggestionIndexNotifier = ValueNotifier(0);
   final List<EditorState> editors;
   final EditorTabManager editorTabManager;
+  final GitService gitService;
 
   EditorState({
     required this.resetGutterScroll,
@@ -82,6 +84,7 @@ class EditorState extends ChangeNotifier {
     this.relativePath,
     required this.editors,
     required this.editorTabManager,
+    required this.gitService,
   }) : path = path ?? generateUniqueTempPath() {
     final filename = path != null && path.isNotEmpty ? p.split(path).last : '';
 
@@ -197,6 +200,10 @@ class EditorState extends ChangeNotifier {
       isDirty: buffer.isDirty,
       path: path,
     ));
+
+    if (path.isNotEmpty && !path.startsWith('__temp')) {
+      gitService.updateDocumentChanges(relativePath ?? '', buffer.lines);
+    }
   }
 
   void _emitSelectionChangedEvent() {

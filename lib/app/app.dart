@@ -8,6 +8,7 @@ import 'package:crystal/screens/editor_screen.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_tab_manager.dart';
 import 'package:crystal/services/file_service.dart';
+import 'package:crystal/services/git_service.dart';
 import 'package:crystal/services/notification_service.dart';
 import 'package:crystal/widgets/dialog_listener.dart';
 import 'package:crystal/widgets/notification_overlay.dart';
@@ -19,12 +20,14 @@ class App extends StatefulWidget {
   final EditorConfigService editorConfigService;
   final FileService fileService;
   final NotificationService notificationService;
+  final GitService gitService;
 
   const App({
     super.key,
     required this.editorConfigService,
     required this.fileService,
     required this.notificationService,
+    required this.gitService,
   });
 
   @override
@@ -256,6 +259,7 @@ class _AppState extends State<App> {
                         editorTabManager: EditorTabManager(
                           fileService: widget.fileService,
                           onDirectoryChanged: _handleDirectoryChanged,
+                          gitService: widget.gitService,
                         ),
                       ),
                     )
@@ -277,15 +281,15 @@ class _AppState extends State<App> {
                                 fileService: widget.fileService,
                                 editorKey: _editorKey,
                                 child: EditorScreen(
-                                  key: _editorKey,
-                                  lineHeightMultipler: 1.5,
-                                  verticalPaddingLines: 5,
-                                  horizontalPadding: 100,
-                                  fileService: widget.fileService,
-                                  onDirectoryChanged: _handleDirectoryChanged,
-                                  notificationService:
-                                      widget.notificationService,
-                                ),
+                                    key: _editorKey,
+                                    lineHeightMultipler: 1.5,
+                                    verticalPaddingLines: 5,
+                                    horizontalPadding: 100,
+                                    fileService: widget.fileService,
+                                    onDirectoryChanged: _handleDirectoryChanged,
+                                    notificationService:
+                                        widget.notificationService,
+                                    gitService: widget.gitService),
                               ),
                             ),
                           ],

@@ -2,6 +2,7 @@ import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/services/editor/editor_tab_manager.dart';
 import 'package:crystal/services/file_service.dart';
+import 'package:crystal/services/git_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/widgets/editor/editor_tab.dart';
 import 'package:flutter/gestures.dart';
@@ -30,6 +31,7 @@ class EditorTabBar extends StatefulWidget {
   final Function(int) onCloseTabsToRight;
   final Function(int) onCloseTabsToLeft;
   final Function(int) onCloseOtherTabs;
+  final GitService gitService;
 
   const EditorTabBar({
     super.key,
@@ -54,6 +56,7 @@ class EditorTabBar extends StatefulWidget {
     required this.onCloseTabsToRight,
     required this.onCloseTabsToLeft,
     required this.onCloseOtherTabs,
+    required this.gitService,
   });
 
   @override
@@ -157,6 +160,7 @@ class _EditorTabBarState extends State<EditorTabBar> {
         onDirectoryChanged: widget.onDirectoryChanged,
         editors: widget.editors,
         editorTabManager: widget.editorTabManager,
+        gitService: widget.gitService,
       );
 
       newEditor.openFile(activeEditor.buffer.content);
@@ -182,6 +186,7 @@ class _EditorTabBarState extends State<EditorTabBar> {
         onDirectoryChanged: widget.onDirectoryChanged,
         editors: widget.editors,
         editorTabManager: widget.editorTabManager,
+        gitService: widget.gitService,
       );
 
       newEditor.openFile(activeEditor.buffer.content);
