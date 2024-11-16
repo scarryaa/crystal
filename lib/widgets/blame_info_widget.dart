@@ -160,17 +160,8 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
                 child: Material(
                   color: Colors.transparent,
                   child: MouseRegion(
-                    onEnter: (_) => setState(() {
-                      _isHoveringPopup = true;
-                      Future.delayed(const Duration(milliseconds: 50), () {
-                        if (mounted) setState(() => _isHoveringPopup = true);
-                      });
-                    }),
-                    onExit: (_) => setState(() {
-                      Future.delayed(const Duration(milliseconds: 50), () {
-                        if (mounted) setState(() => _isHoveringPopup = false);
-                      });
-                    }),
+                    onEnter: (_) => setState(() => _isHoveringPopup = true),
+                    onExit: (_) => setState(() => _isHoveringPopup = false),
                     child: Container(
                       constraints: const BoxConstraints(maxWidth: popupWidth),
                       decoration: BoxDecoration(
