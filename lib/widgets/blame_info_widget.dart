@@ -4,6 +4,7 @@ import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/services/git_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/widgets/editor/painter/painters/blame_painter.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -48,6 +49,18 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
       blameInfo: widget.blameInfo,
       editorState: widget.editorState,
     );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        GestureBinding.instance.pointerRouter.addGlobalRoute((event) {
+          if (event is PointerDownEvent) {
+            if (!_isHoveringPopup) {
+              _hideBlamePopupImmediately();
+            }
+          }
+        });
+      }
+    });
   }
 
   double _getBlameTextWidth(BlameLine blame) {
@@ -320,17 +333,12 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
       future: _getAvatarUrl(email),
       builder: (context, snapshot) {
         if (snapshot.hasData) {
-          return Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: theme.text.withOpacity(0.2),
-              image: DecorationImage(
-                image: NetworkImage(snapshot.data!),
-                fit: BoxFit.cover,
-              ),
-            ),
+          return CircleAvatar(
+            backgroundColor: theme.text.withOpacity(0.2),
+            radius: 16,
+            backgroundImage: NetworkImage(snapshot.data!),
+            onBackgroundImageError: (_, __) {},
+            foregroundColor: Colors.transparent,
           );
         }
         return CircleAvatar(
@@ -408,8 +416,15 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
 
   @override
   void dispose() {
+    GestureBinding.instance.pointerRouter.removeGlobalRoute((event) {});
     _hideBlamePopup();
     super.dispose();
+  }
+
+  void _hideBlamePopupImmediately() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+    _hoveredBlame = null;
   }
 
   void _hideBlamePopup() {
@@ -417,7 +432,7 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
         _lastMousePosition != null &&
         _currentMousePosition != null) {
       final distance = (_lastMousePosition! - _currentMousePosition!).distance;
-      if (distance > 20) {
+      if (distance > 10) {
         _overlayEntry?.remove();
         _overlayEntry = null;
         _hoveredBlame = null;
