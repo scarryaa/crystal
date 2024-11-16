@@ -17,6 +17,7 @@ Crystal aims to be a lightweight yet powerful code editor.
 - Breadcrumbs (Dart only for now)
 - Minimap
 - Code Completion/Suggestions (basic)
+- Command Palette
 
 ### Planned Features
 - Multiple Themes

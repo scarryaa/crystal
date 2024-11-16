@@ -10,6 +10,7 @@ import 'package:crystal/services/file_service.dart';
 import 'package:crystal/widgets/command_palette.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as path;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -264,41 +265,59 @@ class CommandPaletteService {
   }
 
   Future<void> _showFilesPalette() async {
+    final Set<String> addedPaths = {};
     final List<CommandItem> fileItems = [];
 
     // Add recent files first
     for (final filePath in _recentFiles) {
-      fileItems.add(CommandItem(
-        id: 'recent_${filePath.hashCode}',
-        label: File(filePath).uri.pathSegments.last,
-        detail: filePath,
-        category: 'Recent Files',
-        icon: Icons.history,
-        iconColor: Colors.grey,
-      ));
+      if (await File(filePath).exists()) {
+        fileItems.add(CommandItem(
+          id: 'recent_${filePath.hashCode}',
+          label: File(filePath).uri.pathSegments.last,
+          detail: filePath,
+          category: 'Recent Files',
+          icon: Icons.history,
+          iconColor: Colors.grey,
+        ));
+        addedPaths.add(filePath);
+      }
     }
 
     // Get current working directory or project root
     final Directory rootDir = Directory(_fileService?.rootDirectory ?? '');
 
     try {
-      final List<FileSystemEntity> entities = await rootDir.list().toList();
-      // Filter to only include files
-      final filteredEntities =
-          entities.where((entity) => entity is File).toList();
-      // Sort files
-      filteredEntities.sort((a, b) => a.path.compareTo(b.path));
+      // Create a list to store all files
+      List<FileSystemEntity> allFiles = [];
 
-      for (final entity in filteredEntities) {
-        final name = entity.uri.pathSegments.last;
-        fileItems.add(CommandItem(
-          id: entity.path,
-          label: name,
-          detail: "",
-          category: 'Files',
-          icon: Icons.insert_drive_file,
-          iconColor: Colors.blue,
-        ));
+      // Recursively get all files from subdirectories
+      await for (final entity
+          in rootDir.list(recursive: true, followLinks: false)) {
+        if (entity is File) {
+          allFiles.add(entity);
+        }
+      }
+
+      // Sort files by path for consistent ordering
+      allFiles.sort((a, b) => a.path.compareTo(b.path));
+
+      // Add files that haven't been added as recent files
+      for (final entity in allFiles) {
+        if (!addedPaths.contains(entity.path)) {
+          final name = entity.uri.pathSegments.last;
+          // Get relative path from root directory for the detail
+          final relativePath = entity.path.substring(rootDir.path.length + 1);
+
+          fileItems.add(CommandItem(
+            id: entity.path,
+            label: name,
+            detail: relativePath,
+            category: 'Files',
+            icon: Icons.insert_drive_file,
+            iconColor: Colors.blue,
+          ));
+          addedPaths.add(entity.path);
+        }
       }
     } catch (e) {
       print('Error listing directory: $e');
@@ -310,9 +329,13 @@ class CommandPaletteService {
         commands: fileItems,
         onSelect: (item) async {
           if (item.id != 'separator') {
-            final file = File(item.detail);
+            final filePath = item.id.startsWith('recent_')
+                ? item.detail
+                : path.join(rootDir.path, item.detail);
+
+            final file = File(filePath);
             if (await file.exists()) {
-              await openFile(item.detail);
+              await openFile(filePath);
               Navigator.pop(context);
             }
           }

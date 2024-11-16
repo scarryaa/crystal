@@ -264,20 +264,30 @@ class _CommandItemWidgetState extends State<CommandItemWidget> {
               const SizedBox(width: 12),
               Expanded(
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      widget.item.label,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: theme!.text,
+                    // Label with truncation
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        widget.item.label,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: theme!.text,
+                        ),
                       ),
                     ),
-                    Text(
-                      widget.item.category,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: theme.textLight,
+                    const SizedBox(width: 8),
+                    // Category with truncation
+                    Expanded(
+                      child: Text(
+                        widget.item.category,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: theme.textLight,
+                        ),
                       ),
                     ),
                   ],
