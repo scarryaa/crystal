@@ -206,7 +206,7 @@ class EditorScreenState extends State<EditorScreen> {
     final targetRow = row ?? editorTabManager.activeRow;
     final targetCol = col ?? editorTabManager.activeCol;
 
-    // Check if file is already open in the current split
+    // Check if file is already open
     final editorIndex = editorTabManager
         .horizontalSplits[targetRow][targetCol].editors
         .indexWhere((editor) => editor.path == path);
@@ -219,10 +219,20 @@ class EditorScreenState extends State<EditorScreen> {
     }
 
     try {
+      // Check if file is UTF-8 encoded
+      if (!await widget.fileService.isUtf8File(path)) {
+        notificationService.show(
+          'Cannot open binary or non-UTF8 file',
+          type: NotificationType.warning,
+        );
+        return;
+      }
+
       final scrollManager = editorState.getScrollManager(targetRow, targetCol);
       final editorKey = editorState.getEditorViewKey(targetRow, targetCol);
 
       String content = await File(path).readAsString();
+
       final relativePath = widget.fileService
           .getRelativePath(path, widget.fileService.rootDirectory);
 

@@ -32,7 +32,7 @@ class CommandPaletteService {
   Function(String)? _openFile;
   Function()? _openNewTab;
   static const String _recentFilesKey = 'recent_files';
-  static const int _maxRecentFiles = 10;
+  static const int _maxRecentFiles = 50;
   List<String> _recentFiles = [];
 
   bool get isInitialized =>

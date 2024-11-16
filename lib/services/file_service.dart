@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:crystal/services/editor/editor_config_service.dart';
@@ -10,6 +11,26 @@ class FileService {
   FileService({required this.configService}) {
     rootDirectory = configService.config.currentDirectory ?? '';
     filesFuture = enumerateFiles(rootDirectory);
+  }
+
+  Future<bool> isUtf8File(String path) async {
+    try {
+      final file = File(path);
+      if (!await file.exists()) return false;
+
+      // Read first few KB of the file to check encoding
+      final bytes = await file.openRead(0, 8192).first;
+
+      // Try to decode as UTF-8
+      try {
+        utf8.decode(bytes, allowMalformed: false);
+        return true;
+      } on FormatException {
+        return false;
+      }
+    } catch (e) {
+      return false;
+    }
   }
 
   Future<List<FileSystemEntity>> enumerateFiles(String directory) async {

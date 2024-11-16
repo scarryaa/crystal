@@ -135,7 +135,7 @@ packages:
     source: hosted
     version: "1.18.0"
   colorful_iconify_flutter:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: colorful_iconify_flutter
       sha256: "3f9ee56343bfc7a48c41b4abb97b6fbb4e97ce017c6174a85898a3b709b881d7"
