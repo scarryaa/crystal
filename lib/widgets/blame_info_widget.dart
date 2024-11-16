@@ -107,6 +107,10 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
     }
 
     try {
+      if (_hoveredBlame == null) {
+        return '';
+      }
+
       final commitDetails =
           await widget.gitService.getCommitDetails(_hoveredBlame!.commitHash);
       if (commitDetails.authorAvatarUrl.isNotEmpty) {

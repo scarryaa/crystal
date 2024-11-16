@@ -6,6 +6,7 @@ import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/services/editor/editor_tab_manager.dart';
 import 'package:crystal/services/file_service.dart';
+import 'package:crystal/services/git_service.dart';
 import 'package:crystal/services/search_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/widgets/editor/editor_control_bar_view.dart';
@@ -31,6 +32,7 @@ class EditorSection extends StatelessWidget {
   final FileService fileService;
   final Function(String)? onDirectoryChanged;
   final int selectedSuggestionIndex;
+  final GitService gitService;
 
   const EditorSection({
     super.key,
@@ -47,6 +49,7 @@ class EditorSection extends StatelessWidget {
     required this.fileService,
     required this.onDirectoryChanged,
     required this.selectedSuggestionIndex,
+    required this.gitService,
   });
 
   @override
@@ -298,6 +301,7 @@ class EditorSection extends StatelessWidget {
                                             editorTabManager.activeEditor
                                                 ?.acceptCompletion(item);
                                           },
+                                          gitService: gitService,
                                         );
                                       })
                                   : Container(

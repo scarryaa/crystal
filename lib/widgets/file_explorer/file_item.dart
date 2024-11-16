@@ -1,4 +1,5 @@
 import 'package:colorful_iconify_flutter/icons/vscode_icons.dart';
+import 'package:crystal/models/git_models.dart';
 import 'package:flutter/material.dart';
 import 'package:iconify_flutter/iconify_flutter.dart';
 
@@ -11,6 +12,7 @@ class FileItem extends StatefulWidget {
   final Color textColor;
   final Color highlightColor;
   final double fontSize;
+  final FileStatus? gitStatus;
 
   const FileItem({
     super.key,
@@ -22,6 +24,7 @@ class FileItem extends StatefulWidget {
     this.level = 0,
     this.isDirectory = false,
     this.onTap,
+    this.gitStatus,
   });
 
   @override
@@ -110,8 +113,23 @@ class _FileItemState extends State<FileItem> {
     }
   }
 
+  Color _getStatusColor() {
+    if (widget.gitStatus == null) return widget.textColor;
+
+    return switch (widget.gitStatus!) {
+      FileStatus.modified => Colors.orange,
+      FileStatus.added => Colors.green,
+      FileStatus.deleted => Colors.red,
+      FileStatus.renamed => Colors.blue,
+      FileStatus.untracked => Colors.grey,
+      FileStatus.unmodified => widget.textColor,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
+    final statusColor = _getStatusColor();
+
     return MouseRegion(
       onEnter: (_) => setState(() {
         _hovered = true;
@@ -140,7 +158,7 @@ class _FileItemState extends State<FileItem> {
                     size: 16,
                     color: _hovered
                         ? widget.highlightColor
-                        : widget.textColor.withOpacity(0.5),
+                        : statusColor.withOpacity(0.8),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -153,8 +171,7 @@ class _FileItemState extends State<FileItem> {
                           FontVariation('wght', 400),
                         ],
                         fontWeight: FontWeight.w400,
-                        color:
-                            _hovered ? widget.highlightColor : widget.textColor,
+                        color: _hovered ? widget.highlightColor : statusColor,
                         decoration: TextDecoration.none,
                         decorationStyle: TextDecorationStyle.solid,
                         decorationThickness: 0,

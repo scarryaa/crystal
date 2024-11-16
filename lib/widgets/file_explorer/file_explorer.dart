@@ -1,26 +1,31 @@
 import 'dart:io';
 import 'dart:math';
+
+import 'package:crystal/models/git_models.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/file_service.dart';
+import 'package:crystal/services/git_service.dart';
 import 'package:crystal/widgets/file_explorer/file_explorer_action_bar.dart';
 import 'package:crystal/widgets/file_explorer/file_item.dart';
 import 'package:crystal/widgets/file_explorer/indent_painter.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as path;
 
 class FileExplorer extends StatefulWidget {
   final FileService fileService;
   final Function(String path) tapCallback;
   final EditorConfigService editorConfigService;
   final Function(String)? onDirectoryChanged;
+  final GitService gitService;
 
-  const FileExplorer({
-    super.key,
-    required this.fileService,
-    required this.tapCallback,
-    required this.editorConfigService,
-    required this.onDirectoryChanged,
-  });
+  const FileExplorer(
+      {super.key,
+      required this.fileService,
+      required this.tapCallback,
+      required this.editorConfigService,
+      required this.onDirectoryChanged,
+      required this.gitService});
 
   @override
   State<FileExplorer> createState() => _FileExplorerState();
@@ -29,14 +34,32 @@ class FileExplorer extends StatefulWidget {
 class _FileExplorerState extends State<FileExplorer> {
   final ScrollController _verticalController = ScrollController();
   final ScrollController _horizontalController = ScrollController();
+  Map<String, FileStatus> _fileStatuses = {};
   Map<String, bool> expandedDirs = {};
   String? currentDirectory;
   double width = 150;
+
+  bool _hasModifiedChildren(String dirPath, Map<String, FileStatus> statuses) {
+    return statuses.entries.any((entry) {
+      final filePath = entry.key;
+      return filePath.startsWith(dirPath) &&
+          entry.value != FileStatus.unmodified;
+    });
+  }
+
+  Future<void> _initializeGit() async {
+    await widget.gitService.initialize(widget.fileService.rootDirectory);
+  }
 
   @override
   void initState() {
     super.initState();
     width = max(widget.editorConfigService.config.uiFontSize * 11.0, 170.0);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _initializeGit();
+      await _updateFileStatuses();
+    });
   }
 
   @override
@@ -44,6 +67,11 @@ class _FileExplorerState extends State<FileExplorer> {
     _verticalController.dispose();
     _horizontalController.dispose();
     super.dispose();
+  }
+
+  Future<void> _updateFileStatuses() async {
+    _fileStatuses = await widget.gitService.getAllFileStatuses();
+    setState(() {});
   }
 
   Future<List<FileSystemEntity>> _enumerateFiles(String directory) async {
@@ -217,6 +245,15 @@ class _FileExplorerState extends State<FileExplorer> {
                 widget.tapCallback(entity.path);
               }
             },
+            gitStatus: entity is File
+                ? _fileStatuses[path.relative(entity.path,
+                    from: widget.fileService.rootDirectory)]
+                : _hasModifiedChildren(
+                        path.relative(entity.path,
+                            from: widget.fileService.rootDirectory),
+                        _fileStatuses)
+                    ? FileStatus.modified
+                    : null,
           ),
         ),
         if (isDirectory && isExpanded)
@@ -319,6 +356,7 @@ class _FileExplorerState extends State<FileExplorer> {
                                 widget.fileService.filesFuture =
                                     widget.fileService.enumerateFiles(
                                         widget.fileService.rootDirectory);
+                                _updateFileStatuses();
                               });
                             },
                             onExpandAll: () async {

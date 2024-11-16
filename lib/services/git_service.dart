@@ -141,7 +141,6 @@ class GitService {
         filePath
       ]);
       final output = result.stdout as String;
-      print(output);
 
       return _parseBlameOutput(output);
     } catch (e) {
@@ -243,6 +242,47 @@ class GitService {
       return (result.stdout as String).trim();
     } catch (e) {
       throw GitException('Failed to get current branch: $e');
+    }
+  }
+
+  Future<Map<String, FileStatus>> getAllFileStatuses() async {
+    if (!_isInitialized) throw GitException('Git not initialized');
+
+    try {
+      // Run git status --porcelain to get status of all files
+      final result = await _gitDir.runCommand(['status', '--porcelain']);
+      final output = (result.stdout as String).trim();
+
+      // Parse the output and create a map of file paths to their statuses
+      final Map<String, FileStatus> statuses = {};
+
+      if (output.isNotEmpty) {
+        final lines = output.split('\n');
+        for (final line in lines) {
+          if (line.length >= 2) {
+            final statusCode = line.substring(0, 2);
+            final filePath = line.substring(3).trim();
+
+            final status = switch (statusCode) {
+              'M ' => FileStatus.modified,
+              ' M' => FileStatus.modified,
+              'A ' => FileStatus.added,
+              'D ' => FileStatus.deleted,
+              'R ' => FileStatus.renamed,
+              '??' => FileStatus.untracked,
+              'MM' =>
+                FileStatus.modified, // Both staged and unstaged modifications
+              _ => FileStatus.unmodified,
+            };
+
+            statuses[filePath] = status;
+          }
+        }
+      }
+
+      return statuses;
+    } catch (e) {
+      throw GitException('Failed to get file statuses: $e');
     }
   }
 

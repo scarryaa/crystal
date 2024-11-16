@@ -14,6 +14,7 @@ import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/services/editor/editor_scroll_manager.dart';
 import 'package:crystal/services/editor/editor_tab_manager.dart';
 import 'package:crystal/services/file_service.dart';
+import 'package:crystal/services/git_service.dart';
 import 'package:crystal/services/notification_service.dart';
 import 'package:crystal/services/search_service.dart';
 import 'package:crystal/services/shortcut_handler.dart';
@@ -51,6 +52,7 @@ class EditorScreenState extends State<EditorScreen> {
   late final Future<void> _initializationFuture;
   late SearchService searchService;
   final Map<int, EditorScrollManager> _scrollManagers = {};
+  final gitService = GitService();
 
   EditorTabManager get editorTabManager =>
       context.read<EditorStateProvider>().editorTabManager;
@@ -583,10 +585,12 @@ class EditorScreenState extends State<EditorScreen> {
                         children: [
                           if (isFileExplorerOnLeft)
                             FileExplorerContainer(
-                                editorConfigService: _editorConfigService,
-                                fileService: widget.fileService,
-                                tapCallback: tapCallback,
-                                onDirectoryChanged: widget.onDirectoryChanged),
+                              editorConfigService: _editorConfigService,
+                              fileService: widget.fileService,
+                              tapCallback: tapCallback,
+                              onDirectoryChanged: widget.onDirectoryChanged,
+                              gitService: gitService,
+                            ),
                           Expanded(
                             child: Column(
                               children: [
@@ -678,6 +682,8 @@ class EditorScreenState extends State<EditorScreen> {
                                                                                 null
                                                                             ? 0
                                                                             : editorTabManager.activeEditor!.selectedSuggestionIndex,
+                                                                        gitService:
+                                                                            gitService,
                                                                       )),
                                                         );
                                                 },
@@ -691,10 +697,12 @@ class EditorScreenState extends State<EditorScreen> {
                           ),
                           if (!isFileExplorerOnLeft)
                             FileExplorerContainer(
-                                editorConfigService: _editorConfigService,
-                                fileService: widget.fileService,
-                                tapCallback: tapCallback,
-                                onDirectoryChanged: widget.onDirectoryChanged),
+                              editorConfigService: _editorConfigService,
+                              fileService: widget.fileService,
+                              tapCallback: tapCallback,
+                              onDirectoryChanged: widget.onDirectoryChanged,
+                              gitService: gitService,
+                            ),
                         ],
                       ),
                     ),

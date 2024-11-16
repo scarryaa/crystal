@@ -40,6 +40,7 @@ class EditorView extends StatefulWidget {
   final List<CompletionItem> suggestions;
   final Function(CompletionItem) onCompletionSelect;
   final int selectedSuggestionIndex;
+  final GitService gitService;
 
   const EditorView({
     super.key,
@@ -63,6 +64,7 @@ class EditorView extends StatefulWidget {
     required this.suggestions,
     required this.onCompletionSelect,
     required this.selectedSuggestionIndex,
+    required this.gitService,
   });
 
   @override
@@ -79,7 +81,6 @@ class EditorViewState extends State<EditorView> {
   late final EditorKeyboardHandler editorKeyboardHandler;
   EditorPainter? editorPainter;
   List<BlameLine>? blameInfo;
-  final gitService = GitService();
 
   @override
   void didUpdateWidget(EditorView oldWidget) {
@@ -150,8 +151,7 @@ class EditorViewState extends State<EditorView> {
 
   Future<void> _initializeGit() async {
     try {
-      await gitService.initialize(widget.state.path);
-      final blame = await gitService.getBlame(widget.state.path);
+      final blame = await widget.gitService.getBlame(widget.state.path);
       if (mounted) {
         // Add mounted check for safety
         setState(() {
@@ -387,7 +387,7 @@ class EditorViewState extends State<EditorView> {
                                           blameInfo: blameInfo!,
                                           editorState: widget.state,
                                           size: Size(width, height),
-                                          gitService: gitService,
+                                          gitService: widget.gitService,
                                         ),
                                       ),
                                   ],
