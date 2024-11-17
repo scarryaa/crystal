@@ -287,8 +287,11 @@ class EditorState extends ChangeNotifier {
           }).toList();
 
           if (response != null) {
+            final content = response['contents']?['value'];
+            if (content == null || content.isEmpty) return;
+
             EditorEventBus.emit(HoverEvent(
-              content: response['contents']?['value'] ?? '',
+              content: content,
               line: line,
               character: character,
               diagnostics: matchingDiagnostics,
