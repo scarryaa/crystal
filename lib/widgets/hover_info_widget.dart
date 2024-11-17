@@ -41,17 +41,19 @@ class HoverInfoWidget extends StatefulWidget {
 }
 
 class _HoverInfoWidgetState extends State<HoverInfoWidget> {
-  bool _isHoveringPopup = false;
   final ScrollController _scrollController = ScrollController();
-  double _popupLeft = 0;
-  double _popupTop = 0;
-  double _popupHeight = 0;
+  final double _popupLeft = 0;
+  final double _popupTop = 0;
+  bool _isHoveringInfoPopup = false;
+  bool _isHoveringDiagnosticsPopup = false;
+  final double _popupHeight = 0;
   double diagnosticsHeight = 0;
-  bool _showDiagnosticsAbove = true;
+  final bool _showDiagnosticsAbove = true;
   final double spaceBetweenPopups = 8.0;
   double _diagnosticsPopupTop = 0;
   OverlayEntry? _overlayEntry;
   String _lastHoveredWord = '';
+  bool _isMouseDown = false;
 
   @override
   void initState() {
@@ -76,12 +78,21 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
 
   void _handleGlobalClick(PointerEvent event) {
     if (event is PointerDownEvent) {
-      // Check if click is within popup bounds
-      if (_overlayEntry != null && _isHoveringPopup) {
+      // Check if we're hovering over either popup
+      if (_overlayEntry != null &&
+          (_isHoveringDiagnosticsPopup || _isHoveringInfoPopup)) {
+        // Don't hide if we're in the popups
         return;
       }
       _hideOverlay();
     }
+  }
+
+  void _calculateDiagnosticsHeight(List<Diagnostic> diagnostics) {
+    const double diagnosticItemHeight = 36.0;
+    const double maxDiagnosticsHeight = 200.0;
+    diagnosticsHeight =
+        min(diagnostics.length * diagnosticItemHeight, maxDiagnosticsHeight);
   }
 
   void _showOverlay(BuildContext context, HoverEvent event) {
@@ -117,6 +128,34 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
       ),
     );
 
+    final diagnostics = event.diagnostics;
+    if (diagnostics.isNotEmpty) {
+      _diagnosticsPopupTop = _showDiagnosticsAbove
+          ? globalPosition.dy + cursorY - diagnosticsHeight - spaceBetweenPopups
+          : globalPosition.dy + cursorY + _popupHeight + spaceBetweenPopups;
+
+      _overlayEntry = OverlayEntry(
+        builder: (BuildContext context) => Stack(
+          children: [
+            Positioned(
+              left: globalPosition.dx + cursorX,
+              top: globalPosition.dy +
+                  cursorY +
+                  widget.editorLayoutService.config.lineHeight,
+              child: _buildPopup(context, event),
+            ),
+            _buildDiagnosticsPopup(
+              diagnostics,
+              globalPosition.dx + cursorX,
+              globalPosition.dy + cursorY,
+              _showDiagnosticsAbove,
+              _popupHeight,
+            ),
+          ],
+        ),
+      );
+    }
+
     Overlay.of(context).insert(_overlayEntry!);
   }
 
@@ -133,13 +172,19 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
         if (!snapshot.hasData) return const SizedBox.shrink();
 
         final event = snapshot.data!;
-
         if (event.line == -100 ||
             !widget.globalHoverState.isActive(widget.row, widget.col)) {
-          if (!_isHoveringPopup && !widget.isHoveringWord) {
+          if (!_isHoveringDiagnosticsPopup &&
+              !_isHoveringInfoPopup &&
+              !widget.isHoveringWord) {
             _handlePopupExit();
           }
           return const SizedBox.shrink();
+        }
+
+        final diagnostics = event.diagnostics;
+        if (diagnostics.isNotEmpty) {
+          _calculateDiagnosticsHeight(diagnostics);
         }
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -154,8 +199,8 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   }
 
   void _handlePopupExit() {
-    if (!_isHoveringPopup) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+    Future.delayed(const Duration(milliseconds: 50), () {
+      if (!_isHoveringInfoPopup && !_isHoveringDiagnosticsPopup) {
         _hideOverlay();
         widget.onLeavePopup();
         EditorEventBus.emit(HoverEvent(
@@ -163,8 +208,8 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
           character: -100,
           content: '',
         ));
-      });
-    }
+      }
+    });
   }
 
   double _measureContentHeight(
@@ -209,110 +254,28 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
     contentHeight = min(contentHeight, defaultMaxPopupHeight);
 
     return MouseRegion(
-      onEnter: (_) {
-        setState(() {
-          _isHoveringPopup = true;
-        });
-        widget.onHoverPopup();
-      },
-      onExit: (_) {
-        setState(() {
-          _isHoveringPopup = false;
-        });
-        _handlePopupExit();
-      },
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: popupWidth,
-          maxHeight: contentHeight,
-          minHeight: contentHeight,
-        ),
-        decoration: BoxDecoration(
-          color: theme.background,
-          border: Border.all(color: theme.border),
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-              color: theme.border.withOpacity(0.2),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: RawScrollbar(
-                controller: _scrollController,
-                thickness: scrollbarWidth,
-                radius: const Radius.circular(0),
-                thumbVisibility: true,
-                child: SingleChildScrollView(
-                  controller: _scrollController,
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    child: MarkdownBody(
-                      data: event.content,
-                      styleSheet: MarkdownStyleSheet(
-                        p: TextStyle(
-                          color: theme.text.withOpacity(0.9),
-                          fontSize: 13,
-                          fontFamily:
-                              widget.editorConfigService.config.fontFamily,
-                        ),
-                        code: TextStyle(
-                          color: theme.text.withOpacity(0.9),
-                          fontSize: 13,
-                          fontFamily:
-                              widget.editorConfigService.config.fontFamily,
-                          backgroundColor: theme.text.withOpacity(0.1),
-                        ),
-                        codeblockDecoration: BoxDecoration(
-                          color: theme.text.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                      selectable: true,
-                    ),
-                  ),
-                ),
-              ),
-            )
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDiagnosticsPopup(List<Diagnostic> diagnostics, double left,
-      double top, bool showAbove, double mainPopupHeight) {
-    final theme = widget.editorConfigService.themeService.currentTheme!;
-
-    return Positioned(
-      left: left,
-      top: _diagnosticsPopupTop,
-      child: Material(
-        color: Colors.transparent,
-        child: MouseRegion(
-          onEnter: (_) {
-            setState(() {
-              _isHoveringPopup = true;
-              widget.editorState.setIsHoveringPopup(true);
-              widget.onHoverPopup();
-            });
-          },
-          onExit: (_) {
-            setState(() {
-              widget.editorState.setIsHoveringPopup(false);
-              _isHoveringPopup = false;
-            });
+        onEnter: (_) {
+          setState(() {
+            _isHoveringInfoPopup = true;
+          });
+          widget.onHoverPopup();
+        },
+        onExit: (_) {
+          setState(() {
+            _isHoveringInfoPopup = false;
+          });
+          if (!_isMouseDown) {
             _handlePopupExit();
-          },
+          }
+        },
+        child: Listener(
+          onPointerDown: (_) => _isMouseDown = true,
+          onPointerUp: (_) => _isMouseDown = false,
           child: Container(
             constraints: BoxConstraints(
-              maxWidth: 400,
-              maxHeight: diagnosticsHeight,
+              maxWidth: popupWidth,
+              maxHeight: contentHeight,
+              minHeight: contentHeight,
             ),
             decoration: BoxDecoration(
               color: theme.background,
@@ -326,47 +289,138 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
                 ),
               ],
             ),
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: diagnostics
-                      .map(
-                        (diagnostic) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(
-                                Icons.error_outline,
-                                color: theme.error,
-                                size: 16,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  diagnostic.message,
-                                  style: TextStyle(
-                                    color: theme.text.withOpacity(0.9),
-                                    fontSize: 12,
-                                    fontFamily: widget
-                                        .editorConfigService.config.fontFamily,
-                                  ),
-                                ),
-                              ),
-                            ],
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: RawScrollbar(
+                    controller: _scrollController,
+                    thickness: scrollbarWidth,
+                    radius: const Radius.circular(0),
+                    thumbVisibility: true,
+                    child: SingleChildScrollView(
+                      controller: _scrollController,
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        child: MarkdownBody(
+                          data: event.content,
+                          styleSheet: MarkdownStyleSheet(
+                            p: TextStyle(
+                              color: theme.text.withOpacity(0.9),
+                              fontSize: 13,
+                              fontFamily:
+                                  widget.editorConfigService.config.fontFamily,
+                            ),
+                            code: TextStyle(
+                              color: theme.text.withOpacity(0.9),
+                              fontSize: 13,
+                              fontFamily:
+                                  widget.editorConfigService.config.fontFamily,
+                              backgroundColor: theme.text.withOpacity(0.1),
+                            ),
+                            codeblockDecoration: BoxDecoration(
+                              color: theme.text.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
                           ),
+                          selectable: true,
                         ),
-                      )
-                      .toList(),
+                      ),
+                    ),
+                  ),
+                )
+              ],
+            ),
+          ),
+        ));
+  }
+
+  Widget _buildDiagnosticsPopup(List<Diagnostic> diagnostics, double left,
+      double top, bool showAbove, double mainPopupHeight) {
+    final theme = widget.editorConfigService.themeService.currentTheme!;
+    return Positioned(
+        left: left,
+        top: _diagnosticsPopupTop,
+        child: Material(
+          color: Colors.transparent,
+          child: MouseRegion(
+            onEnter: (_) {
+              setState(() {
+                _isHoveringDiagnosticsPopup = true;
+                widget.editorState.setIsHoveringPopup(true);
+              });
+              widget.onHoverPopup();
+            },
+            onExit: (_) {
+              setState(() {
+                _isHoveringDiagnosticsPopup = false;
+                widget.editorState.setIsHoveringPopup(false);
+              });
+              if (!_isMouseDown) {
+                _handlePopupExit();
+              }
+            },
+            child: Listener(
+              onPointerDown: (_) => _isMouseDown = true,
+              onPointerUp: (_) => _isMouseDown = false,
+              child: Container(
+                constraints: const BoxConstraints(
+                  maxWidth: 400,
+                  maxHeight: 60,
+                ),
+                decoration: BoxDecoration(
+                  color: theme.background,
+                  border: Border.all(color: theme.border),
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.border.withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: diagnostics
+                          .map(
+                            (diagnostic) => Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    Icons.error_outline,
+                                    color: theme.error,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: SelectableText(
+                                      diagnostic.message,
+                                      style: TextStyle(
+                                        color: theme.text.withOpacity(0.9),
+                                        fontSize: 12,
+                                        fontFamily: widget.editorConfigService
+                                            .config.fontFamily,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ),
-    );
+        ));
   }
 
   @override
