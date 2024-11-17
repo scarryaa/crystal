@@ -17,6 +17,8 @@ class LSPService {
   final Map<int, Completer<dynamic>> _pendingRequests = {};
   int _documentVersion = 1;
   final Map<String, int> _openDocuments = {};
+  final Map<String, List<Diagnostic>> _fileDiagnostics = {};
+  final List<Function()> _diagnosticsListeners = [];
 
   LSPService(this.editor) {
     _initializeLanguageServer();
@@ -54,6 +56,20 @@ class LSPService {
         break;
       default:
         _logger.fine('Unhandled notification: $method');
+    }
+  }
+
+  void addDiagnosticsListener(Function() listener) {
+    _diagnosticsListeners.add(listener);
+  }
+
+  void removeDiagnosticsListener(Function() listener) {
+    _diagnosticsListeners.remove(listener);
+  }
+
+  void notifyDiagnosticsListeners() {
+    for (var listener in _diagnosticsListeners) {
+      listener();
     }
   }
 
@@ -195,14 +211,6 @@ class LSPService {
     } else {
       completer.complete(response['result']);
     }
-  }
-
-  void _handleDiagnostics(Map<String, dynamic> params) {
-    final diagnostics = params['diagnostics'] as List;
-    EditorEventBus.emit(DiagnosticsEvent(
-      uri: params['uri'] as String,
-      diagnostics: diagnostics.map((d) => Diagnostic.fromJson(d)).toList(),
-    ));
   }
 
   Future<Map<String, dynamic>> sendRequest(
@@ -627,6 +635,39 @@ class LSPService {
     } else {
       _handleServerResponse(response);
     }
+  }
+
+  void _handleDiagnostics(Map<String, dynamic> params) {
+    final uri = params['uri'] as String;
+    final diagnostics = (params['diagnostics'] as List)
+        .map((d) => Diagnostic.fromJson(d))
+        .toList();
+
+    // Convert URI to file path
+    final filePath = Uri.parse(uri).toFilePath();
+
+    // Update diagnostics for this file
+    updateDiagnostics(filePath, diagnostics);
+  }
+
+  void updateDiagnostics(String filePath, List<Diagnostic> diagnostics) {
+    _fileDiagnostics[filePath] = diagnostics;
+
+    // If this is the current file being edited, update the editor state
+    if (filePath == editor.path) {
+      editor.updateDiagnostics(diagnostics);
+    }
+
+    // Notify listeners about the change in diagnostics
+    notifyDiagnosticsListeners();
+  }
+
+  List<Diagnostic> getDiagnostics(String filePath) {
+    return _fileDiagnostics[filePath] ?? [];
+  }
+
+  Map<String, List<Diagnostic>> getAllDiagnostics() {
+    return Map.from(_fileDiagnostics);
   }
 
   void _handleConfigurationRequest(Map<String, dynamic> request) {

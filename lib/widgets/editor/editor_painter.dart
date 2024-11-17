@@ -11,6 +11,7 @@ import 'package:crystal/widgets/editor/painter/painters/blame_painter.dart';
 import 'package:crystal/widgets/editor/painter/painters/bracket_match_painter.dart';
 import 'package:crystal/widgets/editor/painter/painters/caret_painter.dart';
 import 'package:crystal/widgets/editor/painter/painters/current_line_highlight_painter.dart';
+import 'package:crystal/widgets/editor/painter/painters/diagnostics_painter.dart';
 import 'package:crystal/widgets/editor/painter/painters/folding_painter.dart';
 import 'package:crystal/widgets/editor/painter/painters/indentation_painter.dart';
 import 'package:crystal/widgets/editor/painter/painters/search_painter.dart';
@@ -39,6 +40,7 @@ class EditorPainter extends CustomPainter {
   final bool isFocused;
   final List<BlameLine> blameInfo;
   late final BlamePainter blamePainter;
+  late final DiagnosticsPainter diagnosticsPainter;
 
   EditorPainter({
     required this.editorState,
@@ -110,6 +112,11 @@ class EditorPainter extends CustomPainter {
       blameInfo: blameInfo,
       editorState: editorState,
     );
+    diagnosticsPainter = DiagnosticsPainter(
+      editorConfigService: editorConfigService,
+      editorLayoutService: editorLayoutService,
+      editorState: editorState,
+    );
   }
 
   @override
@@ -166,6 +173,9 @@ class EditorPainter extends CustomPainter {
     // Highlight current line
     currentLineHighlightPainter.paint(canvas, size,
         firstVisibleLine: firstVisibleLine, lastVisibleLine: lastVisibleLine);
+
+    // Paint diagnostics
+    diagnosticsPainter.paint(canvas, size, firstVisibleLine, lastVisibleLine);
   }
 
   double measureLineWidth(String line) {
@@ -190,6 +200,7 @@ class EditorPainter extends CustomPainter {
         oldDelegate.editorState.editorCursorManager.cursors !=
             editorState.editorCursorManager.cursors ||
         editorState.foldingRanges != oldDelegate.editorState.foldingRanges ||
-        oldDelegate.blameInfo != blameInfo;
+        oldDelegate.blameInfo != blameInfo ||
+        editorState.diagnostics != oldDelegate.editorState.diagnostics;
   }
 }

@@ -115,7 +115,7 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
 
     final screenSize = MediaQuery.of(context).size;
     const popupWidth = 400.0;
-    const scrollbarWidth = 12.0;
+    const scrollbarWidth = 8.0;
     const defaultMaxPopupHeight = 300.0;
     final theme = widget.editorConfigService.themeService.currentTheme!;
 

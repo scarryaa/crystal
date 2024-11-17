@@ -7,6 +7,7 @@ import 'package:crystal/models/editor/command.dart';
 import 'package:crystal/models/editor/completion_item.dart';
 import 'package:crystal/models/editor/cursor_shape.dart';
 import 'package:crystal/models/editor/events/event_models.dart';
+import 'package:crystal/models/editor/lsp_models.dart' as lsp_models;
 import 'package:crystal/models/editor/position.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/services/command_palette_service.dart';
@@ -80,6 +81,8 @@ class EditorState extends ChangeNotifier {
   bool isHoverInfoVisible = false;
   Position? _lastHoverPosition;
   Timer? _hoverTimer;
+  List<lsp_models.Diagnostic> _diagnostics = [];
+  List<lsp_models.Diagnostic> get diagnostics => _diagnostics;
 
   EditorState({
     required this.resetGutterScroll,
@@ -259,6 +262,11 @@ class EditorState extends ChangeNotifier {
   }
 
   // LSP Methods
+  void updateDiagnostics(List<lsp_models.Diagnostic> newDiagnostics) {
+    _diagnostics = newDiagnostics;
+    notifyListeners();
+  }
+
   void showHover(int line, int character) {
     final currentPosition = Position(line: line, column: character);
 
