@@ -32,6 +32,7 @@ class HoverInfoWidget extends StatefulWidget {
 
 class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   bool _isHoveringPopup = false;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -95,6 +96,8 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
 
     final screenSize = MediaQuery.of(context).size;
     const popupWidth = 400.0;
+    const scrollbarWidth = 12.0;
+    const maxPopupHeight = 300.0;
     final theme = widget.editorConfigService.themeService.currentTheme!;
 
     double left = position.dx - widget.editorState.scrollState.horizontalOffset;
@@ -104,6 +107,10 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
 
     if (left + popupWidth > screenSize.width) {
       left = screenSize.width - popupWidth - 16;
+    }
+
+    if (top + maxPopupHeight > screenSize.height) {
+      top = position.dy - maxPopupHeight - 8;
     }
 
     return Positioned(
@@ -122,7 +129,6 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
             setState(() {
               _isHoveringPopup = false;
               widget.onLeavePopup();
-              // Only emit hide event if we're not hovering the word
               if (!widget.isHoveringWord) {
                 EditorEventBus.emit(HoverEvent(
                   line: -100,
@@ -133,7 +139,10 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
             });
           },
           child: Container(
-            constraints: const BoxConstraints(maxWidth: popupWidth),
+            constraints: const BoxConstraints(
+              maxWidth: popupWidth,
+              maxHeight: maxPopupHeight,
+            ),
             decoration: BoxDecoration(
               color: theme.background,
               border: Border.all(
@@ -148,29 +157,47 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
                 ),
               ],
             ),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              child: MarkdownBody(
-                data: event.content,
-                styleSheet: MarkdownStyleSheet(
-                  p: TextStyle(
-                    color: theme.text.withOpacity(0.9),
-                    fontSize: 13,
-                    fontFamily: widget.editorConfigService.config.fontFamily,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: RawScrollbar(
+                    controller: _scrollController,
+                    thickness: scrollbarWidth,
+                    radius: const Radius.circular(0),
+                    thumbVisibility: true,
+                    child: SingleChildScrollView(
+                      controller: _scrollController,
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        child: MarkdownBody(
+                          data: event.content,
+                          styleSheet: MarkdownStyleSheet(
+                            p: TextStyle(
+                              color: theme.text.withOpacity(0.9),
+                              fontSize: 13,
+                              fontFamily:
+                                  widget.editorConfigService.config.fontFamily,
+                            ),
+                            code: TextStyle(
+                              color: theme.text.withOpacity(0.9),
+                              fontSize: 13,
+                              fontFamily:
+                                  widget.editorConfigService.config.fontFamily,
+                              backgroundColor: theme.text.withOpacity(0.1),
+                            ),
+                            codeblockDecoration: BoxDecoration(
+                              color: theme.text.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          selectable: true,
+                        ),
+                      ),
+                    ),
                   ),
-                  code: TextStyle(
-                    color: theme.text.withOpacity(0.9),
-                    fontSize: 13,
-                    fontFamily: widget.editorConfigService.config.fontFamily,
-                    backgroundColor: theme.text.withOpacity(0.1),
-                  ),
-                  codeblockDecoration: BoxDecoration(
-                    color: theme.text.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-                selectable: true,
-              ),
+                )
+              ],
             ),
           ),
         ),
