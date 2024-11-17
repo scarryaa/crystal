@@ -20,14 +20,16 @@ class CursorEvent extends EditorEvent {
 }
 
 class HoverEvent extends EditorEvent {
-  final String content;
   final int line;
   final int character;
+  final String content;
+  final List<Diagnostic> diagnostics;
 
   HoverEvent({
-    required this.content,
     required this.line,
     required this.character,
+    required this.content,
+    this.diagnostics = const [],
   });
 }
 

@@ -284,6 +284,7 @@ class EditorState extends ChangeNotifier {
               content: response['contents']?['value'] ?? '',
               line: line,
               character: character,
+              diagnostics: _diagnostics,
             ));
           }
         }

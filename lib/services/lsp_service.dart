@@ -714,6 +714,22 @@ class LSPService {
         'position': {'line': line, 'character': character}
       });
       _logger.info('Received hover response: $response');
+
+      final diagnostics = getDiagnostics(editor.path)
+          .where((d) =>
+              d.range.start.line <= line &&
+              d.range.end.line >= line &&
+              d.range.start.character <= character &&
+              d.range.end.character >= character)
+          .toList();
+
+      EditorEventBus.emit(HoverEvent(
+        content: response['contents']?['value'] ?? '',
+        line: line,
+        character: character,
+        diagnostics: diagnostics,
+      ));
+
       return response;
     } catch (e) {
       _logger.warning('Failed to get hover information', e);
