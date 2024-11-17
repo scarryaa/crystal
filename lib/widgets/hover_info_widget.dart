@@ -57,6 +57,9 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   void initState() {
     super.initState();
     widget.globalHoverState.addListener(_onGlobalHoverStateChanged);
+    EditorEventBus.on<TextEvent>().listen((_) {
+      _hideOverlay();
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         GestureBinding.instance.pointerRouter
@@ -73,6 +76,10 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
 
   void _handleGlobalClick(PointerEvent event) {
     if (event is PointerDownEvent) {
+      // Check if click is within popup bounds
+      if (_overlayEntry != null && _isHoveringPopup) {
+        return;
+      }
       _hideOverlay();
     }
   }

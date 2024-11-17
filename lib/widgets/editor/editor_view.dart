@@ -97,6 +97,7 @@ class EditorViewState extends State<EditorView> {
   bool _isHoveringPopup = false;
   bool _isHoveringWord = false;
   String _lastHoveredWord = '';
+  bool _isTyping = false;
 
   @override
   void didUpdateWidget(EditorView oldWidget) {
@@ -117,6 +118,20 @@ class EditorViewState extends State<EditorView> {
     super.initState();
 
     _initializeGit();
+
+    EditorEventBus.on<TextEvent>().listen((_) {
+      setState(() {
+        _isHoveringPopup = false;
+        _isHoveringWord = false; // Add this line
+        _lastHoveredWord = '';
+      });
+      // Force emit a hover clear event
+      EditorEventBus.emit(HoverEvent(
+        line: -100,
+        character: -100,
+        content: '',
+      ));
+    });
 
     _focusNode.addListener(() {
       setState(() {
@@ -367,32 +382,33 @@ class EditorViewState extends State<EditorView> {
                       }
                     },
                     onHover: (PointerHoverEvent event) {
-                      final position = _getPositionFromOffset(Offset(
-                        event.localPosition.dx +
-                            widget.horizontalScrollController.offset,
-                        event.localPosition.dy +
-                            widget.verticalScrollController.offset,
-                      ));
-
-                      // Get word at current position
-                      final word = widget.state
-                          .getWordAt(position.line, position.column);
-
-                      // Only process hover if not currently hovering over popup
-                      if (_lastHoveredWord != word) {
-                        _lastHoveredWord = word;
-                        EditorEventBus.emit(HoverEvent(
-                          line: -100,
-                          character: -100,
-                          content: '',
+                      // Only process if not currently typing and not hovering popup
+                      if (!_isHoveringPopup && !_isTyping) {
+                        final position = _getPositionFromOffset(Offset(
+                          event.localPosition.dx +
+                              widget.horizontalScrollController.offset,
+                          event.localPosition.dy +
+                              widget.verticalScrollController.offset,
                         ));
 
-                        if (word.isNotEmpty) {
-                          _isHoveringWord = true;
-                          widget.state
-                              .showHover(position.line, position.column);
-                        } else {
-                          _isHoveringWord = false;
+                        // Get word at current position
+                        final word = widget.state
+                            .getWordAt(position.line, position.column);
+
+                        if (_lastHoveredWord != word) {
+                          _lastHoveredWord = word;
+                          if (word.isNotEmpty) {
+                            _isHoveringWord = true;
+                            widget.state
+                                .showHover(position.line, position.column);
+                          } else {
+                            _isHoveringWord = false;
+                            EditorEventBus.emit(HoverEvent(
+                              line: -100,
+                              character: -100,
+                              content: '',
+                            ));
+                          }
                         }
                       }
                     },
@@ -533,6 +549,17 @@ class EditorViewState extends State<EditorView> {
 
   Future<KeyEventResult> _handleKeyEvent(FocusNode node, KeyEvent event) async {
     _resetCaretBlink();
+    _isTyping = true;
+
+    // Reset typing state after a delay
+    Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          _isTyping = false;
+        });
+      }
+    });
+
     return await editorKeyboardHandler.handleKeyEvent(node, event);
   }
 
