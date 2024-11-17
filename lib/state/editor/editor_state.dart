@@ -83,6 +83,7 @@ class EditorState extends ChangeNotifier {
   Timer? _hoverTimer;
   List<lsp_models.Diagnostic> _diagnostics = [];
   List<lsp_models.Diagnostic> get diagnostics => _diagnostics;
+  bool _isHoveringPopup = false;
 
   EditorState({
     required this.resetGutterScroll,
@@ -262,6 +263,10 @@ class EditorState extends ChangeNotifier {
   }
 
   // LSP Methods
+  void setIsHoveringPopup(bool isHovering) {
+    _isHoveringPopup = isHovering;
+  }
+
   void updateDiagnostics(List<lsp_models.Diagnostic> newDiagnostics) {
     _diagnostics = newDiagnostics;
     notifyListeners();
@@ -270,11 +275,11 @@ class EditorState extends ChangeNotifier {
   void showHover(int line, int character) {
     final currentPosition = Position(line: line, column: character);
 
-    if (_lastHoverPosition != currentPosition) {
+    if (_lastHoverPosition != currentPosition && !_isHoveringPopup) {
       _hoverTimer?.cancel();
       _lastHoverPosition = currentPosition;
       _hoverTimer = Timer(const Duration(milliseconds: 500), () async {
-        if (_lastHoverPosition == currentPosition) {
+        if (_lastHoverPosition == currentPosition && !_isHoveringPopup) {
           final response = await lspService.getHover(line, character);
 
           // Filter diagnostics that match the current position

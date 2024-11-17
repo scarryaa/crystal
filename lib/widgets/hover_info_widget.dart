@@ -227,12 +227,14 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
           onEnter: (_) {
             setState(() {
               _isHoveringPopup = true;
+              widget.editorState.setIsHoveringPopup(true);
               widget.onHoverPopup();
             });
           },
           onExit: (_) {
             setState(() {
               _isHoveringPopup = false;
+              widget.editorState.setIsHoveringPopup(false);
             });
             _handlePopupExit();
           },
@@ -317,11 +319,13 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
           onEnter: (_) {
             setState(() {
               _isHoveringPopup = true;
+              widget.editorState.setIsHoveringPopup(true);
               widget.onHoverPopup();
             });
           },
           onExit: (_) {
             setState(() {
+              widget.editorState.setIsHoveringPopup(false);
               _isHoveringPopup = false;
             });
             _handlePopupExit();

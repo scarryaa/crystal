@@ -286,7 +286,6 @@ class EditorViewState extends State<EditorView> {
 
   void onHoverPopup() {
     setState(() {
-      print('on popup');
       _isHoveringPopup = true;
     });
   }
