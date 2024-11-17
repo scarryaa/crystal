@@ -593,14 +593,7 @@ class LSPService {
           return;
         }
 
-        final expectedLength = int.parse(lengthMatch.group(1)!);
         jsonContent = message.substring(headerEnd + 4);
-
-        // Verify content length
-        if (jsonContent.length != expectedLength) {
-          _logger.warning('Content length mismatch');
-          return;
-        }
       } else if (message.startsWith('{')) {
         jsonContent = message;
       } else {
@@ -701,34 +694,20 @@ class LSPService {
 
   Future<Map<String, dynamic>?> getHover(int line, int character) async {
     if (!isLanguageServerRunning()) {
-      _logger.warning(
-          'Language server is not running. Unable to get hover information.');
+      _logger.warning('Language server not running');
       return null;
     }
 
     try {
-      _logger
-          .info('Sending hover request for line $line, character $character');
       final response = await sendRequest('textDocument/hover', {
         'textDocument': {'uri': 'file://${editor.path}'},
         'position': {'line': line, 'character': character}
       });
-      _logger.info('Received hover response: $response');
 
-      final diagnostics = getDiagnostics(editor.path)
-          .where((d) =>
-              d.range.start.line <= line &&
-              d.range.end.line >= line &&
-              d.range.start.character <= character &&
-              d.range.end.character >= character)
-          .toList();
-
-      EditorEventBus.emit(HoverEvent(
-        content: response['contents']?['value'] ?? '',
-        line: line,
-        character: character,
-        diagnostics: diagnostics,
-      ));
+      if (response == null || !response.containsKey('contents')) {
+        _logger.warning('Invalid hover response structure');
+        return null;
+      }
 
       return response;
     } catch (e) {
