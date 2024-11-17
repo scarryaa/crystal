@@ -74,16 +74,25 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   }
 
   double _measureContentHeight(
-      List<String> contents, double maxWidth, TextStyle style) {
+      List<String> contents, double maxWidth, TextStyle style,
+      {double maxHeight = 300.0}) {
     double totalHeight = 0;
+
     for (String content in contents) {
       final TextPainter textPainter = TextPainter(
         text: TextSpan(text: content, style: style),
         textDirection: TextDirection.ltr,
       );
       textPainter.layout(maxWidth: maxWidth);
+
       totalHeight += textPainter.height + 4;
+
+      // Early return if we exceed maxHeight
+      if (totalHeight > maxHeight) {
+        return maxHeight;
+      }
     }
+
     return totalHeight;
   }
 
@@ -147,8 +156,10 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
     const popupWidth = 400.0;
     const scrollbarWidth = 8.0;
     const defaultMaxPopupHeight = 300.0;
-    final theme = widget.editorConfigService.themeService.currentTheme!;
     const double minContentHeight = 110.0;
+    const double padding = 0.0;
+
+    final theme = widget.editorConfigService.themeService.currentTheme!;
 
     final TextStyle contentStyle = TextStyle(
       fontSize: 13,
@@ -162,15 +173,23 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
 
     double contentHeight =
         _measureContentHeight([event.content], popupWidth - 24, contentStyle);
-    diagnosticsHeight = _measureContentHeight(
-        event.diagnostics.map((d) => d.message).toList(),
-        popupWidth - 24,
-        diagnosticStyle);
+    contentHeight = max(contentHeight, minContentHeight);
+    contentHeight = min(contentHeight, defaultMaxPopupHeight);
 
-    if (contentHeight < minContentHeight) {
-      contentHeight += 20.0;
-    }
+    diagnosticsHeight = event.diagnostics.isNotEmpty
+        ? _measureContentHeight(
+            event.diagnostics.map((d) => d.message).toList(),
+            popupWidth - 24,
+            diagnosticStyle)
+        : 0;
+    diagnosticsHeight = min(diagnosticsHeight, 100.0);
 
+    double totalContentHeight = contentHeight +
+        (event.diagnostics.isNotEmpty
+            ? diagnosticsHeight + spaceBetweenPopups
+            : 0);
+
+    // Calculate available space
     double cursorY =
         position.dy - widget.editorState.scrollState.verticalOffset;
     double spaceBelow = screenSize.height -
@@ -178,42 +197,39 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
         widget.editorLayoutService.config.lineHeight;
     double spaceAbove = cursorY;
 
-    double totalContentHeight =
-        contentHeight + diagnosticsHeight + spaceBetweenPopups;
+    // Decide whether to show above or below
     bool showAbove = spaceBelow < totalContentHeight && spaceAbove > spaceBelow;
-    double availableSpace = showAbove ? spaceAbove : spaceBelow;
 
-    // Adjust heights based on available space
-    if (totalContentHeight > availableSpace) {
-      double ratio = (availableSpace - spaceBetweenPopups) / totalContentHeight;
+    // Adjust content heights if necessary
+    double availableSpace = showAbove ? spaceAbove : spaceBelow;
+    if (totalContentHeight > availableSpace - padding * 2) {
+      double ratio = (availableSpace - padding * 2) / totalContentHeight;
       contentHeight *= ratio;
       diagnosticsHeight *= ratio;
+      totalContentHeight = availableSpace - padding * 2;
     }
 
-    contentHeight = min(contentHeight, defaultMaxPopupHeight);
-    diagnosticsHeight = min(diagnosticsHeight, 100.0);
-
-    double mainPopupTop;
-    double diagnosticsPopupTop;
+    // Calculate vertical positions
+    double mainPopupTop, diagnosticsPopupTop;
     if (showAbove) {
-      diagnosticsPopupTop = cursorY - totalContentHeight;
-      mainPopupTop =
-          diagnosticsPopupTop + diagnosticsHeight + spaceBetweenPopups;
+      mainPopupTop = max(padding, cursorY - totalContentHeight - padding);
+      diagnosticsPopupTop = mainPopupTop + contentHeight + spaceBetweenPopups;
     } else {
-      mainPopupTop = cursorY + widget.editorLayoutService.config.lineHeight;
+      mainPopupTop =
+          cursorY + widget.editorLayoutService.config.lineHeight + padding;
+      double bottomEdge = mainPopupTop + totalContentHeight;
+      if (bottomEdge > screenSize.height - padding) {
+        double offset = bottomEdge - (screenSize.height - padding);
+        mainPopupTop -= offset;
+      }
       diagnosticsPopupTop = mainPopupTop + contentHeight + spaceBetweenPopups;
     }
 
+    // Calculate horizontal position
     double left = position.dx - widget.editorState.scrollState.horizontalOffset;
+    left = max(padding, min(left, screenSize.width - popupWidth - padding));
 
-    // Adjust horizontal position if it would go off screen
-    if (left + popupWidth > screenSize.width) {
-      left = screenSize.width - popupWidth - 16;
-    }
-    if (left < 16) {
-      left = 16;
-    }
-
+    // Update state variables
     _popupLeft = left;
     _popupTop = mainPopupTop;
     _popupHeight = contentHeight;
@@ -306,10 +322,6 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
       double top, bool showAbove, double mainPopupHeight) {
     final theme = widget.editorConfigService.themeService.currentTheme!;
 
-    // Calculate the position for the diagnostics popup
-    double diagnosticsTop =
-        showAbove ? top - diagnosticsHeight : top + mainPopupHeight;
-
     return Positioned(
       left: left,
       top: _diagnosticsPopupTop,
@@ -392,7 +404,24 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
 
   @override
   void dispose() {
-    GestureBinding.instance.pointerRouter.removeGlobalRoute(_handleGlobalClick);
+    void routeHandler(PointerEvent event) {
+      if (event is PointerDownEvent) {
+        EditorEventBus.emit(HoverEvent(
+          line: -100,
+          character: -100,
+          content: '',
+        ));
+      }
+    }
+
+    // Remove only if we previously added it
+    try {
+      GestureBinding.instance.pointerRouter
+          .removeGlobalRoute(_handleGlobalClick);
+    } catch (e) {
+      // Ignore if route wasn't found
+    }
+
     super.dispose();
   }
 }
