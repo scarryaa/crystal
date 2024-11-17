@@ -18,6 +18,11 @@ class EditorCursorManager extends ChangeNotifier {
   List<Cursor> get cursors => _cursors;
 
   bool get hasCursors => cursors.isNotEmpty;
+  void setCursor(int line, int column) {
+    clearAll();
+    _cursors.add(Cursor(line, column));
+    _notifyCursorChange();
+  }
 
   void toggleInsertMode() {
     _insertMode = !_insertMode;

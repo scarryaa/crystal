@@ -1,4 +1,5 @@
 import 'package:crystal/models/cursor.dart';
+import 'package:crystal/models/editor/lsp_models.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/services/editor/editor_event_bus.dart';
 
@@ -16,6 +17,47 @@ class CursorEvent extends EditorEvent {
     required this.hasSelection,
     required this.selections,
   });
+}
+
+class HoverEvent extends EditorEvent {
+  final String content;
+  final int line;
+  final int character;
+
+  HoverEvent({
+    required this.content,
+    required this.line,
+    required this.character,
+  });
+}
+
+class InfoEvent extends EditorEvent {
+  final String message;
+  final Map<String, dynamic>? data;
+
+  InfoEvent({
+    required this.message,
+    this.data,
+  });
+}
+
+class WarningEvent extends EditorEvent {
+  final String message;
+  final Map<String, dynamic>? data;
+  final String? source;
+
+  WarningEvent({
+    required this.message,
+    this.data,
+    this.source,
+  });
+}
+
+class DiagnosticsEvent extends EditorEvent {
+  final String uri;
+  final List<Diagnostic> diagnostics;
+
+  DiagnosticsEvent({required this.uri, required this.diagnostics});
 }
 
 class ClipboardEvent extends EditorEvent {

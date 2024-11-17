@@ -5,15 +5,26 @@ abstract class EditorEvent {
 }
 
 class EditorEventBus {
-  static final _instance = StreamController<EditorEvent>.broadcast();
+  static final _controllers = <Type, StreamController>{};
 
-  static Stream<EditorEvent> get stream => _instance.stream;
+  static void emit<T extends EditorEvent>(T event) {
+    if (!_controllers.containsKey(T)) {
+      _controllers[T] = StreamController<T>.broadcast();
+    }
+    (_controllers[T] as StreamController<T>).add(event);
+  }
 
-  static void emit(EditorEvent event) {
-    _instance.add(event);
+  static Stream<T> on<T extends EditorEvent>() {
+    if (!_controllers.containsKey(T)) {
+      _controllers[T] = StreamController<T>.broadcast();
+    }
+    return (_controllers[T] as StreamController<T>).stream;
   }
 
   static void dispose() {
-    _instance.close();
+    for (var controller in _controllers.values) {
+      controller.close();
+    }
+    _controllers.clear();
   }
 }

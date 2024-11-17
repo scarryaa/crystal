@@ -4,10 +4,13 @@ import 'dart:math' as math;
 import 'package:crystal/models/editor/command_palette_mode.dart';
 import 'package:crystal/models/editor/completion_item.dart';
 import 'package:crystal/models/editor/config/config_paths.dart';
+import 'package:crystal/models/editor/events/event_models.dart';
+import 'package:crystal/models/editor/position.dart';
 import 'package:crystal/models/editor/search_match.dart';
 import 'package:crystal/models/git_models.dart';
 import 'package:crystal/services/command_palette_service.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
+import 'package:crystal/services/editor/editor_event_bus.dart';
 import 'package:crystal/services/editor/editor_input_handler.dart';
 import 'package:crystal/services/editor/editor_keyboard_handler.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
@@ -17,7 +20,9 @@ import 'package:crystal/state/editor/editor_syntax_highlighter.dart';
 import 'package:crystal/widgets/blame_info_widget.dart';
 import 'package:crystal/widgets/editor/completion_widget.dart';
 import 'package:crystal/widgets/editor/editor_painter.dart';
+import 'package:crystal/widgets/hover_info_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class EditorView extends StatefulWidget {
   final EditorConfigService editorConfigService;
@@ -81,6 +86,10 @@ class EditorViewState extends State<EditorView> {
   late final EditorKeyboardHandler editorKeyboardHandler;
   EditorPainter? editorPainter;
   List<BlameLine>? blameInfo;
+  Timer? _hoverTimer;
+  bool _isHoveringPopup = false;
+  bool _isHoveringWord = false;
+  String _lastHoveredWord = '';
 
   @override
   void didUpdateWidget(EditorView oldWidget) {
@@ -219,6 +228,7 @@ class EditorViewState extends State<EditorView> {
 
   @override
   void dispose() {
+    _hoverTimer?.cancel();
     _stopCaretBlinking();
     super.dispose();
   }
@@ -274,6 +284,19 @@ class EditorViewState extends State<EditorView> {
     return visibleCount;
   }
 
+  void onHoverPopup() {
+    setState(() {
+      print('on popup');
+      _isHoveringPopup = true;
+    });
+  }
+
+  void onLeavePopup() {
+    setState(() {
+      _isHoveringPopup = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
@@ -304,94 +327,139 @@ class EditorViewState extends State<EditorView> {
     );
     widget.state.scrollState
         .updateViewportHeight(MediaQuery.of(context).size.height);
+    widget.state.scrollState
+        .updateViewportWidth(MediaQuery.of(context).size.width);
 
     return ListenableBuilder(
         listenable: widget.editorConfigService.themeService,
         builder: (context, _) {
           return Stack(children: [
             Container(
-              color: widget.editorConfigService.themeService.currentTheme
-                      ?.background ??
-                  Colors.white,
-              child: Focus(
-                focusNode: _focusNode,
-                onKeyEvent: (node, event) {
-                  _handleKeyEventAsync(node, event);
-                  return KeyEventResult.handled;
-                },
-                autofocus: true,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTapDown: (details) => editorInputHandler.handleTap(
-                      details,
-                      widget.verticalScrollController.offset,
-                      widget.horizontalScrollController.offset,
-                      editorPainter,
-                      widget.state),
-                  onPanStart: (details) => editorInputHandler.handleDragStart(
-                      details,
-                      widget.verticalScrollController.offset,
-                      widget.horizontalScrollController.offset,
-                      editorPainter,
-                      widget.state),
-                  onPanUpdate: (details) => editorInputHandler.handleDragUpdate(
-                      details,
-                      widget.verticalScrollController.offset,
-                      widget.horizontalScrollController.offset,
-                      editorPainter,
-                      widget.state),
-                  child: ScrollbarTheme(
-                    data: ScrollbarThemeData(
-                      thumbColor: WidgetStateProperty.all(widget
-                                  .editorConfigService
-                                  .themeService
-                                  .currentTheme !=
-                              null
-                          ? widget.editorConfigService.themeService
-                              .currentTheme!.border
-                              .withOpacity(0.65)
-                          : Colors.grey[600]!.withOpacity(0.65)),
-                    ),
-                    child: Scrollbar(
-                      controller: widget.verticalScrollController,
-                      thickness: 10,
-                      radius: const Radius.circular(0),
-                      child: Scrollbar(
-                        controller: widget.horizontalScrollController,
-                        thickness: 10,
-                        radius: const Radius.circular(0),
-                        notificationPredicate: (notification) =>
-                            notification.depth == 1,
-                        child: ScrollConfiguration(
-                          behavior: const ScrollBehavior()
-                              .copyWith(scrollbars: false),
-                          child: SingleChildScrollView(
-                            controller: widget.verticalScrollController,
-                            child: SingleChildScrollView(
-                              controller: widget.horizontalScrollController,
-                              scrollDirection: Axis.horizontal,
-                              child: RepaintBoundary(
-                                child: Stack(
-                                  children: [
-                                    CustomPaint(
-                                      painter: editorPainter,
-                                      size: Size(width, height),
-                                    ),
-                                    if (blameInfo != null &&
-                                        blameInfo!.isNotEmpty)
-                                      Positioned.fill(
-                                        child: BlameInfoWidget(
-                                          editorConfigService:
-                                              widget.editorConfigService,
-                                          editorLayoutService:
-                                              widget.editorLayoutService,
-                                          blameInfo: blameInfo!,
-                                          editorState: widget.state,
+                color: widget.editorConfigService.themeService.currentTheme
+                        ?.background ??
+                    Colors.white,
+                child: Focus(
+                  focusNode: _focusNode,
+                  onKeyEvent: (node, event) {
+                    _handleKeyEventAsync(node, event);
+                    return KeyEventResult.handled;
+                  },
+                  autofocus: true,
+                  child: MouseRegion(
+                    onHover: (PointerHoverEvent event) {
+                      final position = _getPositionFromOffset(Offset(
+                        event.localPosition.dx +
+                            widget.horizontalScrollController.offset,
+                        event.localPosition.dy +
+                            widget.verticalScrollController.offset,
+                      ));
+
+                      // Get word at current position
+                      final word = widget.state
+                          .getWordAt(position.line, position.column);
+
+                      // Only process hover if not currently hovering over popup
+                      if (!_isHoveringPopup) {
+                        if (_lastHoveredWord != word) {
+                          _lastHoveredWord = word;
+                          // Only emit hide event if moving to empty word
+                          if (word.isEmpty) {
+                            EditorEventBus.emit(HoverEvent(
+                              line: -100,
+                              character: -100,
+                              content: '',
+                            ));
+                          }
+                        }
+
+                        if (word.isNotEmpty) {
+                          _isHoveringWord = true;
+                          widget.state
+                              .showHover(position.line, position.column);
+                        } else {
+                          _isHoveringWord = false;
+                        }
+                      }
+                    },
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTapDown: (details) => editorInputHandler.handleTap(
+                        details,
+                        widget.verticalScrollController.offset,
+                        widget.horizontalScrollController.offset,
+                        editorPainter,
+                        widget.state,
+                      ),
+                      onPanStart: (details) =>
+                          editorInputHandler.handleDragStart(
+                        details,
+                        widget.verticalScrollController.offset,
+                        widget.horizontalScrollController.offset,
+                        editorPainter,
+                        widget.state,
+                      ),
+                      onPanUpdate: (details) =>
+                          editorInputHandler.handleDragUpdate(
+                        details,
+                        widget.verticalScrollController.offset,
+                        widget.horizontalScrollController.offset,
+                        editorPainter,
+                        widget.state,
+                      ),
+                      child: ScrollbarTheme(
+                        data: ScrollbarThemeData(
+                          thumbColor: WidgetStateProperty.all(widget
+                                      .editorConfigService
+                                      .themeService
+                                      .currentTheme !=
+                                  null
+                              ? widget.editorConfigService.themeService
+                                  .currentTheme!.border
+                                  .withOpacity(0.65)
+                              : Colors.grey[600]!.withOpacity(0.65)),
+                        ),
+                        child: Scrollbar(
+                          controller: widget.verticalScrollController,
+                          thickness: 10,
+                          radius: const Radius.circular(0),
+                          child: Scrollbar(
+                            controller: widget.horizontalScrollController,
+                            thickness: 10,
+                            radius: const Radius.circular(0),
+                            notificationPredicate: (notification) =>
+                                notification.depth == 1,
+                            child: ScrollConfiguration(
+                              behavior: const ScrollBehavior()
+                                  .copyWith(scrollbars: false),
+                              child: SingleChildScrollView(
+                                controller: widget.verticalScrollController,
+                                child: SingleChildScrollView(
+                                  controller: widget.horizontalScrollController,
+                                  scrollDirection: Axis.horizontal,
+                                  child: RepaintBoundary(
+                                    child: Stack(
+                                      children: [
+                                        CustomPaint(
+                                          painter: editorPainter,
                                           size: Size(width, height),
-                                          gitService: widget.gitService,
                                         ),
-                                      ),
-                                  ],
+                                        if (blameInfo != null &&
+                                            blameInfo!.isNotEmpty)
+                                          Positioned.fill(
+                                            child: BlameInfoWidget(
+                                              editorConfigService:
+                                                  widget.editorConfigService,
+                                              editorLayoutService:
+                                                  widget.editorLayoutService,
+                                              blameInfo: blameInfo!,
+                                              editorState: widget.state,
+                                              size: Size(width, height),
+                                              gitService: widget.gitService,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -400,9 +468,7 @@ class EditorViewState extends State<EditorView> {
                       ),
                     ),
                   ),
-                ),
-              ),
-            ),
+                )),
             if (widget.state.showCompletions)
               ListenableBuilder(
                 listenable: widget.state,
@@ -415,9 +481,25 @@ class EditorViewState extends State<EditorView> {
                     editorConfigService: widget.editorConfigService,
                   );
                 },
-              )
+              ),
+            HoverInfoWidget(
+              editorState: widget.state,
+              editorLayoutService: widget.editorLayoutService,
+              editorConfigService: widget.editorConfigService,
+              isHoveringWord: _isHoveringWord,
+              onHoverPopup: onHoverPopup,
+              onLeavePopup: onLeavePopup,
+            ),
           ]);
         });
+  }
+
+  Position _getPositionFromOffset(Offset offset) {
+    final line =
+        (offset.dy / widget.editorLayoutService.config.lineHeight).floor();
+    final column =
+        (offset.dx / widget.editorLayoutService.config.charWidth).floor();
+    return Position(line: line, column: column);
   }
 
   void requestFocus() {

@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:crystal/models/editor/config/editor_layout_config.dart';
 import 'package:crystal/services/text_measurer.dart';
 
@@ -48,6 +50,13 @@ class EditorLayoutService {
       throw StateError('EditorLayoutService not initialized');
     }
     return _instance!;
+  }
+
+  Offset getPositionForLineAndColumn(int line, int column) {
+    return Offset(
+      column * config.charWidth,
+      line * config.lineHeight,
+    );
   }
 
   void updateFontSize(double newFontSize, String fontFamily) {

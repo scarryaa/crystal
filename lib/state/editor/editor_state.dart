@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/breadcrumb_item.dart';
 import 'package:crystal/models/editor/buffer.dart';
@@ -5,6 +7,7 @@ import 'package:crystal/models/editor/command.dart';
 import 'package:crystal/models/editor/completion_item.dart';
 import 'package:crystal/models/editor/cursor_shape.dart';
 import 'package:crystal/models/editor/events/event_models.dart';
+import 'package:crystal/models/editor/position.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/services/command_palette_service.dart';
 import 'package:crystal/services/editor/breadcrumb_generator.dart';
@@ -28,6 +31,7 @@ import 'package:crystal/services/editor/undo_redo_manager.dart';
 import 'package:crystal/services/file_service.dart';
 import 'package:crystal/services/git_service.dart';
 import 'package:crystal/services/language_detection_service.dart';
+import 'package:crystal/services/lsp_service.dart';
 import 'package:crystal/state/editor/editor_scroll_state.dart';
 import 'package:crystal/utils/utils.dart';
 import 'package:flutter/material.dart';
@@ -72,6 +76,10 @@ class EditorState extends ChangeNotifier {
   final List<EditorState> editors;
   final EditorTabManager editorTabManager;
   final GitService gitService;
+  late final LSPService lspService;
+  bool isHoverInfoVisible = false;
+  Position? _lastHoverPosition;
+  Timer? _hoverTimer;
 
   EditorState({
     required this.resetGutterScroll,
@@ -169,6 +177,18 @@ class EditorState extends ChangeNotifier {
 
     _breadcrumbGenerator = BreadcrumbGenerator();
     editorCursorManager.onCursorChange = _updateBreadcrumbs;
+    lspService = LSPService(this);
+
+    buffer.addListener(() {
+      lspService.sendDidChangeNotification(buffer.content);
+    });
+    EditorEventBus.on<HoverEvent>().listen((event) {
+      if (event.line >= 0 && event.character >= 0 && event.content.isNotEmpty) {
+        isHoverInfoVisible = true;
+      } else {
+        isHoverInfoVisible = false;
+      }
+    });
   }
 
   // Getters
@@ -236,6 +256,57 @@ class EditorState extends ChangeNotifier {
       path: path,
       error: error,
     ));
+  }
+
+  // LSP Methods
+  void showHover(int line, int character) {
+    final currentPosition = Position(line: line, column: character);
+
+    // Cancel existing timer if mouse moved to a new position
+    if (_lastHoverPosition != currentPosition) {
+      _hoverTimer?.cancel();
+      _lastHoverPosition = currentPosition;
+
+      _hoverTimer = Timer(const Duration(milliseconds: 500), () async {
+        // Verify mouse is still at the same position after delay
+        if (_lastHoverPosition == currentPosition) {
+          final response = await lspService.getHover(line, character);
+          if (response != null) {
+            EditorEventBus.emit(HoverEvent(
+              content: response['contents']?['value'] ?? '',
+              line: line,
+              character: character,
+            ));
+          }
+        }
+      });
+    }
+  }
+
+  Future<void> goToDefinition(int line, int character) async {
+    final response = await lspService.getDefinition(line, character);
+    if (response != null) {
+      final location = response['uri'];
+      if (location != null) {
+        // Remove the file:// prefix
+        final path = location.toString().replaceFirst('file://', '');
+        await tapCallback(path);
+
+        // Jump to the definition location if provided
+        if (response['range'] != null) {
+          final targetLine = response['range']['start']['line'];
+          final targetCharacter = response['range']['start']['character'];
+          editorCursorManager.setCursor(targetLine, targetCharacter);
+          scrollToLine(targetLine);
+        }
+      }
+    }
+  }
+
+  void scrollToLine(int line) {
+    // Assuming a fixed line height of 20 pixels
+    const lineHeight = 20.0;
+    updateVerticalScrollOffset(line * lineHeight);
   }
 
   // Completions
@@ -350,6 +421,34 @@ class EditorState extends ChangeNotifier {
   }
 
   // Misc
+  String getWordAt(int line, int column) {
+    // Check if line is valid
+    if (line < 0 || line >= buffer.lines.length) return '';
+
+    final lineText = buffer.lines[line];
+
+    // Check if column is valid
+    if (column < 0 || column >= lineText.length) return '';
+
+    // Find word boundaries
+    int start = column;
+    int end = column;
+
+    while (start > 0 && _isWordChar(lineText[start - 1])) {
+      start--;
+    }
+
+    while (end < lineText.length && _isWordChar(lineText[end])) {
+      end++;
+    }
+
+    return lineText.substring(start, end);
+  }
+
+  bool _isWordChar(String char) {
+    return RegExp(r'[a-zA-Z0-9_]').hasMatch(char);
+  }
+
   void _updateBreadcrumbs(int line, int column) {
     if (!path.toLowerCase().endsWith('.dart')) {
       _breadcrumbs = [];

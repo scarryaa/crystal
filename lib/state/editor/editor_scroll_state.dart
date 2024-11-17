@@ -4,6 +4,7 @@ class EditorScrollState {
   double minScrollExtent = 0.0;
   double maxScrollExtent = 0.0;
   double viewportHeight = 0.0;
+  double viewportWidth = 0.0;
 
   bool get atEdge =>
       verticalOffset <= minScrollExtent || verticalOffset >= maxScrollExtent;
@@ -18,5 +19,9 @@ class EditorScrollState {
 
   void updateViewportHeight(double height) {
     viewportHeight = height;
+  }
+
+  void updateViewportWidth(double width) {
+    viewportWidth = width;
   }
 }
