@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:crystal/models/git_models.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
@@ -39,6 +41,7 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
   final Map<int, double> _lineWidths = {};
   late BlamePainter _blamePainter;
   bool _isHoveringPopup = false;
+  Timer? _blameTimer;
 
   @override
   void initState() {
@@ -111,6 +114,16 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
   String _formatDateTime(DateTime dateTime) {
     return "${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} "
         "${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}";
+  }
+
+  void _handleDelayedBlamePopup(
+      BuildContext context, Offset position, BlameLine blame) {
+    _blameTimer?.cancel();
+    _blameTimer = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        _showBlamePopup(context, position, blame);
+      }
+    });
   }
 
   void _showBlamePopup(BuildContext context, Offset position, BlameLine blame) {
@@ -364,7 +377,6 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
         final lineHeight = widget.editorLayoutService.config.lineHeight;
         final cursorLine = (event.localPosition.dy / lineHeight).floor();
 
-        // Check if hovering on the same line as the editor cursor
         if (cursorLine ==
                 widget.editorState.editorCursorManager.cursors.first.line &&
             cursorLine >= 0 &&
@@ -378,12 +390,11 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
           final blameEndY =
               blameStartY + widget.editorLayoutService.config.lineHeight;
 
-          // Only show popup if mouse is within the blame text area
           if (event.localPosition.dx >= blameStartX &&
               event.localPosition.dx <= blameStartX + blameTextWidth &&
               event.localPosition.dy >= blameStartY &&
               event.localPosition.dy <= blameEndY) {
-            _showBlamePopup(context, event.position, blame);
+            _handleDelayedBlamePopup(context, event.position, blame);
           } else {
             _hideBlamePopup();
           }
@@ -392,6 +403,7 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
         }
       },
       onExit: (_) {
+        _blameTimer?.cancel();
         _hideBlamePopup();
       },
       child: CustomPaint(
@@ -416,6 +428,8 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
 
   @override
   void dispose() {
+    _blameTimer?.cancel();
+
     void routeHandler(PointerEvent event) {
       if (event is PointerDownEvent) {
         if (!_isHoveringPopup) {

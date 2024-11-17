@@ -278,7 +278,7 @@ class EditorState extends ChangeNotifier {
     if (_lastHoverPosition != currentPosition && !_isHoveringPopup) {
       _hoverTimer?.cancel();
       _lastHoverPosition = currentPosition;
-      _hoverTimer = Timer(const Duration(milliseconds: 500), () async {
+      _hoverTimer = Timer(const Duration(milliseconds: 300), () async {
         if (_lastHoverPosition == currentPosition && !_isHoveringPopup) {
           final response = await lspService.getHover(line, character);
 
