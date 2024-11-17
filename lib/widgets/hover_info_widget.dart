@@ -54,6 +54,10 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   OverlayEntry? _overlayEntry;
   String _lastHoveredWord = '';
   bool _isMouseDown = false;
+  double _diagnosticsContentHeight = 0;
+  final double _diagnosticItemPadding = 8.0;
+  final double _diagnosticIconSize = 16.0;
+  final double _diagnosticMinHeight = 36.0;
 
   @override
   void initState() {
@@ -89,14 +93,32 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   }
 
   void _calculateDiagnosticsHeight(List<Diagnostic> diagnostics) {
-    const double diagnosticItemHeight = 36.0;
     const double maxDiagnosticsHeight = 200.0;
-    diagnosticsHeight =
-        min(diagnostics.length * diagnosticItemHeight, maxDiagnosticsHeight);
+
+    // Calculate exact content height based on text wrapping
+    _diagnosticsContentHeight = diagnostics.fold(0, (height, diagnostic) {
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: diagnostic.message,
+          style: TextStyle(
+            fontSize: 12,
+            fontFamily: widget.editorConfigService.config.fontFamily,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+
+      // Account for container width minus padding and icon
+      textPainter.layout(maxWidth: 400 - 24 - _diagnosticIconSize - 8);
+      return height +
+          max(_diagnosticMinHeight,
+              textPainter.height + _diagnosticItemPadding);
+    });
+
+    diagnosticsHeight = min(_diagnosticsContentHeight, maxDiagnosticsHeight);
   }
 
   void _showOverlay(BuildContext context, HoverEvent event) {
-    // Check if current word matches last hovered word
     if (_lastHoveredWord != event.content) {
       _hideOverlay();
       _lastHoveredWord = event.content;
@@ -106,6 +128,7 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
 
     final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
+
     _hideOverlay();
 
     final Offset globalPosition = renderBox.localToGlobal(Offset.zero);
@@ -113,50 +136,87 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
       event.line,
       event.character,
     );
-
-    final cursorX =
-        position.dx - widget.editorState.scrollState.horizontalOffset;
+    final cursorX = position.dx;
     final cursorY = position.dy;
 
-    _overlayEntry = OverlayEntry(
-      builder: (BuildContext context) => Positioned(
-        left: globalPosition.dx + cursorX,
-        top: globalPosition.dy +
-            cursorY +
-            widget.editorLayoutService.config.lineHeight,
-        child: _buildPopup(context, event),
-      ),
-    );
-
     final diagnostics = event.diagnostics;
-    if (diagnostics.isNotEmpty) {
+    final hasContent = event.content.trim().isNotEmpty;
+
+    if (!hasContent && diagnostics.isEmpty) return;
+
+    final screenSize = MediaQuery.of(context).size;
+    const maxWidth = 400.0;
+    const maxHeight = 300.0;
+
+    double infoPopupLeft = globalPosition.dx + cursorX;
+    double infoPopupTop = globalPosition.dy +
+        cursorY +
+        widget.editorLayoutService.config.lineHeight;
+
+    // Adjust horizontal position if it goes off-screen
+    if (infoPopupLeft + maxWidth > screenSize.width) {
+      infoPopupLeft = screenSize.width - maxWidth - 10;
+    }
+
+    // Adjust vertical position if it goes off-screen
+    if (infoPopupTop + maxHeight > screenSize.height) {
+      infoPopupTop = globalPosition.dy + cursorY - maxHeight - 10;
+    }
+
+    if (hasContent && diagnostics.isNotEmpty) {
       _diagnosticsPopupTop = _showDiagnosticsAbove
-          ? globalPosition.dy + cursorY - diagnosticsHeight - spaceBetweenPopups
-          : globalPosition.dy + cursorY + _popupHeight + spaceBetweenPopups;
+          ? infoPopupTop - diagnosticsHeight - spaceBetweenPopups
+          : infoPopupTop + maxHeight + spaceBetweenPopups;
+
+      // Adjust diagnostics popup if it goes off-screen
+      if (_diagnosticsPopupTop < 0) {
+        _diagnosticsPopupTop = infoPopupTop + maxHeight + spaceBetweenPopups;
+      } else if (_diagnosticsPopupTop + diagnosticsHeight > screenSize.height) {
+        _diagnosticsPopupTop =
+            infoPopupTop - diagnosticsHeight - spaceBetweenPopups;
+      }
 
       _overlayEntry = OverlayEntry(
         builder: (BuildContext context) => Stack(
           children: [
             Positioned(
-              left: globalPosition.dx + cursorX,
-              top: globalPosition.dy +
-                  cursorY +
-                  widget.editorLayoutService.config.lineHeight,
+              left: infoPopupLeft,
+              top: infoPopupTop,
               child: _buildPopup(context, event),
             ),
             _buildDiagnosticsPopup(
               diagnostics,
-              globalPosition.dx + cursorX,
-              globalPosition.dy + cursorY,
+              infoPopupLeft,
+              _diagnosticsPopupTop,
               _showDiagnosticsAbove,
-              _popupHeight,
+              maxHeight,
             ),
           ],
         ),
       );
+    } else if (hasContent) {
+      _overlayEntry = OverlayEntry(
+        builder: (BuildContext context) => Positioned(
+          left: infoPopupLeft,
+          top: infoPopupTop,
+          child: _buildPopup(context, event),
+        ),
+      );
+    } else if (diagnostics.isNotEmpty) {
+      _overlayEntry = OverlayEntry(
+        builder: (BuildContext context) => _buildDiagnosticsPopup(
+          diagnostics,
+          infoPopupLeft,
+          infoPopupTop,
+          _showDiagnosticsAbove,
+          0,
+        ),
+      );
     }
 
-    Overlay.of(context).insert(_overlayEntry!);
+    if (_overlayEntry != null) {
+      Overlay.of(context).insert(_overlayEntry!);
+    }
   }
 
   void _hideOverlay() {
@@ -340,7 +400,7 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
     final theme = widget.editorConfigService.themeService.currentTheme!;
     return Positioned(
         left: left,
-        top: _diagnosticsPopupTop,
+        top: top,
         child: Material(
           color: Colors.transparent,
           child: MouseRegion(
@@ -364,9 +424,11 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
               onPointerDown: (_) => _isMouseDown = true,
               onPointerUp: (_) => _isMouseDown = false,
               child: Container(
-                constraints: const BoxConstraints(
+                constraints: BoxConstraints(
                   maxWidth: 400,
-                  maxHeight: 60,
+                  maxHeight: diagnosticsHeight,
+                  minHeight:
+                      min(_diagnosticMinHeight, _diagnosticsContentHeight),
                 ),
                 decoration: BoxDecoration(
                   color: theme.background,
@@ -425,9 +487,22 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
 
   @override
   void dispose() {
+    // Remove listener first
     widget.globalHoverState.removeListener(_onGlobalHoverStateChanged);
+
+    // Hide overlay
     _hideOverlay();
-    GestureBinding.instance.pointerRouter.removeGlobalRoute(_handleGlobalClick);
+
+    // Safely remove global route
+    try {
+      if (mounted) {
+        GestureBinding.instance.pointerRouter
+            .removeGlobalRoute(_handleGlobalClick);
+      }
+    } catch (e) {
+      rethrow;
+    }
+
     super.dispose();
   }
 }
