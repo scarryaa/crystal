@@ -8,6 +8,7 @@ import 'package:crystal/models/editor/events/event_models.dart';
 import 'package:crystal/models/editor/position.dart';
 import 'package:crystal/models/editor/search_match.dart';
 import 'package:crystal/models/git_models.dart';
+import 'package:crystal/models/global_hover_state.dart';
 import 'package:crystal/services/command_palette_service.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_event_bus.dart';
@@ -21,8 +22,8 @@ import 'package:crystal/widgets/blame_info_widget.dart';
 import 'package:crystal/widgets/editor/completion_widget.dart';
 import 'package:crystal/widgets/editor/editor_painter.dart';
 import 'package:crystal/widgets/hover_info_widget.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 class EditorView extends StatefulWidget {
   final EditorConfigService editorConfigService;
@@ -46,6 +47,9 @@ class EditorView extends StatefulWidget {
   final Function(CompletionItem) onCompletionSelect;
   final int selectedSuggestionIndex;
   final GitService gitService;
+  final int row;
+  final int col;
+  final GlobalHoverState globalHoverState;
 
   const EditorView({
     super.key,
@@ -70,6 +74,9 @@ class EditorView extends StatefulWidget {
     required this.onCompletionSelect,
     required this.selectedSuggestionIndex,
     required this.gitService,
+    required this.row,
+    required this.col,
+    required this.globalHoverState,
   });
 
   @override
@@ -330,7 +337,10 @@ class EditorViewState extends State<EditorView> {
         .updateViewportWidth(MediaQuery.of(context).size.width);
 
     return ListenableBuilder(
-        listenable: widget.editorConfigService.themeService,
+        listenable: Listenable.merge([
+          widget.editorConfigService.themeService,
+          widget.globalHoverState,
+        ]),
         builder: (context, _) {
           return Stack(children: [
             Container(
@@ -345,6 +355,17 @@ class EditorViewState extends State<EditorView> {
                   },
                   autofocus: true,
                   child: MouseRegion(
+                    onEnter: (_) => widget.globalHoverState
+                        .setActiveEditor(widget.row, widget.col),
+                    onExit: (_) {
+                      if (!_isHoveringPopup) {
+                        Future.delayed(const Duration(milliseconds: 50), () {
+                          if (!_isHoveringPopup && mounted) {
+                            widget.globalHoverState.clearActiveEditor();
+                          }
+                        });
+                      }
+                    },
                     onHover: (PointerHoverEvent event) {
                       final position = _getPositionFromOffset(Offset(
                         event.localPosition.dx +
@@ -358,15 +379,13 @@ class EditorViewState extends State<EditorView> {
                           .getWordAt(position.line, position.column);
 
                       // Only process hover if not currently hovering over popup
-                      if (!_isHoveringPopup) {
-                        if (_lastHoveredWord != word) {
-                          _lastHoveredWord = word;
-                          EditorEventBus.emit(HoverEvent(
-                            line: -100,
-                            character: -100,
-                            content: '',
-                          ));
-                        }
+                      if (_lastHoveredWord != word) {
+                        _lastHoveredWord = word;
+                        EditorEventBus.emit(HoverEvent(
+                          line: -100,
+                          character: -100,
+                          content: '',
+                        ));
 
                         if (word.isNotEmpty) {
                           _isHoveringWord = true;
@@ -462,6 +481,10 @@ class EditorViewState extends State<EditorView> {
                                           isHoveringWord: _isHoveringWord,
                                           onHoverPopup: onHoverPopup,
                                           onLeavePopup: onLeavePopup,
+                                          row: widget.row,
+                                          col: widget.col,
+                                          globalHoverState:
+                                              widget.globalHoverState,
                                         ),
                                       ],
                                     ),

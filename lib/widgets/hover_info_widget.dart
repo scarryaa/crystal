@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:crystal/models/editor/events/event_models.dart';
 import 'package:crystal/models/editor/lsp_models.dart';
+import 'package:crystal/models/global_hover_state.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_event_bus.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
@@ -18,6 +19,9 @@ class HoverInfoWidget extends StatefulWidget {
   final bool isHoveringWord;
   final Function() onHoverPopup;
   final Function() onLeavePopup;
+  final int row;
+  final int col;
+  final GlobalHoverState globalHoverState;
 
   const HoverInfoWidget({
     super.key,
@@ -27,6 +31,9 @@ class HoverInfoWidget extends StatefulWidget {
     required this.isHoveringWord,
     required this.onHoverPopup,
     required this.onLeavePopup,
+    required this.row,
+    required this.col,
+    required this.globalHoverState,
   });
 
   @override
@@ -44,16 +51,24 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   final double spaceBetweenPopups = 8.0;
   double _diagnosticsPopupTop = 0;
   OverlayEntry? _overlayEntry;
+  String _lastHoveredWord = '';
 
   @override
   void initState() {
     super.initState();
+    widget.globalHoverState.addListener(_onGlobalHoverStateChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         GestureBinding.instance.pointerRouter
             .addGlobalRoute(_handleGlobalClick);
       }
     });
+  }
+
+  void _onGlobalHoverStateChanged() {
+    if (!widget.globalHoverState.isActive(widget.row, widget.col)) {
+      _hideOverlay();
+    }
   }
 
   void _handleGlobalClick(PointerEvent event) {
@@ -63,17 +78,38 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   }
 
   void _showOverlay(BuildContext context, HoverEvent event) {
+    // Check if current word matches last hovered word
+    if (_lastHoveredWord != event.content) {
+      _hideOverlay();
+      _lastHoveredWord = event.content;
+    }
+
+    if (_overlayEntry != null) return;
+
+    final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
     _hideOverlay();
+
+    final Offset globalPosition = renderBox.localToGlobal(Offset.zero);
+    final position = widget.editorLayoutService.getPositionForLineAndColumn(
+      event.line,
+      event.character,
+    );
+
+    final cursorX =
+        position.dx - widget.editorState.scrollState.horizontalOffset;
+    final cursorY = position.dy;
+
     _overlayEntry = OverlayEntry(
-      builder: (BuildContext context) => Stack(
-        children: [
-          _buildPopup(context, event),
-          if (event.diagnostics.isNotEmpty)
-            _buildDiagnosticsPopup(event.diagnostics, _popupLeft, _popupTop,
-                _showDiagnosticsAbove, _popupHeight),
-        ],
+      builder: (BuildContext context) => Positioned(
+        left: globalPosition.dx + cursorX,
+        top: globalPosition.dy +
+            cursorY +
+            widget.editorLayoutService.config.lineHeight,
+        child: _buildPopup(context, event),
       ),
     );
+
     Overlay.of(context).insert(_overlayEntry!);
   }
 
@@ -91,18 +127,19 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
 
         final event = snapshot.data!;
 
-        if (event.line == -100) {
-          _hideOverlay();
+        if (event.line == -100 ||
+            !widget.globalHoverState.isActive(widget.row, widget.col)) {
+          if (!_isHoveringPopup && !widget.isHoveringWord) {
+            _handlePopupExit();
+          }
           return const SizedBox.shrink();
         }
 
-        if (widget.isHoveringWord || _isHoveringPopup) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (widget.isHoveringWord) {
             _showOverlay(context, event);
-          });
-        } else {
-          _hideOverlay();
-        }
+          }
+        });
 
         return const SizedBox.shrink();
       },
@@ -110,20 +147,17 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   }
 
   void _handlePopupExit() {
-    Future.delayed(const Duration(milliseconds: 50), () {
-      if (!_isHoveringPopup) {
-        setState(() {
-          widget.onLeavePopup();
-          if (!widget.isHoveringWord) {
-            EditorEventBus.emit(HoverEvent(
-              line: -100,
-              character: -100,
-              content: '',
-            ));
-          }
-        });
-      }
-    });
+    if (!_isHoveringPopup) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _hideOverlay();
+        widget.onLeavePopup();
+        EditorEventBus.emit(HoverEvent(
+          line: -100,
+          character: -100,
+          content: '',
+        ));
+      });
+    }
   }
 
   double _measureContentHeight(
@@ -150,17 +184,10 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   }
 
   Widget _buildPopup(BuildContext context, HoverEvent event) {
-    final position = widget.editorLayoutService.getPositionForLineAndColumn(
-      event.line,
-      event.character,
-    );
-
-    final screenSize = MediaQuery.of(context).size;
     const popupWidth = 400.0;
     const scrollbarWidth = 8.0;
     const defaultMaxPopupHeight = 300.0;
     const double minContentHeight = 110.0;
-    const double padding = 0.0;
 
     final theme = widget.editorConfigService.themeService.currentTheme!;
 
@@ -169,156 +196,86 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
       fontFamily: widget.editorConfigService.config.fontFamily,
     );
 
-    final TextStyle diagnosticStyle = TextStyle(
-      fontSize: 12,
-      fontFamily: widget.editorConfigService.config.fontFamily,
-    );
-
     double contentHeight =
         _measureContentHeight([event.content], popupWidth - 24, contentStyle);
     contentHeight = max(contentHeight, minContentHeight);
     contentHeight = min(contentHeight, defaultMaxPopupHeight);
 
-    diagnosticsHeight = event.diagnostics.isNotEmpty
-        ? _measureContentHeight(
-            event.diagnostics.map((d) => d.message).toList(),
-            popupWidth - 24,
-            diagnosticStyle)
-        : 0;
-    diagnosticsHeight = min(diagnosticsHeight, 100.0);
-
-    double totalContentHeight = contentHeight +
-        (event.diagnostics.isNotEmpty
-            ? diagnosticsHeight + spaceBetweenPopups
-            : 0);
-
-    // Calculate available space
-    double cursorY =
-        position.dy - widget.editorState.scrollState.verticalOffset;
-    double spaceBelow = screenSize.height -
-        cursorY -
-        widget.editorLayoutService.config.lineHeight;
-    double spaceAbove = cursorY;
-
-    // Decide whether to show above or below
-    bool showAbove = spaceBelow < totalContentHeight && spaceAbove > spaceBelow;
-
-    // Adjust content heights if necessary
-    double availableSpace = showAbove ? spaceAbove : spaceBelow;
-    if (totalContentHeight > availableSpace - padding * 2) {
-      double ratio = (availableSpace - padding * 2) / totalContentHeight;
-      contentHeight *= ratio;
-      diagnosticsHeight *= ratio;
-      totalContentHeight = availableSpace - padding * 2;
-    }
-
-    // Calculate vertical positions
-    double mainPopupTop, diagnosticsPopupTop;
-    if (showAbove) {
-      mainPopupTop = max(padding, cursorY - totalContentHeight - padding);
-      diagnosticsPopupTop = mainPopupTop + contentHeight + spaceBetweenPopups;
-    } else {
-      mainPopupTop =
-          cursorY + widget.editorLayoutService.config.lineHeight + padding;
-      double bottomEdge = mainPopupTop + totalContentHeight;
-      if (bottomEdge > screenSize.height - padding) {
-        double offset = bottomEdge - (screenSize.height - padding);
-        mainPopupTop -= offset;
-      }
-      diagnosticsPopupTop = mainPopupTop + contentHeight + spaceBetweenPopups;
-    }
-
-    // Calculate horizontal position
-    double left = position.dx - widget.editorState.scrollState.horizontalOffset;
-    left = max(padding, min(left, screenSize.width - popupWidth - padding));
-
-    // Update state variables
-    _popupLeft = left;
-    _popupTop = mainPopupTop;
-    _popupHeight = contentHeight;
-    _showDiagnosticsAbove = showAbove;
-    _diagnosticsPopupTop = diagnosticsPopupTop;
-
-    return Positioned(
-        left: left,
-        top: _popupTop,
-        child: MouseRegion(
-          onEnter: (_) {
-            setState(() {
-              _isHoveringPopup = true;
-              widget.editorState.setIsHoveringPopup(true);
-              widget.onHoverPopup();
-            });
-          },
-          onExit: (_) {
-            setState(() {
-              _isHoveringPopup = false;
-              widget.editorState.setIsHoveringPopup(false);
-            });
-            _handlePopupExit();
-          },
-          child: Container(
-            constraints: BoxConstraints(
-              maxWidth: popupWidth,
-              maxHeight: contentHeight,
-              minHeight: contentHeight,
+    return MouseRegion(
+      onEnter: (_) {
+        setState(() {
+          _isHoveringPopup = true;
+        });
+        widget.onHoverPopup();
+      },
+      onExit: (_) {
+        setState(() {
+          _isHoveringPopup = false;
+        });
+        _handlePopupExit();
+      },
+      child: Container(
+        constraints: BoxConstraints(
+          maxWidth: popupWidth,
+          maxHeight: contentHeight,
+          minHeight: contentHeight,
+        ),
+        decoration: BoxDecoration(
+          color: theme.background,
+          border: Border.all(color: theme.border),
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: theme.border.withOpacity(0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
             ),
-            decoration: BoxDecoration(
-              color: theme.background,
-              border: Border.all(color: theme.border),
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: theme.border.withOpacity(0.2),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: RawScrollbar(
-                    controller: _scrollController,
-                    thickness: scrollbarWidth,
-                    radius: const Radius.circular(0),
-                    thumbVisibility: true,
-                    child: SingleChildScrollView(
-                      controller: _scrollController,
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        child: MarkdownBody(
-                          data: event.content,
-                          styleSheet: MarkdownStyleSheet(
-                            p: TextStyle(
-                              color: theme.text.withOpacity(0.9),
-                              fontSize: 13,
-                              fontFamily:
-                                  widget.editorConfigService.config.fontFamily,
-                            ),
-                            code: TextStyle(
-                              color: theme.text.withOpacity(0.9),
-                              fontSize: 13,
-                              fontFamily:
-                                  widget.editorConfigService.config.fontFamily,
-                              backgroundColor: theme.text.withOpacity(0.1),
-                            ),
-                            codeblockDecoration: BoxDecoration(
-                              color: theme.text.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                          selectable: true,
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: RawScrollbar(
+                controller: _scrollController,
+                thickness: scrollbarWidth,
+                radius: const Radius.circular(0),
+                thumbVisibility: true,
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    child: MarkdownBody(
+                      data: event.content,
+                      styleSheet: MarkdownStyleSheet(
+                        p: TextStyle(
+                          color: theme.text.withOpacity(0.9),
+                          fontSize: 13,
+                          fontFamily:
+                              widget.editorConfigService.config.fontFamily,
+                        ),
+                        code: TextStyle(
+                          color: theme.text.withOpacity(0.9),
+                          fontSize: 13,
+                          fontFamily:
+                              widget.editorConfigService.config.fontFamily,
+                          backgroundColor: theme.text.withOpacity(0.1),
+                        ),
+                        codeblockDecoration: BoxDecoration(
+                          color: theme.text.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
                         ),
                       ),
+                      selectable: true,
                     ),
                   ),
-                )
-              ],
-            ),
-          ),
-        ));
+                ),
+              ),
+            )
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildDiagnosticsPopup(List<Diagnostic> diagnostics, double left,
@@ -407,24 +364,9 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
 
   @override
   void dispose() {
-    void routeHandler(PointerEvent event) {
-      if (event is PointerDownEvent) {
-        EditorEventBus.emit(HoverEvent(
-          line: -100,
-          character: -100,
-          content: '',
-        ));
-      }
-    }
-
-    // Remove only if we previously added it
-    try {
-      GestureBinding.instance.pointerRouter
-          .removeGlobalRoute(_handleGlobalClick);
-    } catch (e) {
-      // Ignore if route wasn't found
-    }
-
+    widget.globalHoverState.removeListener(_onGlobalHoverStateChanged);
+    _hideOverlay();
+    GestureBinding.instance.pointerRouter.removeGlobalRoute(_handleGlobalClick);
     super.dispose();
   }
 }

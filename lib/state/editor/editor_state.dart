@@ -84,6 +84,7 @@ class EditorState extends ChangeNotifier {
   List<lsp_models.Diagnostic> _diagnostics = [];
   List<lsp_models.Diagnostic> get diagnostics => _diagnostics;
   bool _isHoveringPopup = false;
+  String? _lastHoveredWord;
 
   EditorState({
     required this.resetGutterScroll,

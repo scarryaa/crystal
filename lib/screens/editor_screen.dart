@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:crystal/models/editor/command_palette_mode.dart';
 import 'package:crystal/models/editor/config/config_paths.dart';
+import 'package:crystal/models/global_hover_state.dart';
 import 'package:crystal/models/notifcation_type.dart';
 import 'package:crystal/models/notification_action.dart';
 import 'package:crystal/providers/editor_state_provider.dart';
@@ -54,6 +55,7 @@ class EditorScreenState extends State<EditorScreen> {
   late final Future<void> _initializationFuture;
   late SearchService searchService;
   final Map<int, EditorScrollManager> _scrollManagers = {};
+  final GlobalHoverState _globalHoverState = GlobalHoverState();
 
   EditorTabManager get editorTabManager =>
       context.read<EditorStateProvider>().editorTabManager;
@@ -688,6 +690,8 @@ class EditorScreenState extends State<EditorScreen> {
                                                                             : editorTabManager.activeEditor!.selectedSuggestionIndex,
                                                                         gitService:
                                                                             widget.gitService,
+                                                                        globalHoverState:
+                                                                            _globalHoverState,
                                                                       )),
                                                         );
                                                 },

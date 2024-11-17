@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:crystal/models/editor/split_view.dart';
+import 'package:crystal/models/global_hover_state.dart';
 import 'package:crystal/providers/editor_state_provider.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
@@ -33,6 +34,7 @@ class EditorSection extends StatelessWidget {
   final Function(String)? onDirectoryChanged;
   final int selectedSuggestionIndex;
   final GitService gitService;
+  final GlobalHoverState globalHoverState;
 
   const EditorSection({
     super.key,
@@ -50,6 +52,7 @@ class EditorSection extends StatelessWidget {
     required this.onDirectoryChanged,
     required this.selectedSuggestionIndex,
     required this.gitService,
+    required this.globalHoverState,
   });
 
   @override
@@ -304,6 +307,9 @@ class EditorSection extends StatelessWidget {
                                                 ?.acceptCompletion(item);
                                           },
                                           gitService: gitService,
+                                          globalHoverState: globalHoverState,
+                                          row: row,
+                                          col: col,
                                         );
                                       })
                                   : Container(
