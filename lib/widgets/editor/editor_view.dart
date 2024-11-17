@@ -362,14 +362,11 @@ class EditorViewState extends State<EditorView> {
                       if (!_isHoveringPopup) {
                         if (_lastHoveredWord != word) {
                           _lastHoveredWord = word;
-                          // Only emit hide event if moving to empty word
-                          if (word.isEmpty) {
-                            EditorEventBus.emit(HoverEvent(
-                              line: -100,
-                              character: -100,
-                              content: '',
-                            ));
-                          }
+                          EditorEventBus.emit(HoverEvent(
+                            line: -100,
+                            character: -100,
+                            content: '',
+                          ));
                         }
 
                         if (word.isNotEmpty) {

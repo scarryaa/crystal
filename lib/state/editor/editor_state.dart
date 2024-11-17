@@ -270,21 +270,28 @@ class EditorState extends ChangeNotifier {
   void showHover(int line, int character) {
     final currentPosition = Position(line: line, column: character);
 
-    // Cancel existing timer if mouse moved to a new position
     if (_lastHoverPosition != currentPosition) {
       _hoverTimer?.cancel();
       _lastHoverPosition = currentPosition;
-
       _hoverTimer = Timer(const Duration(milliseconds: 500), () async {
-        // Verify mouse is still at the same position after delay
         if (_lastHoverPosition == currentPosition) {
           final response = await lspService.getHover(line, character);
+
+          // Filter diagnostics that match the current position
+          final matchingDiagnostics = _diagnostics.where((diagnostic) {
+            final range = diagnostic.range;
+            return line >= range.start.line &&
+                line <= range.end.line &&
+                character >= range.start.character &&
+                character <= range.end.character;
+          }).toList();
+
           if (response != null) {
             EditorEventBus.emit(HoverEvent(
               content: response['contents']?['value'] ?? '',
               line: line,
               character: character,
-              diagnostics: _diagnostics,
+              diagnostics: matchingDiagnostics,
             ));
           }
         }
