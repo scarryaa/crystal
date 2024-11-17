@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:crystal/models/editor/events/event_models.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_event_bus.dart';
@@ -44,6 +46,23 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
             .addGlobalRoute(_handleGlobalClick);
       }
     });
+  }
+
+  double _measureContentHeight(String content, double maxWidth) {
+    final TextPainter textPainter = TextPainter(
+      text: TextSpan(
+        text: content,
+        style: TextStyle(
+          fontSize: 13,
+          fontFamily: widget.editorConfigService.config.fontFamily,
+        ),
+      ),
+      maxLines: null,
+      textDirection: TextDirection.ltr,
+    );
+
+    textPainter.layout(maxWidth: maxWidth);
+    return textPainter.height + 24; // Add some padding
   }
 
   void _handleGlobalClick(PointerEvent event) {
@@ -97,20 +116,55 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
     final screenSize = MediaQuery.of(context).size;
     const popupWidth = 400.0;
     const scrollbarWidth = 12.0;
-    const maxPopupHeight = 300.0;
+    const defaultMaxPopupHeight = 300.0;
     final theme = widget.editorConfigService.themeService.currentTheme!;
 
-    double left = position.dx - widget.editorState.scrollState.horizontalOffset;
-    double top = position.dy +
-        widget.editorLayoutService.config.lineHeight -
-        widget.editorState.scrollState.verticalOffset;
+    double cursorY =
+        position.dy - widget.editorState.scrollState.verticalOffset;
+    double spaceBelow = screenSize.height -
+        cursorY -
+        widget.editorLayoutService.config.lineHeight;
+    double spaceAbove = cursorY;
 
+    bool showAbove =
+        spaceBelow < defaultMaxPopupHeight && spaceAbove > spaceBelow;
+    double maxPopupHeight = showAbove
+        ? min(defaultMaxPopupHeight, spaceAbove - 16)
+        : min(defaultMaxPopupHeight, spaceBelow - 16);
+
+    const double minimumHeight = 100.0;
+    if (maxPopupHeight < minimumHeight) {
+      // If we don't have enough space below or above, force it to show below
+      // with minimum height, allowing scrolling if needed
+      showAbove = false;
+      maxPopupHeight = minimumHeight;
+    }
+
+    double contentHeight = _measureContentHeight(event.content, popupWidth);
+    contentHeight = min(contentHeight, maxPopupHeight);
+
+    double top;
+    if (showAbove) {
+      if (contentHeight < maxPopupHeight) {
+        // If content is smaller than max height, position it just above the cursor
+        top = cursorY - contentHeight + 20;
+      } else {
+        // If content is at max height, keep it at the calculated position
+        top = cursorY - maxPopupHeight;
+      }
+    } else {
+      top = cursorY + widget.editorLayoutService.config.lineHeight;
+    }
+
+    double left = position.dx - widget.editorState.scrollState.horizontalOffset;
+
+    // Adjust horizontal position if it would go off screen
     if (left + popupWidth > screenSize.width) {
       left = screenSize.width - popupWidth - 16;
     }
-
-    if (top + maxPopupHeight > screenSize.height) {
-      top = position.dy - maxPopupHeight - 8;
+    if (left < 16) {
+      // Ensure some minimum padding from left edge
+      left = 16;
     }
 
     return Positioned(
@@ -139,9 +193,9 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
             });
           },
           child: Container(
-            constraints: const BoxConstraints(
+            constraints: BoxConstraints(
               maxWidth: popupWidth,
-              maxHeight: maxPopupHeight,
+              maxHeight: contentHeight,
             ),
             decoration: BoxDecoration(
               color: theme.background,
