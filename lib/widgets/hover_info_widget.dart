@@ -56,6 +56,23 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
     });
   }
 
+  void _handlePopupExit() {
+    Future.delayed(const Duration(milliseconds: 50), () {
+      if (!_isHoveringPopup) {
+        setState(() {
+          widget.onLeavePopup();
+          if (!widget.isHoveringWord) {
+            EditorEventBus.emit(HoverEvent(
+              line: -100,
+              character: -100,
+              content: '',
+            ));
+          }
+        });
+      }
+    });
+  }
+
   double _measureContentHeight(
       List<String> contents, double maxWidth, TextStyle style) {
     double totalHeight = 0;
@@ -108,34 +125,13 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
           return const SizedBox.shrink();
         }
 
-        return MouseRegion(
-          onEnter: (_) {
-            setState(() {
-              _isHoveringPopup = true;
-              widget.onHoverPopup();
-            });
-          },
-          onExit: (_) {
-            setState(() {
-              _isHoveringPopup = false;
-              widget.onLeavePopup();
-              if (!widget.isHoveringWord) {
-                EditorEventBus.emit(HoverEvent(
-                  line: -100,
-                  character: -100,
-                  content: '',
-                ));
-              }
-            });
-          },
-          child: Stack(
-            children: [
-              _buildPopup(context, event),
-              if (event.diagnostics.isNotEmpty)
-                _buildDiagnosticsPopup(event.diagnostics, _popupLeft, _popupTop,
-                    _showDiagnosticsAbove, _popupHeight),
-            ],
-          ),
+        return Stack(
+          children: [
+            _buildPopup(context, event),
+            if (event.diagnostics.isNotEmpty)
+              _buildDiagnosticsPopup(event.diagnostics, _popupLeft, _popupTop,
+                  _showDiagnosticsAbove, _popupHeight),
+          ],
         );
       },
     );
@@ -225,70 +221,83 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
     _diagnosticsPopupTop = diagnosticsPopupTop;
 
     return Positioned(
-      left: left,
-      top: _popupTop,
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: popupWidth,
-          maxHeight: contentHeight,
-          minHeight: contentHeight,
-        ),
-        decoration: BoxDecoration(
-          color: theme.background,
-          border: Border.all(color: theme.border),
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-              color: theme.border.withOpacity(0.2),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
+        left: left,
+        top: _popupTop,
+        child: MouseRegion(
+          onEnter: (_) {
+            setState(() {
+              _isHoveringPopup = true;
+              widget.onHoverPopup();
+            });
+          },
+          onExit: (_) {
+            setState(() {
+              _isHoveringPopup = false;
+            });
+            _handlePopupExit();
+          },
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth: popupWidth,
+              maxHeight: contentHeight,
+              minHeight: contentHeight,
             ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: RawScrollbar(
-                controller: _scrollController,
-                thickness: scrollbarWidth,
-                radius: const Radius.circular(0),
-                thumbVisibility: true,
-                child: SingleChildScrollView(
-                  controller: _scrollController,
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    child: MarkdownBody(
-                      data: event.content,
-                      styleSheet: MarkdownStyleSheet(
-                        p: TextStyle(
-                          color: theme.text.withOpacity(0.9),
-                          fontSize: 13,
-                          fontFamily:
-                              widget.editorConfigService.config.fontFamily,
-                        ),
-                        code: TextStyle(
-                          color: theme.text.withOpacity(0.9),
-                          fontSize: 13,
-                          fontFamily:
-                              widget.editorConfigService.config.fontFamily,
-                          backgroundColor: theme.text.withOpacity(0.1),
-                        ),
-                        codeblockDecoration: BoxDecoration(
-                          color: theme.text.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
+            decoration: BoxDecoration(
+              color: theme.background,
+              border: Border.all(color: theme.border),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: theme.border.withOpacity(0.2),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: RawScrollbar(
+                    controller: _scrollController,
+                    thickness: scrollbarWidth,
+                    radius: const Radius.circular(0),
+                    thumbVisibility: true,
+                    child: SingleChildScrollView(
+                      controller: _scrollController,
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        child: MarkdownBody(
+                          data: event.content,
+                          styleSheet: MarkdownStyleSheet(
+                            p: TextStyle(
+                              color: theme.text.withOpacity(0.9),
+                              fontSize: 13,
+                              fontFamily:
+                                  widget.editorConfigService.config.fontFamily,
+                            ),
+                            code: TextStyle(
+                              color: theme.text.withOpacity(0.9),
+                              fontSize: 13,
+                              fontFamily:
+                                  widget.editorConfigService.config.fontFamily,
+                              backgroundColor: theme.text.withOpacity(0.1),
+                            ),
+                            codeblockDecoration: BoxDecoration(
+                              color: theme.text.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          selectable: true,
                         ),
                       ),
-                      selectable: true,
                     ),
                   ),
-                ),
-              ),
-            )
-          ],
-        ),
-      ),
-    );
+                )
+              ],
+            ),
+          ),
+        ));
   }
 
   Widget _buildDiagnosticsPopup(List<Diagnostic> diagnostics, double left,
@@ -314,15 +323,8 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
           onExit: (_) {
             setState(() {
               _isHoveringPopup = false;
-              widget.onLeavePopup();
-              if (!widget.isHoveringWord) {
-                EditorEventBus.emit(HoverEvent(
-                  line: -100,
-                  character: -100,
-                  content: '',
-                ));
-              }
             });
+            _handlePopupExit();
           },
           child: Container(
             constraints: BoxConstraints(
