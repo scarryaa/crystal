@@ -453,6 +453,16 @@ class EditorViewState extends State<EditorView> {
                                               gitService: widget.gitService,
                                             ),
                                           ),
+                                        HoverInfoWidget(
+                                          editorState: widget.state,
+                                          editorLayoutService:
+                                              widget.editorLayoutService,
+                                          editorConfigService:
+                                              widget.editorConfigService,
+                                          isHoveringWord: _isHoveringWord,
+                                          onHoverPopup: onHoverPopup,
+                                          onLeavePopup: onLeavePopup,
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -478,14 +488,6 @@ class EditorViewState extends State<EditorView> {
                   );
                 },
               ),
-            HoverInfoWidget(
-              editorState: widget.state,
-              editorLayoutService: widget.editorLayoutService,
-              editorConfigService: widget.editorConfigService,
-              isHoveringWord: _isHoveringWord,
-              onHoverPopup: onHoverPopup,
-              onLeavePopup: onLeavePopup,
-            ),
           ]);
         });
   }

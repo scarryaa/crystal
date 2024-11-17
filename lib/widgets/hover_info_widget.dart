@@ -43,17 +43,70 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   bool _showDiagnosticsAbove = true;
   final double spaceBetweenPopups = 8.0;
   double _diagnosticsPopupTop = 0;
+  OverlayEntry? _overlayEntry;
 
   @override
   void initState() {
     super.initState();
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         GestureBinding.instance.pointerRouter
             .addGlobalRoute(_handleGlobalClick);
       }
     });
+  }
+
+  void _handleGlobalClick(PointerEvent event) {
+    if (event is PointerDownEvent) {
+      _hideOverlay();
+    }
+  }
+
+  void _showOverlay(BuildContext context, HoverEvent event) {
+    _hideOverlay();
+    _overlayEntry = OverlayEntry(
+      builder: (BuildContext context) => Stack(
+        children: [
+          _buildPopup(context, event),
+          if (event.diagnostics.isNotEmpty)
+            _buildDiagnosticsPopup(event.diagnostics, _popupLeft, _popupTop,
+                _showDiagnosticsAbove, _popupHeight),
+        ],
+      ),
+    );
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  void _hideOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<HoverEvent>(
+      stream: EditorEventBus.on<HoverEvent>(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const SizedBox.shrink();
+
+        final event = snapshot.data!;
+
+        if (event.line == -100) {
+          _hideOverlay();
+          return const SizedBox.shrink();
+        }
+
+        if (widget.isHoveringWord || _isHoveringPopup) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showOverlay(context, event);
+          });
+        } else {
+          _hideOverlay();
+        }
+
+        return const SizedBox.shrink();
+      },
+    );
   }
 
   void _handlePopupExit() {
@@ -94,56 +147,6 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
     }
 
     return totalHeight;
-  }
-
-  void _handleGlobalClick(PointerEvent event) {
-    if (event is PointerDownEvent) {
-      if (!_isHoveringPopup) {
-        EditorEventBus.emit(HoverEvent(
-          line: -100,
-          character: -100,
-          content: '',
-        ));
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<HoverEvent>(
-      stream: EditorEventBus.on<HoverEvent>(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) return const SizedBox.shrink();
-
-        final event = snapshot.data!;
-
-        if (_isHoveringPopup) {
-          return Stack(
-            children: [
-              _buildPopup(context, event),
-              if (event.diagnostics.isNotEmpty)
-                _buildDiagnosticsPopup(event.diagnostics, _popupLeft, _popupTop,
-                    _showDiagnosticsAbove, _popupHeight),
-            ],
-          );
-        }
-
-        if (event.line == -100) return const SizedBox.shrink();
-
-        if (!widget.isHoveringWord && !_isHoveringPopup) {
-          return const SizedBox.shrink();
-        }
-
-        return Stack(
-          children: [
-            _buildPopup(context, event),
-            if (event.diagnostics.isNotEmpty)
-              _buildDiagnosticsPopup(event.diagnostics, _popupLeft, _popupTop,
-                  _showDiagnosticsAbove, _popupHeight),
-          ],
-        );
-      },
-    );
   }
 
   Widget _buildPopup(BuildContext context, HoverEvent event) {
