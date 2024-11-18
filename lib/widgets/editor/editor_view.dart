@@ -10,6 +10,7 @@ import 'package:crystal/models/editor/search_match.dart';
 import 'package:crystal/models/git_models.dart';
 import 'package:crystal/models/global_hover_state.dart';
 import 'package:crystal/models/text_range.dart';
+import 'package:crystal/models/word_info.dart';
 import 'package:crystal/services/command_palette_service.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_event_bus.dart';
@@ -97,7 +98,7 @@ class EditorViewState extends State<EditorView> {
   Timer? _hoverTimer;
   bool _isHoveringPopup = false;
   bool _isHoveringWord = false;
-  String _lastHoveredWord = '';
+  WordInfo? _lastHoveredWord;
   bool _isTyping = false;
   Offset? _hoverPosition;
   TextRange? _hoveredWordRange;
@@ -127,7 +128,6 @@ class EditorViewState extends State<EditorView> {
       setState(() {
         _isHoveringPopup = false;
         _isHoveringWord = false;
-        _lastHoveredWord = '';
       });
       // Force emit a hover clear event
       EditorEventBus.emit(HoverEvent(
@@ -405,74 +405,62 @@ class EditorViewState extends State<EditorView> {
                       }
                     },
                     onHover: (PointerHoverEvent event) {
-                      if (!_isHoveringPopup && !_isTyping) {
-                        final position = _getPositionFromOffset(Offset(
-                          event.localPosition.dx +
-                              widget.horizontalScrollController.offset,
-                          event.localPosition.dy +
-                              widget.verticalScrollController.offset,
-                        ));
+                      if (_isTyping) return;
 
-                        _wordHighlightTimer?.cancel();
+                      final cursorPosition = _getPositionFromOffset(Offset(
+                        event.localPosition.dx +
+                            widget.horizontalScrollController.offset,
+                        event.localPosition.dy +
+                            widget.verticalScrollController.offset,
+                      ));
+
+                      final wordInfo = _getWordInfoAtPosition(cursorPosition);
+                      if ((_lastHoveredWord?.word == wordInfo?.word &&
+                          _lastHoveredWord?.startColumn ==
+                              wordInfo?.startColumn &&
+                          _lastHoveredWord?.startLine == wordInfo?.startLine)) {
+                        return;
+                      }
+
+                      if (wordInfo == null) {
                         _wordHighlightTimer =
-                            Timer(const Duration(milliseconds: 250), () {
+                            Timer(const Duration(milliseconds: 100), () {
                           if (mounted) {
-                            setState(() {
-                              _hoveredWordRange = widget.state.getWordRangeAt(
-                                  position.line, position.column);
-                            });
+                            _handleEmptyWord();
                           }
                         });
+                        return;
+                      }
 
-                        final word = widget.state
-                            .getWordAt(position.line, position.column);
+                      _lastHoveredWord = wordInfo;
+                      setState(() {
+                        _hoverPosition = event.localPosition;
+                      });
+
+                      _wordHighlightTimer?.cancel();
+
+                      _wordHighlightTimer =
+                          Timer(const Duration(milliseconds: 300), () {
+                        if (!mounted) return;
 
                         setState(() {
-                          _hoverPosition = event.localPosition;
+                          _isHoveringWord = true;
+                          _hoveredWordRange = TextRange(
+                            start: Position(
+                                line: cursorPosition.line,
+                                column: wordInfo.startColumn),
+                            end: Position(
+                                line: cursorPosition.line,
+                                column: wordInfo.endColumn),
+                          );
                         });
 
-                        if (_lastHoveredWord != word) {
-                          _lastHoveredWord = word;
-                          if (word.isNotEmpty) {
-                            _isHoveringWord = true;
-                            widget.state
-                                .showHover(position.line, position.column);
+                        widget.state.showDiagnostics(
+                            cursorPosition.line, wordInfo.startColumn);
 
-                            // Cancel any existing timer
-                            _wordHighlightTimer?.cancel();
-
-                            // Start a new timer
-                            _wordHighlightTimer =
-                                Timer(const Duration(milliseconds: 250), () {
-                              if (mounted) {
-                                setState(() {
-                                  _hoveredWordRange = TextRange(
-                                    start: Position(
-                                        line: position.line,
-                                        column: position.column - word.length),
-                                    end: Position(
-                                        line: position.line,
-                                        column: position.column),
-                                  );
-                                });
-                              }
-                            });
-                          } else {
-                            _isHoveringWord = false;
-                            EditorEventBus.emit(HoverEvent(
-                              line: -100,
-                              character: -100,
-                              content: '',
-                            ));
-
-                            // Cancel the timer if the word is empty
-                            _wordHighlightTimer?.cancel();
-                            setState(() {
-                              _hoveredWordRange = null;
-                            });
-                          }
-                        }
-                      }
+                        widget.state.showHover(
+                            cursorPosition.line, wordInfo.startColumn);
+                      });
                     },
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
@@ -563,7 +551,7 @@ class EditorViewState extends State<EditorView> {
                                           col: widget.col,
                                           globalHoverState:
                                               widget.globalHoverState,
-                                        ),
+                                        )
                                       ],
                                     ),
                                   ),
@@ -591,6 +579,38 @@ class EditorViewState extends State<EditorView> {
               ),
           ]);
         });
+  }
+
+  void _handleEmptyWord() {
+    _isHoveringWord = false;
+    EditorEventBus.emit(HoverEvent(
+      line: -100,
+      character: -100,
+      content: '',
+    ));
+
+    setState(() {
+      _hoveredWordRange = null;
+      _lastHoveredWord = null;
+    });
+  }
+
+  WordInfo? _getWordInfoAtPosition(Position position) {
+    final line = widget.state.buffer.getLine(position.line);
+    final wordBoundaryPattern = RegExp(r'[a-zA-Z0-9_]+');
+    final matches = wordBoundaryPattern.allMatches(line);
+
+    for (final match in matches) {
+      if (match.start <= position.column && position.column <= match.end) {
+        return WordInfo(
+          word: line.substring(match.start, match.end),
+          startColumn: match.start,
+          endColumn: match.end,
+          startLine: position.line,
+        );
+      }
+    }
+    return null;
   }
 
   Position _getPositionFromOffset(Offset offset) {

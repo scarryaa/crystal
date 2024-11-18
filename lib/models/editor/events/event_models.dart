@@ -20,6 +20,20 @@ class CursorEvent extends EditorEvent {
   });
 }
 
+class DiagnosticsEvent extends EditorEvent {
+  final List<Diagnostic> diagnostics;
+  final int line;
+  final int character;
+  final TextRange? diagnosticRange;
+
+  DiagnosticsEvent({
+    required this.diagnostics,
+    required this.line,
+    required this.character,
+    this.diagnosticRange,
+  });
+}
+
 class HoverEvent extends EditorEvent {
   final int line;
   final int character;
@@ -56,13 +70,6 @@ class WarningEvent extends EditorEvent {
     this.data,
     this.source,
   });
-}
-
-class DiagnosticsEvent extends EditorEvent {
-  final String uri;
-  final List<Diagnostic> diagnostics;
-
-  DiagnosticsEvent({required this.uri, required this.diagnostics});
 }
 
 class ClipboardEvent extends EditorEvent {

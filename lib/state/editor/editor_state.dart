@@ -274,45 +274,53 @@ class EditorState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void showHover(int line, int character) {
+  Future<void> showHover(int line, int character) async {
     final currentPosition = Position(line: line, column: character);
     if (_lastHoverPosition != currentPosition && !_isHoveringPopup) {
       _hoverTimer?.cancel();
       _lastHoverPosition = currentPosition;
-      _hoverTimer = Timer(const Duration(milliseconds: 300), () async {
-        if (_lastHoverPosition == currentPosition && !_isHoveringPopup) {
-          // Immediately get and emit diagnostics
+      if (_lastHoverPosition == currentPosition && !_isHoveringPopup) {
+        await showDiagnostics(line, character);
+
+        final response = await lspService.getHover(line, character);
+        if (!_isHoveringPopup) {
+          String content = '';
+          if (response != null) {
+            content = response['contents']?['value'] ?? '';
+          }
+
           final matchingDiagnostics =
               _getDiagnosticsForPosition(line, character);
-          _emitHoverEvent(line, character, '', matchingDiagnostics);
+          final rustContent = _processRustDiagnostics(matchingDiagnostics);
 
-          // Asynchronously fetch hover information
-          final response = await lspService.getHover(line, character);
-          if (_lastHoverPosition == currentPosition && !_isHoveringPopup) {
-            String content = '';
-            if (response != null) {
-              content = response['contents']?['value'] ?? '';
-            }
-
-            // Process Rust-specific diagnostics
-            final rustDiagnostics = matchingDiagnostics
-                .where((d) =>
-                    d.source?.toLowerCase() == 'rust-analyzer' ||
-                    d.source?.toLowerCase() == 'rustc')
-                .toList();
-
-            if (rustDiagnostics.isNotEmpty) {
-              final rustContent = formatRustDiagnostics(rustDiagnostics);
-              content =
-                  content.isEmpty ? rustContent : '$content\n\n$rustContent';
-            }
-
-            // Emit updated hover event with both hover content and diagnostics
-            _emitHoverEvent(line, character, content, matchingDiagnostics);
+          if (rustContent.isNotEmpty) {
+            content =
+                content.isEmpty ? rustContent : '$content\n\n$rustContent';
           }
+          if (content.isEmpty) return;
+
+          // Emit updated hover event with both hover content and diagnostics
+          _emitHoverEvent(line, character, content, matchingDiagnostics);
         }
-      });
+      }
     }
+  }
+
+  Future<void> showDiagnostics(int line, int character) async {
+    final matchingDiagnostics = _getDiagnosticsForPosition(line, character);
+    _emitHoverEvent(line, character, '', matchingDiagnostics);
+  }
+
+  String _processRustDiagnostics(List<lsp_models.Diagnostic> diagnostics) {
+    final rustDiagnostics = diagnostics
+        .where((d) =>
+            d.source?.toLowerCase() == 'rust-analyzer' ||
+            d.source?.toLowerCase() == 'rustc')
+        .toList();
+
+    return rustDiagnostics.isNotEmpty
+        ? formatRustDiagnostics(rustDiagnostics)
+        : '';
   }
 
   List<lsp_models.Diagnostic> _getDiagnosticsForPosition(
