@@ -85,7 +85,6 @@ class EditorState extends ChangeNotifier {
   List<lsp_models.Diagnostic> _diagnostics = [];
   List<lsp_models.Diagnostic> get diagnostics => _diagnostics;
   bool _isHoveringPopup = false;
-  String? _lastHoveredWord;
 
   EditorState({
     required this.resetGutterScroll,
@@ -277,7 +276,6 @@ class EditorState extends ChangeNotifier {
 
   void showHover(int line, int character) {
     final currentPosition = Position(line: line, column: character);
-
     if (_lastHoverPosition != currentPosition && !_isHoveringPopup) {
       _hoverTimer?.cancel();
       _lastHoverPosition = currentPosition;
@@ -285,28 +283,100 @@ class EditorState extends ChangeNotifier {
         if (_lastHoverPosition == currentPosition && !_isHoveringPopup) {
           final response = await lspService.getHover(line, character);
 
-          // Filter diagnostics that match the current position
+          // Expand the search range slightly to catch nearby diagnostics
           final matchingDiagnostics = _diagnostics.where((diagnostic) {
             final range = diagnostic.range;
-            return line >= range.start.line &&
-                line <= range.end.line &&
-                character >= range.start.character &&
-                character <= range.end.character;
+            return line >= range.start.line - 1 &&
+                line <= range.end.line + 1 &&
+                character >= range.start.character - 1 &&
+                character <= range.end.character + 1;
           }).toList();
 
+          String content = '';
           if (response != null) {
-            var content = response['contents']?['value'];
-            if (content == null || content.isEmpty) content = '';
-
-            EditorEventBus.emit(HoverEvent(
-              content: content,
-              line: line,
-              character: character,
-              diagnostics: matchingDiagnostics,
-            ));
+            content = response['contents']?['value'] ?? '';
           }
+
+          TextRange? diagnosticRange;
+          if (matchingDiagnostics.isNotEmpty) {
+            // Find the diagnostic with the smallest range containing the hover position
+            final closestDiagnostic = matchingDiagnostics.reduce((a, b) {
+              final aSize = (a.range.end.character - a.range.start.character) +
+                  (a.range.end.line - a.range.start.line) * 1000;
+              final bSize = (b.range.end.character - b.range.start.character) +
+                  (b.range.end.line - b.range.start.line) * 1000;
+              return aSize < bSize ? a : b;
+            });
+
+            diagnosticRange = TextRange(
+              start: Position(
+                  line: closestDiagnostic.range.start.line,
+                  column: closestDiagnostic.range.start.character),
+              end: Position(
+                  line: closestDiagnostic.range.end.line,
+                  column: closestDiagnostic.range.end.character),
+            );
+          }
+
+          EditorEventBus.emit(HoverEvent(
+            content: content,
+            line: line,
+            character: character,
+            diagnostics: matchingDiagnostics,
+            diagnosticRange: diagnosticRange,
+          ));
         }
       });
+    }
+  }
+
+  String formatRustDiagnostics(List<lsp_models.Diagnostic> diagnostics) {
+    final buffer = StringBuffer();
+    buffer.writeln('```rust-analyzer');
+    for (final diagnostic in diagnostics) {
+      // Format range information
+      final startLine =
+          diagnostic.range.start.line + 1; // Convert to 1-based line numbers
+      final startChar = diagnostic.range.start.character + 1;
+      final location = 'line $startLine, column $startChar';
+
+      final severity = _getSeverityLabel(diagnostic.severity);
+      final message = diagnostic.message;
+      final code = diagnostic.code;
+      final source = diagnostic.source;
+      final href = diagnostic.codeDescription?.href;
+
+      // Write formatted diagnostic
+      buffer.writeln('$severity[$location]: $message');
+      if (code != null) {
+        buffer.writeln('Code: $code');
+      }
+      if (source != null) {
+        buffer.writeln('Source: $source');
+      }
+      if (href != null) {
+        buffer.writeln('Documentation: $href');
+      }
+      buffer.writeln();
+    }
+
+    buffer.writeln('```');
+    return buffer.toString();
+  }
+
+  String _getSeverityLabel(lsp_models.DiagnosticSeverity severity) {
+    final int severityValue = severity.index + 1;
+    switch (severityValue) {
+      case 1:
+        return 'error';
+      case 2:
+        return 'warning';
+      case 3:
+        return 'info';
+      case 4:
+        return 'hint';
+      default:
+        return 'unknown'; // fallback
     }
   }
 

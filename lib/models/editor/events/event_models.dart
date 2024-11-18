@@ -1,6 +1,7 @@
 import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/lsp_models.dart';
 import 'package:crystal/models/selection.dart';
+import 'package:crystal/models/text_range.dart';
 import 'package:crystal/services/editor/editor_event_bus.dart';
 
 class CursorEvent extends EditorEvent {
@@ -24,12 +25,14 @@ class HoverEvent extends EditorEvent {
   final int character;
   final String content;
   final List<Diagnostic> diagnostics;
+  final TextRange? diagnosticRange;
 
   HoverEvent({
     required this.line,
     required this.character,
     required this.content,
     this.diagnostics = const [],
+    this.diagnosticRange,
   });
 }
 

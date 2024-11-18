@@ -55,6 +55,8 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   final double _diagnosticItemPadding = 8.0;
   final double _diagnosticIconSize = 16.0;
   final double _diagnosticMinHeight = 36.0;
+  bool _showDiagnosticsPopup = false;
+  bool _showHoverInfoPopup = false;
 
   @override
   void initState() {
@@ -161,6 +163,29 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
         cursorY +
         widget.editorLayoutService.config.lineHeight;
 
+    if (event.diagnosticRange != null) {
+      final startPosition =
+          widget.editorLayoutService.getPositionForLineAndColumn(
+        event.diagnosticRange!.start.line,
+        event.diagnosticRange!.start.column,
+      );
+      final endPosition =
+          widget.editorLayoutService.getPositionForLineAndColumn(
+        event.diagnosticRange!.end.line,
+        event.diagnosticRange!.end.column,
+      );
+
+      infoPopupLeft = globalPosition.dx + startPosition.dx;
+      infoPopupTop = globalPosition.dy +
+          startPosition.dy +
+          widget.editorLayoutService.config.lineHeight;
+
+      // Adjust for very small ranges (e.g., single character)
+      if (endPosition.dx - startPosition.dx < 10) {
+        infoPopupLeft -= 5; // Center the popup over the character
+      }
+    }
+
     // Adjust horizontal position if it goes off-screen
     if (infoPopupLeft + maxWidth > screenSize.width) {
       infoPopupLeft = screenSize.width - maxWidth - 10;
@@ -176,53 +201,43 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
       _diagnosticsPopupTop = _showDiagnosticsAbove
           ? infoPopupTop - diagnosticsHeight - spaceBetweenPopups
           : infoPopupTop + actualHeight + spaceBetweenPopups;
+    }
 
-      if (_diagnosticsPopupTop < 0) {
-        _diagnosticsPopupTop = infoPopupTop + actualHeight + spaceBetweenPopups;
-      } else if (_diagnosticsPopupTop + diagnosticsHeight > screenSize.height) {
-        _diagnosticsPopupTop =
-            infoPopupTop - diagnosticsHeight - spaceBetweenPopups;
-      }
+    if (_diagnosticsPopupTop < 0) {
+      _diagnosticsPopupTop = infoPopupTop + actualHeight + spaceBetweenPopups;
+    } else if (_diagnosticsPopupTop + diagnosticsHeight > screenSize.height) {
+      _diagnosticsPopupTop =
+          infoPopupTop - diagnosticsHeight - spaceBetweenPopups;
+    }
 
-      _overlayEntry = OverlayEntry(
-        builder: (BuildContext context) => Stack(
-          children: [
-            Positioned(
-              left: infoPopupLeft,
-              top: infoPopupTop,
-              child: _buildPopup(context, event),
-            ),
-            _buildDiagnosticsPopup(
-              diagnostics,
-              infoPopupLeft,
-              _diagnosticsPopupTop,
-              _showDiagnosticsAbove,
-              maxHeight,
-            ),
-          ],
-        ),
-      );
-    } else if (hasContent) {
-      _overlayEntry = OverlayEntry(
-        builder: (BuildContext context) => Positioned(
+    List<Widget> overlayWidgets = [];
+
+    if (_showHoverInfoPopup) {
+      overlayWidgets.add(
+        Positioned(
           left: infoPopupLeft,
           top: infoPopupTop,
           child: _buildPopup(context, event),
         ),
       );
-    } else if (diagnostics.isNotEmpty) {
-      _overlayEntry = OverlayEntry(
-        builder: (BuildContext context) => _buildDiagnosticsPopup(
-          diagnostics,
+    }
+
+    if (_showDiagnosticsPopup) {
+      overlayWidgets.add(
+        _buildDiagnosticsPopup(
+          event.diagnostics,
           infoPopupLeft,
-          infoPopupTop,
+          _showHoverInfoPopup ? _diagnosticsPopupTop : infoPopupTop,
           _showDiagnosticsAbove,
-          0,
+          _showHoverInfoPopup ? maxHeight : 0,
         ),
       );
     }
 
-    if (_overlayEntry != null) {
+    if (overlayWidgets.isNotEmpty) {
+      _overlayEntry = OverlayEntry(
+        builder: (BuildContext context) => Stack(children: overlayWidgets),
+      );
       Overlay.of(context).insert(_overlayEntry!);
     }
   }
@@ -251,7 +266,16 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
         }
 
         final diagnostics = event.diagnostics;
-        if (diagnostics.isNotEmpty) {
+        final hasHoverContent = event.content.trim().isNotEmpty;
+        final hasDiagnosticRange = event.diagnosticRange != null;
+
+        _showDiagnosticsPopup = diagnostics.isNotEmpty;
+        _showHoverInfoPopup = hasHoverContent || hasDiagnosticRange;
+
+        _showDiagnosticsPopup = diagnostics.isNotEmpty;
+        _showHoverInfoPopup = hasHoverContent;
+
+        if (_showDiagnosticsPopup) {
           _calculateDiagnosticsHeight(diagnostics);
         }
 
@@ -275,6 +299,7 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
           line: -100,
           character: -100,
           content: '',
+          diagnostics: [],
         ));
       }
     });
@@ -361,42 +386,62 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: RawScrollbar(
+                    child: RawScrollbar(
+                  controller: _scrollController,
+                  thickness: scrollbarWidth,
+                  radius: const Radius.circular(0),
+                  thumbVisibility: true,
+                  child: SingleChildScrollView(
                     controller: _scrollController,
-                    thickness: scrollbarWidth,
-                    radius: const Radius.circular(0),
-                    thumbVisibility: true,
-                    child: SingleChildScrollView(
-                      controller: _scrollController,
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        child: MarkdownBody(
-                          data: event.content,
-                          styleSheet: MarkdownStyleSheet(
-                            p: TextStyle(
-                              color: theme.text.withOpacity(0.9),
-                              fontSize: 13,
-                              fontFamily:
-                                  widget.editorConfigService.config.fontFamily,
-                            ),
-                            code: TextStyle(
-                              color: theme.text.withOpacity(0.9),
-                              fontSize: 13,
-                              fontFamily:
-                                  widget.editorConfigService.config.fontFamily,
-                              backgroundColor: theme.text.withOpacity(0.1),
-                            ),
-                            codeblockDecoration: BoxDecoration(
-                              color: theme.text.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                          selectable: true,
-                        ),
-                      ),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (event.content.isNotEmpty)
+                              MarkdownBody(
+                                data: event.content,
+                                styleSheet: MarkdownStyleSheet(
+                                  p: TextStyle(
+                                    color: theme.text.withOpacity(0.9),
+                                    fontSize: 13,
+                                    fontFamily: widget
+                                        .editorConfigService.config.fontFamily,
+                                  ),
+                                  code: TextStyle(
+                                    color: theme.text.withOpacity(0.9),
+                                    fontSize: 13,
+                                    fontFamily: widget
+                                        .editorConfigService.config.fontFamily,
+                                    backgroundColor:
+                                        theme.text.withOpacity(0.1),
+                                  ),
+                                  codeblockDecoration: BoxDecoration(
+                                    color: theme.text.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ),
+                                selectable: true,
+                              ),
+                            if (event.diagnostics.isNotEmpty)
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: event.diagnostics.map((diagnostic) {
+                                  return Text(
+                                    diagnostic.message,
+                                    style: TextStyle(
+                                      color: theme.error,
+                                      fontSize: 13,
+                                      fontFamily: widget.editorConfigService
+                                          .config.fontFamily,
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                          ]),
                     ),
                   ),
-                )
+                ))
               ],
             ),
           ),
