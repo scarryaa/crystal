@@ -59,8 +59,6 @@ class _AppState extends State<App> {
   Future<void> _loadConfig() async {
     if (!mounted) return;
 
-    await widget.editorConfigService.loadConfig();
-
     setState(() {
       if (widget.editorConfigService.config.currentDirectory != null) {
         widget.fileService.rootDirectory =

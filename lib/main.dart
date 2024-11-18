@@ -73,7 +73,7 @@ Future<bool?> showUpdateDialog(String version) async {
   return completer.future;
 }
 
-void main(List<String> arguments) {
+void main(List<String> arguments) async {
   Logger.root.level = Level.ALL;
   Logger.root.onRecord.listen((record) {
     debugPrint('${record.level.name}: ${record.time}: ${record.message}');
@@ -95,14 +95,16 @@ void main(List<String> arguments) {
 
     // Initialize window first
     await windowManager.ensureInitialized();
-    if (Platform.isWindows) {
-      await windowManager.waitUntilReadyToShow();
-      await windowManager.setSize(const Size(1280, 720));
-      await windowManager.center();
-      await windowManager.show();
-    } else if (!isWindowInitialized) {
-      await setupWindow();
-      isWindowInitialized = true;
+    try {
+      if (Platform.isWindows) {
+        await windowManager.waitUntilReadyToShow();
+        await setupWindow();
+      } else if (!isWindowInitialized) {
+        await setupWindow();
+        isWindowInitialized = true;
+      }
+    } catch (e) {
+      log.severe('Window setup failed: $e');
     }
 
     // Normal app startup

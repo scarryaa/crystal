@@ -8,6 +8,7 @@ import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/services/editor/editor_theme_service.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
+import 'package:path/path.dart' as path;
 
 class EditorConfigService extends ChangeNotifier {
   StreamSubscription<FileSystemEvent>? _configFileWatcher;
@@ -53,46 +54,113 @@ class EditorConfigService extends ChangeNotifier {
 
   static Future<EditorConfigService> create() async {
     final service = EditorConfigService._();
-    await service.loadConfig();
-    await service.saveDefaultConfig();
-    await service._watchConfigFile();
-    return service;
+
+    try {
+      // Ensure config directory exists first
+      final configPath = await ConfigPaths.getConfigFilePath();
+      final directory = Directory(path.dirname(configPath));
+      if (!await directory.exists()) {
+        await directory.create(recursive: true);
+      }
+
+      // Initialize in sequence
+      await service._ensureConfigDirectoryExists();
+      await service.loadConfig();
+      await service.saveDefaultConfig();
+
+      // Add delay before watching
+      await Future.delayed(const Duration(milliseconds: 100));
+      await service._watchConfigFile();
+
+      return service;
+    } catch (e, stack) {
+      service._logger.severe('Error creating EditorConfigService: $e\n$stack');
+      if (!service._isLoaded) {
+        await service._setDefaultConfig();
+      }
+      return service;
+    }
   }
 
   @override
   void dispose() {
-    _configFileWatcher?.cancel();
+    try {
+      _configFileWatcher?.cancel();
+      _configFileWatcher = null;
+    } catch (e) {
+      _logger.warning('Error disposing config watcher: $e');
+    }
     super.dispose();
   }
 
   Future<void> loadConfig() async {
     try {
+      await _ensureConfigDirectoryExists();
       final configFile = File(await ConfigPaths.getConfigFilePath());
+
+      if (!await configFile.exists()) {
+        _logger.info('Config file not found, creating default');
+        await _setDefaultConfig();
+        return;
+      }
+
       config = await _loadConfigFromFile(configFile);
       await _loadTheme();
       _isLoaded = true;
       notifyListeners();
-    } catch (e) {
-      _logger.warning('Error loading config: $e');
+    } catch (e, stack) {
+      _logger.severe('Error loading config: $e\n$stack');
       if (!_isLoaded) {
         await _setDefaultConfig();
       }
     }
   }
 
-  Future<void> _watchConfigFile() async {
-    final configPath = await ConfigPaths.getConfigFilePath();
-    _configFileWatcher?.cancel();
-
-    _configFileWatcher = File(configPath)
-        .watch(events: FileSystemEvent.modify)
-        .listen((FileSystemEvent event) {
-      if (event.type == FileSystemEvent.modify) {
-        Future.delayed(const Duration(milliseconds: 1), () async {
-          await loadConfig();
-        });
+  Future<void> _ensureConfigDirectoryExists() async {
+    try {
+      final configPath = await ConfigPaths.getConfigFilePath();
+      final directory = Directory(path.dirname(configPath));
+      if (!await directory.exists()) {
+        await directory.create(recursive: true);
       }
-    });
+
+      final configFile = File(configPath);
+      if (!await configFile.exists()) {
+        await configFile.writeAsString(json.encode(_defaultConfig));
+      }
+    } catch (e) {
+      _logger.severe('Error creating config directory: $e');
+    }
+  }
+
+  Future<void> _watchConfigFile() async {
+    try {
+      // Cancel existing watcher with delay
+      if (_configFileWatcher != null) {
+        await _configFileWatcher!.cancel();
+        await Future.delayed(const Duration(milliseconds: 100));
+        _configFileWatcher = null;
+      }
+
+      final configPath = await ConfigPaths.getConfigFilePath();
+      final configFile = File(configPath);
+
+      // Don't set up watcher in debug mode on macOS
+      if (Platform.isMacOS &&
+          const bool.fromEnvironment('dart.vm.product') == false) {
+        _logger.info('Skipping file watcher setup in debug mode on macOS');
+        return;
+      }
+
+      _configFileWatcher =
+          configFile.watch(events: FileSystemEvent.modify).listen((event) {
+        if (event.type == FileSystemEvent.modify) {
+          Future.delayed(const Duration(milliseconds: 100), loadConfig);
+        }
+      });
+    } catch (e) {
+      _logger.warning('Error setting up file watcher: $e');
+    }
   }
 
   Future<EditorConfig> _loadConfigFromFile(File configFile) async {
@@ -155,6 +223,7 @@ class EditorConfigService extends ChangeNotifier {
       isTerminalVisible: _defaultConfig['isTerminalVisible'] as bool,
       currentDirectory: _defaultConfig['currentDirectory'] as String,
       tabWidth: _defaultConfig['tabWidth'] as double,
+      terminalHeight: _defaultConfig['terminalHeight'] as double,
     );
   }
 
@@ -170,6 +239,10 @@ class EditorConfigService extends ChangeNotifier {
   Future<void> saveConfig() async {
     try {
       final configPath = await ConfigPaths.getConfigFilePath();
+      final directory = Directory(path.dirname(configPath));
+      if (!await directory.exists()) {
+        await directory.create(recursive: true);
+      }
       final configData = {
         'fontSize': config.fontSize,
         'uiFontSize': config.uiFontSize,
