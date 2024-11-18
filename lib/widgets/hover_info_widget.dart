@@ -42,11 +42,8 @@ class HoverInfoWidget extends StatefulWidget {
 
 class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   final ScrollController _scrollController = ScrollController();
-  final double _popupLeft = 0;
-  final double _popupTop = 0;
   bool _isHoveringInfoPopup = false;
   bool _isHoveringDiagnosticsPopup = false;
-  final double _popupHeight = 0;
   double diagnosticsHeight = 0;
   final bool _showDiagnosticsAbove = true;
   final double spaceBetweenPopups = 8.0;
