@@ -144,9 +144,20 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
 
     if (!hasContent && diagnostics.isEmpty) return;
 
-    final screenSize = MediaQuery.of(context).size;
     const maxWidth = 400.0;
     const maxHeight = 300.0;
+    final screenSize = MediaQuery.of(context).size;
+
+    // Calculate actual content height
+    final contentStyle = TextStyle(
+      fontSize: 13,
+      fontFamily: widget.editorConfigService.config.fontFamily,
+    );
+    double actualHeight = _measureContentHeight(
+        [event.content],
+        maxWidth - 24, // Account for padding
+        contentStyle);
+    actualHeight = min(actualHeight, maxHeight);
 
     double infoPopupLeft = globalPosition.dx + cursorX;
     double infoPopupTop = globalPosition.dy +
@@ -158,19 +169,19 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
       infoPopupLeft = screenSize.width - maxWidth - 10;
     }
 
-    // Adjust vertical position if it goes off-screen
-    if (infoPopupTop + maxHeight > screenSize.height) {
-      infoPopupTop = globalPosition.dy + cursorY - maxHeight - 10;
+    // Adjust vertical position if it goes off-screen using actual height
+    if (infoPopupTop + actualHeight > screenSize.height) {
+      infoPopupTop = globalPosition.dy + cursorY - actualHeight - 10;
     }
 
+    // Adjust diagnostics positioning using actual height instead of maxHeight
     if (hasContent && diagnostics.isNotEmpty) {
       _diagnosticsPopupTop = _showDiagnosticsAbove
           ? infoPopupTop - diagnosticsHeight - spaceBetweenPopups
-          : infoPopupTop + maxHeight + spaceBetweenPopups;
+          : infoPopupTop + actualHeight + spaceBetweenPopups;
 
-      // Adjust diagnostics popup if it goes off-screen
       if (_diagnosticsPopupTop < 0) {
-        _diagnosticsPopupTop = infoPopupTop + maxHeight + spaceBetweenPopups;
+        _diagnosticsPopupTop = infoPopupTop + actualHeight + spaceBetweenPopups;
       } else if (_diagnosticsPopupTop + diagnosticsHeight > screenSize.height) {
         _diagnosticsPopupTop =
             infoPopupTop - diagnosticsHeight - spaceBetweenPopups;

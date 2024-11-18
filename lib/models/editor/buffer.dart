@@ -5,7 +5,6 @@ class Buffer extends ChangeNotifier {
   int _version = 1;
   List<String> _lines = [''];
   List<String> _originalLines = [''];
-  String _originalContent = '';
   final Map<int, int> _foldedRanges = {};
   bool _isDirty = false;
 
@@ -52,9 +51,6 @@ class Buffer extends ChangeNotifier {
   set isDirty(bool value) {
     if (_isDirty != value) {
       _isDirty = value;
-      if (!value) {
-        _originalContent = content;
-      }
       notifyListeners();
     }
   }
