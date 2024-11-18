@@ -281,53 +281,80 @@ class EditorState extends ChangeNotifier {
       _lastHoverPosition = currentPosition;
       _hoverTimer = Timer(const Duration(milliseconds: 300), () async {
         if (_lastHoverPosition == currentPosition && !_isHoveringPopup) {
+          // Immediately get and emit diagnostics
+          final matchingDiagnostics =
+              _getDiagnosticsForPosition(line, character);
+          _emitHoverEvent(line, character, '', matchingDiagnostics);
+
+          // Asynchronously fetch hover information
           final response = await lspService.getHover(line, character);
+          if (_lastHoverPosition == currentPosition && !_isHoveringPopup) {
+            String content = '';
+            if (response != null) {
+              content = response['contents']?['value'] ?? '';
+            }
 
-          // Expand the search range slightly to catch nearby diagnostics
-          final matchingDiagnostics = _diagnostics.where((diagnostic) {
-            final range = diagnostic.range;
-            return line >= range.start.line - 1 &&
-                line <= range.end.line + 1 &&
-                character >= range.start.character - 1 &&
-                character <= range.end.character + 1;
-          }).toList();
+            // Process Rust-specific diagnostics
+            final rustDiagnostics = matchingDiagnostics
+                .where((d) =>
+                    d.source?.toLowerCase() == 'rust-analyzer' ||
+                    d.source?.toLowerCase() == 'rustc')
+                .toList();
 
-          String content = '';
-          if (response != null) {
-            content = response['contents']?['value'] ?? '';
+            if (rustDiagnostics.isNotEmpty) {
+              final rustContent = formatRustDiagnostics(rustDiagnostics);
+              content =
+                  content.isEmpty ? rustContent : '$content\n\n$rustContent';
+            }
+
+            // Emit updated hover event with both hover content and diagnostics
+            _emitHoverEvent(line, character, content, matchingDiagnostics);
           }
-
-          TextRange? diagnosticRange;
-          if (matchingDiagnostics.isNotEmpty) {
-            // Find the diagnostic with the smallest range containing the hover position
-            final closestDiagnostic = matchingDiagnostics.reduce((a, b) {
-              final aSize = (a.range.end.character - a.range.start.character) +
-                  (a.range.end.line - a.range.start.line) * 1000;
-              final bSize = (b.range.end.character - b.range.start.character) +
-                  (b.range.end.line - b.range.start.line) * 1000;
-              return aSize < bSize ? a : b;
-            });
-
-            diagnosticRange = TextRange(
-              start: Position(
-                  line: closestDiagnostic.range.start.line,
-                  column: closestDiagnostic.range.start.character),
-              end: Position(
-                  line: closestDiagnostic.range.end.line,
-                  column: closestDiagnostic.range.end.character),
-            );
-          }
-
-          EditorEventBus.emit(HoverEvent(
-            content: content,
-            line: line,
-            character: character,
-            diagnostics: matchingDiagnostics,
-            diagnosticRange: diagnosticRange,
-          ));
         }
       });
     }
+  }
+
+  List<lsp_models.Diagnostic> _getDiagnosticsForPosition(
+      int line, int character) {
+    return _diagnostics.where((diagnostic) {
+      final range = diagnostic.range;
+      return line >= range.start.line - 1 &&
+          line <= range.end.line + 1 &&
+          character >= range.start.character - 1 &&
+          character <= range.end.character + 1;
+    }).toList();
+  }
+
+  void _emitHoverEvent(int line, int character, String content,
+      List<lsp_models.Diagnostic> diagnostics) {
+    TextRange? diagnosticRange;
+    if (diagnostics.isNotEmpty) {
+      final closestDiagnostic = diagnostics.reduce((a, b) {
+        final aSize = (a.range.end.character - a.range.start.character) +
+            (a.range.end.line - a.range.start.line) * 1000;
+        final bSize = (b.range.end.character - b.range.start.character) +
+            (b.range.end.line - b.range.start.line) * 1000;
+        return aSize < bSize ? a : b;
+      });
+
+      diagnosticRange = TextRange(
+        start: Position(
+            line: closestDiagnostic.range.start.line,
+            column: closestDiagnostic.range.start.character),
+        end: Position(
+            line: closestDiagnostic.range.end.line,
+            column: closestDiagnostic.range.end.character),
+      );
+    }
+
+    EditorEventBus.emit(HoverEvent(
+      content: content,
+      line: line,
+      character: character,
+      diagnostics: diagnostics,
+      diagnosticRange: diagnosticRange,
+    ));
   }
 
   String formatRustDiagnostics(List<lsp_models.Diagnostic> diagnostics) {

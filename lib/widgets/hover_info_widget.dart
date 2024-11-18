@@ -423,21 +423,6 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
                                 ),
                                 selectable: true,
                               ),
-                            if (event.diagnostics.isNotEmpty)
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: event.diagnostics.map((diagnostic) {
-                                  return Text(
-                                    diagnostic.message,
-                                    style: TextStyle(
-                                      color: theme.error,
-                                      fontSize: 13,
-                                      fontFamily: widget.editorConfigService
-                                          .config.fontFamily,
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
                           ]),
                     ),
                   ),
