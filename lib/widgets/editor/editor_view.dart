@@ -126,7 +126,7 @@ class EditorViewState extends State<EditorView> {
     EditorEventBus.on<TextEvent>().listen((_) {
       setState(() {
         _isHoveringPopup = false;
-        _isHoveringWord = false; // Add this line
+        _isHoveringWord = false;
         _lastHoveredWord = '';
       });
       // Force emit a hover clear event
@@ -189,7 +189,6 @@ class EditorViewState extends State<EditorView> {
     try {
       final blame = await widget.gitService.getBlame(widget.state.path);
       if (mounted) {
-        // Add mounted check for safety
         setState(() {
           blameInfo = blame;
         });
@@ -444,7 +443,7 @@ class EditorViewState extends State<EditorView> {
 
                             // Start a new timer
                             _wordHighlightTimer =
-                                Timer(const Duration(milliseconds: 300), () {
+                                Timer(const Duration(milliseconds: 250), () {
                               if (mounted) {
                                 setState(() {
                                   _hoveredWordRange = TextRange(

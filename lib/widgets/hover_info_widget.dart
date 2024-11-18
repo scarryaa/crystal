@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:crystal/models/editor/events/event_models.dart';
@@ -7,6 +8,7 @@ import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_event_bus.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
+import 'package:crystal/state/popup_state.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
@@ -42,35 +44,26 @@ class HoverInfoWidget extends StatefulWidget {
 
 class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   final ScrollController _scrollController = ScrollController();
+  final PopupState _popupState = PopupState();
+  OverlayEntry? _overlayEntry;
+  Timer? _hoverDebounceTimer;
+  String _lastHoveredWord = '';
   bool _isHoveringInfoPopup = false;
   bool _isHoveringDiagnosticsPopup = false;
   double diagnosticsHeight = 0;
   final bool _showDiagnosticsAbove = true;
   final double spaceBetweenPopups = 8.0;
   double _diagnosticsPopupTop = 0;
-  OverlayEntry? _overlayEntry;
-  String _lastHoveredWord = '';
   bool _isMouseDown = false;
-  double _diagnosticsContentHeight = 0;
-  final double _diagnosticItemPadding = 8.0;
-  final double _diagnosticIconSize = 16.0;
+  final double _diagnosticsContentHeight = 0;
   final double _diagnosticMinHeight = 36.0;
-  bool _showDiagnosticsPopup = false;
-  bool _showHoverInfoPopup = false;
 
   @override
   void initState() {
     super.initState();
     widget.globalHoverState.addListener(_onGlobalHoverStateChanged);
-    EditorEventBus.on<TextEvent>().listen((_) {
-      _hideOverlay();
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        GestureBinding.instance.pointerRouter
-            .addGlobalRoute(_handleGlobalClick);
-      }
-    });
+    EditorEventBus.on<TextEvent>().listen(_handleTextEvent);
+    WidgetsBinding.instance.addPostFrameCallback(_addGlobalClickListener);
   }
 
   void _onGlobalHoverStateChanged() {
@@ -79,42 +72,24 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
     }
   }
 
-  void _handleGlobalClick(PointerEvent event) {
-    if (event is PointerDownEvent) {
-      // Check if we're hovering over either popup
-      if (_overlayEntry != null &&
-          (_isHoveringDiagnosticsPopup || _isHoveringInfoPopup)) {
-        // Don't hide if we're in the popups
-        return;
-      }
-      _hideOverlay();
+  void _handleTextEvent(_) {
+    _hideOverlay();
+  }
+
+  void _addGlobalClickListener(_) {
+    if (mounted) {
+      GestureBinding.instance.pointerRouter.addGlobalRoute(_handleGlobalClick);
     }
   }
 
-  void _calculateDiagnosticsHeight(List<Diagnostic> diagnostics) {
-    const double maxDiagnosticsHeight = 200.0;
-
-    // Calculate exact content height based on text wrapping
-    _diagnosticsContentHeight = diagnostics.fold(0, (height, diagnostic) {
-      final textPainter = TextPainter(
-        text: TextSpan(
-          text: diagnostic.message,
-          style: TextStyle(
-            fontSize: 12,
-            fontFamily: widget.editorConfigService.config.fontFamily,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      );
-
-      // Account for container width minus padding and icon
-      textPainter.layout(maxWidth: 400 - 24 - _diagnosticIconSize - 8);
-      return height +
-          max(_diagnosticMinHeight,
-              textPainter.height + _diagnosticItemPadding);
-    });
-
-    diagnosticsHeight = min(_diagnosticsContentHeight, maxDiagnosticsHeight);
+  void _handleGlobalClick(PointerEvent event) {
+    if (event is PointerDownEvent) {
+      if (_overlayEntry != null &&
+          (!_popupState.isHoveringDiagnosticsPopup &&
+              !_popupState.isHoveringInfoPopup)) {
+        _hideOverlay();
+      }
+    }
   }
 
   void _showOverlay(BuildContext context, HoverEvent event) {
@@ -128,13 +103,12 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
     final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
 
-    _hideOverlay();
-
     final Offset globalPosition = renderBox.localToGlobal(Offset.zero);
     final position = widget.editorLayoutService.getPositionForLineAndColumn(
       event.line,
       event.character,
     );
+
     final cursorX = position.dx;
     final cursorY = position.dy;
 
@@ -212,7 +186,7 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
 
     List<Widget> overlayWidgets = [];
 
-    if (_showHoverInfoPopup) {
+    if (_popupState.showHoverInfoPopup) {
       overlayWidgets.add(
         Positioned(
           left: infoPopupLeft,
@@ -222,14 +196,14 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
       );
     }
 
-    if (_showDiagnosticsPopup) {
+    if (_popupState.showDiagnosticsPopup) {
       overlayWidgets.add(
         _buildDiagnosticsPopup(
           event.diagnostics,
           infoPopupLeft,
-          _showHoverInfoPopup ? _diagnosticsPopupTop : infoPopupTop,
+          _popupState.showHoverInfoPopup ? _diagnosticsPopupTop : infoPopupTop,
           _showDiagnosticsAbove,
-          _showHoverInfoPopup ? maxHeight : 0,
+          _popupState.showHoverInfoPopup ? maxHeight : 0,
         ),
       );
     }
@@ -245,6 +219,8 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   void _hideOverlay() {
     _overlayEntry?.remove();
     _overlayEntry = null;
+    _popupState.setShowHoverInfoPopup(false);
+    _popupState.setShowDiagnosticsPopup(false);
   }
 
   @override
@@ -257,8 +233,8 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
         final event = snapshot.data!;
         if (event.line == -100 ||
             !widget.globalHoverState.isActive(widget.row, widget.col)) {
-          if (!_isHoveringDiagnosticsPopup &&
-              !_isHoveringInfoPopup &&
+          if (!_popupState.isHoveringDiagnosticsPopup &&
+              !_popupState.isHoveringInfoPopup &&
               !widget.isHoveringWord) {
             _handlePopupExit();
           }
@@ -267,22 +243,12 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
 
         final diagnostics = event.diagnostics;
         final hasHoverContent = event.content.trim().isNotEmpty;
-        final hasDiagnosticRange = event.diagnosticRange != null;
 
-        _showDiagnosticsPopup = diagnostics.isNotEmpty;
-        _showHoverInfoPopup = hasHoverContent || hasDiagnosticRange;
-
-        _showDiagnosticsPopup = diagnostics.isNotEmpty;
-        _showHoverInfoPopup = hasHoverContent;
-
-        if (_showDiagnosticsPopup) {
-          _calculateDiagnosticsHeight(diagnostics);
-        }
+        _popupState.setShowDiagnosticsPopup(diagnostics.isNotEmpty);
+        _popupState.setShowHoverInfoPopup(hasHoverContent);
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (widget.isHoveringWord) {
-            _showOverlay(context, event);
-          }
+          _showOverlay(context, event);
         });
 
         return const SizedBox.shrink();
@@ -525,22 +491,10 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
 
   @override
   void dispose() {
-    // Remove listener first
     widget.globalHoverState.removeListener(_onGlobalHoverStateChanged);
-
-    // Hide overlay
     _hideOverlay();
-
-    // Safely remove global route
-    try {
-      if (mounted) {
-        GestureBinding.instance.pointerRouter
-            .removeGlobalRoute(_handleGlobalClick);
-      }
-    } catch (e) {
-      rethrow;
-    }
-
+    _hoverDebounceTimer?.cancel();
+    GestureBinding.instance.pointerRouter.removeGlobalRoute(_handleGlobalClick);
     super.dispose();
   }
 }

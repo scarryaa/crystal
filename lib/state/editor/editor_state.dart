@@ -319,8 +319,8 @@ class EditorState extends ChangeNotifier {
       int line, int character) {
     return _diagnostics.where((diagnostic) {
       final range = diagnostic.range;
-      return line >= range.start.line - 1 &&
-          line <= range.end.line + 1 &&
+      return line >= range.start.line &&
+          line <= range.end.line &&
           character >= range.start.character - 1 &&
           character <= range.end.character + 1;
     }).toList();
