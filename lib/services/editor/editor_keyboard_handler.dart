@@ -4,6 +4,7 @@ import 'package:crystal/services/dialog_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:crystal/models/editor/position.dart';
 
 class EditorKeyboardHandler {
   Function(String searchTerm) onSearchTermChanged;
@@ -114,8 +115,8 @@ class EditorKeyboardHandler {
         if (isControlPressed) {
           final affectedLines = state.getSelectedLineRange();
           state.cut();
-          for (int line = affectedLines.start;
-              line <= affectedLines.end;
+          for (int line = affectedLines.start.line;
+              line <= affectedLines.end.line;
               line++) {
             updateSingleLineWidth(line);
           }
@@ -248,8 +249,8 @@ class EditorKeyboardHandler {
           } else {
             state.delete();
           }
-          for (int line = affectedLines.start;
-              line <= affectedLines.end;
+          for (int line = affectedLines.start.line;
+              line <= affectedLines.end.line;
               line++) {
             updateSingleLineWidth(line);
           }

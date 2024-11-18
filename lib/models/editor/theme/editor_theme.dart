@@ -16,6 +16,7 @@ class EditorTheme {
   late final Color currentLineHighlight;
   late final Color indentLineColor;
   final Color indentGuideActive;
+  final Color wordHoverHighlight;
 
   EditorTheme({
     required this.name,
@@ -30,6 +31,7 @@ class EditorTheme {
     required this.warning,
     required this.error,
     this.indentGuideActive = const Color(0xFF4B4B4B),
+    required this.wordHoverHighlight,
   }) {
     whitespaceIndicatorColor = text.withOpacity(0.5);
     currentLineHighlight = primary.withOpacity(0.1);
@@ -49,6 +51,7 @@ class EditorTheme {
       success: _colorFromHex(json['success'] as String? ?? '#4CAF50'),
       warning: _colorFromHex(json['warning'] as String? ?? '#FFA726'),
       error: _colorFromHex(json['error'] as String? ?? '#F44336'),
+      wordHoverHighlight: _colorFromHex(json['primary'] as String),
     );
   }
 

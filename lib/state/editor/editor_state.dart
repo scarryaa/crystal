@@ -10,6 +10,7 @@ import 'package:crystal/models/editor/events/event_models.dart';
 import 'package:crystal/models/editor/lsp_models.dart' as lsp_models;
 import 'package:crystal/models/editor/position.dart';
 import 'package:crystal/models/selection.dart';
+import 'package:crystal/models/text_range.dart';
 import 'package:crystal/services/command_palette_service.dart';
 import 'package:crystal/services/editor/breadcrumb_generator.dart';
 import 'package:crystal/services/editor/completion_service.dart';
@@ -35,7 +36,7 @@ import 'package:crystal/services/language_detection_service.dart';
 import 'package:crystal/services/lsp_service.dart';
 import 'package:crystal/state/editor/editor_scroll_state.dart';
 import 'package:crystal/utils/utils.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide TextRange;
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 
@@ -446,6 +447,31 @@ class EditorState extends ChangeNotifier {
   }
 
   // Misc
+
+  TextRange? getWordRangeAt(int line, int column) {
+    if (line < 0 || line >= buffer.lines.length) return null;
+
+    final lineText = buffer.lines[line];
+    if (column < 0 || column >= lineText.length) return null;
+
+    // Find word boundaries
+    int start = column;
+    int end = column;
+
+    while (start > 0 && _isWordChar(lineText[start - 1])) {
+      start--;
+    }
+
+    while (end < lineText.length && _isWordChar(lineText[end])) {
+      end++;
+    }
+
+    return TextRange(
+      start: Position(line: line, column: start),
+      end: Position(line: line, column: end),
+    );
+  }
+
   String getWordAt(int line, int column) {
     // Check if line is valid
     if (line < 0 || line >= buffer.lines.length) return '';

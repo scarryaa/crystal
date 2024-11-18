@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:crystal/models/editor/search_match.dart';
 import 'package:crystal/models/git_models.dart';
+import 'package:crystal/models/text_range.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
@@ -17,7 +18,7 @@ import 'package:crystal/widgets/editor/painter/painters/indentation_painter.dart
 import 'package:crystal/widgets/editor/painter/painters/search_painter.dart';
 import 'package:crystal/widgets/editor/painter/painters/selection_painter.dart';
 import 'package:crystal/widgets/editor/painter/painters/text_painter_helper.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide TextRange;
 
 class EditorPainter extends CustomPainter {
   final EditorConfigService editorConfigService;
@@ -41,6 +42,8 @@ class EditorPainter extends CustomPainter {
   final List<BlameLine> blameInfo;
   late final BlamePainter blamePainter;
   late final DiagnosticsPainter diagnosticsPainter;
+  final Offset? hoverPosition;
+  final TextRange? hoveredWordRange;
 
   EditorPainter({
     required this.editorState,
@@ -53,6 +56,8 @@ class EditorPainter extends CustomPainter {
     required this.editorConfigService,
     required this.isFocused,
     required this.blameInfo,
+    required this.hoverPosition,
+    this.hoveredWordRange,
   })  : backgroundPainter = BackgroundPainter(
             backgroundColor:
                 editorConfigService.themeService.currentTheme != null
@@ -119,6 +124,26 @@ class EditorPainter extends CustomPainter {
     );
   }
 
+  void _paintHoveredWord(Canvas canvas, TextRange range) {
+    final theme = editorConfigService.themeService.currentTheme;
+    if (theme == null) return;
+
+    final hoverColor = theme.wordHoverHighlight;
+    final paint = Paint()
+      ..color = hoverColor.withOpacity(0.3)
+      ..style = PaintingStyle.fill;
+
+    final startOffset = editorLayoutService.getOffsetForPosition(range.start);
+    final endOffset = editorLayoutService.getOffsetForPosition(range.end);
+
+    final rect = Rect.fromPoints(
+      startOffset,
+      endOffset.translate(0, editorLayoutService.config.lineHeight),
+    );
+
+    canvas.drawRect(rect, paint);
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     final scrollOffset = editorState.scrollState.verticalOffset;
@@ -176,6 +201,11 @@ class EditorPainter extends CustomPainter {
 
     // Paint diagnostics
     diagnosticsPainter.paint(canvas, size, firstVisibleLine, lastVisibleLine);
+
+    // Paint hover highlight
+    if (hoverPosition != null && hoveredWordRange != null) {
+      _paintHoveredWord(canvas, hoveredWordRange!);
+    }
   }
 
   double measureLineWidth(String line) {
@@ -201,6 +231,8 @@ class EditorPainter extends CustomPainter {
             editorState.editorCursorManager.cursors ||
         editorState.foldingRanges != oldDelegate.editorState.foldingRanges ||
         oldDelegate.blameInfo != blameInfo ||
-        editorState.diagnostics != oldDelegate.editorState.diagnostics;
+        editorState.diagnostics != oldDelegate.editorState.diagnostics ||
+        hoverPosition != oldDelegate.hoverPosition ||
+        hoveredWordRange != oldDelegate.hoveredWordRange;
   }
 }

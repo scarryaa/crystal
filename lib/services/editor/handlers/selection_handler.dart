@@ -1,9 +1,10 @@
 import 'dart:math';
-import 'dart:ui';
 
 import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/buffer.dart';
+import 'package:crystal/models/editor/position.dart';
 import 'package:crystal/models/selection.dart';
+import 'package:crystal/models/text_range.dart';
 import 'package:crystal/services/editor/editor_cursor_manager.dart';
 import 'package:crystal/services/editor/editor_selection_manager.dart';
 import 'package:crystal/services/editor/folding_manager.dart';
@@ -25,7 +26,11 @@ class SelectionHandler {
     if (!selectionManager.hasSelection()) {
       // If no selection, return range containing only current line
       int currentLine = cursorManager.getCursorLine();
-      return TextRange(start: currentLine, end: currentLine);
+      return TextRange(
+        start: Position(line: currentLine, column: 0),
+        end: Position(
+            line: currentLine, column: buffer.getLineLength(currentLine)),
+      );
     }
 
     // Get all selections and find min/max lines
@@ -38,7 +43,10 @@ class SelectionHandler {
       maxLine = max(maxLine, max(selection.startLine, selection.endLine));
     }
 
-    return TextRange(start: minLine, end: maxLine);
+    return TextRange(
+      start: Position(line: minLine, column: 0),
+      end: Position(line: maxLine, column: buffer.getLineLength(maxLine)),
+    );
   }
 
   void selectAll() {

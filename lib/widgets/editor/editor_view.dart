@@ -9,6 +9,7 @@ import 'package:crystal/models/editor/position.dart';
 import 'package:crystal/models/editor/search_match.dart';
 import 'package:crystal/models/git_models.dart';
 import 'package:crystal/models/global_hover_state.dart';
+import 'package:crystal/models/text_range.dart';
 import 'package:crystal/services/command_palette_service.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_event_bus.dart';
@@ -23,7 +24,7 @@ import 'package:crystal/widgets/editor/completion_widget.dart';
 import 'package:crystal/widgets/editor/editor_painter.dart';
 import 'package:crystal/widgets/hover_info_widget.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide TextRange;
 
 class EditorView extends StatefulWidget {
   final EditorConfigService editorConfigService;
@@ -98,6 +99,9 @@ class EditorViewState extends State<EditorView> {
   bool _isHoveringWord = false;
   String _lastHoveredWord = '';
   bool _isTyping = false;
+  Offset? _hoverPosition;
+  TextRange? _hoveredWordRange;
+  Timer? _wordHighlightTimer;
 
   @override
   void didUpdateWidget(EditorView oldWidget) {
@@ -251,6 +255,7 @@ class EditorViewState extends State<EditorView> {
   @override
   void dispose() {
     _hoverTimer?.cancel();
+    _wordHighlightTimer?.cancel();
     _stopCaretBlinking();
     super.dispose();
   }
@@ -345,6 +350,8 @@ class EditorViewState extends State<EditorView> {
       viewportHeight: MediaQuery.of(context).size.height,
       isFocused: _isFocused,
       blameInfo: blameInfo ?? [],
+      hoverPosition: _hoverPosition,
+      hoveredWordRange: _hoveredWordRange,
     );
     widget.state.scrollState
         .updateViewportHeight(MediaQuery.of(context).size.height);
@@ -373,6 +380,8 @@ class EditorViewState extends State<EditorView> {
                     onEnter: (_) => widget.globalHoverState
                         .setActiveEditor(widget.row, widget.col),
                     onExit: (_) {
+                      _wordHighlightTimer?.cancel();
+
                       if (!_isHoveringPopup) {
                         Future.delayed(const Duration(milliseconds: 50), () {
                           if (!_isHoveringPopup && mounted) {
@@ -382,7 +391,6 @@ class EditorViewState extends State<EditorView> {
                       }
                     },
                     onHover: (PointerHoverEvent event) {
-                      // Only process if not currently typing and not hovering popup
                       if (!_isHoveringPopup && !_isTyping) {
                         final position = _getPositionFromOffset(Offset(
                           event.localPosition.dx +
@@ -391,9 +399,23 @@ class EditorViewState extends State<EditorView> {
                               widget.verticalScrollController.offset,
                         ));
 
-                        // Get word at current position
+                        _wordHighlightTimer?.cancel();
+                        _wordHighlightTimer =
+                            Timer(const Duration(milliseconds: 250), () {
+                          if (mounted) {
+                            setState(() {
+                              _hoveredWordRange = widget.state.getWordRangeAt(
+                                  position.line, position.column);
+                            });
+                          }
+                        });
+
                         final word = widget.state
                             .getWordAt(position.line, position.column);
+
+                        setState(() {
+                          _hoverPosition = event.localPosition;
+                        });
 
                         if (_lastHoveredWord != word) {
                           _lastHoveredWord = word;
@@ -401,6 +423,26 @@ class EditorViewState extends State<EditorView> {
                             _isHoveringWord = true;
                             widget.state
                                 .showHover(position.line, position.column);
+
+                            // Cancel any existing timer
+                            _wordHighlightTimer?.cancel();
+
+                            // Start a new timer
+                            _wordHighlightTimer =
+                                Timer(const Duration(milliseconds: 300), () {
+                              if (mounted) {
+                                setState(() {
+                                  _hoveredWordRange = TextRange(
+                                    start: Position(
+                                        line: position.line,
+                                        column: position.column - word.length),
+                                    end: Position(
+                                        line: position.line,
+                                        column: position.column),
+                                  );
+                                });
+                              }
+                            });
                           } else {
                             _isHoveringWord = false;
                             EditorEventBus.emit(HoverEvent(
@@ -408,6 +450,12 @@ class EditorViewState extends State<EditorView> {
                               character: -100,
                               content: '',
                             ));
+
+                            // Cancel the timer if the word is empty
+                            _wordHighlightTimer?.cancel();
+                            setState(() {
+                              _hoveredWordRange = null;
+                            });
                           }
                         }
                       }
