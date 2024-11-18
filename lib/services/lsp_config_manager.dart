@@ -5,6 +5,52 @@ import 'package:path/path.dart' as p;
 class LSPConfigManager {
   static const int currentConfigVersion = 2;
 
+  static final Map<String, String> _extensionToLanguageMap = {};
+
+  static Future<void> _initializeExtensionMap() async {
+    if (_extensionToLanguageMap.isNotEmpty) return;
+
+    for (var entry in defaultConfigs.entries) {
+      final languageName = entry.key;
+      final extensions = List<String>.from(entry.value['extensions'] ?? []);
+      for (var ext in extensions) {
+        _extensionToLanguageMap[ext] = languageName;
+      }
+    }
+
+    // Check for user-defined configs
+    final configDirectory = await configDir;
+    final dir = Directory(configDirectory);
+
+    if (await dir.exists()) {
+      await for (final file in dir.list(followLinks: false)) {
+        if (file is File && file.path.endsWith('.json')) {
+          try {
+            final content = await file.readAsString();
+            final config = jsonDecode(content) as Map<String, dynamic>;
+            final languageName = p.basenameWithoutExtension(file.path);
+            final extensions = List<String>.from(config['extensions'] ?? []);
+            for (var ext in extensions) {
+              _extensionToLanguageMap[ext] = languageName;
+            }
+          } catch (e) {
+            print('Error reading config file ${file.path}: $e');
+          }
+        }
+      }
+    }
+  }
+
+  static Future<String?> getLanguageForExtension(String extension) async {
+    await _initializeExtensionMap();
+
+    // Normalize the extension to include the dot if not present
+    final normalizedExtension =
+        extension.startsWith('.') ? extension : '.$extension';
+
+    return _extensionToLanguageMap[normalizedExtension];
+  }
+
   static Map<String, Map<String, dynamic>> get defaultConfigs {
     final configs = {
       'dart': {

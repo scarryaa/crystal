@@ -52,7 +52,6 @@ class LSPService {
   }
 
   Future<void> initializeLanguageServer() async {
-    // Add connection retry logic
     int retryCount = 0;
     while (retryCount < 3) {
       try {
@@ -89,7 +88,7 @@ class LSPService {
       } catch (e, stack) {
         _logger.warning('Initialize attempt $retryCount failed', e, stack);
         retryCount++;
-        await Future.delayed(Duration(seconds: 2));
+        await Future.delayed(const Duration(seconds: 2));
       }
     }
 
@@ -190,12 +189,38 @@ class LSPService {
     }
   }
 
-  void sendDidChangeNotification(String text) {
+  Future<void> sendDidOpenNotification(String text) async {
+    if (!isLanguageServerRunning()) {
+      _logger.warning('Cannot send didOpen - language server not running');
+      return;
+    }
+
+    try {
+      final uri = 'file://${editor.path}';
+      final extension = p.extension(editor.path);
+      final languageId =
+          await LSPConfigManager.getLanguageForExtension(extension);
+
+      sendNotification('textDocument/didOpen', {
+        'textDocument': {
+          'uri': uri,
+          'languageId': languageId,
+          'version': _documentVersion++,
+          'text': text
+        }
+      });
+      _openDocuments[uri] = _documentVersion;
+    } catch (e, stackTrace) {
+      _logger.severe('Failed to send didOpen notification', e, stackTrace);
+    }
+  }
+
+  Future<void> sendDidChangeNotification(String text) async {
     if (!isLanguageServerRunning()) return;
 
     final uri = 'file://${editor.path}';
     if (!_openDocuments.containsKey(uri)) {
-      sendDidOpenNotification(text);
+      await sendDidOpenNotification(text);
       return;
     }
 
@@ -209,28 +234,6 @@ class LSPService {
       _openDocuments[uri] = _documentVersion;
     } catch (e) {
       _logger.severe('Failed to send didChange notification', e);
-    }
-  }
-
-  void sendDidOpenNotification(String text) {
-    if (!isLanguageServerRunning()) {
-      _logger.warning('Cannot send didOpen - language server not running');
-      return;
-    }
-
-    try {
-      final uri = 'file://${editor.path}';
-      sendNotification('textDocument/didOpen', {
-        'textDocument': {
-          'uri': uri,
-          'languageId': 'dart',
-          'version': _documentVersion++,
-          'text': text
-        }
-      });
-      _openDocuments[uri] = _documentVersion;
-    } catch (e, stackTrace) {
-      _logger.severe('Failed to send didOpen notification', e, stackTrace);
     }
   }
 
@@ -631,17 +634,27 @@ class LSPService {
 
   void _handleDiagnostics(Map<String, dynamic> params) {
     try {
-      final uri = params['uri'] as String;
-      if (uri.isEmpty) return;
+      final uri = params['uri'] as String?;
+      if (uri == null || uri.isEmpty) {
+        _logger.warning('Received diagnostics with empty URI');
+        return;
+      }
 
-      final diagnostics = (params['diagnostics'] as List)
-          .map((d) => Diagnostic.fromJson(d))
+      final diagnosticsList = params['diagnostics'] as List?;
+      if (diagnosticsList == null) {
+        _logger.warning('Received diagnostics without a diagnostics list');
+        return;
+      }
+
+      final diagnostics = diagnosticsList
+          .map((d) => Diagnostic.fromJson(d as Map<String, dynamic>))
           .toList();
 
       final filePath = Uri.parse(uri).toFilePath();
       updateDiagnostics(filePath, diagnostics);
     } catch (e, stack) {
-      _logger.severe('Error handling diagnostics', e, stack);
+      _logger.severe('Error handling diagnostics: $e\n$stack');
+      _logger.severe('Raw diagnostics data: $params');
     }
   }
 

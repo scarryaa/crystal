@@ -185,8 +185,8 @@ class EditorState extends ChangeNotifier {
     lspService = LSPService(this);
     lspService.initialize();
 
-    buffer.addListener(() {
-      lspService.sendDidChangeNotification(buffer.content);
+    buffer.addListener(() async {
+      await lspService.sendDidChangeNotification(buffer.content);
     });
     EditorEventBus.on<HoverEvent>().listen((event) {
       if (event.line >= 0 && event.character >= 0 && event.content.isNotEmpty) {
