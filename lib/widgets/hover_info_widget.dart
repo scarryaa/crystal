@@ -45,7 +45,7 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   bool _isHoveringInfoPopup = false;
   bool _isHoveringDiagnosticsPopup = false;
   double diagnosticsHeight = 0;
-  final bool _showDiagnosticsAbove = true;
+  final bool _showDiagnosticsAbove = false;
   final double spaceBetweenPopups = 8.0;
   double _diagnosticsPopupTop = 0;
   OverlayEntry? _overlayEntry;
@@ -143,6 +143,7 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
 
     const maxWidth = 400.0;
     const maxHeight = 300.0;
+    const minHeight = 80.0; // Minimum height for the info popup
     final screenSize = MediaQuery.of(context).size;
 
     // Calculate actual content height
@@ -154,7 +155,8 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
         [event.content],
         maxWidth - 24, // Account for padding
         contentStyle);
-    actualHeight = min(actualHeight, maxHeight);
+    actualHeight =
+        max(min(actualHeight, maxHeight), minHeight); // Enforce min height
 
     double infoPopupLeft = globalPosition.dx + cursorX;
     double infoPopupTop = globalPosition.dy +
@@ -194,18 +196,20 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
       infoPopupTop = globalPosition.dy + cursorY - actualHeight - 10;
     }
 
-    // Adjust diagnostics positioning using actual height instead of maxHeight
+    // Calculate diagnostics popup position
+    double diagnosticsPopupTop;
     if (hasContent && diagnostics.isNotEmpty) {
-      _diagnosticsPopupTop = _showDiagnosticsAbove
-          ? infoPopupTop - diagnosticsHeight - spaceBetweenPopups
-          : infoPopupTop + actualHeight + spaceBetweenPopups;
-    }
+      diagnosticsPopupTop = infoPopupTop + actualHeight + spaceBetweenPopups;
 
-    if (_diagnosticsPopupTop < 0) {
-      _diagnosticsPopupTop = infoPopupTop + actualHeight + spaceBetweenPopups;
-    } else if (_diagnosticsPopupTop + diagnosticsHeight > screenSize.height) {
-      _diagnosticsPopupTop =
-          infoPopupTop - diagnosticsHeight - spaceBetweenPopups;
+      // Check if diagnostics popup goes off-screen at the bottom
+      if (diagnosticsPopupTop + diagnosticsHeight > screenSize.height) {
+        // Place diagnostics popup above the info popup
+        diagnosticsPopupTop =
+            infoPopupTop - diagnosticsHeight - spaceBetweenPopups;
+      }
+    } else {
+      // If there's no info content, place diagnostics at the original position
+      diagnosticsPopupTop = infoPopupTop;
     }
 
     List<Widget> overlayWidgets = [];
@@ -215,20 +219,22 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
         Positioned(
           left: infoPopupLeft,
           top: infoPopupTop,
-          child: _buildPopup(context, event),
+          child: SizedBox(
+            height: actualHeight,
+            child: _buildPopup(context, event),
+          ),
         ),
       );
     }
 
     if (_showDiagnosticsPopup) {
-      print('show');
       overlayWidgets.add(
         _buildDiagnosticsPopup(
           event.diagnostics,
           infoPopupLeft,
-          _showHoverInfoPopup ? _diagnosticsPopupTop : infoPopupTop,
-          _showDiagnosticsAbove,
-          _showHoverInfoPopup ? maxHeight : 0,
+          diagnosticsPopupTop,
+          false,
+          0,
         ),
       );
     }
