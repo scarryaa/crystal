@@ -318,9 +318,11 @@ class EditorViewState extends State<EditorView> {
   }
 
   void onLeavePopup() {
-    setState(() {
-      _isHoveringPopup = false;
-    });
+    if (mounted) {
+      setState(() {
+        _isHoveringPopup = false;
+      });
+    }
   }
 
   @override

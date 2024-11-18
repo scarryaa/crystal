@@ -184,6 +184,7 @@ class EditorState extends ChangeNotifier {
     _breadcrumbGenerator = BreadcrumbGenerator();
     editorCursorManager.onCursorChange = _updateBreadcrumbs;
     lspService = LSPService(this);
+    lspService.initialize();
 
     buffer.addListener(() {
       lspService.sendDidChangeNotification(buffer.content);

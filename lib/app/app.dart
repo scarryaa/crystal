@@ -9,6 +9,7 @@ import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_tab_manager.dart';
 import 'package:crystal/services/file_service.dart';
 import 'package:crystal/services/git_service.dart';
+import 'package:crystal/services/lsp_config_manager.dart';
 import 'package:crystal/services/notification_service.dart';
 import 'package:crystal/widgets/dialog_listener.dart';
 import 'package:crystal/widgets/notification_overlay.dart';
@@ -51,6 +52,7 @@ class _AppState extends State<App> {
   Future<void> _initialize() async {
     await setupWindow();
     await _loadConfig();
+    await LSPConfigManager.createOrUpdateConfigs();
     _isInitialized = true;
   }
 

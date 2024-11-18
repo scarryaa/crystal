@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:crystal/models/editor/events/event_models.dart';
 import 'package:crystal/models/editor/lsp_models.dart';
 import 'package:crystal/services/editor/editor_event_bus.dart';
+import 'package:crystal/services/lsp_config_manager.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
@@ -19,9 +20,13 @@ class LSPService {
   final Map<String, int> _openDocuments = {};
   final Map<String, List<Diagnostic>> _fileDiagnostics = {};
   final List<Function()> _diagnosticsListeners = [];
+  ServerCommand? _currentServerCommand;
 
-  LSPService(this.editor) {
-    _initializeLanguageServer();
+  LSPService(this.editor);
+
+  Future<void> initialize() async {
+    await LSPConfigManager.createDefaultConfigs();
+    await _initializeLanguageServer();
   }
 
   Future<void> _initializeLanguageServer() async {
@@ -32,6 +37,63 @@ class LSPService {
       _logger.severe(
           'Unexpected error initializing language server', e, stackTrace);
     }
+  }
+
+  Future<ServerCommand?> getLSPCommandForLanguage(String extension) async {
+    final config = await LSPConfigManager.getLanguageConfig(extension);
+    if (config == null) {
+      _logger
+          .warning('No language server configured for extension: $extension');
+      return null;
+    }
+
+    return ServerCommand(config['executable'] as String,
+        List<String>.from(config['args'] as List));
+  }
+
+  Future<void> initializeLanguageServer() async {
+    // Add connection retry logic
+    int retryCount = 0;
+    while (retryCount < 3) {
+      try {
+        final fileExtension = p.extension(editor.path);
+        _currentServerCommand = await getLSPCommandForLanguage(fileExtension);
+
+        if (_currentServerCommand == null) {
+          _logger.warning('No language server for $fileExtension');
+          return;
+        }
+
+        languageServer = await Process.start(
+            _currentServerCommand!.executable, _currentServerCommand!.args,
+            environment: {
+              'PATH': Platform.environment['PATH']!,
+              'NODE_PATH': Platform.environment['NODE_PATH'] ?? ''
+            });
+
+        _setupMessageHandling();
+
+        // Wait for server startup
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        final response = await sendRequest('initialize', {
+          'processId': languageServer?.pid,
+          'rootUri': 'file://${p.dirname(p.dirname(editor.path))}',
+          'capabilities': _getClientCapabilities(),
+        });
+
+        if (response['capabilities'] != null) {
+          sendNotification('initialized', {});
+          return;
+        }
+      } catch (e, stack) {
+        _logger.warning('Initialize attempt $retryCount failed', e, stack);
+        retryCount++;
+        await Future.delayed(Duration(seconds: 2));
+      }
+    }
+
+    throw Exception('Failed to initialize language server after 3 attempts');
   }
 
   void _handleServerNotification(Map<String, dynamic> notification) {
@@ -251,54 +313,6 @@ class LSPService {
 
   bool isLanguageServerRunning() {
     return languageServer != null && languageServer!.pid != 0;
-  }
-
-  ServerCommand getLSPCommandForLanguage(String extension) {
-    switch (extension) {
-      case '.dart':
-        return const ServerCommand('dart', [
-          'language-server',
-          '--protocol=lsp',
-        ]);
-      case '.py':
-        return const ServerCommand('pylsp', []);
-      case '.js':
-      case '.ts':
-        return const ServerCommand('typescript-language-server', ['--stdio']);
-      default:
-        throw Exception('No language server for extension: $extension');
-    }
-  }
-
-  Future<void> initializeLanguageServer() async {
-    final fileExtension = p.extension(editor.path);
-    final serverCommand = getLSPCommandForLanguage(fileExtension);
-
-    try {
-      languageServer =
-          await Process.start(serverCommand.executable, serverCommand.args);
-
-      // Set up message handling before sending initialize request
-      _setupMessageHandling();
-
-      // Wait a bit for the server to start
-      await Future.delayed(const Duration(milliseconds: 100));
-
-      await sendRequest('initialize', {
-        'processId': languageServer?.pid,
-        'rootUri': 'file://${p.dirname(p.dirname(editor.path))}',
-        'capabilities': _getClientCapabilities(),
-      });
-
-      // Wait for server to process initialize response
-      await Future.delayed(const Duration(milliseconds: 100));
-
-      // Send initialized notification
-      sendNotification('initialized', {});
-    } catch (e, stackTrace) {
-      _logger.severe('Failed to initialize language server', e, stackTrace);
-      rethrow;
-    }
   }
 
   void _setupMessageHandling() {
@@ -572,52 +586,37 @@ class LSPService {
 
   void _handleServerMessage(String message) {
     try {
-      // Skip empty messages
-      if (message.trim().isEmpty) return;
+      String jsonContent = '';
 
-      String jsonContent;
-
-      // Handle headers if present
       if (message.startsWith('Content-Length: ')) {
         final headerEnd = message.indexOf('\r\n\r\n');
-        if (headerEnd == -1) {
-          _logger.warning('Invalid message format - missing header end');
-          return;
-        }
+        if (headerEnd != -1) {
+          final lengthMatch =
+              RegExp(r'Content-Length: (\d+)').firstMatch(message);
+          if (lengthMatch != null) {
+            final expectedLength = int.parse(lengthMatch.group(1)!);
+            jsonContent = message.substring(headerEnd + 4);
 
-        // Extract content length
-        final lengthMatch =
-            RegExp(r'Content-Length: (\d+)').firstMatch(message);
-        if (lengthMatch == null) {
-          _logger.warning('Invalid Content-Length header');
-          return;
+            // Verify content length matches expected
+            if (jsonContent.length != expectedLength) {
+              _logger.warning('Message length mismatch');
+              return;
+            }
+          }
         }
-
-        jsonContent = message.substring(headerEnd + 4);
-      } else if (message.startsWith('{')) {
-        jsonContent = message;
-      } else {
-        _logger.warning('Invalid message format');
-        return;
       }
 
-      // Process the JSON content
-      final Map<String, dynamic> jsonData = jsonDecode(jsonContent);
-      if (jsonData.isEmpty) {
-        _logger.warning('Empty JSON content');
-        return;
-      }
+      if (jsonContent.isEmpty) return;
 
       _processJsonContent(jsonContent);
-    } catch (e, stackTrace) {
-      _logger.severe('Error handling server message', e, stackTrace);
+    } catch (e, stack) {
+      _logger.severe('Error handling server message', e, stack);
     }
   }
 
   void _processJsonContent(String content) {
     final response = jsonDecode(content);
 
-    // Handle workspace/configuration request separately
     if (response['method'] == 'workspace/configuration') {
       _handleConfigurationRequest(response);
       return;
@@ -631,16 +630,19 @@ class LSPService {
   }
 
   void _handleDiagnostics(Map<String, dynamic> params) {
-    final uri = params['uri'] as String;
-    final diagnostics = (params['diagnostics'] as List)
-        .map((d) => Diagnostic.fromJson(d))
-        .toList();
+    try {
+      final uri = params['uri'] as String;
+      if (uri.isEmpty) return;
 
-    // Convert URI to file path
-    final filePath = Uri.parse(uri).toFilePath();
+      final diagnostics = (params['diagnostics'] as List)
+          .map((d) => Diagnostic.fromJson(d))
+          .toList();
 
-    // Update diagnostics for this file
-    updateDiagnostics(filePath, diagnostics);
+      final filePath = Uri.parse(uri).toFilePath();
+      updateDiagnostics(filePath, diagnostics);
+    } catch (e, stack) {
+      _logger.severe('Error handling diagnostics', e, stack);
+    }
   }
 
   void updateDiagnostics(String filePath, List<Diagnostic> diagnostics) {
@@ -704,7 +706,7 @@ class LSPService {
         'position': {'line': line, 'character': character}
       });
 
-      if (response == null || !response.containsKey('contents')) {
+      if (!response.containsKey('contents')) {
         _logger.warning('Invalid hover response structure');
         return null;
       }
