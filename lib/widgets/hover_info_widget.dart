@@ -45,9 +45,7 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   bool _isHoveringInfoPopup = false;
   bool _isHoveringDiagnosticsPopup = false;
   double diagnosticsHeight = 0;
-  final bool _showDiagnosticsAbove = false;
   final double spaceBetweenPopups = 8.0;
-  double _diagnosticsPopupTop = 0;
   OverlayEntry? _overlayEntry;
   String _lastHoveredWord = '';
   bool _isMouseDown = false;

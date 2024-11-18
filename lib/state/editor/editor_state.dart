@@ -299,7 +299,6 @@ class EditorState extends ChangeNotifier {
           }
           if (content.isEmpty) return;
 
-          // Emit updated hover event with both hover content and diagnostics
           _emitHoverEvent(line, character, content, matchingDiagnostics);
         }
       }

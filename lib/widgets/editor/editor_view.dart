@@ -122,6 +122,8 @@ class EditorViewState extends State<EditorView> {
   void initState() {
     super.initState();
 
+    widget.verticalScrollController.addListener(_hidePopups);
+    widget.horizontalScrollController.addListener(_hidePopups);
     _initializeGit();
 
     EditorEventBus.on<TextEvent>().listen((_) {
@@ -253,6 +255,8 @@ class EditorViewState extends State<EditorView> {
 
   @override
   void dispose() {
+    widget.verticalScrollController.removeListener(_hidePopups);
+    widget.horizontalScrollController.removeListener(_hidePopups);
     _hoverTimer?.cancel();
     _wordHighlightTimer?.cancel();
     _stopCaretBlinking();
@@ -464,13 +468,16 @@ class EditorViewState extends State<EditorView> {
                     },
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
-                      onTapDown: (details) => editorInputHandler.handleTap(
-                        details,
-                        widget.verticalScrollController.offset,
-                        widget.horizontalScrollController.offset,
-                        editorPainter,
-                        widget.state,
-                      ),
+                      onTapDown: (details) {
+                        _hidePopups();
+                        editorInputHandler.handleTap(
+                          details,
+                          widget.verticalScrollController.offset,
+                          widget.horizontalScrollController.offset,
+                          editorPainter,
+                          widget.state,
+                        );
+                      },
                       onPanStart: (details) =>
                           editorInputHandler.handleDragStart(
                         details,
@@ -579,6 +586,21 @@ class EditorViewState extends State<EditorView> {
               ),
           ]);
         });
+  }
+
+  void _hidePopups() {
+    if (mounted) {
+      setState(() {
+        _isHoveringPopup = false;
+        _isHoveringWord = false;
+        _hoveredWordRange = null;
+      });
+      EditorEventBus.emit(HoverEvent(
+        line: -100,
+        character: -100,
+        content: '',
+      ));
+    }
   }
 
   void _handleEmptyWord() {

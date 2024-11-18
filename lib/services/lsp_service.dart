@@ -597,14 +597,7 @@ class LSPService {
           final lengthMatch =
               RegExp(r'Content-Length: (\d+)').firstMatch(message);
           if (lengthMatch != null) {
-            final expectedLength = int.parse(lengthMatch.group(1)!);
             jsonContent = message.substring(headerEnd + 4);
-
-            // Verify content length matches expected
-            if (jsonContent.length != expectedLength) {
-              _logger.warning('Message length mismatch');
-              return;
-            }
           }
         }
       }
