@@ -447,24 +447,61 @@ class EditorState extends ChangeNotifier {
   }
 
   // Misc
+  List<TextRange> findAllOccurrences(String word) {
+    List<TextRange> occurrences = [];
+    for (int i = 0; i < buffer.lines.length; i++) {
+      String line = buffer.lines[i];
+      int index = 0;
+      while (true) {
+        index = line.indexOf(word, index);
+        if (index == -1) break;
+
+        // Check if it's a whole word match
+        bool isWholeWord = true;
+        if (index > 0 && _isWordChar(line[index - 1])) {
+          isWholeWord = false;
+        }
+        if (index + word.length < line.length &&
+            _isWordChar(line[index + word.length])) {
+          isWholeWord = false;
+        }
+
+        if (isWholeWord) {
+          occurrences.add(TextRange(
+            start: Position(line: i, column: index),
+            end: Position(line: i, column: index + word.length),
+          ));
+        }
+        index += word.length;
+      }
+    }
+    return occurrences;
+  }
+
+  bool _isWordChar(String char) {
+    return RegExp(r'[a-zA-Z0-9_]').hasMatch(char);
+  }
 
   TextRange? getWordRangeAt(int line, int column) {
     if (line < 0 || line >= buffer.lines.length) return null;
-
-    final lineText = buffer.lines[line];
+    String lineText = buffer.lines[line];
     if (column < 0 || column >= lineText.length) return null;
 
-    // Find word boundaries
     int start = column;
     int end = column;
 
+    // Move start to the beginning of the word
     while (start > 0 && _isWordChar(lineText[start - 1])) {
       start--;
     }
 
+    // Move end to the end of the word
     while (end < lineText.length && _isWordChar(lineText[end])) {
       end++;
     }
+
+    // If we're not on a word character, return null
+    if (start == end) return null;
 
     return TextRange(
       start: Position(line: line, column: start),
@@ -494,10 +531,6 @@ class EditorState extends ChangeNotifier {
     }
 
     return lineText.substring(start, end);
-  }
-
-  bool _isWordChar(String char) {
-    return RegExp(r'[a-zA-Z0-9_]').hasMatch(char);
   }
 
   void _updateBreadcrumbs(int line, int column) {

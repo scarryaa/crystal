@@ -339,6 +339,18 @@ class EditorViewState extends State<EditorView> {
       widget.editorLayoutService.config.lineHeight * getVisibleLineCount() +
           widget.editorLayoutService.config.verticalPadding,
     );
+
+    String currentWord = '';
+    List<TextRange> currentWordOccurrences = [];
+    if (widget.state.editorCursorManager.cursors.isNotEmpty) {
+      final cursor = widget.state.editorCursorManager.cursors.first;
+      final wordRange = widget.state.getWordRangeAt(cursor.line, cursor.column);
+      if (wordRange != null) {
+        currentWord = widget.state.buffer.getTextInRange(wordRange);
+        currentWordOccurrences = widget.state.findAllOccurrences(currentWord);
+      }
+    }
+
     editorPainter = EditorPainter(
       editorConfigService: widget.editorConfigService,
       editorLayoutService: widget.editorLayoutService,
@@ -352,6 +364,7 @@ class EditorViewState extends State<EditorView> {
       blameInfo: blameInfo ?? [],
       hoverPosition: _hoverPosition,
       hoveredWordRange: _hoveredWordRange,
+      currentWordOccurrences: currentWordOccurrences,
     );
     widget.state.scrollState
         .updateViewportHeight(MediaQuery.of(context).size.height);

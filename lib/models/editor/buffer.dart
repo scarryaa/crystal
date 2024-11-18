@@ -1,3 +1,4 @@
+import 'package:crystal/models/text_range.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -36,6 +37,38 @@ class Buffer extends ChangeNotifier {
     _originalLines = List.from(_lines);
     _isDirty = false;
     notifyListeners();
+  }
+
+  String getTextInRange(TextRange range) {
+    if (range.start.line < 0 ||
+        range.end.line >= _lines.length ||
+        range.start.line > range.end.line ||
+        (range.start.line == range.end.line &&
+            range.start.column > range.end.column)) {
+      throw RangeError('Invalid range');
+    }
+
+    StringBuffer result = StringBuffer();
+
+    if (range.start.line == range.end.line) {
+      // Range is within a single line
+      result.write(_lines[range.start.line]
+          .substring(range.start.column, range.end.column));
+    } else {
+      // Range spans multiple lines
+      // Add the first line
+      result.writeln(_lines[range.start.line].substring(range.start.column));
+
+      // Add the middle lines
+      for (int i = range.start.line + 1; i < range.end.line; i++) {
+        result.writeln(_lines[i]);
+      }
+
+      // Add the last line
+      result.write(_lines[range.end.line].substring(0, range.end.column));
+    }
+
+    return result.toString();
   }
 
   void setOriginalContent(String content) {

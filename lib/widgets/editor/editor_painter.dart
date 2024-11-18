@@ -44,6 +44,7 @@ class EditorPainter extends CustomPainter {
   late final DiagnosticsPainter diagnosticsPainter;
   final Offset? hoverPosition;
   final TextRange? hoveredWordRange;
+  final List<TextRange> currentWordOccurrences;
 
   EditorPainter({
     required this.editorState,
@@ -58,6 +59,7 @@ class EditorPainter extends CustomPainter {
     required this.blameInfo,
     required this.hoverPosition,
     this.hoveredWordRange,
+    required this.currentWordOccurrences,
   })  : backgroundPainter = BackgroundPainter(
             backgroundColor:
                 editorConfigService.themeService.currentTheme != null
@@ -124,13 +126,34 @@ class EditorPainter extends CustomPainter {
     );
   }
 
+  void _paintWordOccurrences(Canvas canvas) {
+    final theme = editorConfigService.themeService.currentTheme;
+    if (theme == null) return;
+
+    final paint = Paint()
+      ..color = theme.wordHoverHighlight.withOpacity(0.2)
+      ..style = PaintingStyle.fill;
+
+    for (var range in currentWordOccurrences) {
+      final startOffset = editorLayoutService.getOffsetForPosition(range.start);
+      final endOffset = editorLayoutService.getOffsetForPosition(range.end);
+
+      final rect = Rect.fromPoints(
+        startOffset,
+        endOffset.translate(0, editorLayoutService.config.lineHeight),
+      );
+
+      canvas.drawRect(rect, paint);
+    }
+  }
+
   void _paintHoveredWord(Canvas canvas, TextRange range) {
     final theme = editorConfigService.themeService.currentTheme;
     if (theme == null) return;
 
     final hoverColor = theme.wordHoverHighlight;
     final paint = Paint()
-      ..color = hoverColor.withOpacity(0.3)
+      ..color = hoverColor.withOpacity(0.2)
       ..style = PaintingStyle.fill;
 
     final startOffset = editorLayoutService.getOffsetForPosition(range.start);
@@ -185,6 +208,8 @@ class EditorPainter extends CustomPainter {
 
     // Draw selection
     selectionPainter.paint(canvas, firstVisibleLine, lastVisibleLine);
+
+    _paintWordOccurrences(canvas);
 
     bracketMatchPainter.paint(canvas, size,
         firstVisibleLine: firstVisibleLine, lastVisibleLine: lastVisibleLine);
