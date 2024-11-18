@@ -53,6 +53,8 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
       editorState: widget.editorState,
     );
 
+    widget.editorState.addListener(_onEditorStateChanged);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         GestureBinding.instance.pointerRouter.addGlobalRoute((event) {
@@ -91,24 +93,37 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
     }
   }
 
-  double _getLineWidth(int lineIndex) {
-    if (!_lineWidths.containsKey(lineIndex)) {
-      final lineText = widget.editorState.buffer.getLine(lineIndex);
-      final textPainter = TextPainter(
-        text: TextSpan(
-          text: lineText,
-          style: TextStyle(
-            fontSize: widget.editorConfigService.config.fontSize,
-            fontFamily: widget.editorConfigService.config.fontFamily,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-
-      _lineWidths[lineIndex] = textPainter.width;
-      textPainter.dispose();
+  @override
+  void didUpdateWidget(BlameInfoWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.blameInfo != widget.blameInfo ||
+        oldWidget.editorState != widget.editorState) {
+      _lineWidths.clear();
+      _blamePainter = BlamePainter(
+        editorConfigService: widget.editorConfigService,
+        editorLayoutService: widget.editorLayoutService,
+        blameInfo: widget.blameInfo,
+        editorState: widget.editorState,
+      );
     }
-    return _lineWidths[lineIndex]!;
+  }
+
+  double _getLineWidth(int lineIndex) {
+    final lineText = widget.editorState.buffer.getLine(lineIndex);
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: lineText,
+        style: TextStyle(
+          fontSize: widget.editorConfigService.config.fontSize,
+          fontFamily: widget.editorConfigService.config.fontFamily,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+
+    final width = textPainter.width;
+    textPainter.dispose();
+    return width;
   }
 
   String _formatDateTime(DateTime dateTime) {
@@ -412,22 +427,16 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
     );
   }
 
-  @override
-  void didUpdateWidget(BlameInfoWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.blameInfo != widget.blameInfo ||
-        oldWidget.editorState != widget.editorState) {
-      _blamePainter = BlamePainter(
-        editorConfigService: widget.editorConfigService,
-        editorLayoutService: widget.editorLayoutService,
-        blameInfo: widget.blameInfo,
-        editorState: widget.editorState,
-      );
+  void _onEditorStateChanged() {
+    if (mounted) {
+      setState(() {});
     }
   }
 
   @override
   void dispose() {
+    widget.editorState.removeListener(_onEditorStateChanged);
+
     _blameTimer?.cancel();
 
     void routeHandler(PointerEvent event) {
