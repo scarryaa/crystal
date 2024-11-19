@@ -141,7 +141,7 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
 
     const maxWidth = 400.0;
     const maxHeight = 300.0;
-    const minHeight = 80.0;
+    const minHeight = 150.0;
     final screenSize = MediaQuery.of(context).size;
 
     // Calculate actual content height
@@ -342,7 +342,7 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
     const popupWidth = 400.0;
     const scrollbarWidth = 6.0;
     const defaultMaxPopupHeight = 500.0;
-    const double minContentHeight = 150.0;
+    const double minContentHeight = 200.0;
     final theme = widget.editorConfigService.themeService.currentTheme!;
     final TextStyle contentStyle = TextStyle(
       fontSize: 13,

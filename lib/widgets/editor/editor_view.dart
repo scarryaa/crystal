@@ -5,6 +5,7 @@ import 'package:crystal/models/editor/command_palette_mode.dart';
 import 'package:crystal/models/editor/completion_item.dart';
 import 'package:crystal/models/editor/config/config_paths.dart';
 import 'package:crystal/models/editor/events/event_models.dart';
+import 'package:crystal/models/editor/lsp_models.dart' as lsp_models;
 import 'package:crystal/models/editor/position.dart';
 import 'package:crystal/models/editor/search_match.dart';
 import 'package:crystal/models/git_models.dart';
@@ -106,6 +107,7 @@ class EditorViewState extends State<EditorView> {
   Position? _lastCursorPosition;
   Timer? _cursorMoveTimer;
   bool _isCursorMovementRecent = false;
+  List<lsp_models.Diagnostic>? hoveredInfo;
 
   void _handleCursorMove() {
     if (widget.state.editorCursorManager.cursors.isEmpty) return;
@@ -137,15 +139,15 @@ class EditorViewState extends State<EditorView> {
     _hoverTimer?.cancel();
     _wordHighlightTimer?.cancel();
 
-    if (mounted) {
-      setState(() {
-        _isHoveringWord = false;
-        _isHoveringPopup = false;
-        _hoveredWordRange = null;
-        _lastHoveredWord = null;
-        _hoverPosition = null;
-      });
-    }
+    if (!mounted) return;
+
+    setState(() {
+      _isHoveringWord = false;
+      _isHoveringPopup = false;
+      _hoveredWordRange = null;
+      _lastHoveredWord = null;
+      _hoverPosition = null;
+    });
 
     EditorEventBus.emit(HoverEvent(
       line: -100,
@@ -310,24 +312,24 @@ class EditorViewState extends State<EditorView> {
   @override
   void dispose() {
     _cursorMoveTimer?.cancel();
-    _cancelHoverOperations();
-    widget.verticalScrollController.removeListener(_hidePopups);
-    widget.horizontalScrollController.removeListener(_hidePopups);
     _hoverTimer?.cancel();
     _wordHighlightTimer?.cancel();
+    widget.verticalScrollController.removeListener(_hidePopups);
+    widget.horizontalScrollController.removeListener(_hidePopups);
     _stopCaretBlinking();
+    _focusNode.dispose();
     super.dispose();
   }
 
   void _startCaretBlinking() {
-    _caretTimer?.cancel();
-    _caretTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
-      if (mounted) {
+    if (mounted) {
+      _caretTimer?.cancel();
+      _caretTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
         setState(() {
           widget.state.toggleCaret();
         });
-      }
-    });
+      });
+    }
   }
 
   void _stopCaretBlinking() {
@@ -426,6 +428,7 @@ class EditorViewState extends State<EditorView> {
       hoverPosition: _hoverPosition,
       hoveredWordRange: _hoveredWordRange,
       currentWordOccurrences: currentWordOccurrences,
+      hoveredInfo: hoveredInfo,
     );
     widget.state.scrollState
         .updateViewportHeight(MediaQuery.of(context).size.height);
@@ -502,7 +505,7 @@ class EditorViewState extends State<EditorView> {
 
                       _wordHighlightTimer?.cancel();
                       _wordHighlightTimer =
-                          Timer(const Duration(milliseconds: 300), () {
+                          Timer(const Duration(milliseconds: 300), () async {
                         if (!mounted) return;
 
                         setState(() {
@@ -519,8 +522,15 @@ class EditorViewState extends State<EditorView> {
                           );
                         });
 
-                        widget.state.showDiagnostics(
+                        // Get the diagnostics
+                        final diagnostics = await widget.state.showDiagnostics(
                             cursorPosition.line, wordInfo.startColumn);
+
+                        // Update state with the diagnostics if still mounted
+                        setState(() {
+                          hoveredInfo = diagnostics;
+                        });
+
                         widget.state.showHover(
                             cursorPosition.line, wordInfo.startColumn);
                       });

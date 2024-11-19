@@ -1,8 +1,10 @@
 import 'dart:math';
+import 'dart:ui';
 
+import 'package:crystal/models/editor/lsp_models.dart';
 import 'package:crystal/models/editor/search_match.dart';
 import 'package:crystal/models/git_models.dart';
-import 'package:crystal/models/text_range.dart';
+import 'package:crystal/models/text_range.dart' as text_range;
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
@@ -14,6 +16,7 @@ import 'package:crystal/widgets/editor/painter/painters/caret_painter.dart';
 import 'package:crystal/widgets/editor/painter/painters/current_line_highlight_painter.dart';
 import 'package:crystal/widgets/editor/painter/painters/diagnostics_painter.dart';
 import 'package:crystal/widgets/editor/painter/painters/folding_painter.dart';
+import 'package:crystal/widgets/editor/painter/painters/hover_diagnostics_painter.dart';
 import 'package:crystal/widgets/editor/painter/painters/indentation_painter.dart';
 import 'package:crystal/widgets/editor/painter/painters/search_painter.dart';
 import 'package:crystal/widgets/editor/painter/painters/selection_painter.dart';
@@ -35,6 +38,7 @@ class EditorPainter extends CustomPainter {
   final CaretPainter caretPainter;
   final IndentationPainter indentationPainter;
   final CurrentLineHighlightPainter currentLineHighlightPainter;
+  late final HoverDiagnosticsPainter hoverDiagnosticsPainter;
   late final SearchPainter searchPainter;
   late final SelectionPainter selectionPainter;
   final BracketMatchPainter bracketMatchPainter;
@@ -43,8 +47,9 @@ class EditorPainter extends CustomPainter {
   late final BlamePainter blamePainter;
   late final DiagnosticsPainter diagnosticsPainter;
   final Offset? hoverPosition;
-  final TextRange? hoveredWordRange;
-  final List<TextRange> currentWordOccurrences;
+  final text_range.TextRange? hoveredWordRange;
+  final List<text_range.TextRange> currentWordOccurrences;
+  final List<Diagnostic>? hoveredInfo;
 
   EditorPainter({
     required this.editorState,
@@ -59,6 +64,7 @@ class EditorPainter extends CustomPainter {
     required this.blameInfo,
     required this.hoverPosition,
     this.hoveredWordRange,
+    this.hoveredInfo,
     required this.currentWordOccurrences,
   })  : backgroundPainter = BackgroundPainter(
             backgroundColor:
@@ -124,6 +130,10 @@ class EditorPainter extends CustomPainter {
       editorLayoutService: editorLayoutService,
       editorState: editorState,
     );
+    hoverDiagnosticsPainter = HoverDiagnosticsPainter(
+      editorConfigService: editorConfigService,
+      editorLayoutService: editorLayoutService,
+    );
   }
 
   void _paintWordOccurrences(Canvas canvas) {
@@ -147,7 +157,7 @@ class EditorPainter extends CustomPainter {
     }
   }
 
-  void _paintHoveredWord(Canvas canvas, TextRange range) {
+  void _paintHoveredWord(Canvas canvas, text_range.TextRange range) {
     final theme = editorConfigService.themeService.currentTheme;
     if (theme == null) return;
 
@@ -228,7 +238,7 @@ class EditorPainter extends CustomPainter {
     diagnosticsPainter.paint(canvas, size, firstVisibleLine, lastVisibleLine);
 
     // Paint hover highlight
-    if (hoverPosition != null && hoveredWordRange != null) {
+    if (hoveredWordRange != null) {
       _paintHoveredWord(canvas, hoveredWordRange!);
     }
   }
@@ -258,6 +268,8 @@ class EditorPainter extends CustomPainter {
         oldDelegate.blameInfo != blameInfo ||
         editorState.diagnostics != oldDelegate.editorState.diagnostics ||
         hoverPosition != oldDelegate.hoverPosition ||
-        hoveredWordRange != oldDelegate.hoveredWordRange;
+        hoveredWordRange != oldDelegate.hoveredWordRange ||
+        oldDelegate.hoveredInfo != hoveredInfo ||
+        oldDelegate.hoveredWordRange != hoveredWordRange;
   }
 }

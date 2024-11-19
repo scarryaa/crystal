@@ -308,9 +308,11 @@ class EditorState extends ChangeNotifier {
     }
   }
 
-  Future<void> showDiagnostics(int line, int character) async {
+  Future<List<lsp_models.Diagnostic>?> showDiagnostics(
+      int line, int character) async {
     final matchingDiagnostics = _getDiagnosticsForPosition(line, character);
     _emitHoverEvent(line, character, '', matchingDiagnostics);
+    return matchingDiagnostics.isEmpty ? null : matchingDiagnostics;
   }
 
   String _processRustDiagnostics(List<lsp_models.Diagnostic> diagnostics) {
