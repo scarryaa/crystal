@@ -53,6 +53,7 @@ class LSPService {
     workProgressNotifier.value = true;
     workProgressMessage.value = 'Analyzing...';
     _logger.info('Work progress started with token: $token');
+    _resetAnalysisTimeout();
   }
 
   void _handleProgress(Map<String, dynamic> params) {
