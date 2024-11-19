@@ -45,7 +45,7 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   bool _isHoveringInfoPopup = false;
   bool _isHoveringDiagnosticsPopup = false;
   double diagnosticsHeight = 0;
-  final double spaceBetweenPopups = 16.0;
+  final double spaceBetweenPopups = 8.0;
   OverlayEntry? _overlayEntry;
   String _lastHoveredWord = '';
   bool _isMouseDown = false;
@@ -55,8 +55,6 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   final double _diagnosticMinHeight = 36.0;
   bool _showDiagnosticsPopup = false;
   bool _showHoverInfoPopup = false;
-  final double _diagnosticsMinHeight = 100.0;
-  final double _diagnosticsMaxHeight = 200.0;
 
   @override
   void initState() {
@@ -93,11 +91,9 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
 
   void _calculateDiagnosticsHeight(List<Diagnostic> diagnostics) {
     const double maxDiagnosticsHeight = 200.0;
-    const double minDiagnosticsHeight = 100.0;
-    const double containerVerticalPadding = 24.0;
-    const double itemVerticalPadding = 8.0;
 
-    _diagnosticsContentHeight = diagnostics.fold(0.0, (height, diagnostic) {
+    // Calculate exact content height based on text wrapping
+    _diagnosticsContentHeight = diagnostics.fold(0, (height, diagnostic) {
       final textPainter = TextPainter(
         text: TextSpan(
           text: diagnostic.message,
@@ -109,18 +105,14 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
         textDirection: TextDirection.ltr,
       );
 
+      // Account for container width minus padding and icon
       textPainter.layout(maxWidth: 400 - 24 - _diagnosticIconSize - 8);
       return height +
           max(_diagnosticMinHeight,
-              textPainter.height + _diagnosticItemPadding) +
-          (height > 0 ? itemVerticalPadding : 0);
+              textPainter.height + _diagnosticItemPadding);
     });
 
-    _diagnosticsContentHeight += containerVerticalPadding;
-    diagnosticsHeight = max(
-      minDiagnosticsHeight,
-      min(_diagnosticsContentHeight, maxDiagnosticsHeight),
-    );
+    diagnosticsHeight = min(_diagnosticsContentHeight, maxDiagnosticsHeight);
   }
 
   void _showOverlay(BuildContext context, HoverEvent event) {
@@ -164,37 +156,8 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
     actualHeight = max(min(actualHeight, maxHeight), minHeight);
 
     double infoPopupLeft = globalPosition.dx + cursorX;
-    double infoPopupTop;
-    double diagnosticsPopupTop = 0;
-
-    // Check if there's enough space above for both popups
-    final totalHeightNeeded = hasContent && diagnostics.isNotEmpty
-        ? actualHeight + diagnosticsHeight + spaceBetweenPopups
-        : diagnostics.isNotEmpty
-            ? diagnosticsHeight
-            : actualHeight;
-
-    final cursorScreenY = globalPosition.dy + cursorY;
-    final hasSpaceAbove = cursorScreenY - totalHeightNeeded - 10 > 0;
-
-    if (!hasSpaceAbove) {
-      // Position both below if there's not enough space above
-      infoPopupTop =
-          cursorScreenY + widget.editorLayoutService.config.lineHeight;
-
-      if (hasContent && diagnostics.isNotEmpty) {
-        // Both popups
-        diagnosticsPopupTop = infoPopupTop + actualHeight + spaceBetweenPopups;
-      } else if (diagnostics.isNotEmpty) {
-        // Only diagnostics
-        diagnosticsPopupTop = infoPopupTop;
-      }
-    } else {
-      // Try positioning above since there's space
-      infoPopupTop = cursorScreenY - actualHeight - 10;
-      diagnosticsPopupTop =
-          infoPopupTop - diagnosticsHeight - spaceBetweenPopups;
-    }
+    // Try to position above the cursor first
+    double infoPopupTop = globalPosition.dy + cursorY - actualHeight - 10;
 
     if (event.diagnosticRange != null) {
       final startPosition =
@@ -209,20 +172,51 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
       );
 
       infoPopupLeft = globalPosition.dx + startPosition.dx;
+      infoPopupTop = globalPosition.dy + startPosition.dy - actualHeight - 10;
 
       if (endPosition.dx - startPosition.dx < 10) {
         infoPopupLeft -= 5;
-      }
-
-      if (!hasContent && hasSpaceAbove) {
-        // Adjust diagnostics
-        diagnosticsPopupTop += actualHeight;
       }
     }
 
     // Adjust horizontal position if it goes off-screen
     if (infoPopupLeft + maxWidth > screenSize.width) {
       infoPopupLeft = screenSize.width - maxWidth - 10;
+    }
+
+    // If positioning above would make it go off-screen at the top,
+    // then position it below
+    if (infoPopupTop < 10) {
+      infoPopupTop = globalPosition.dy +
+          cursorY +
+          widget.editorLayoutService.config.lineHeight;
+    }
+
+    // Calculate diagnostics popup position
+    double diagnosticsPopupTop;
+    if (hasContent && diagnostics.isNotEmpty) {
+      // Try to position diagnostics above the info popup
+      diagnosticsPopupTop = infoPopupTop / 2 - spaceBetweenPopups;
+
+      // If positioning above would make it go off-screen at the top,
+      // place it below the info popup
+      if (diagnosticsPopupTop < 10) {
+        diagnosticsPopupTop = infoPopupTop + actualHeight + spaceBetweenPopups;
+      }
+    } else {
+      // If there's no info content, try to position diagnostics above
+      diagnosticsPopupTop = globalPosition.dy +
+          cursorY -
+          diagnosticsHeight -
+          10 -
+          actualHeight / 3;
+
+      // If it would go off-screen at the top, position below
+      if (diagnosticsPopupTop < 10) {
+        diagnosticsPopupTop = globalPosition.dy +
+            cursorY +
+            widget.editorLayoutService.config.lineHeight;
+      }
     }
 
     List<Widget> overlayWidgets = [];
@@ -508,9 +502,7 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
             onPointerUp: (_) => _isMouseDown = false,
             child: Container(
               width: popupWidth,
-              constraints: BoxConstraints(
-                maxHeight: diagnosticsHeight,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: theme.background,
                 border: Border.all(color: theme.border),
@@ -526,8 +518,7 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
               ),
               child: SingleChildScrollView(
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.all(12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: diagnostics

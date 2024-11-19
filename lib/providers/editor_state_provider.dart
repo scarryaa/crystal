@@ -20,7 +20,6 @@ class EditorStateProvider extends ChangeNotifier {
   Language? get detectedLanguage {
     final activeEditor = editorTabManager.activeEditor;
     if (activeEditor == null) return null;
-    // Ensure the language is set and persisted
     activeEditor.detectedLanguage ??=
         LanguageDetectionService.getLanguageFromFilename(
             path.split(activeEditor.path).last);

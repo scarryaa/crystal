@@ -24,7 +24,6 @@ dependencies:
   flutter_pty: ^0.4.1
   mockito: ^5.4.4
   analyzer: ^6.7.0
-  shared_preferences: ^2.3.3
   iconify_flutter: ^0.0.7
   colorful_iconify_flutter: ^0.0.5
   git: ^2.3.0
@@ -32,6 +31,7 @@ dependencies:
   crypto: ^3.0.6
   watcher: ^1.1.0
   flutter_markdown: ^0.7.4+1
+  shared_preferences: ^2.3.3
 
 dev_dependencies:
   flutter_test:
