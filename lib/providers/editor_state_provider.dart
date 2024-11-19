@@ -1,3 +1,4 @@
+import 'package:crystal/models/languages/language.dart';
 import 'package:crystal/services/editor/editor_scroll_manager.dart';
 import 'package:crystal/services/editor/editor_tab_manager.dart';
 import 'package:crystal/services/language_detection_service.dart';
@@ -7,6 +8,7 @@ import 'package:path/path.dart' as path;
 
 class EditorStateProvider extends ChangeNotifier {
   final Map<String, GlobalKey<EditorViewState>> _editorViewKeys = {};
+  final languageChangeNotifier = ValueNotifier<Language?>(null);
   final EditorTabManager editorTabManager;
   final Map<String, EditorScrollManager> _scrollManagers = {};
   final Map<String, GlobalKey> _tabBarKeys = {};
@@ -15,6 +17,15 @@ class EditorStateProvider extends ChangeNotifier {
   EditorStateProvider({required this.editorTabManager});
 
   String _getKey(int row, int col) => '${row}_$col';
+  Language? get detectedLanguage {
+    final activeEditor = editorTabManager.activeEditor;
+    if (activeEditor == null) return null;
+    // Ensure the language is set and persisted
+    activeEditor.detectedLanguage ??=
+        LanguageDetectionService.getLanguageFromFilename(
+            path.split(activeEditor.path).last);
+    return activeEditor.detectedLanguage;
+  }
 
   int getSplitIndex(int row, int col) {
     int index = 0;
@@ -33,6 +44,12 @@ class EditorStateProvider extends ChangeNotifier {
           .name;
     }
     return null;
+  }
+
+  void updateLanguage(Language language) {
+    editorTabManager.activeEditor!.detectedLanguage = language;
+    languageChangeNotifier.value = language;
+    notifyListeners();
   }
 
   GlobalKey<EditorViewState> getEditorViewKey(int row, int col) {

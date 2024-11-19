@@ -2,11 +2,20 @@ import 'package:crystal/providers/editor_state_provider.dart';
 import 'package:crystal/providers/file_explorer_provider.dart';
 import 'package:crystal/providers/terminal_provider.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
+import 'package:crystal/services/editor/editor_tab_manager.dart';
+import 'package:crystal/services/language_detection_service.dart';
+import 'package:crystal/widgets/command_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class StatusBar extends StatelessWidget {
-  const StatusBar({super.key});
+  final EditorTabManager editorTabManager;
+  final EditorStateProvider editorStateProvider;
+
+  const StatusBar(
+      {required this.editorStateProvider,
+      required this.editorTabManager,
+      super.key});
 
   Widget _buildLSPStatus(BuildContext context,
       EditorConfigService editorConfigService, Color themeColor) {
@@ -111,24 +120,63 @@ class StatusBar extends StatelessWidget {
     return Consumer<EditorStateProvider>(
       builder: (context, editorStateProvider, _) {
         return ListenableBuilder(
-          listenable: editorStateProvider.editorTabManager,
+          listenable: Listenable.merge([
+            editorStateProvider.editorTabManager,
+            editorStateProvider.languageChangeNotifier,
+          ]),
           builder: (context, _) {
-            final language = editorStateProvider.getDetectedLanguage();
+            final language = editorStateProvider.detectedLanguage;
             if (language == null) return const SizedBox();
 
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: Text(
-                language,
-                style: TextStyle(
-                  color: themeColor,
-                  fontSize: editorConfigService.config.uiFontSize,
+            return MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () =>
+                    _showLanguageSelector(context, editorConfigService),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: Text(
+                    language.name,
+                    style: TextStyle(
+                      color: themeColor,
+                      fontSize: editorConfigService.config.uiFontSize,
+                    ),
+                  ),
                 ),
               ),
             );
           },
         );
       },
+    );
+  }
+
+  void _showLanguageSelector(
+      BuildContext context, EditorConfigService editorConfigService) {
+    final languages = LanguageDetectionService.getAvailableLanguages();
+    showDialog(
+      context: context,
+      builder: (context) => CommandPalette(
+        commands: languages
+            .map((lang) => CommandItem(
+                  id: lang.toLowerCase,
+                  label: lang.name,
+                  detail: 'Set file language',
+                  category: 'Language',
+                  icon: Icons.code,
+                  iconColor:
+                      editorConfigService.themeService.currentTheme?.text ??
+                          Colors.black87,
+                ))
+            .toList(),
+        onSelect: (command) {
+          final language =
+              LanguageDetectionService.getLanguageFromName(command.id);
+          editorStateProvider.updateLanguage(language);
+          Navigator.pop(context);
+        },
+        editorConfigService: editorConfigService,
+      ),
     );
   }
 

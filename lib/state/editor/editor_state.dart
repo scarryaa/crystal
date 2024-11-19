@@ -9,6 +9,7 @@ import 'package:crystal/models/editor/cursor_shape.dart';
 import 'package:crystal/models/editor/events/event_models.dart';
 import 'package:crystal/models/editor/lsp_models.dart' as lsp_models;
 import 'package:crystal/models/editor/position.dart';
+import 'package:crystal/models/languages/language.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/models/text_range.dart';
 import 'package:crystal/services/command_palette_service.dart';
@@ -48,8 +49,9 @@ class EditorState extends ChangeNotifier {
   late final SelectionHandler selectionHandler;
   late final FoldingHandler foldingHandler;
   late final ScrollHandler scrollHandler;
+  late Language? detectedLanguage;
 
-  late final FoldingManager foldingManager;
+  late FoldingManager foldingManager;
   final String id = UniqueKey().toString();
   EditorScrollState scrollState = EditorScrollState();
   final Buffer _buffer = Buffer();
@@ -101,26 +103,15 @@ class EditorState extends ChangeNotifier {
   }) : path = path ?? generateUniqueTempPath() {
     final filename = path != null && path.isNotEmpty ? p.split(path).last : '';
 
-    final detectedLanguage =
+    detectedLanguage =
         LanguageDetectionService.getLanguageFromFilename(filename);
-    const indentationBasedLanguages = {
-      'python',
-      'yaml',
-      'yml',
-      'pug',
-      'sass',
-      'haml',
-      'markdown',
-      'gherkin',
-      'nim'
-    };
 
     _completionService = CompletionService(this);
 
     foldingManager = FoldingManager(
       _buffer,
       useIndentationFolding:
-          indentationBasedLanguages.contains(detectedLanguage.toLowerCase),
+          indentationBasedLanguages.contains(detectedLanguage?.toLowerCase),
     );
     textManipulator = TextManipulator(
       editorSelectionManager: editorSelectionManager,
@@ -196,6 +187,18 @@ class EditorState extends ChangeNotifier {
       }
     });
   }
+
+  final indentationBasedLanguages = {
+    'python',
+    'yaml',
+    'yml',
+    'pug',
+    'sass',
+    'haml',
+    'markdown',
+    'gherkin',
+    'nim'
+  };
 
   // Getters
   bool get showCaret => editorCursorManager.showCaret;
@@ -313,8 +316,8 @@ class EditorState extends ChangeNotifier {
   String _processRustDiagnostics(List<lsp_models.Diagnostic> diagnostics) {
     final rustDiagnostics = diagnostics
         .where((d) =>
-            d.source?.toLowerCase() == 'rust-analyzer' ||
-            d.source?.toLowerCase() == 'rustc')
+            d.source.toLowerCase() == 'rust-analyzer' ||
+            d.source.toLowerCase() == 'rustc')
         .toList();
 
     return rustDiagnostics.isNotEmpty
@@ -385,9 +388,7 @@ class EditorState extends ChangeNotifier {
       if (code != null) {
         buffer.writeln('Code: $code');
       }
-      if (source != null) {
-        buffer.writeln('Source: $source');
-      }
+      buffer.writeln('Source: $source');
       if (href != null) {
         buffer.writeln('Documentation: $href');
       }

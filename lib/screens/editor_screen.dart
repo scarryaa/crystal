@@ -571,6 +571,8 @@ class EditorScreenState extends State<EditorScreen> {
         if (snapshot.hasError) {
           return Center(child: Text('Error: ${snapshot.error}'));
         }
+        final editorTabManager =
+            context.read<EditorStateProvider>().editorTabManager;
 
         return ListenableBuilder(
           listenable:
@@ -714,7 +716,10 @@ class EditorScreenState extends State<EditorScreen> {
                         ],
                       ),
                     ),
-                    const StatusBar(),
+                    StatusBar(
+                      editorTabManager: editorTabManager,
+                      editorStateProvider: context.read<EditorStateProvider>(),
+                    )
                   ],
                 ),
               ),
