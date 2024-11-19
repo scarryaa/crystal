@@ -8,6 +8,104 @@ import 'package:provider/provider.dart';
 class StatusBar extends StatelessWidget {
   const StatusBar({super.key});
 
+  Widget _buildLSPStatus(BuildContext context,
+      EditorConfigService editorConfigService, Color themeColor) {
+    return Consumer<EditorStateProvider>(
+      builder: (context, editorStateProvider, _) {
+        return ListenableBuilder(
+          listenable: editorStateProvider.editorTabManager,
+          builder: (context, _) {
+            final activeEditor =
+                editorStateProvider.editorTabManager.activeEditor;
+            final lspService = activeEditor?.lspService;
+
+            if (activeEditor == null || lspService == null) {
+              return const SizedBox();
+            }
+
+            return ListenableBuilder(
+              listenable: Listenable.merge([
+                lspService.isRunningNotifier,
+                lspService.isInitializingNotifier,
+                lspService.workProgressNotifier,
+                lspService.workProgressMessage,
+              ]),
+              builder: (context, _) {
+                final isRunning = lspService.isRunningNotifier.value;
+                final isInitializing = lspService.isInitializingNotifier.value;
+                final hasProgress = lspService.workProgressNotifier.value;
+                final progressMessage = lspService.workProgressMessage.value;
+                final isStuck = lspService.isAnalysisStuck();
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isInitializing || (hasProgress && !isStuck))
+                        SizedBox(
+                          width: editorConfigService.config.uiFontSize,
+                          height: editorConfigService.config.uiFontSize,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: themeColor,
+                          ),
+                        )
+                      else if (isStuck)
+                        Icon(
+                          Icons.warning_amber,
+                          size: editorConfigService.config.uiFontSize,
+                          color: Colors.orange,
+                        )
+                      else
+                        Icon(
+                          isRunning ? Icons.check_circle : Icons.cancel,
+                          size: editorConfigService.config.uiFontSize,
+                          color: isRunning ? Colors.green : Colors.red,
+                        ),
+                      const SizedBox(width: 8),
+                      Text(
+                        isStuck
+                            ? 'Analysis Stuck'
+                            : (hasProgress
+                                ? progressMessage
+                                : (isRunning
+                                    ? (lspService.currentServerName ?? 'LSP')
+                                    : (isInitializing
+                                        ? 'Starting LSP...'
+                                        : 'LSP Failed'))),
+                        style: TextStyle(
+                          color: themeColor,
+                          fontSize: editorConfigService.config.uiFontSize,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      if (!isInitializing)
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: () async {
+                              lspService.dispose();
+                              await lspService.initialize();
+                            },
+                            child: Icon(
+                              Icons.refresh,
+                              size: editorConfigService.config.uiFontSize,
+                              color: themeColor,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildLanguageInfo(BuildContext context,
       EditorConfigService editorConfigService, Color themeColor) {
     return Consumer<EditorStateProvider>(
@@ -67,6 +165,7 @@ class StatusBar extends StatelessWidget {
                   context, editorConfigService, primary, themeColor),
               _buildTerminalToggle(
                   context, editorConfigService, primary, themeColor),
+              _buildLSPStatus(context, editorConfigService, themeColor),
               const Spacer(),
               _buildLanguageInfo(context, editorConfigService, themeColor),
               _buildCursorInfo(context, editorConfigService, themeColor),

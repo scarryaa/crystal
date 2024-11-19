@@ -3,43 +3,34 @@ class Diagnostic {
   final DiagnosticSeverity severity;
   final Range range;
   final String? code;
+  final String source;
   final CodeDescription? codeDescription;
-  final String? source;
   final List<DiagnosticRelatedInformation>? relatedInformation;
+
   final List<DiagnosticTag>? tags;
-  final Map<String, dynamic>? data;
 
   Diagnostic({
     required this.message,
     required this.severity,
     required this.range,
     this.code,
-    this.codeDescription,
-    this.source,
     this.relatedInformation,
+    this.codeDescription,
+    required this.source,
     this.tags,
-    this.data,
   });
 
   factory Diagnostic.fromJson(Map<String, dynamic> json) {
     return Diagnostic(
       message: json['message'] as String,
-      severity: DiagnosticSeverity.values[json['severity'] as int],
+      severity: DiagnosticSeverity.values[(json['severity'] as int) - 1],
       range: Range.fromJson(json['range'] as Map<String, dynamic>),
-      code: json['code'] as String?,
-      codeDescription: json['codeDescription'] != null
-          ? CodeDescription.fromJson(
-              json['codeDescription'] as Map<String, dynamic>)
-          : null,
-      source: json['source'] as String?,
-      relatedInformation: (json['relatedInformation'] as List<dynamic>?)
-          ?.map((e) =>
-              DiagnosticRelatedInformation.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      tags: (json['tags'] as List<dynamic>?)
-          ?.map((e) => DiagnosticTag.values[e as int])
-          .toList(),
-      data: json['data'] as Map<String, dynamic>?,
+      code: json['code']?.toString(),
+      source: json['source'] as String,
+      tags: json['tags'] == null
+          ? null
+          : List<DiagnosticTag>.from(
+              (json['tags'] as List).map((x) => DiagnosticTag.values[x - 1])),
     );
   }
 }

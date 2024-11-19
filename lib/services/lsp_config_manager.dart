@@ -198,6 +198,7 @@ class LSPConfigManager {
       final defaultConfig = entry.value;
       final configFile = File(p.join(configDirectory, '$languageName.json'));
 
+      print(configFile);
       if (await configFile.exists()) {
         // Read existing config
         final content = await configFile.readAsString();

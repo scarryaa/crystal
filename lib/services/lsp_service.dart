@@ -7,6 +7,7 @@ import 'package:crystal/models/editor/lsp_models.dart';
 import 'package:crystal/services/editor/editor_event_bus.dart';
 import 'package:crystal/services/lsp_config_manager.dart';
 import 'package:crystal/state/editor/editor_state.dart';
+import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 
@@ -20,13 +21,70 @@ class LSPService {
   final Map<String, int> _openDocuments = {};
   final Map<String, List<Diagnostic>> _fileDiagnostics = {};
   final List<Function()> _diagnosticsListeners = [];
-  ServerCommand? _currentServerCommand;
+  ServerCommand? currentServerCommand;
+  final ValueNotifier<bool> isRunningNotifier = ValueNotifier<bool>(false);
+  final ValueNotifier<String> statusMessageNotifier = ValueNotifier<String>('');
+  final ValueNotifier<bool> isInitializingNotifier = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> workProgressNotifier = ValueNotifier<bool>(false);
+  final ValueNotifier<String> workProgressMessage = ValueNotifier<String>('');
+  final Set<String> _activeProgressTokens = {};
+  bool isInitializing = false;
+  Timer? _analysisTimeoutTimer;
+  static const analysisTimeout = Duration(seconds: 10);
+  String? currentServerName;
 
   LSPService(this.editor);
 
   Future<void> initialize() async {
-    await LSPConfigManager.createDefaultConfigs();
-    await _initializeLanguageServer();
+    _clearAnalysisState(); // Clear any existing state
+    isInitializingNotifier.value = true;
+
+    try {
+      await LSPConfigManager.createDefaultConfigs();
+      await _initializeLanguageServer();
+    } finally {
+      isInitializingNotifier.value = false;
+    }
+  }
+
+  void _handleWorkDoneProgress(Map<String, dynamic> params) {
+    final token = params['token'];
+    _activeProgressTokens.add(token.toString());
+    workProgressNotifier.value = true;
+    workProgressMessage.value = 'Analyzing...';
+    _logger.info('Work progress started with token: $token');
+  }
+
+  void _handleProgress(Map<String, dynamic> params) {
+    try {
+      final token = params['token'].toString();
+      final value = params['value'] as Map<String, dynamic>;
+      final kind = value['kind'] as String;
+
+      switch (kind) {
+        case 'begin':
+          _activeProgressTokens.add(token);
+          workProgressNotifier.value = true;
+          workProgressMessage.value = value['title'] ?? 'Working...';
+          _resetAnalysisTimeout();
+          break;
+        case 'report':
+          if (_activeProgressTokens.contains(token)) {
+            workProgressMessage.value =
+                value['message'] ?? workProgressMessage.value;
+          }
+          break;
+        case 'end':
+          _activeProgressTokens.remove(token);
+          if (_activeProgressTokens.isEmpty) {
+            _clearAnalysisState();
+          }
+          break;
+      }
+    } catch (e) {
+      _clearAnalysisState(); // Force clear on error
+      _logger.severe('Error handling progress', e);
+    }
   }
 
   Future<void> _initializeLanguageServer() async {
@@ -37,6 +95,26 @@ class LSPService {
       _logger.severe(
           'Unexpected error initializing language server', e, stackTrace);
     }
+  }
+
+  void _resetAnalysisTimeout() {
+    _analysisTimeoutTimer?.cancel();
+    _analysisTimeoutTimer = Timer(analysisTimeout, () {
+      _logger.warning(
+          'Analysis timeout reached - forcing clear of analysis state');
+      _clearAnalysisState();
+      workProgressNotifier.value = false;
+      workProgressMessage.value = '';
+      _activeProgressTokens.clear();
+    });
+  }
+
+  void _clearAnalysisState() {
+    _analysisTimeoutTimer?.cancel();
+    _analysisTimeoutTimer = null;
+    _activeProgressTokens.clear();
+    workProgressNotifier.value = false;
+    workProgressMessage.value = '';
   }
 
   Future<ServerCommand?> getLSPCommandForLanguage(String extension) async {
@@ -53,22 +131,35 @@ class LSPService {
 
   Future<void> initializeLanguageServer() async {
     int retryCount = 0;
+    isRunningNotifier.value = false;
+
     while (retryCount < 3) {
       try {
-        final fileExtension = p.extension(editor.path);
-        _currentServerCommand = await getLSPCommandForLanguage(fileExtension);
+        // Ensure previous server is closed before starting new one
+        dispose();
 
-        if (_currentServerCommand == null) {
+        final fileExtension = p.extension(editor.path);
+        currentServerCommand = await getLSPCommandForLanguage(fileExtension);
+
+        if (currentServerCommand == null) {
           _logger.warning('No language server for $fileExtension');
           return;
         }
 
+        _logger.info('Starting language server initialization...');
+        _logger.info(
+            'Server command: ${currentServerCommand?.executable} ${currentServerCommand?.args}');
+
         languageServer = await Process.start(
-            _currentServerCommand!.executable, _currentServerCommand!.args,
+            currentServerCommand!.executable, currentServerCommand!.args,
             environment: {
               'PATH': Platform.environment['PATH']!,
               'NODE_PATH': Platform.environment['NODE_PATH'] ?? ''
             });
+
+        languageServer?.stderr.transform(utf8.decoder).listen((data) {
+          _logger.severe('LSP Server Error: $data');
+        });
 
         _setupMessageHandling();
 
@@ -81,17 +172,24 @@ class LSPService {
           'capabilities': _getClientCapabilities(),
         });
 
-        if (response['capabilities'] != null) {
+        _logger.info('Initialize response: $response');
+        if (response != null) {
+          // Log specific capabilities
+          _logger.info('Server capabilities: ${response['capabilities']}');
           sendNotification('initialized', {});
+          isRunningNotifier.value = true;
           return;
         }
       } catch (e, stack) {
         _logger.warning('Initialize attempt $retryCount failed', e, stack);
         retryCount++;
+        // Kill the process before retrying
+        dispose();
         await Future.delayed(const Duration(seconds: 2));
       }
     }
 
+    isRunningNotifier.value = false;
     throw Exception('Failed to initialize language server after 3 attempts');
   }
 
@@ -109,11 +207,11 @@ class LSPService {
       case 'window/showMessage':
         _handleShowMessage(params);
         break;
-      case 'client/registerCapability':
-        _handleRegisterCapability(params);
-        break;
       case 'window/workDoneProgress/create':
         _handleWorkDoneProgress(params);
+        break;
+      case '/progress':
+        _handleProgress(params);
         break;
       default:
         _logger.fine('Unhandled notification: $method');
@@ -136,6 +234,7 @@ class LSPService {
 
   void _handleShowMessage(Map<String, dynamic> params) {
     final message = params['message'] as String;
+    statusMessageNotifier.value = message;
     final type = params['type'] as int;
 
     switch (type) {
@@ -237,18 +336,6 @@ class LSPService {
     }
   }
 
-  void _handleRegisterCapability(Map<String, dynamic> params) {
-    final registrations = params['registrations'] as List;
-    for (final registration in registrations) {
-      _logger.info('Registered capability: ${registration['method']}');
-    }
-  }
-
-  void _handleWorkDoneProgress(Map<String, dynamic> params) {
-    final token = params['token'];
-    _logger.info('Work done progress created with token: $token');
-  }
-
   Future<Map<String, dynamic>?> getDefinition(int line, int character) async {
     try {
       return await sendRequest('textDocument/definition', {
@@ -264,8 +351,16 @@ class LSPService {
   void _handleServerResponse(Map<String, dynamic> response) {
     _logger.info('Handling server response: $response');
     final id = response['id'] as int;
-
     final completer = _pendingRequests.remove(id);
+
+    // Extract server info from initialize response
+    if (response['result']?['serverInfo'] != null) {
+      final serverInfo = response['result']['serverInfo'];
+      final serverName = serverInfo['name'] as String;
+      final serverVersion = serverInfo['version'] as String;
+      currentServerName = '$serverName v$serverVersion';
+    }
+
     if (completer == null) {
       _logger.warning('No pending request found for id: $id');
       return;
@@ -589,39 +684,52 @@ class LSPService {
 
   void _handleServerMessage(String message) {
     try {
-      String jsonContent = '';
+      // Split messages if multiple are received
+      final messages = message
+          .split('Content-Length: ')
+          .where((m) => m.isNotEmpty)
+          .map((m) => 'Content-Length: $m');
 
-      if (message.startsWith('Content-Length: ')) {
-        final headerEnd = message.indexOf('\r\n\r\n');
+      for (var msg in messages) {
+        String jsonContent = '';
+
+        final headerEnd = msg.indexOf('\r\n\r\n');
         if (headerEnd != -1) {
-          final lengthMatch =
-              RegExp(r'Content-Length: (\d+)').firstMatch(message);
+          final lengthMatch = RegExp(r'Content-Length: (\d+)').firstMatch(msg);
           if (lengthMatch != null) {
-            jsonContent = message.substring(headerEnd + 4);
+            final length = int.parse(lengthMatch.group(1)!);
+            final content = msg.substring(headerEnd + 4);
+            if (content.length >= length) {
+              jsonContent = content.substring(0, length);
+            }
           }
         }
+
+        if (jsonContent.isNotEmpty) {
+          _processJsonContent(jsonContent);
+        }
       }
-
-      if (jsonContent.isEmpty) return;
-
-      _processJsonContent(jsonContent);
     } catch (e, stack) {
       _logger.severe('Error handling server message', e, stack);
     }
   }
 
   void _processJsonContent(String content) {
-    final response = jsonDecode(content);
+    try {
+      final response = jsonDecode(content);
+      _logger.info('Processed JSON content: $response');
 
-    if (response['method'] == 'workspace/configuration') {
-      _handleConfigurationRequest(response);
-      return;
-    }
-
-    if (response.containsKey('method')) {
-      _handleServerNotification(response);
-    } else {
-      _handleServerResponse(response);
+      if (response['method'] == 'workspace/configuration') {
+        _handleConfigurationRequest(response);
+      } else if (response['method'] == 'window/workDoneProgress/create') {
+        _handleWorkDoneProgress(response['params']);
+      } else if (response.containsKey('method')) {
+        _handleServerNotification(response);
+      } else {
+        _handleServerResponse(response);
+      }
+    } catch (e, stack) {
+      _logger.severe('Error processing JSON content: $content', e, stack);
     }
   }
 
@@ -724,8 +832,25 @@ class LSPService {
     }
   }
 
-  void dispose() {
-    languageServer?.kill();
+  void dispose() async {
+    _clearAnalysisState();
+    _analysisTimeoutTimer?.cancel();
+    _analysisTimeoutTimer = null;
+
+    if (languageServer != null) {
+      try {
+        languageServer?.kill();
+        await languageServer?.exitCode;
+        languageServer = null;
+        isRunningNotifier.value = false;
+      } catch (e) {
+        _logger.warning('Error disposing language server', e);
+      }
+    }
+  }
+
+  bool isAnalysisStuck() {
+    return _analysisTimeoutTimer != null;
   }
 
   Future<Map<String, dynamic>> getCompletion(int line, int character) async {

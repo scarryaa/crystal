@@ -55,17 +55,7 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
 
     widget.editorState.addListener(_onEditorStateChanged);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        GestureBinding.instance.pointerRouter.addGlobalRoute((event) {
-          if (event is PointerDownEvent) {
-            if (!_isHoveringPopup) {
-              _hideBlamePopupImmediately();
-            }
-          }
-        });
-      }
-    });
+    GestureBinding.instance.pointerRouter.addGlobalRoute(_routeHandler);
   }
 
   double _getBlameTextWidth(BlameLine blame) {
@@ -435,23 +425,17 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
 
   @override
   void dispose() {
-    widget.editorState.removeListener(_onEditorStateChanged);
+    GestureBinding.instance.pointerRouter.removeGlobalRoute(_routeHandler);
+    _hideBlamePopupImmediately();
+    super.dispose();
+  }
 
-    _blameTimer?.cancel();
-
-    void routeHandler(PointerEvent event) {
-      if (event is PointerDownEvent) {
-        if (!_isHoveringPopup) {
-          _hideBlamePopupImmediately();
-        }
+  void _routeHandler(PointerEvent event) {
+    if (event is PointerDownEvent) {
+      if (!_isHoveringPopup) {
+        _hideBlamePopupImmediately();
       }
     }
-
-    GestureBinding.instance.pointerRouter.addGlobalRoute(routeHandler);
-    GestureBinding.instance.pointerRouter.removeGlobalRoute(routeHandler);
-
-    _hideBlamePopup();
-    super.dispose();
   }
 
   void _hideBlamePopupImmediately() {
