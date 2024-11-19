@@ -48,14 +48,12 @@ class DiagnosticsPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
 
-    // Check if the diagnostic has zero width
     if (startX == endX) {
-      // For zero-width diagnostics, offset back by one character width
-      final adjustedStartX = startX - editorLayoutService.config.charWidth;
-      _drawSquigglyLine(canvas, adjustedStartX, startY,
-          editorLayoutService.config.charWidth, paint);
+      // Only for zero-width diagnostics, draw a single character width
+      _drawSquigglyLine(
+          canvas, startX, startY, editorLayoutService.config.charWidth, paint);
     } else {
-      // For non-zero width diagnostics, draw the squiggly line as normal
+      // For non-zero width, use exact width
       _drawSquigglyLine(canvas, startX, startY, endX - startX, paint);
     }
   }
@@ -75,13 +73,11 @@ class DiagnosticsPainter {
       ..strokeWidth = 1.0;
 
     if (startX == endX) {
-      // For zero-width related information, extend by 1 character width on each side
-      final extendedStartX = startX - editorLayoutService.config.charWidth;
-      final extendedEndX = endX + editorLayoutService.config.charWidth;
+      // Only for zero-width related information, draw a single character width
       _drawSquigglyLine(
-          canvas, extendedStartX, startY, extendedEndX - extendedStartX, paint);
+          canvas, startX, startY, editorLayoutService.config.charWidth, paint);
     } else {
-      // For non-zero width related information, draw the squiggly line as normal
+      // For non-zero width, use exact width
       _drawSquigglyLine(canvas, startX, startY, endX - startX, paint);
     }
   }

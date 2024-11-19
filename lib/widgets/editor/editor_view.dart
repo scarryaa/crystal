@@ -103,6 +103,56 @@ class EditorViewState extends State<EditorView> {
   Offset? _hoverPosition;
   TextRange? _hoveredWordRange;
   Timer? _wordHighlightTimer;
+  Position? _lastCursorPosition;
+  Timer? _cursorMoveTimer;
+  bool _isCursorMovementRecent = false;
+
+  void _handleCursorMove() {
+    if (widget.state.editorCursorManager.cursors.isEmpty) return;
+
+    final currentCursor = widget.state.editorCursorManager.cursors.first;
+    final currentPosition = Position(
+      line: currentCursor.line,
+      column: currentCursor.column,
+    );
+
+    if (_lastCursorPosition != currentPosition) {
+      _lastCursorPosition = currentPosition;
+      _isCursorMovementRecent = true;
+      _cancelHoverOperations();
+
+      // Reset the cursor movement flag after a short delay
+      _cursorMoveTimer?.cancel();
+      _cursorMoveTimer = Timer(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          setState(() {
+            _isCursorMovementRecent = false;
+          });
+        }
+      });
+    }
+  }
+
+  void _cancelHoverOperations() {
+    _hoverTimer?.cancel();
+    _wordHighlightTimer?.cancel();
+
+    if (mounted) {
+      setState(() {
+        _isHoveringWord = false;
+        _isHoveringPopup = false;
+        _hoveredWordRange = null;
+        _lastHoveredWord = null;
+        _hoverPosition = null;
+      });
+    }
+
+    EditorEventBus.emit(HoverEvent(
+      line: -100,
+      character: -100,
+      content: '',
+    ));
+  }
 
   @override
   void didUpdateWidget(EditorView oldWidget) {
@@ -121,6 +171,10 @@ class EditorViewState extends State<EditorView> {
   @override
   void initState() {
     super.initState();
+
+    EditorEventBus.on<CursorEvent>().listen((_) {
+      _handleCursorMove();
+    });
 
     widget.verticalScrollController.addListener(_hidePopups);
     widget.horizontalScrollController.addListener(_hidePopups);
@@ -255,6 +309,8 @@ class EditorViewState extends State<EditorView> {
 
   @override
   void dispose() {
+    _cursorMoveTimer?.cancel();
+    _cancelHoverOperations();
     widget.verticalScrollController.removeListener(_hidePopups);
     widget.horizontalScrollController.removeListener(_hidePopups);
     _hoverTimer?.cancel();
@@ -409,7 +465,9 @@ class EditorViewState extends State<EditorView> {
                       }
                     },
                     onHover: (PointerHoverEvent event) {
-                      if (_isTyping) return;
+                      if (_isTyping || _isCursorMovementRecent) {
+                        return;
+                      }
 
                       final cursorPosition = _getPositionFromOffset(Offset(
                         event.localPosition.dx +
@@ -427,6 +485,7 @@ class EditorViewState extends State<EditorView> {
                       }
 
                       if (wordInfo == null) {
+                        _wordHighlightTimer?.cancel();
                         _wordHighlightTimer =
                             Timer(const Duration(milliseconds: 100), () {
                           if (mounted) {
@@ -442,7 +501,6 @@ class EditorViewState extends State<EditorView> {
                       });
 
                       _wordHighlightTimer?.cancel();
-
                       _wordHighlightTimer =
                           Timer(const Duration(milliseconds: 300), () {
                         if (!mounted) return;
@@ -451,17 +509,18 @@ class EditorViewState extends State<EditorView> {
                           _isHoveringWord = true;
                           _hoveredWordRange = TextRange(
                             start: Position(
-                                line: cursorPosition.line,
-                                column: wordInfo.startColumn),
+                              line: cursorPosition.line,
+                              column: wordInfo.startColumn,
+                            ),
                             end: Position(
-                                line: cursorPosition.line,
-                                column: wordInfo.endColumn),
+                              line: cursorPosition.line,
+                              column: wordInfo.endColumn,
+                            ),
                           );
                         });
 
                         widget.state.showDiagnostics(
                             cursorPosition.line, wordInfo.startColumn);
-
                         widget.state.showHover(
                             cursorPosition.line, wordInfo.startColumn);
                       });
@@ -470,6 +529,7 @@ class EditorViewState extends State<EditorView> {
                       behavior: HitTestBehavior.opaque,
                       onTapDown: (details) {
                         _hidePopups();
+                        _cancelHoverOperations();
                         editorInputHandler.handleTap(
                           details,
                           widget.verticalScrollController.offset,
@@ -654,8 +714,8 @@ class EditorViewState extends State<EditorView> {
   Future<KeyEventResult> _handleKeyEvent(FocusNode node, KeyEvent event) async {
     _resetCaretBlink();
     _isTyping = true;
+    _cancelHoverOperations();
 
-    // Reset typing state after a delay
     Timer(const Duration(milliseconds: 500), () {
       if (mounted) {
         setState(() {
