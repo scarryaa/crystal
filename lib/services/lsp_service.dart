@@ -791,11 +791,6 @@ class LSPService {
           'lineLength': 80,
           'completeFunctionCalls': true
         },
-        {
-          'enableSdkFormatter': true,
-          'lineLength': 80,
-          'completeFunctionCalls': true
-        }
       ]
     };
 

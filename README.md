@@ -18,6 +18,9 @@ Crystal aims to be a lightweight yet powerful code editor.
 - Minimap
 - Code Completion/Suggestions (basic)
 - Command Palette
+- Basic LSP Functionality
+- Hover Information
+- Hover Diagnostics
 
 ### Planned Features
 - Multiple Themes
