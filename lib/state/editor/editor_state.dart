@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:crystal/models/cursor.dart';
-import 'package:crystal/models/editor/breadcrumb_item.dart';
 import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/editor/command.dart';
 import 'package:crystal/models/editor/completion_item.dart';
@@ -12,12 +11,11 @@ import 'package:crystal/models/editor/position.dart';
 import 'package:crystal/models/languages/language.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/models/text_range.dart';
-import 'package:crystal/services/command_palette_service.dart';
-import 'package:crystal/services/editor/breadcrumb_generator.dart';
 import 'package:crystal/services/editor/completion_service.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_cursor_manager.dart';
 import 'package:crystal/services/editor/editor_event_bus.dart';
+import 'package:crystal/services/editor/editor_event_emitter.dart';
 import 'package:crystal/services/editor/editor_file_manager.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/services/editor/editor_selection_manager.dart';
@@ -35,14 +33,17 @@ import 'package:crystal/services/file_service.dart';
 import 'package:crystal/services/git_service.dart';
 import 'package:crystal/services/language_detection_service.dart';
 import 'package:crystal/services/lsp_service.dart';
+import 'package:crystal/state/editor/editor_core_state.dart';
 import 'package:crystal/state/editor/editor_scroll_state.dart';
-import 'package:crystal/utils/utils.dart';
 import 'package:flutter/material.dart' hide TextRange;
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 
 class EditorState extends ChangeNotifier {
+  late final EditorEventEmitter eventEmitter;
+  late final EditorCoreState coreState;
   late final CommandHandler commandHandler;
+
   late final InputHandler inputHandler;
   late final TextManipulator textManipulator;
   late final CursorMovementHandler cursorMovementHandler;
@@ -52,11 +53,7 @@ class EditorState extends ChangeNotifier {
   late Language? detectedLanguage;
 
   late FoldingManager foldingManager;
-  final String id = UniqueKey().toString();
   EditorScrollState scrollState = EditorScrollState();
-  final Buffer _buffer = Buffer();
-  VoidCallback resetGutterScroll;
-  String path = '';
   final UndoRedoManager undoRedoManager = UndoRedoManager();
   final EditorLayoutService editorLayoutService;
   late final EditorFileManager editorFileManager;
@@ -68,10 +65,6 @@ class EditorState extends ChangeNotifier {
   final FileService fileService;
   final Future<void> Function(String) tapCallback;
   bool isPinned = false;
-  String? relativePath = '';
-  late final BreadcrumbGenerator _breadcrumbGenerator;
-  List<BreadcrumbItem> _breadcrumbs = [];
-  List<BreadcrumbItem> get breadcrumbs => _breadcrumbs;
   late final CompletionService _completionService;
   List<CompletionItem> suggestions = [];
   bool showCompletions = false;
@@ -89,19 +82,40 @@ class EditorState extends ChangeNotifier {
   bool _isHoveringPopup = false;
 
   EditorState({
-    required this.resetGutterScroll,
+    required VoidCallback resetGutterScroll,
+    String? path,
+    String? relativePath,
     required this.editorLayoutService,
     required this.editorConfigService,
     required this.onDirectoryChanged,
     required this.tapCallback,
     required this.fileService,
-    String? path,
-    this.relativePath,
     required this.editors,
     required this.editorTabManager,
     required this.gitService,
-  }) : path = path ?? generateUniqueTempPath() {
+  }) {
     final filename = path != null && path.isNotEmpty ? p.split(path).last : '';
+
+    final buffer = Buffer();
+    editorFileManager = EditorFileManager(buffer, fileService);
+
+    eventEmitter = EditorEventEmitter(
+      selectionManager: editorSelectionManager,
+      buffer: buffer,
+      path: path!,
+      relativePath: relativePath,
+      getSelectedText: getSelectedText,
+      gitService: gitService,
+    );
+
+    coreState = EditorCoreState(
+        path: path,
+        relativePath: relativePath,
+        resetGutterScroll: resetGutterScroll,
+        buffer: buffer,
+        fileManager: editorFileManager,
+        cursorManager: editorCursorManager,
+        eventEmitter: eventEmitter);
 
     detectedLanguage =
         LanguageDetectionService.getLanguageFromFilename(filename);
@@ -109,9 +123,9 @@ class EditorState extends ChangeNotifier {
     _completionService = CompletionService(this);
 
     foldingManager = FoldingManager(
-      _buffer,
-      useIndentationFolding:
-          indentationBasedLanguages.contains(detectedLanguage?.toLowerCase),
+      coreState.buffer,
+      useIndentationFolding: coreState.indentationBasedLanguages
+          .contains(detectedLanguage?.toLowerCase),
     );
     textManipulator = TextManipulator(
       editorSelectionManager: editorSelectionManager,
@@ -129,7 +143,6 @@ class EditorState extends ChangeNotifier {
         buffer: buffer,
         notifyListeners: notifyListeners,
         getSelectedText: getSelectedText);
-    editorFileManager = EditorFileManager(buffer, fileService);
     selectionHandler = SelectionHandler(
         selectionManager: editorSelectionManager,
         buffer: buffer,
@@ -171,8 +184,7 @@ class EditorState extends ChangeNotifier {
         foldingManager: foldingManager,
         notifyListeners: notifyListeners);
 
-    _breadcrumbGenerator = BreadcrumbGenerator();
-    editorCursorManager.onCursorChange = _updateBreadcrumbs;
+    editorCursorManager.onCursorChange = coreState.updateBreadcrumbs;
     lspService = LSPService(this);
     lspService.initialize();
 
@@ -188,24 +200,19 @@ class EditorState extends ChangeNotifier {
     });
   }
 
-  final indentationBasedLanguages = {
-    'python',
-    'yaml',
-    'yml',
-    'pug',
-    'sass',
-    'haml',
-    'markdown',
-    'gherkin',
-    'nim'
-  };
-
   // Getters
+  void resetGutterScroll() => coreState.resetGutterScroll();
+  String get path => coreState.path;
+  String? get relativePath => coreState.relativePath;
+  String get id => coreState.id;
+  Future<void> save() => coreState.save();
+  Future<bool> saveFile(String path) => coreState.saveFile(path);
+  Future<bool> saveFileAs(String path) async => coreState.saveFileAs(path);
   bool get showCaret => editorCursorManager.showCaret;
   CursorShape get cursorShape => editorCursorManager.cursorShape;
   int get cursorLine => editorCursorManager.getCursorLine();
   Map<int, int> get foldingRanges => foldingManager.foldingState.foldingRanges;
-  Buffer get buffer => _buffer;
+  Buffer get buffer => coreState.buffer;
 
   // Setters
   set showCaret(bool show) => editorCursorManager.showCaret = show;
@@ -227,44 +234,13 @@ class EditorState extends ChangeNotifier {
     EditorEventBus.emit(TextEvent(
       content: buffer.toString(),
       isDirty: buffer.isDirty,
-      path: path,
+      path: coreState.path,
     ));
 
-    if (path.isNotEmpty && !path.startsWith('__temp')) {
-      gitService.updateDocumentChanges(relativePath ?? '', buffer.lines);
+    if (coreState.path.isNotEmpty && !coreState.path.startsWith('__temp')) {
+      gitService.updateDocumentChanges(
+          coreState.relativePath ?? '', buffer.lines);
     }
-  }
-
-  void _emitSelectionChangedEvent() {
-    EditorEventBus.emit(SelectionEvent(
-      selections: editorSelectionManager.selections,
-      hasSelection: editorSelectionManager.hasSelection(),
-      selectedText: getSelectedText(),
-    ));
-  }
-
-  void _emitFileChangedEvent() {
-    EditorEventBus.emit(FileEvent(
-      path: path,
-      relativePath: relativePath,
-      content: buffer.toString(),
-      isDirty: buffer.isDirty,
-    ));
-  }
-
-  void _emitClipboardEvent(String text, ClipboardAction action) {
-    EditorEventBus.emit(ClipboardEvent(
-      text: text,
-      action: action,
-    ));
-  }
-
-  void _emitErrorEvent(String message, [String? path, Object? error]) {
-    EditorEventBus.emit(ErrorEvent(
-      message: message,
-      path: path,
-      error: error,
-    ));
   }
 
   // LSP Methods
@@ -500,34 +476,6 @@ class EditorState extends ChangeNotifier {
   }
 
   // Saving methods
-  Future<void> save() async {
-    if (path.isEmpty || path.substring(0, 6) == '__temp') {
-      // For new untitled files, we need to use saveFileAs
-      await saveFileAs(path);
-    } else {
-      await saveFile(path);
-    }
-
-    // After successful save, mark buffer as clean
-    _buffer.isDirty = false;
-
-    notifyListeners();
-  }
-
-  Future<bool> saveFileAs(String path) async {
-    try {
-      final success = await editorFileManager.saveFileAs(path);
-      if (success) {
-        _buffer.isDirty = false;
-        _emitFileChangedEvent();
-        notifyListeners();
-      }
-      return success;
-    } catch (e) {
-      _emitErrorEvent('Failed to save file', path, e.toString());
-      return false;
-    }
-  }
 
   void acceptCompletion(CompletionItem item) {
     // Sort cursors from bottom to top to maintain correct positions
@@ -641,42 +589,19 @@ class EditorState extends ChangeNotifier {
     return lineText.substring(start, end);
   }
 
-  void _updateBreadcrumbs(int line, int column) {
-    if (!path.toLowerCase().endsWith('.dart')) {
-      _breadcrumbs = [];
-      return;
-    }
-
-    String sourceCode = buffer.lines.join('\n');
-    int cursorOffset = _calculateCursorOffset(sourceCode, line, column);
-
-    _breadcrumbs =
-        _breadcrumbGenerator.generateBreadcrumbs(sourceCode, cursorOffset);
-    notifyListeners();
-  }
-
-  int _calculateCursorOffset(String sourceCode, int line, int column) {
-    List<String> lines = sourceCode.split('\n');
-    int offset = 0;
-    for (int i = 0; i < line; i++) {
-      offset += lines[i].length + 1; // +1 for newline character
-    }
-    return offset + column;
-  }
-
   void restoreSelections(List<Selection> selections) {
     editorSelectionManager.clearAll();
     for (var selection in selections) {
       editorSelectionManager.addSelection(selection);
     }
-    _emitSelectionChangedEvent();
+    eventEmitter.emitSelectionChangedEvent();
 
     notifyListeners();
   }
 
   void updateSelection() {
     editorSelectionManager.updateSelection(editorCursorManager.cursors);
-    _emitSelectionChangedEvent();
+    eventEmitter.emitSelectionChangedEvent();
 
     notifyListeners();
   }
@@ -684,7 +609,7 @@ class EditorState extends ChangeNotifier {
   void clearSelection() {
     editorSelectionManager.clearAll();
     notifyListeners();
-    _emitSelectionChangedEvent();
+    eventEmitter.emitSelectionChangedEvent();
   }
 
   int getLastPastedLineCount() {
@@ -711,8 +636,8 @@ class EditorState extends ChangeNotifier {
       // Check if cursor is at start of line (for delete)
       // or end of line (for backspace)
       if ((cursor.column == 0 && cursor.line > 0) ||
-          (cursor.column == _buffer.getLineLength(cursor.line) &&
-              cursor.line < _buffer.lineCount - 1)) {
+          (cursor.column == coreState.buffer.getLineLength(cursor.line) &&
+              cursor.line < coreState.buffer.lineCount - 1)) {
         return true;
       }
     }
@@ -778,7 +703,7 @@ class EditorState extends ChangeNotifier {
   // Undo/redo management
   void copy() {
     commandHandler.copy();
-    _emitClipboardEvent(getSelectedText(), ClipboardAction.copy);
+    eventEmitter.emitClipboardEvent(getSelectedText(), ClipboardAction.copy);
   }
 
   void cut() {
@@ -786,14 +711,14 @@ class EditorState extends ChangeNotifier {
     commandHandler.cut();
     updateCompletions();
     _emitTextChangedEvent();
-    _emitClipboardEvent(textBeforeCut, ClipboardAction.cut);
+    eventEmitter.emitClipboardEvent(textBeforeCut, ClipboardAction.cut);
   }
 
   void paste() {
     commandHandler.paste();
     updateCompletions();
     _emitTextChangedEvent();
-    _emitClipboardEvent(getSelectedText(), ClipboardAction.paste);
+    eventEmitter.emitClipboardEvent(getSelectedText(), ClipboardAction.paste);
   }
 
   void undo() {
@@ -832,19 +757,19 @@ class EditorState extends ChangeNotifier {
 
   void selectAll() {
     selectionHandler.selectAll();
-    _emitSelectionChangedEvent();
+    eventEmitter.emitSelectionChangedEvent();
     notifyListeners();
   }
 
   void selectLine(bool extend, int lineNumber) {
     selectionHandler.selectLine(extend, lineNumber);
-    _emitSelectionChangedEvent();
+    eventEmitter.emitSelectionChangedEvent();
     notifyListeners();
   }
 
   void startSelection() {
     selectionHandler.startSelection();
-    _emitSelectionChangedEvent();
+    eventEmitter.emitSelectionChangedEvent();
     notifyListeners();
   }
 
@@ -852,7 +777,7 @@ class EditorState extends ChangeNotifier {
   TextRange getSelectedLineRange() => selectionHandler.getSelectedLineRange();
 
   String getSelectedText() {
-    return editorSelectionManager.getSelectedText(_buffer);
+    return editorSelectionManager.getSelectedText(coreState.buffer);
   }
 
   // Cursor methods
@@ -917,36 +842,13 @@ class EditorState extends ChangeNotifier {
   void updateHorizontalScrollOffset(double offset) =>
       scrollHandler.updateHorizontalScrollOffset(offset);
 
-  Future<bool> saveFile(String path) async {
-    try {
-      final success = await editorFileManager.saveFile(path);
-      if (success) {
-        _buffer.isDirty = false;
-        _emitFileChangedEvent();
-        notifyListeners();
-      }
-      return success;
-    } catch (e) {
-      _emitErrorEvent('Failed to save file', path, e.toString());
-      return false;
-    }
-  }
-
   bool get isEmpty => buffer.isEmpty;
 
   void openFile(String content) {
-    editorCursorManager.reset();
     clearSelection();
-    editorFileManager.openFile(content);
+    coreState.openFile(content);
     scrollState.updateVerticalScrollOffset(0);
     scrollState.updateHorizontalScrollOffset(0);
-    resetGutterScroll();
-    _updateBreadcrumbs(0, 0);
-    _emitFileChangedEvent();
-
-    if (path.isNotEmpty && !path.startsWith('__temp')) {
-      CommandPaletteService.addRecentFile(path);
-    }
 
     notifyListeners();
   }

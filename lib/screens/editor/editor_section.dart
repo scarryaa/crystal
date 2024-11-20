@@ -198,7 +198,9 @@ class EditorSection extends StatelessWidget {
                     if (splitView.editors.isNotEmpty)
                       EditorControlBarView(
                         editorConfigService: editorConfigService,
-                        filePath: state?.relativePath ?? state?.path ?? '',
+                        filePath: state?.coreState.relativePath ??
+                            state?.coreState.path ??
+                            '',
                         searchTermChanged: (newTerm) =>
                             searchService.onSearchTermChanged(newTerm, state),
                         nextSearchTerm: () =>
@@ -278,21 +280,25 @@ class EditorSection extends StatelessWidget {
                                             ),
                                             fileConfig: FileConfig(
                                               fileName: path
-                                                  .split(splitView
-                                                      .activeEditor!.path)
+                                                  .split(splitView.activeEditor!
+                                                      .coreState.path)
                                                   .last,
                                               isDirty: splitView.activeEditor
                                                       ?.buffer.isDirty ??
                                                   false,
                                               onEditorClosed: onEditorClosed,
                                               saveFileAs: () => splitView
-                                                  .activeEditor!
+                                                  .activeEditor!.coreState
                                                   .saveFileAs(splitView
-                                                      .activeEditor!.path),
+                                                      .activeEditor!
+                                                      .coreState
+                                                      .path),
                                               saveFile: () => splitView
-                                                  .activeEditor!
+                                                  .activeEditor!.coreState
                                                   .saveFile(splitView
-                                                      .activeEditor!.path),
+                                                      .activeEditor!
+                                                      .coreState
+                                                      .path),
                                               openNewTab: openNewTab,
                                               activeEditorIndex: () =>
                                                   splitView.activeEditorIndex,
@@ -370,7 +376,8 @@ class EditorSection extends StatelessWidget {
                                       totalContentHeight:
                                           totalContentHeight.toDouble(),
                                       fileName: path
-                                          .split(splitView.activeEditor!.path)
+                                          .split(splitView
+                                              .activeEditor!.coreState.path)
                                           .last);
                                 },
                               ),
