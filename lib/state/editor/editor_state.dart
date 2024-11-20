@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/editor/command.dart';
 import 'package:crystal/models/editor/completion_item.dart';
@@ -22,9 +21,11 @@ import 'package:crystal/services/editor/editor_selection_manager.dart';
 import 'package:crystal/services/editor/editor_tab_manager.dart';
 import 'package:crystal/services/editor/folding_manager.dart';
 import 'package:crystal/services/editor/handlers/command_handler.dart';
+import 'package:crystal/services/editor/handlers/completion_handler.dart';
 import 'package:crystal/services/editor/handlers/cursor_movement_handler.dart';
 import 'package:crystal/services/editor/handlers/folding_handler.dart';
 import 'package:crystal/services/editor/handlers/input_handler.dart';
+import 'package:crystal/services/editor/handlers/lsp_manager.dart';
 import 'package:crystal/services/editor/handlers/scroll_handler.dart';
 import 'package:crystal/services/editor/handlers/selection_handler.dart';
 import 'package:crystal/services/editor/handlers/text_manipulator.dart';
@@ -44,6 +45,8 @@ class EditorState extends ChangeNotifier {
   late final EditorCoreState coreState;
   late final CommandHandler commandHandler;
 
+  late final LSPManager lspManager;
+  late final CompletionManager completionManager;
   late final InputHandler inputHandler;
   late final TextManipulator textManipulator;
   late final CursorMovementHandler cursorMovementHandler;
@@ -66,20 +69,13 @@ class EditorState extends ChangeNotifier {
   final Future<void> Function(String) tapCallback;
   bool isPinned = false;
   late final CompletionService _completionService;
-  List<CompletionItem> suggestions = [];
-  bool showCompletions = false;
   int selectedSuggestionIndex = 0;
-  final ValueNotifier<int> selectedSuggestionIndexNotifier = ValueNotifier(0);
   final List<EditorState> editors;
   final EditorTabManager editorTabManager;
   final GitService gitService;
   late final LSPService lspService;
   bool isHoverInfoVisible = false;
-  Position? _lastHoverPosition;
-  Timer? _hoverTimer;
-  List<lsp_models.Diagnostic> _diagnostics = [];
-  List<lsp_models.Diagnostic> get diagnostics => _diagnostics;
-  bool _isHoveringPopup = false;
+  List<lsp_models.Diagnostic> get diagnostics => lspManager.diagnostics;
 
   EditorState({
     required VoidCallback resetGutterScroll,
@@ -121,6 +117,12 @@ class EditorState extends ChangeNotifier {
         LanguageDetectionService.getLanguageFromFilename(filename);
 
     _completionService = CompletionService(this);
+    completionManager = CompletionManager(
+      editorCursorManager: editorCursorManager,
+      buffer: buffer,
+      completionService: _completionService,
+      notifyListeners: notifyListeners,
+    );
 
     foldingManager = FoldingManager(
       coreState.buffer,
@@ -160,7 +162,7 @@ class EditorState extends ChangeNotifier {
       redo: commandHandler.redo,
       onDirectoryChanged: onDirectoryChanged,
       fileService: fileService,
-      path: path ?? '',
+      path: path,
       editors: editors,
       splitHorizontally: editorTabManager.addHorizontalSplit,
       splitVertically: editorTabManager.addVerticalSplit,
@@ -187,6 +189,13 @@ class EditorState extends ChangeNotifier {
     editorCursorManager.onCursorChange = coreState.updateBreadcrumbs;
     lspService = LSPService(this);
     lspService.initialize();
+    lspManager = LSPManager(
+        buffer: buffer,
+        setCursor: editorCursorManager.setCursor,
+        lspService: lspService,
+        tapCallback: tapCallback,
+        scrollToLine: scrollToLine,
+        notifyListeners: notifyListeners);
 
     buffer.addListener(() async {
       await lspService.sendDidChangeNotification(buffer.content);
@@ -213,8 +222,13 @@ class EditorState extends ChangeNotifier {
   int get cursorLine => editorCursorManager.getCursorLine();
   Map<int, int> get foldingRanges => foldingManager.foldingState.foldingRanges;
   Buffer get buffer => coreState.buffer;
+  bool get showCompletions => completionManager.showCompletions;
+  ValueNotifier<int> get selectedSuggestionIndexNotifier =>
+      completionManager.selectedSuggestionIndexNotifier;
+  List<CompletionItem> get suggestions => completionManager.suggestions;
 
   // Setters
+  set showCompletions(bool show) => completionManager.showCompletions = show;
   set showCaret(bool show) => editorCursorManager.showCaret = show;
 
   // Events
@@ -244,155 +258,19 @@ class EditorState extends ChangeNotifier {
   }
 
   // LSP Methods
-  void setIsHoveringPopup(bool isHovering) {
-    _isHoveringPopup = isHovering;
-  }
+  void setIsHoveringPopup(bool isHovering) =>
+      lspManager.setIsHoveringPopup(isHovering);
+  void updateDiagnostics(List<lsp_models.Diagnostic> newDiagnostics) =>
+      lspManager.updateDiagnostics(newDiagnostics);
+  Future<void> showHover(int line, int character) =>
+      lspManager.showHover(line, character);
+  Future<List<lsp_models.Diagnostic>?> showDiagnostics(int line, int col) =>
+      lspManager.showDiagnostics(line, col);
 
-  void updateDiagnostics(List<lsp_models.Diagnostic> newDiagnostics) {
-    _diagnostics = newDiagnostics;
-    notifyListeners();
-  }
-
-  Future<void> showHover(int line, int character) async {
-    final currentPosition = Position(line: line, column: character);
-    if (_lastHoverPosition != currentPosition && !_isHoveringPopup) {
-      _hoverTimer?.cancel();
-      _lastHoverPosition = currentPosition;
-      if (_lastHoverPosition == currentPosition && !_isHoveringPopup) {
-        await showDiagnostics(line, character);
-
-        final response = await lspService.getHover(line, character);
-        if (!_isHoveringPopup) {
-          String content = '';
-          if (response != null) {
-            content = response['contents']?['value'] ?? '';
-          }
-
-          final matchingDiagnostics =
-              _getDiagnosticsForPosition(line, character);
-          final rustContent = _processRustDiagnostics(matchingDiagnostics);
-
-          if (rustContent.isNotEmpty) {
-            content =
-                content.isEmpty ? rustContent : '$content\n\n$rustContent';
-          }
-          if (content.isEmpty) return;
-
-          _emitHoverEvent(line, character, content, matchingDiagnostics);
-        }
-      }
-    }
-  }
-
-  Future<List<lsp_models.Diagnostic>?> showDiagnostics(
-      int line, int character) async {
-    final matchingDiagnostics = _getDiagnosticsForPosition(line, character);
-    _emitHoverEvent(line, character, '', matchingDiagnostics);
-    return matchingDiagnostics.isEmpty ? null : matchingDiagnostics;
-  }
-
-  String _processRustDiagnostics(List<lsp_models.Diagnostic> diagnostics) {
-    final rustDiagnostics = diagnostics
-        .where((d) =>
-            d.source.toLowerCase() == 'rust-analyzer' ||
-            d.source.toLowerCase() == 'rustc')
-        .toList();
-
-    return rustDiagnostics.isNotEmpty
-        ? formatRustDiagnostics(rustDiagnostics)
-        : '';
-  }
-
-  List<lsp_models.Diagnostic> _getDiagnosticsForPosition(
-      int line, int character) {
-    return _diagnostics.where((diagnostic) {
-      final range = diagnostic.range;
-      return line >= range.start.line &&
-          line <= range.end.line &&
-          character >= range.start.character - 1 &&
-          character <= range.end.character + 1;
-    }).toList();
-  }
-
-  void _emitHoverEvent(int line, int character, String content,
-      List<lsp_models.Diagnostic> diagnostics) {
-    TextRange? diagnosticRange;
-    if (diagnostics.isNotEmpty) {
-      final closestDiagnostic = diagnostics.reduce((a, b) {
-        final aSize = (a.range.end.character - a.range.start.character) +
-            (a.range.end.line - a.range.start.line) * 1000;
-        final bSize = (b.range.end.character - b.range.start.character) +
-            (b.range.end.line - b.range.start.line) * 1000;
-        return aSize < bSize ? a : b;
-      });
-
-      diagnosticRange = TextRange(
-        start: Position(
-            line: closestDiagnostic.range.start.line,
-            column: closestDiagnostic.range.start.character),
-        end: Position(
-            line: closestDiagnostic.range.end.line,
-            column: closestDiagnostic.range.end.character),
-      );
-    }
-
-    EditorEventBus.emit(HoverEvent(
-      content: content,
-      line: line,
-      character: character,
-      diagnostics: diagnostics,
-      diagnosticRange: diagnosticRange,
-    ));
-  }
-
-  String formatRustDiagnostics(List<lsp_models.Diagnostic> diagnostics) {
-    final buffer = StringBuffer();
-    buffer.writeln('```rust-analyzer');
-    for (final diagnostic in diagnostics) {
-      // Format range information
-      final startLine =
-          diagnostic.range.start.line + 1; // Convert to 1-based line numbers
-      final startChar = diagnostic.range.start.character + 1;
-      final location = 'line $startLine, column $startChar';
-
-      final severity = _getSeverityLabel(diagnostic.severity);
-      final message = diagnostic.message;
-      final code = diagnostic.code;
-      final source = diagnostic.source;
-      final href = diagnostic.codeDescription?.href;
-
-      // Write formatted diagnostic
-      buffer.writeln('$severity[$location]: $message');
-      if (code != null) {
-        buffer.writeln('Code: $code');
-      }
-      buffer.writeln('Source: $source');
-      if (href != null) {
-        buffer.writeln('Documentation: $href');
-      }
-      buffer.writeln();
-    }
-
-    buffer.writeln('```');
-    return buffer.toString();
-  }
-
-  String _getSeverityLabel(lsp_models.DiagnosticSeverity severity) {
-    final int severityValue = severity.index + 1;
-    switch (severityValue) {
-      case 1:
-        return 'error';
-      case 2:
-        return 'warning';
-      case 3:
-        return 'info';
-      case 4:
-        return 'hint';
-      default:
-        return 'unknown'; // fallback
-    }
-  }
-
+  String formatRustDiagnostics(List<lsp_models.Diagnostic> diagnostics) =>
+      lspManager.formatRustDiagnostics(diagnostics);
+  String getSeverityLabel(lsp_models.DiagnosticSeverity severity) =>
+      lspManager.getSeverityLabel(severity);
   Future<void> goToDefinition(int line, int character) async {
     final response = await lspService.getDefinition(line, character);
     if (response != null) {
@@ -420,87 +298,14 @@ class EditorState extends ChangeNotifier {
   }
 
   // Completions
-  void selectNextSuggestion() {
-    if (showCompletions && suggestions.isNotEmpty) {
-      selectedSuggestionIndexNotifier.value =
-          (selectedSuggestionIndexNotifier.value + 1) % suggestions.length;
-      notifyListeners();
-    }
-  }
-
-  void selectPreviousSuggestion() {
-    if (showCompletions && suggestions.isNotEmpty) {
-      selectedSuggestionIndexNotifier.value =
-          (selectedSuggestionIndexNotifier.value - 1 + suggestions.length) %
-              suggestions.length;
-      notifyListeners();
-    }
-  }
-
-  void resetSuggestionSelection() {
-    selectedSuggestionIndexNotifier.value = 0;
-    notifyListeners();
-  }
-
-  String _getPrefix(String line, int column) {
-    final pattern = RegExp(r'\w+$');
-    final match = pattern.firstMatch(line.substring(0, column));
-    return match?.group(0) ?? '';
-  }
-
-  void updateCompletions() {
-    if (editorCursorManager.cursors.isEmpty) {
-      showCompletions = false;
-      suggestions = [];
-      notifyListeners();
-      return;
-    }
-
-    // Get prefixes for all cursors
-    final prefixes = editorCursorManager.cursors.map((cursor) {
-      final line = buffer.getLine(cursor.line);
-      return _getPrefix(line, cursor.column);
-    }).toSet();
-
-    // Only show completions if all cursors have the same non-empty prefix
-    if (prefixes.length == 1 && prefixes.first.isNotEmpty) {
-      suggestions = _completionService.getSuggestions(prefixes.first);
-      showCompletions = suggestions.isNotEmpty &&
-          (suggestions.length > 1 || suggestions[0].label != prefixes.first);
-    } else {
-      showCompletions = false;
-      suggestions = [];
-    }
-
-    notifyListeners();
-  }
-
-  // Saving methods
-
-  void acceptCompletion(CompletionItem item) {
-    // Sort cursors from bottom to top to maintain correct positions
-    final sortedCursors = List<Cursor>.from(editorCursorManager.cursors)
-      ..sort((a, b) => b.line.compareTo(a.line));
-
-    for (var cursor in sortedCursors) {
-      final line = buffer.getLine(cursor.line);
-      final prefix = _getPrefix(line, cursor.column);
-
-      if (prefix.isEmpty) continue;
-
-      final newLine = line.substring(0, cursor.column - prefix.length) +
-          item.label +
-          line.substring(cursor.column);
-
-      buffer.setLine(cursor.line, newLine);
-      cursor.column = cursor.column - prefix.length + item.label.length;
-    }
-
-    showCompletions = false;
-    resetSuggestionSelection();
-    editorCursorManager.mergeCursorsIfNeeded();
-    notifyListeners();
-  }
+  void selectNextSuggestion() => completionManager.selectNextSuggestion();
+  void selectPreviousSuggestion() =>
+      completionManager.selectPreviousSuggestion();
+  void resetSuggestionSelection() =>
+      completionManager.resetSuggestionSelection();
+  void updateCompletions() => completionManager.updateCompletions();
+  void acceptCompletion(CompletionItem item) =>
+      completionManager.acceptCompletion(item);
 
   // Misc
   List<TextRange> findAllOccurrences(String word) {
