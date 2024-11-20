@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:crystal/models/editor/command_palette_mode.dart';
+import 'package:crystal/models/editor/commands/editing_commands.dart';
+import 'package:crystal/models/editor/commands/file_commands.dart';
+import 'package:crystal/models/editor/commands/navigation_commands.dart';
 import 'package:crystal/models/editor/completion_item.dart';
 import 'package:crystal/models/editor/config/config_paths.dart';
 import 'package:crystal/models/editor/events/event_models.dart';
@@ -16,8 +19,11 @@ import 'package:crystal/services/command_palette_service.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_event_bus.dart';
 import 'package:crystal/services/editor/editor_input_handler.dart';
-import 'package:crystal/services/editor/editor_keyboard_handler.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
+import 'package:crystal/services/editor/handlers/keyboard/editor_keyboard_handler.dart';
+import 'package:crystal/services/editor/handlers/keyboard/file_handler.dart';
+import 'package:crystal/services/editor/handlers/keyboard/navigation_handler.dart';
+import 'package:crystal/services/editor/handlers/keyboard/text_editing_handler.dart';
 import 'package:crystal/services/git_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:crystal/state/editor/editor_syntax_highlighter.dart';
@@ -211,20 +217,63 @@ class EditorViewState extends State<EditorView> {
         resetCaretBlink: _resetCaretBlink, requestFocus: requestFocus);
 
     editorKeyboardHandler = EditorKeyboardHandler(
-      onSearchTermChanged: widget.onSearchTermChanged,
-      updateCachedMaxLineWidth: updateCachedMaxLineWidth,
-      scrollToCursor: widget.scrollToCursor,
-      openConfig: _openConfig,
-      openDefaultConfig: _openDefaultConfig,
+      // Base handlers
+      fileHandler: FileHandler(
+        getState: () => widget.state,
+        scrollToCursor: widget.scrollToCursor,
+        isDirty: widget.isDirty,
+        fileCommands: FileCommands(
+          saveFile: widget.saveFile,
+          saveFileAs: widget.saveFileAs,
+          openConfig: _openConfig,
+          openDefaultConfig: _openDefaultConfig,
+          openNewTab: widget.openNewTab,
+        ),
+        onEditorClosed: widget.onEditorClosed,
+        activeEditorIndex: () => widget.activeEditorIndex,
+      ),
+      navigationHandler: NavigationHandler(
+        getState: () => widget.state,
+        scrollToCursor: widget.scrollToCursor,
+        navigationCommands: NavigationCommands(
+          scrollToCursor: widget.scrollToCursor,
+          moveCursorUp: widget.state.moveCursorUp,
+          moveCursorDown: widget.state.moveCursorDown,
+          moveCursorLeft: widget.state.moveCursorLeft,
+          moveCursorRight: widget.state.moveCursorRight,
+          moveCursorToLineStart: widget.state.moveCursorToLineStart,
+          moveCursorToLineEnd: widget.state.moveCursorToLineEnd,
+          moveCursorToDocumentStart: widget.state.moveCursorToDocumentStart,
+          moveCursorToDocumentEnd: widget.state.moveCursorToDocumentEnd,
+          moveCursorPageUp: widget.state.moveCursorPageUp,
+          moveCursorPageDown: widget.state.moveCursorPageDown,
+        ),
+      ),
+      textEditingHandler: TextEditingHandler(
+        getState: () => widget.state,
+        scrollToCursor: widget.scrollToCursor,
+        editingCommands: EditingCommands(
+          copy: widget.state.copy,
+          cut: widget.state.cut,
+          paste: widget.state.paste,
+          selectAll: widget.state.selectAll,
+          backspace: widget.state.backspace,
+          delete: widget.state.delete,
+          insertNewLine: widget.state.insertNewLine,
+          insertTab: widget.state.insertTab,
+          backTab: widget.state.backTab,
+          insertChar: widget.state.insertChar,
+          getLastPastedLineCount: widget.state.getLastPastedLineCount,
+          getSelectedLineRange: widget.state.getSelectedLineRange,
+        ),
+        updateSingleLineWidth: updateSingleLineWidth,
+        onSearchTermChanged: widget.onSearchTermChanged,
+        searchTerm: widget.searchTerm,
+      ),
+      // Core properties
       getState: () => widget.state,
+      onSearchTermChanged: widget.onSearchTermChanged,
       searchTerm: widget.searchTerm,
-      openNewTab: widget.openNewTab,
-      activeEditorIndex: () => widget.activeEditorIndex(),
-      onEditorClosed: widget.onEditorClosed,
-      saveFileAs: widget.saveFileAs,
-      saveFile: widget.saveFile,
-      updateSingleLineWidth: updateSingleLineWidth,
-      isDirty: widget.isDirty,
       showCommandPalette: (
               [CommandPaletteMode mode = CommandPaletteMode.commands]) =>
           CommandPaletteService.instance.showCommandPalette(mode),
