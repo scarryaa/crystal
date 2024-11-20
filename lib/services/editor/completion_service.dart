@@ -8,8 +8,12 @@ class CompletionService {
   CompletionService(this.editor);
 
   List<CompletionItem> getSuggestions(String prefix) {
+    if (prefix.isEmpty) {
+      return [];
+    }
+
     final suggestions = <CompletionItem>[];
-    final seenLabels = <String>{};
+    final seenLabels = <String>{prefix};
 
     for (final item in _getKeywordSuggestions(prefix)) {
       if (!seenLabels.contains(item.label)) {
@@ -31,7 +35,8 @@ class CompletionService {
   List<CompletionItem> _getKeywordSuggestions(String prefix) {
     final keywords = ['if', 'else', 'for', 'while', 'class', 'function'];
     return keywords
-        .where((k) => k.startsWith(prefix))
+        .where(
+            (k) => k.startsWith(prefix) && k != prefix) // Exclude exact matches
         .map((k) => CompletionItem(
               label: k,
               kind: CompletionItemKind.keyword,
@@ -47,7 +52,8 @@ class CompletionService {
 
     for (final match in matches) {
       final word = match.group(0)!;
-      if (word.startsWith(prefix)) {
+      if (word.startsWith(prefix) && word != prefix) {
+        // Exclude exact matches
         uniqueWords.add(word);
       }
     }

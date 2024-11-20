@@ -1,10 +1,10 @@
 import 'dart:io';
+
 import 'package:crystal/models/editor/command_palette_mode.dart';
 import 'package:crystal/services/dialog_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:crystal/models/editor/position.dart';
 
 class EditorKeyboardHandler {
   Function(String searchTerm) onSearchTermChanged;
@@ -83,6 +83,11 @@ class EditorKeyboardHandler {
           state.selectPreviousSuggestion();
           return KeyEventResult.handled;
         case LogicalKeyboardKey.tab:
+          if (state.suggestions.isNotEmpty) {
+            state.selectNextSuggestion();
+            return KeyEventResult.handled;
+          }
+          break;
         case LogicalKeyboardKey.enter:
           if (state.suggestions.isNotEmpty) {
             state.acceptCompletion(
