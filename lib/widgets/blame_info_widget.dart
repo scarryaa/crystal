@@ -382,8 +382,7 @@ class _BlameInfoWidgetState extends State<BlameInfoWidget> {
         final lineHeight = widget.editorLayoutService.config.lineHeight;
         final cursorLine = (event.localPosition.dy / lineHeight).floor();
 
-        if (cursorLine ==
-                widget.editorState.editorCursorManager.cursors.first.line &&
+        if (cursorLine == widget.editorState.cursors.first.line &&
             cursorLine >= 0 &&
             cursorLine < widget.blameInfo.length) {
           final lineWidth = _getLineWidth(cursorLine);

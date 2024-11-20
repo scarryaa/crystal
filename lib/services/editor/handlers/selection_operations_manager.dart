@@ -1,21 +1,21 @@
 import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/models/text_range.dart';
-import 'package:crystal/services/editor/editor_cursor_manager.dart';
-import 'package:crystal/services/editor/editor_selection_manager.dart';
+import 'package:crystal/services/editor/controllers/cursor_controller.dart';
 import 'package:crystal/services/editor/handlers/selection_handler.dart';
+import 'package:crystal/services/editor/selection_manager.dart';
 
 class SelectionOperationsManager {
   final SelectionHandler selectionHandler;
-  final EditorSelectionManager selectionManager;
-  final EditorCursorManager cursorManager;
+  final SelectionManager selectionManager;
+  final CursorController cursorController;
   final Buffer buffer;
   final Function() notifyListeners;
   final Function() emitSelectionChangedEvent;
 
   SelectionOperationsManager({
     required this.selectionHandler,
-    required this.cursorManager,
+    required this.cursorController,
     required this.selectionManager,
     required this.buffer,
     required this.notifyListeners,
@@ -68,7 +68,7 @@ class SelectionOperationsManager {
   }
 
   void updateSelection() {
-    selectionManager.updateSelection(cursorManager.cursors);
+    selectionManager.updateSelection(cursorController.cursors);
     emitSelectionChangedEvent();
 
     notifyListeners();

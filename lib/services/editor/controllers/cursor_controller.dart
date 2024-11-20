@@ -1,13 +1,17 @@
 import 'dart:math' as math;
-import 'dart:math';
 
 import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/editor/cursor_shape.dart';
 import 'package:crystal/services/editor/folding_manager.dart';
+import 'package:crystal/services/editor/selection_manager.dart';
 import 'package:flutter/material.dart';
 
-class EditorCursorManager extends ChangeNotifier {
+class CursorController extends ChangeNotifier {
+  final Buffer buffer;
+  final FoldingManager foldingManager;
+  final SelectionManager selectionManager;
+
   Function(int line, int column)? onCursorChange;
   bool showCaret = true;
   CursorShape cursorShape = CursorShape.bar;
@@ -16,8 +20,17 @@ class EditorCursorManager extends ChangeNotifier {
 
   List<Cursor> _cursors = [];
   List<Cursor> get cursors => _cursors;
-
   bool get hasCursors => cursors.isNotEmpty;
+
+  CursorController({
+    required this.buffer,
+    required this.foldingManager,
+    required this.selectionManager,
+  }) {
+    reset();
+  }
+
+  // Basic cursor operations
   void setCursor(int line, int column) {
     clearAll();
     _cursors.add(Cursor(line, column));
@@ -26,52 +39,79 @@ class EditorCursorManager extends ChangeNotifier {
 
   void toggleInsertMode() {
     _insertMode = !_insertMode;
-    // Toggle cursor shape based on mode
     cursorShape = _insertMode ? CursorShape.bar : CursorShape.block;
     notifyListeners();
   }
 
-  void _notifyCursorChange() {
-    if (onCursorChange != null && cursors.isNotEmpty) {
-      onCursorChange!(cursors[0].line, cursors[0].column);
+  void toggleCaret() {
+    showCaret = !showCaret;
+    notifyListeners();
+  }
+
+  // Movement operations with selection support
+  void _handleMovement(bool isShiftPressed, void Function() moveFunction) {
+    if (!selectionManager.hasSelection() && isShiftPressed) {
+      selectionManager.startSelection(_cursors);
+    }
+
+    moveFunction();
+
+    if (isShiftPressed) {
+      selectionManager.updateSelection(_cursors);
+    } else {
+      selectionManager.clearAll();
     }
     notifyListeners();
   }
 
-  int getCursorLine() {
-    // Return the line number of the first cursor
-    if (cursors.isEmpty) {
-      return 0;
-    }
-    return cursors.first.line;
+  void moveCursorToLineStart(bool isShiftPressed) {
+    _handleMovement(isShiftPressed, () => moveToLineStart(buffer));
   }
 
-  void toggleCaret() {
-    showCaret = !showCaret;
+  void moveCursorToLineEnd(bool isShiftPressed) {
+    _handleMovement(isShiftPressed, () => moveToLineEnd(buffer));
   }
 
-  void addCursor(Cursor cursor) {
-    _cursors.add(cursor);
-    _notifyCursorChange();
+  void moveCursorToDocumentStart(bool isShiftPressed) {
+    _handleMovement(isShiftPressed, () => moveToDocumentStart(buffer));
   }
 
-  void removeCursor(Cursor cursor) {
-    _cursors.remove(cursor);
-    _notifyCursorChange();
+  void moveCursorToDocumentEnd(bool isShiftPressed) {
+    _handleMovement(isShiftPressed, () => moveToDocumentEnd(buffer));
   }
 
+  void moveCursorPageUp(bool isShiftPressed) {
+    _handleMovement(isShiftPressed, () => movePageUp(buffer, foldingManager));
+  }
+
+  void moveCursorPageDown(bool isShiftPressed) {
+    _handleMovement(isShiftPressed, () => movePageDown(buffer, foldingManager));
+  }
+
+  void moveCursorUp(bool isShiftPressed) {
+    _handleMovement(isShiftPressed, () => moveUp(buffer, foldingManager));
+  }
+
+  void moveCursorDown(bool isShiftPressed) {
+    _handleMovement(isShiftPressed, () => moveDown(buffer, foldingManager));
+  }
+
+  void moveCursorLeft(bool isShiftPressed) {
+    _handleMovement(isShiftPressed, () => moveLeft(buffer, foldingManager));
+  }
+
+  void moveCursorRight(bool isShiftPressed) {
+    _handleMovement(isShiftPressed, () => moveRight(buffer, foldingManager));
+  }
+
+  // Basic movement implementations
   void moveToLineStart(Buffer buffer) {
     for (var cursor in cursors) {
       final line = buffer.getLine(cursor.line);
       final firstNonWhitespace = line.indexOf(RegExp(r'\S'));
       final targetColumn = firstNonWhitespace == -1 ? 0 : firstNonWhitespace;
-
-      // If already at first non-whitespace, go to start of line
-      if (cursor.column == targetColumn && targetColumn > 0) {
-        cursor.column = 0;
-      } else {
-        cursor.column = targetColumn;
-      }
+      cursor.column =
+          cursor.column == targetColumn && targetColumn > 0 ? 0 : targetColumn;
     }
     mergeCursorsIfNeeded();
     _notifyCursorChange();
@@ -134,106 +174,6 @@ class EditorCursorManager extends ChangeNotifier {
     _notifyCursorChange();
   }
 
-  void mergeCursorsIfNeeded() {
-    final uniqueCursors = <Cursor>[];
-
-    // Sort cursors by line and column
-    _cursors.sort((a, b) {
-      if (a.line != b.line) {
-        return a.line.compareTo(b.line);
-      }
-      return a.column.compareTo(b.column);
-    });
-
-    for (var cursor in _cursors) {
-      // Check if this cursor overlaps with any cursor in uniqueCursors
-      bool hasOverlap = uniqueCursors.any((existing) =>
-          existing.line == cursor.line && existing.column == cursor.column);
-
-      if (!hasOverlap) {
-        uniqueCursors.add(cursor);
-      }
-    }
-
-    _cursors = uniqueCursors;
-  }
-
-  bool cursorExistsAtPosition(int line, int column) {
-    return _cursors
-        .any((cursor) => cursor.line == line && cursor.column == column);
-  }
-
-  void reset() {
-    _cursors.clear();
-    _cursors.add(Cursor(0, 0));
-  }
-
-  void clearAll() {
-    _cursors.clear();
-  }
-
-  void insertNewLine(Buffer buffer) {
-    // Sort cursors from bottom to top to maintain correct positions
-    final sortedCursors = List<Cursor>.from(_cursors)
-      ..sort((a, b) => b.line.compareTo(a.line));
-    for (var cursor in sortedCursors) {
-      String currentLine = buffer.getLine(cursor.line);
-      String remainingText = currentLine.substring(cursor.column);
-      String beforeCursor = currentLine.substring(0, cursor.column);
-      // Calculate indentation of current line
-      String indentation = '';
-      for (int i = 0; i < currentLine.length; i++) {
-        if (currentLine[i] == ' ') {
-          indentation += ' ';
-        } else {
-          break;
-        }
-      }
-
-      // Keep indentation for new line
-      buffer.setLine(cursor.line, beforeCursor);
-      buffer.insertLine(cursor.line + 1, content: indentation + remainingText);
-      // Update cursor position
-      cursor.line += 1;
-      cursor.column = indentation.length;
-
-      // Update later cursor positions
-      for (var otherCursor in _cursors) {
-        if (otherCursor.line > cursor.line) {
-          otherCursor.line += 1;
-        } else if (otherCursor.line == cursor.line &&
-            otherCursor.column > cursor.column) {
-          otherCursor.column += 1;
-        }
-      }
-    }
-  }
-
-  void _moveCursors(Buffer buffer, FoldingManager foldingManager,
-      int Function(int, FoldingManager) getNextLine) {
-    for (var cursor in cursors) {
-      int nextLine = getNextLine(cursor.line, foldingManager);
-      if (nextLine >= 0 && nextLine < buffer.lineCount) {
-        cursor.line = nextLine;
-        cursor.column = min(cursor.column, buffer.getLineLength(nextLine));
-      }
-    }
-    mergeCursorsIfNeeded();
-  }
-
-  void moveCursor(int line, int column) {
-    clearAll();
-    _cursors.add(Cursor(0, 0));
-    _cursors[0].line = line;
-    _cursors[0].column = column;
-  }
-
-  void moveUp(Buffer buffer, FoldingManager foldingManager) {
-    _moveCursors(
-        buffer, foldingManager, (line, fm) => fm.getPreviousVisibleLine(line));
-    _notifyCursorChange();
-  }
-
   void moveDown(Buffer buffer, FoldingManager foldingManager) {
     _moveCursors(
         buffer, foldingManager, (line, fm) => fm.getNextVisibleLine(line));
@@ -256,6 +196,30 @@ class EditorCursorManager extends ChangeNotifier {
     _notifyCursorChange();
   }
 
+  void moveUp(Buffer buffer, FoldingManager foldingManager) {
+    _moveCursors(
+        buffer, foldingManager, (line, fm) => fm.getPreviousVisibleLine(line));
+    _notifyCursorChange();
+  }
+
+  void moveCursor(int line, int col) {
+    clearAll();
+    _cursors.add(Cursor(line, col));
+    _notifyCursorChange();
+  }
+
+  void _moveCursors(Buffer buffer, FoldingManager foldingManager,
+      int Function(int, FoldingManager) getNextLine) {
+    for (var cursor in cursors) {
+      int nextLine = getNextLine(cursor.line, foldingManager);
+      if (nextLine >= 0 && nextLine < buffer.lineCount) {
+        cursor.line = nextLine;
+        cursor.column = math.min(cursor.column, buffer.getLineLength(nextLine));
+      }
+    }
+    mergeCursorsIfNeeded();
+  }
+
   void moveRight(Buffer buffer, FoldingManager foldingManager) {
     for (var cursor in cursors) {
       int lineLength = buffer.getLineLength(cursor.line);
@@ -273,14 +237,36 @@ class EditorCursorManager extends ChangeNotifier {
     _notifyCursorChange();
   }
 
-  void setAllCursors(List<Cursor> newCursors) {
-    for (int i = 0; i < _cursors.length; i++) {
-      _cursors[i].line = newCursors[i].line;
-      _cursors[i].column = newCursors[i].column;
-    }
+  // Editing operations
+  void insertNewLine(Buffer buffer) {
+    final sortedCursors = List<Cursor>.from(_cursors)
+      ..sort((a, b) => b.line.compareTo(a.line));
 
-    mergeCursorsIfNeeded();
+    for (var cursor in sortedCursors) {
+      String currentLine = buffer.getLine(cursor.line);
+      String remainingText = currentLine.substring(cursor.column);
+      String beforeCursor = currentLine.substring(0, cursor.column);
+
+      String indentation = RegExp(r'^\s*').stringMatch(currentLine) ?? '';
+
+      buffer.setLine(cursor.line, beforeCursor);
+      buffer.insertLine(cursor.line + 1, content: indentation + remainingText);
+
+      cursor.line += 1;
+      cursor.column = indentation.length;
+
+      _updateOtherCursorsAfterNewLine(cursor);
+    }
     _notifyCursorChange();
+  }
+
+  void _updateOtherCursorsAfterNewLine(Cursor currentCursor) {
+    for (var otherCursor in _cursors) {
+      if (otherCursor != currentCursor &&
+          otherCursor.line >= currentCursor.line) {
+        otherCursor.line += 1;
+      }
+    }
   }
 
   void backspace(Buffer buffer) {
@@ -418,5 +404,79 @@ class EditorCursorManager extends ChangeNotifier {
 
     mergeCursorsIfNeeded();
     _notifyCursorChange();
+  }
+
+  // Utility methods
+  void setAllCursors(List<Cursor> newCursors) {
+    _cursors.clear();
+    _cursors.addAll(newCursors);
+    mergeCursorsIfNeeded();
+    _notifyCursorChange();
+  }
+
+  void addCursor(int line, int column) {
+    final newCursor = Cursor(line, column);
+    _cursors.add(newCursor);
+    mergeCursorsIfNeeded();
+    _notifyCursorChange();
+  }
+
+  void removeCursor(int line, int column) {
+    _cursors.removeWhere(
+        (cursor) => cursor.line == line && cursor.column == column);
+
+    if (_cursors.isEmpty) {
+      _cursors.add(Cursor(0, 0));
+    }
+    _notifyCursorChange();
+  }
+
+  void _notifyCursorChange() {
+    if (onCursorChange != null && cursors.isNotEmpty) {
+      onCursorChange!(cursors[0].line, cursors[0].column);
+    }
+    notifyListeners();
+  }
+
+  void mergeCursorsIfNeeded() {
+    final uniqueCursors = <Cursor>[];
+
+    // Sort cursors by line and column
+    _cursors.sort((a, b) {
+      if (a.line != b.line) {
+        return a.line.compareTo(b.line);
+      }
+      return a.column.compareTo(b.column);
+    });
+
+    for (var cursor in _cursors) {
+      // Check if this cursor overlaps with any cursor in uniqueCursors
+      bool hasOverlap = uniqueCursors.any((existing) =>
+          existing.line == cursor.line && existing.column == cursor.column);
+
+      if (!hasOverlap) {
+        uniqueCursors.add(cursor);
+      }
+    }
+
+    _cursors = uniqueCursors;
+  }
+
+  void reset() {
+    _cursors.clear();
+    _cursors.add(Cursor(0, 0));
+  }
+
+  void clearAll() {
+    _cursors.clear();
+  }
+
+  int getCursorLine() {
+    return cursors.isEmpty ? 0 : cursors.first.line;
+  }
+
+  bool cursorExistsAtPosition(int line, int column) {
+    return _cursors
+        .any((cursor) => cursor.line == line && cursor.column == column);
   }
 }

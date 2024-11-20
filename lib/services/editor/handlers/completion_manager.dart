@@ -2,12 +2,12 @@ import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/editor/completion_item.dart';
 import 'package:crystal/services/editor/completion_service.dart';
-import 'package:crystal/services/editor/editor_cursor_manager.dart';
+import 'package:crystal/services/editor/controllers/cursor_controller.dart';
 import 'package:flutter/material.dart';
 
 class CompletionManager {
   final ValueNotifier<int> selectedSuggestionIndexNotifier = ValueNotifier(0);
-  final EditorCursorManager editorCursorManager;
+  final CursorController cursorController;
   final Buffer buffer;
   final CompletionService completionService;
   final VoidCallback notifyListeners;
@@ -16,7 +16,7 @@ class CompletionManager {
   bool showCompletions = false;
 
   CompletionManager({
-    required this.editorCursorManager,
+    required this.cursorController,
     required this.buffer,
     required this.completionService,
     required this.notifyListeners,
@@ -51,14 +51,14 @@ class CompletionManager {
   }
 
   void updateCompletions() {
-    if (editorCursorManager.cursors.isEmpty) {
+    if (cursorController.cursors.isEmpty) {
       showCompletions = false;
       suggestions = [];
       notifyListeners();
       return;
     }
 
-    final prefixes = editorCursorManager.cursors.map((cursor) {
+    final prefixes = cursorController.cursors.map((cursor) {
       final line = buffer.getLine(cursor.line);
       return _getPrefix(line, cursor.column);
     }).toSet();
@@ -76,7 +76,7 @@ class CompletionManager {
   }
 
   void acceptCompletion(CompletionItem item) {
-    final sortedCursors = List<Cursor>.from(editorCursorManager.cursors)
+    final sortedCursors = List<Cursor>.from(cursorController.cursors)
       ..sort((a, b) => b.line.compareTo(a.line));
 
     for (var cursor in sortedCursors) {
@@ -95,7 +95,7 @@ class CompletionManager {
 
     showCompletions = false;
     resetSuggestionSelection();
-    editorCursorManager.mergeCursorsIfNeeded();
+    cursorController.mergeCursorsIfNeeded();
     notifyListeners();
   }
 }

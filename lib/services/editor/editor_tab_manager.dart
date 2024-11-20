@@ -229,8 +229,7 @@ class EditorTabManager extends ChangeNotifier {
     );
 
     newEditor.openFile(source.buffer.content);
-    newEditor.editorCursorManager
-        .setAllCursors(List.from(source.editorCursorManager.cursors));
+    newEditor.setAllCursors(List.from(source.cursors));
     newEditor.editorSelectionManager
         .setAllSelections(List.from(source.editorSelectionManager.selections));
 

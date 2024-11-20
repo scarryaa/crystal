@@ -64,9 +64,9 @@ class EditorViewState extends State<EditorView> {
   List<lsp_models.Diagnostic>? hoveredInfo;
 
   void _handleCursorMove() {
-    if (widget.config.state.editorCursorManager.cursors.isEmpty) return;
+    if (widget.config.state.cursors.isEmpty) return;
 
-    final currentCursor = widget.config.state.editorCursorManager.cursors.first;
+    final currentCursor = widget.config.state.cursors.first;
     final currentPosition = Position(
       line: currentCursor.line,
       column: currentCursor.column,
@@ -263,7 +263,7 @@ class EditorViewState extends State<EditorView> {
   }
 
   Offset _getCompletionOverlayPosition() {
-    final cursor = widget.config.state.editorCursorManager.cursors.first;
+    final cursor = widget.config.state.cursors.first;
     final lineHeight = widget.config.services.layoutService.config.lineHeight;
 
     final x =
@@ -409,8 +409,8 @@ class EditorViewState extends State<EditorView> {
 
     String currentWord = '';
     List<TextRange> currentWordOccurrences = [];
-    if (widget.config.state.editorCursorManager.cursors.isNotEmpty) {
-      final cursor = widget.config.state.editorCursorManager.cursors.first;
+    if (widget.config.state.cursors.isNotEmpty) {
+      final cursor = widget.config.state.cursors.first;
       final wordRange =
           widget.config.state.getWordRangeAt(cursor.line, cursor.column);
       if (wordRange != null) {

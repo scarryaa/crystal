@@ -178,7 +178,7 @@ class IndentationPainter extends EditorPainterBase {
   void paint(Canvas canvas, Size size,
       {required int firstVisibleLine, required int lastVisibleLine}) {
     final lines = editorState.buffer.lines;
-    final cursors = editorState.editorCursorManager.cursors;
+    final cursors = editorState.cursors;
     Map<int, Set<int>> highlightedIndentRanges = {};
     Map<int, bool> isClosestIndentLevel = {};
 
@@ -403,8 +403,8 @@ class IndentationPainter extends EditorPainterBase {
             oldDelegate.editorState.buffer.version ||
         editorState.foldingRanges != oldDelegate.editorState.foldingRanges ||
         !_compareCursors(
-          editorState.editorCursorManager.cursors,
-          oldDelegate.editorState.editorCursorManager.cursors,
+          editorState.cursors,
+          oldDelegate.editorState.cursors,
         );
   }
 

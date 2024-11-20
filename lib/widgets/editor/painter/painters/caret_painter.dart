@@ -20,7 +20,7 @@ class CaretPainter extends EditorPainterBase {
       {required int firstVisibleLine, required int lastVisibleLine}) {
     if (!editorState.showCaret) return;
 
-    for (var cursor in editorState.editorCursorManager.cursors) {
+    for (var cursor in editorState.cursors) {
       // Calculate visual line number
       int visualLine = 0;
       for (int i = 0; i < cursor.line; i++) {
@@ -135,10 +135,9 @@ class CaretPainter extends EditorPainterBase {
   @override
   bool shouldRepaint(covariant CaretPainter oldDelegate) {
     return oldDelegate.editorState.showCaret != editorState.showCaret ||
-        oldDelegate.editorState.editorCursorManager.cursors !=
-            editorState.editorCursorManager.cursors ||
+        oldDelegate.editorState.cursors != editorState.cursors ||
         oldDelegate.editorState.cursorShape != editorState.cursorShape ||
-        oldDelegate.editorState.editorCursorManager.cursors.any((cursor) =>
+        oldDelegate.editorState.cursors.any((cursor) =>
             oldDelegate.editorState.buffer.getLine(cursor.line) !=
             editorState.buffer.getLine(cursor.line));
   }

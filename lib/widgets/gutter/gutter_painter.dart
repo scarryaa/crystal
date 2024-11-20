@@ -160,8 +160,7 @@ class GutterPainter extends CustomPainter {
       if (visualLine >= firstVisibleVisualLine - bufferLines) {
         // Highlight current line first
         if (!editorState.editorSelectionManager.hasSelection() &&
-            editorState.editorCursorManager.cursors
-                .any((cursor) => cursor.line == currentLine)) {
+            editorState.cursors.any((cursor) => cursor.line == currentLine)) {
           canvas.drawRect(
               Rect.fromLTWH(
                 0,
@@ -222,8 +221,7 @@ class GutterPainter extends CustomPainter {
           return _highlightStyle;
         }
       }
-    } else if (editorState.editorCursorManager.cursors
-        .any((cursor) => cursor.line == line)) {
+    } else if (editorState.cursors.any((cursor) => cursor.line == line)) {
       return _highlightStyle;
     }
     return _defaultStyle;
@@ -328,8 +326,7 @@ class GutterPainter extends CustomPainter {
     return oldDelegate.hoveredLine != hoveredLine ||
         editorState.buffer.lineCount !=
             oldDelegate.editorState.buffer.lineCount ||
-        editorState.editorCursorManager.cursors !=
-            oldDelegate.editorState.editorCursorManager.cursors ||
+        editorState.cursors != oldDelegate.editorState.cursors ||
         editorConfigService.config.fontSize !=
             oldDelegate.editorConfigService.config.fontSize ||
         editorState.foldingRanges != oldDelegate.editorState.foldingRanges ||

@@ -1,4 +1,3 @@
-import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/search_match.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/state/editor/editor_state.dart';
@@ -151,9 +150,8 @@ class SearchService {
     final matchEndColumn = match.startIndex + match.length;
 
     // Update cursor position to end of match
-    activeEditor.editorCursorManager.clearAll();
-    activeEditor.editorCursorManager
-        .addCursor(Cursor(matchLine, matchEndColumn));
+    activeEditor.clearAllCursors();
+    activeEditor.addCursor(matchLine, matchEndColumn);
 
     // Update selection to cover the entire match
     activeEditor.editorSelectionManager.clearAll();

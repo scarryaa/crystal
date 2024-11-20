@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'dart:ui';
 
 import 'package:crystal/models/editor/lsp_models.dart';
 import 'package:crystal/models/editor/search_match.dart';
@@ -86,7 +85,7 @@ class EditorPainter extends CustomPainter {
         ),
         bracketMatchPainter = BracketMatchPainter(
             editorState: editorState,
-            cursors: editorState.editorCursorManager.cursors,
+            cursors: editorState.cursors,
             editorLayoutService: editorLayoutService,
             editorConfigService: editorConfigService),
         textPainterHelper = TextPainterHelper(
@@ -262,8 +261,7 @@ class EditorPainter extends CustomPainter {
         editorState.cursorShape != oldDelegate.editorState.cursorShape ||
         searchTerm != oldDelegate.searchTerm ||
         currentSearchTermMatch != oldDelegate.currentSearchTermMatch ||
-        oldDelegate.editorState.editorCursorManager.cursors !=
-            editorState.editorCursorManager.cursors ||
+        oldDelegate.editorState.cursors != editorState.cursors ||
         editorState.foldingRanges != oldDelegate.editorState.foldingRanges ||
         oldDelegate.blameInfo != blameInfo ||
         editorState.diagnostics != oldDelegate.editorState.diagnostics ||

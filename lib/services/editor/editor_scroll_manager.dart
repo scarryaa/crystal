@@ -39,7 +39,7 @@ class EditorScrollManager {
   }) {
     if (activeEditor == null) return;
 
-    final cursor = activeEditor.editorCursorManager.cursors.last;
+    final cursor = activeEditor.cursors.last;
     final cursorBufferLine = cursor.line;
     final lineHeight = layoutService.config.lineHeight;
     final viewportHeight =

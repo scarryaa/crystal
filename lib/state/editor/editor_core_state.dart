@@ -4,7 +4,7 @@ import 'package:crystal/models/languages/language.dart';
 import 'package:crystal/models/text_range.dart';
 import 'package:crystal/services/command_palette_service.dart';
 import 'package:crystal/services/editor/breadcrumb_generator.dart';
-import 'package:crystal/services/editor/editor_cursor_manager.dart';
+import 'package:crystal/services/editor/controllers/cursor_controller.dart';
 import 'package:crystal/services/editor/editor_event_emitter.dart';
 import 'package:crystal/services/editor/editor_file_manager.dart';
 import 'package:crystal/services/language_detection_service.dart';
@@ -21,7 +21,7 @@ class EditorCoreState extends ChangeNotifier {
   final VoidCallback resetGutterScroll;
   final EditorFileManager fileManager;
   final EditorEventEmitter eventEmitter;
-  final EditorCursorManager cursorManager;
+  final CursorController cursorController;
 
   // State Properties
   bool isDirty = false;
@@ -49,7 +49,7 @@ class EditorCoreState extends ChangeNotifier {
     required this.buffer,
     required this.fileManager,
     required this.eventEmitter,
-    required this.cursorManager,
+    required this.cursorController,
   }) {
     _initializeLanguage();
   }
@@ -62,7 +62,7 @@ class EditorCoreState extends ChangeNotifier {
     required Buffer buffer,
     required EditorFileManager fileManager,
     required EditorEventEmitter eventEmitter,
-    required EditorCursorManager cursorManager,
+    required CursorController cursorController,
   }) {
     return EditorCoreState._(
       path: path ?? generateUniqueTempPath(),
@@ -71,7 +71,7 @@ class EditorCoreState extends ChangeNotifier {
       buffer: buffer,
       fileManager: fileManager,
       eventEmitter: eventEmitter,
-      cursorManager: cursorManager,
+      cursorController: cursorController,
     );
   }
 
@@ -118,7 +118,7 @@ class EditorCoreState extends ChangeNotifier {
 
   void openFile(String content) {
     buffer.setContent(content);
-    cursorManager.reset();
+    cursorController.reset();
     fileManager.openFile(content);
     isDirty = false;
     resetGutterScroll();

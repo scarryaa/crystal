@@ -30,7 +30,7 @@ class BlamePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (blameInfo.isEmpty) return;
 
-    final cursorLine = editorState.editorCursorManager.cursors.first.line;
+    final cursorLine = editorState.cursors.first.line;
     final lineHeight = editorLayoutService.config.lineHeight;
 
     // Only paint if cursor line is within blame info range
@@ -124,7 +124,7 @@ class BlamePainter extends CustomPainter {
     return blameInfo != oldDelegate.blameInfo ||
         editorState.scrollState != oldDelegate.editorState.scrollState ||
         editorState.buffer.version != oldDelegate.editorState.buffer.version ||
-        editorState.editorCursorManager.cursors.first.line !=
-            oldDelegate.editorState.editorCursorManager.cursors.first.line;
+        editorState.cursors.first.line !=
+            oldDelegate.editorState.cursors.first.line;
   }
 }

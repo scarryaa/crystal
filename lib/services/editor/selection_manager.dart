@@ -4,7 +4,7 @@ import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/selection.dart';
 
-class EditorSelectionManager {
+class SelectionManager {
   List<Selection> _selections = [];
   List<Selection> get selections => _selections;
 

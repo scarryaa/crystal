@@ -302,11 +302,11 @@ class StatusBar extends StatelessWidget {
         if (state == null) return const SizedBox();
 
         return ListenableBuilder(
-          listenable: state.editorCursorManager,
+          listenable: state.cursorController,
           builder: (context, _) {
-            final cursorInfo = state.editorCursorManager.cursors.length > 1
-                ? '${state.editorCursorManager.cursors.length} cursors'
-                : '${state.editorCursorManager.cursors.first.line + 1}:${state.editorCursorManager.cursors.first.column + 1}';
+            final cursorInfo = state.cursors.length > 1
+                ? '${state.cursors.length} cursors'
+                : '${state.cursors.first.line + 1}:${state.cursors.first.column + 1}';
 
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),

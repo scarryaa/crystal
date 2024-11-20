@@ -20,7 +20,7 @@ class CurrentLineHighlightPainter extends EditorPainterBase {
     // Draw highlights
     if (!editorState.editorSelectionManager.hasSelection()) {
       _currentHighlightedLines.clear();
-      for (var cursor in editorState.editorCursorManager.cursors) {
+      for (var cursor in editorState.cursors) {
         // Only highlight if line is not hidden and not already highlighted
         if (!_currentHighlightedLines.contains(cursor.line) &&
             !editorState.isLineHidden(cursor.line)) {

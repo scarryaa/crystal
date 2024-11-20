@@ -1,14 +1,14 @@
 import 'package:crystal/models/editor/buffer.dart';
-import 'package:crystal/services/editor/editor_cursor_manager.dart';
-import 'package:crystal/services/editor/editor_selection_manager.dart';
+import 'package:crystal/services/editor/controllers/cursor_controller.dart';
 import 'package:crystal/services/editor/handlers/text_manipulator.dart';
+import 'package:crystal/services/editor/selection_manager.dart';
 import 'package:crystal/services/editor/undo_redo_manager.dart';
 import 'package:flutter/services.dart';
 
 class CommandHandler {
   final UndoRedoManager undoRedoManager;
-  final EditorSelectionManager editorSelectionManager;
-  final EditorCursorManager editorCursorManager;
+  final SelectionManager editorSelectionManager;
+  final CursorController cursorController;
   final TextManipulator textManipulator;
   final Buffer buffer;
   final Function() notifyListeners;
@@ -17,7 +17,7 @@ class CommandHandler {
   CommandHandler({
     required this.undoRedoManager,
     required this.editorSelectionManager,
-    required this.editorCursorManager,
+    required this.cursorController,
     required this.textManipulator,
     required this.buffer,
     required this.notifyListeners,
@@ -56,7 +56,7 @@ class CommandHandler {
     }
 
     String pastedLines = data.text!;
-    editorCursorManager.paste(buffer, pastedLines);
+    cursorController.paste(buffer, pastedLines);
 
     buffer.incrementVersion();
     notifyListeners();

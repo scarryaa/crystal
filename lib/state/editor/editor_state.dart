@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/editor/command.dart';
 import 'package:crystal/models/editor/completion_item.dart';
@@ -11,19 +12,16 @@ import 'package:crystal/models/languages/language.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/models/text_range.dart';
 import 'package:crystal/services/editor/completion_service.dart';
+import 'package:crystal/services/editor/controllers/cursor_controller.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
-import 'package:crystal/services/editor/editor_cursor_manager.dart';
 import 'package:crystal/services/editor/editor_event_bus.dart';
 import 'package:crystal/services/editor/editor_event_emitter.dart';
 import 'package:crystal/services/editor/editor_file_manager.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
-import 'package:crystal/services/editor/editor_selection_manager.dart';
 import 'package:crystal/services/editor/editor_tab_manager.dart';
 import 'package:crystal/services/editor/folding_manager.dart';
 import 'package:crystal/services/editor/handlers/command_handler.dart';
 import 'package:crystal/services/editor/handlers/completion_manager.dart';
-import 'package:crystal/services/editor/handlers/cursor_movement_handler.dart';
-import 'package:crystal/services/editor/handlers/cursor_operations_manager.dart';
 import 'package:crystal/services/editor/handlers/folding_handler.dart';
 import 'package:crystal/services/editor/handlers/input_handler.dart';
 import 'package:crystal/services/editor/handlers/lsp_manager.dart';
@@ -32,6 +30,7 @@ import 'package:crystal/services/editor/handlers/selection_handler.dart';
 import 'package:crystal/services/editor/handlers/selection_operations_manager.dart';
 import 'package:crystal/services/editor/handlers/text_manipulator.dart';
 import 'package:crystal/services/editor/handlers/text_operations_manager.dart';
+import 'package:crystal/services/editor/selection_manager.dart';
 import 'package:crystal/services/editor/undo_redo_manager.dart';
 import 'package:crystal/services/file_service.dart';
 import 'package:crystal/services/git_service.dart';
@@ -44,19 +43,18 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 
 class EditorState extends ChangeNotifier {
+  late final CursorController cursorController;
   late final EditorEventEmitter eventEmitter;
   late final EditorCoreState coreState;
   late final CommandHandler commandHandler;
 
   late final TextOperationsManager textOperationsManager;
   late final SelectionOperationsManager selectionOperationsManager;
-  late final CursorOperationsManager cursorOperationsManager;
 
   late final LSPManager lspManager;
   late final CompletionManager completionManager;
   late final InputHandler inputHandler;
   late final TextManipulator textManipulator;
-  late final CursorMovementHandler cursorMovementHandler;
   late final SelectionHandler selectionHandler;
   late final FoldingHandler foldingHandler;
   late final ScrollHandler scrollHandler;
@@ -68,9 +66,7 @@ class EditorState extends ChangeNotifier {
   final EditorLayoutService editorLayoutService;
   late final EditorFileManager editorFileManager;
   final EditorConfigService editorConfigService;
-  final EditorCursorManager editorCursorManager = EditorCursorManager();
-  final EditorSelectionManager editorSelectionManager =
-      EditorSelectionManager();
+  final SelectionManager editorSelectionManager = SelectionManager();
   final Function(String)? onDirectoryChanged;
   final FileService fileService;
   final Future<void> Function(String) tapCallback;
@@ -111,13 +107,23 @@ class EditorState extends ChangeNotifier {
       gitService: gitService,
     );
 
+    foldingManager = FoldingManager(
+      coreState.buffer,
+      useIndentationFolding: coreState.indentationBasedLanguages
+          .contains(detectedLanguage?.toLowerCase),
+    );
+    cursorController = CursorController(
+        buffer: buffer,
+        foldingManager: foldingManager,
+        selectionManager: editorSelectionManager);
+
     coreState = EditorCoreState(
         path: path,
         relativePath: relativePath,
         resetGutterScroll: resetGutterScroll,
         buffer: buffer,
         fileManager: editorFileManager,
-        cursorManager: editorCursorManager,
+        cursorController: cursorController,
         eventEmitter: eventEmitter);
 
     detectedLanguage =
@@ -125,20 +131,15 @@ class EditorState extends ChangeNotifier {
 
     _completionService = CompletionService(this);
     completionManager = CompletionManager(
-      editorCursorManager: editorCursorManager,
+      cursorController: cursorController,
       buffer: buffer,
       completionService: _completionService,
       notifyListeners: notifyListeners,
     );
 
-    foldingManager = FoldingManager(
-      coreState.buffer,
-      useIndentationFolding: coreState.indentationBasedLanguages
-          .contains(detectedLanguage?.toLowerCase),
-    );
     textManipulator = TextManipulator(
-      editorSelectionManager: editorSelectionManager,
-      editorCursorManager: editorCursorManager,
+      selectionManager: editorSelectionManager,
+      cursorController: cursorController,
       buffer: buffer,
       foldingManager: foldingManager,
       undoRedoManager: undoRedoManager,
@@ -147,7 +148,7 @@ class EditorState extends ChangeNotifier {
     commandHandler = CommandHandler(
         undoRedoManager: undoRedoManager,
         editorSelectionManager: editorSelectionManager,
-        editorCursorManager: editorCursorManager,
+        cursorController: cursorController,
         textManipulator: textManipulator,
         buffer: buffer,
         notifyListeners: notifyListeners,
@@ -161,13 +162,13 @@ class EditorState extends ChangeNotifier {
     selectionHandler = SelectionHandler(
         selectionManager: editorSelectionManager,
         buffer: buffer,
-        cursorManager: editorCursorManager,
+        cursorController: cursorController,
         foldingManager: foldingManager);
     inputHandler = InputHandler(
       buffer: buffer,
       editorLayoutService: editorLayoutService,
       editorConfigService: editorConfigService,
-      editorCursorManager: editorCursorManager,
+      cursorController: cursorController,
       editorSelectionManager: editorSelectionManager,
       foldingManager: foldingManager,
       notifyListeners: notifyListeners,
@@ -180,16 +181,6 @@ class EditorState extends ChangeNotifier {
       splitHorizontally: editorTabManager.addHorizontalSplit,
       splitVertically: editorTabManager.addVerticalSplit,
     );
-    cursorMovementHandler = CursorMovementHandler(
-      buffer: buffer,
-      foldingManager: foldingManager,
-      editorCursorManager: editorCursorManager,
-      editorSelectionManager: editorSelectionManager,
-      notifyListeners: notifyListeners,
-      startSelection: startSelection,
-      updateSelection: updateSelection,
-      clearSelection: clearSelection,
-    );
     scrollHandler = ScrollHandler(
       scrollState: scrollState,
       notifyListeners: notifyListeners,
@@ -199,12 +190,12 @@ class EditorState extends ChangeNotifier {
         foldingManager: foldingManager,
         notifyListeners: notifyListeners);
 
-    editorCursorManager.onCursorChange = coreState.updateBreadcrumbs;
+    cursorController.onCursorChange = coreState.updateBreadcrumbs;
     lspService = LSPService(this);
     lspService.initialize();
     lspManager = LSPManager(
         buffer: buffer,
-        setCursor: editorCursorManager.setCursor,
+        setCursor: cursorController.setCursor,
         lspService: lspService,
         tapCallback: tapCallback,
         scrollToLine: scrollToLine,
@@ -215,14 +206,7 @@ class EditorState extends ChangeNotifier {
       notifyListeners: notifyListeners,
       emitSelectionChangedEvent: eventEmitter.emitSelectionChangedEvent,
       selectionHandler: selectionHandler,
-      cursorManager: editorCursorManager,
-    );
-
-    cursorOperationsManager = CursorOperationsManager(
-      cursorManager: editorCursorManager,
-      movementHandler: cursorMovementHandler,
-      emitCursorChangedEvent: _emitCursorChangedEvent,
-      notifyListeners: notifyListeners,
+      cursorController: cursorController,
     );
 
     buffer.addListener(() async {
@@ -245,33 +229,30 @@ class EditorState extends ChangeNotifier {
   Future<void> save() => coreState.save();
   Future<bool> saveFile(String path) => coreState.saveFile(path);
   Future<bool> saveFileAs(String path) async => coreState.saveFileAs(path);
-  bool get showCaret => cursorOperationsManager.showCaret;
-  CursorShape get cursorShape => cursorOperationsManager.cursorShape;
-  int get cursorLine => cursorOperationsManager.cursorLine;
+  bool get showCaret => cursorController.showCaret;
+  CursorShape get cursorShape => cursorController.cursorShape;
+  int get cursorLine => cursorController.getCursorLine();
   Map<int, int> get foldingRanges => foldingManager.foldingState.foldingRanges;
   Buffer get buffer => coreState.buffer;
   bool get showCompletions => completionManager.showCompletions;
   ValueNotifier<int> get selectedSuggestionIndexNotifier =>
       completionManager.selectedSuggestionIndexNotifier;
   List<CompletionItem> get suggestions => completionManager.suggestions;
+  List<Cursor> get cursors => cursorController.cursors;
 
   // Setters
   set showCompletions(bool show) => completionManager.showCompletions = show;
-  set showCaret(bool show) => cursorOperationsManager.showCaret = show;
+  set showCaret(bool show) => cursorController.showCaret = show;
+  set onCursorChange(Function(int, int)? changeFn) =>
+      cursorController.onCursorChange = changeFn;
+
+  void setAllCursors(List<Cursor> cursors) =>
+      cursorController.setAllCursors(cursors);
+  void clearAllCursors() => cursorController.clearAll();
+  void addCursor(int line, int col) => cursorController.addCursor(line, col);
+  void moveCursor(int line, int col) => cursorController.moveCursor(line, col);
 
   // Events
-  void _emitCursorChangedEvent() {
-    EditorEventBus.emit(CursorEvent(
-      cursors: editorCursorManager.cursors,
-      line: cursorOperationsManager.cursorLine,
-      column: editorCursorManager.cursors.isNotEmpty
-          ? editorCursorManager.cursors.first.column
-          : 0,
-      hasSelection: editorSelectionManager.hasSelection(),
-      selections: editorSelectionManager.selections,
-    ));
-  }
-
   void _emitTextChangedEvent() {
     EditorEventBus.emit(TextEvent(
       content: buffer.toString(),
@@ -424,7 +405,7 @@ class EditorState extends ChangeNotifier {
       return false;
     }
 
-    for (var cursor in editorCursorManager.cursors) {
+    for (var cursor in cursorController.cursors) {
       // Check if cursor is at start of line (for delete)
       // or end of line (for backspace)
       if ((cursor.column == 0 && cursor.line > 0) ||
@@ -526,26 +507,26 @@ class EditorState extends ChangeNotifier {
 
   // Cursor methods
   void moveCursorToLineStart(bool isShiftPressed) =>
-      cursorOperationsManager.moveCursorToLineStart(isShiftPressed);
+      cursorController.moveCursorToLineStart(isShiftPressed);
   void moveCursorToLineEnd(bool isShiftPressed) =>
-      cursorOperationsManager.moveCursorToLineEnd(isShiftPressed);
+      cursorController.moveCursorToLineEnd(isShiftPressed);
   void moveCursorToDocumentStart(bool isShiftPressed) =>
-      cursorOperationsManager.moveCursorToDocumentStart(isShiftPressed);
+      cursorController.moveCursorToDocumentStart(isShiftPressed);
   void moveCursorToDocumentEnd(bool isShiftPressed) =>
-      cursorOperationsManager.moveCursorToDocumentEnd(isShiftPressed);
+      cursorController.moveCursorToDocumentEnd(isShiftPressed);
   void moveCursorPageUp(bool isShiftPressed) =>
-      cursorOperationsManager.moveCursorPageUp(isShiftPressed);
+      cursorController.moveCursorPageUp(isShiftPressed);
   void moveCursorPageDown(bool isShiftPressed) =>
-      cursorOperationsManager.moveCursorPageDown(isShiftPressed);
+      cursorController.moveCursorPageDown(isShiftPressed);
   void moveCursorUp(bool isShiftPressed) =>
-      cursorOperationsManager.moveCursorUp(isShiftPressed);
+      cursorController.moveCursorUp(isShiftPressed);
   void moveCursorDown(bool isShiftPressed) =>
-      cursorOperationsManager.moveCursorDown(isShiftPressed);
+      cursorController.moveCursorDown(isShiftPressed);
   void moveCursorLeft(bool isShiftPressed) =>
-      cursorOperationsManager.moveCursorLeft(isShiftPressed);
+      cursorController.moveCursorLeft(isShiftPressed);
   void moveCursorRight(bool isShiftPressed) =>
-      cursorOperationsManager.moveCursorRight(isShiftPressed);
-  void toggleCaret() => cursorOperationsManager.toggleCaret();
+      cursorController.moveCursorRight(isShiftPressed);
+  void toggleCaret() => cursorController.toggleCaret();
 
   // Scroll methods
   void updateVerticalScrollOffset(double offset) =>

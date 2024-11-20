@@ -72,18 +72,18 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
   void didUpdateWidget(EditorControlBarView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.editorState != widget.editorState) {
-      oldWidget.editorState.editorCursorManager.onCursorChange = null;
+      oldWidget.editorState.onCursorChange = null;
       _setupCursorListener();
       _populateSymbols();
 
       // Force initial update with current cursor
-      final cursor = widget.editorState.editorCursorManager.cursors.first;
+      final cursor = widget.editorState.cursors.first;
       _updateBreadcrumbs(cursor.line, cursor.column);
     }
   }
 
   void _setupCursorListener() {
-    widget.editorState.editorCursorManager.onCursorChange = _updateBreadcrumbs;
+    widget.editorState.onCursorChange = _updateBreadcrumbs;
   }
 
   void _populateSymbols() {
@@ -97,7 +97,7 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
 
   @override
   void dispose() {
-    widget.editorState.editorCursorManager.onCursorChange = null;
+    widget.editorState.onCursorChange = null;
     _searchController.dispose();
     _replaceController.dispose();
     super.dispose();
@@ -646,8 +646,7 @@ class _EditorControlBarViewState extends State<EditorControlBarView> {
   }
 
   void _jumpToSymbol(BreadcrumbItem symbol) {
-    widget.editorState.editorCursorManager
-        .moveCursor(symbol.line - 1, symbol.column - 1);
+    widget.editorState.moveCursor(symbol.line - 1, symbol.column - 1);
     widget.scrollToCursor();
   }
 }

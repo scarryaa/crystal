@@ -1,16 +1,15 @@
 import 'dart:io';
 
-import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/editor/events/event_models.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/services/dialog_service.dart';
+import 'package:crystal/services/editor/controllers/cursor_controller.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
-import 'package:crystal/services/editor/editor_cursor_manager.dart';
 import 'package:crystal/services/editor/editor_event_bus.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
-import 'package:crystal/services/editor/editor_selection_manager.dart';
 import 'package:crystal/services/editor/folding_manager.dart';
+import 'package:crystal/services/editor/selection_manager.dart';
 import 'package:crystal/services/file_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:file_picker/file_picker.dart';
@@ -21,8 +20,8 @@ class InputHandler {
   final Buffer buffer;
   final EditorLayoutService editorLayoutService;
   final EditorConfigService editorConfigService;
-  final EditorCursorManager editorCursorManager;
-  final EditorSelectionManager editorSelectionManager;
+  final CursorController cursorController;
+  final SelectionManager editorSelectionManager;
   final FoldingManager foldingManager;
   final Function() notifyListeners;
   final Function() undo;
@@ -38,7 +37,7 @@ class InputHandler {
     required this.buffer,
     required this.editorLayoutService,
     required this.editorConfigService,
-    required this.editorCursorManager,
+    required this.cursorController,
     required this.editorSelectionManager,
     required this.foldingManager,
     required this.notifyListeners,
@@ -55,7 +54,7 @@ class InputHandler {
   void handleDragStart(double dy, double dx,
       Function(String line) measureLineWidth, bool isAltPressed) {
     handleTap(dy, dx, measureLineWidth, isAltPressed);
-    editorSelectionManager.startSelection(editorCursorManager.cursors);
+    editorSelectionManager.startSelection(cursorController.cursors);
     EditorEventBus.emit(SelectionEvent(
         selections: editorSelectionManager.selections,
         hasSelection: editorSelectionManager.hasSelection(),
@@ -86,17 +85,17 @@ class InputHandler {
 
     String lineText = buffer.getLine(bufferLine);
     int targetColumn = _getColumnAtX(dx, lineText, measureLineWidth);
-    editorCursorManager.clearAll();
-    editorCursorManager.addCursor(Cursor(bufferLine, targetColumn));
+    cursorController.clearAll();
+    cursorController.addCursor(bufferLine, targetColumn);
 
     if (isFolded && foldStart != null && foldEnd != null) {
       _handleFoldedSelection(bufferLine, targetColumn, foldStart, foldEnd);
     } else {
-      editorSelectionManager.updateSelection(editorCursorManager.cursors);
+      editorSelectionManager.updateSelection(cursorController.cursors);
     }
 
     EditorEventBus.emit(CursorEvent(
-        cursors: editorCursorManager.cursors,
+        cursors: cursorController.cursors,
         line: bufferLine,
         column: targetColumn,
         hasSelection: editorSelectionManager.hasSelection(),
@@ -114,9 +113,9 @@ class InputHandler {
       LogicalKeyboardKey key) async {
     switch (key) {
       case LogicalKeyboardKey.insert:
-        editorCursorManager.toggleInsertMode();
+        cursorController.toggleInsertMode();
         EditorEventBus.emit(
-            InsertModeEvent(isInsertMode: editorCursorManager.insertMode));
+            InsertModeEvent(isInsertMode: cursorController.insertMode));
         return Future.value(true);
 
       case LogicalKeyboardKey.backslash:
@@ -200,15 +199,15 @@ class InputHandler {
     int targetColumn = _getColumnAtX(dx, lineText, measureLineWidth);
 
     if (!isAltPressed) {
-      editorCursorManager.clearAll();
-      editorCursorManager.addCursor(Cursor(bufferLine, targetColumn));
+      cursorController.clearAll();
+      cursorController.addCursor(bufferLine, targetColumn);
       editorSelectionManager.clearAll();
     } else {
       _handleMultiCursor(bufferLine, targetColumn);
     }
 
     EditorEventBus.emit(CursorEvent(
-        cursors: editorCursorManager.cursors,
+        cursors: cursorController.cursors,
         line: bufferLine,
         column: targetColumn,
         hasSelection: editorSelectionManager.hasSelection(),
@@ -366,12 +365,12 @@ class InputHandler {
   }
 
   void _handleMultiCursor(int bufferLine, int targetColumn) {
-    if (editorCursorManager.cursorExistsAtPosition(bufferLine, targetColumn)) {
-      if (editorCursorManager.cursors.length > 1) {
-        editorCursorManager.removeCursor(Cursor(bufferLine, targetColumn));
+    if (cursorController.cursorExistsAtPosition(bufferLine, targetColumn)) {
+      if (cursorController.cursors.length > 1) {
+        cursorController.removeCursor(bufferLine, targetColumn);
       }
     } else {
-      editorCursorManager.addCursor(Cursor(bufferLine, targetColumn));
+      cursorController.addCursor(bufferLine, targetColumn);
     }
     editorSelectionManager.clearAll();
   }

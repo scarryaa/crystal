@@ -4,11 +4,11 @@ import 'package:crystal/models/editor/events/event_models.dart';
 import 'package:crystal/models/editor/lsp_models.dart' as lsp_models;
 import 'package:crystal/models/text_range.dart';
 import 'package:crystal/services/editor/editor_event_bus.dart';
-import 'package:crystal/services/editor/editor_selection_manager.dart';
+import 'package:crystal/services/editor/selection_manager.dart';
 import 'package:crystal/services/git_service.dart';
 
 class EditorEventEmitter {
-  final EditorSelectionManager selectionManager;
+  final SelectionManager selectionManager;
   final Buffer buffer;
   final String path;
   final String? relativePath;

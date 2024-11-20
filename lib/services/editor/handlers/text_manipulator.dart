@@ -4,22 +4,22 @@ import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/editor/command.dart';
 import 'package:crystal/models/selection.dart';
-import 'package:crystal/services/editor/editor_cursor_manager.dart';
-import 'package:crystal/services/editor/editor_selection_manager.dart';
+import 'package:crystal/services/editor/controllers/cursor_controller.dart';
 import 'package:crystal/services/editor/folding_manager.dart';
+import 'package:crystal/services/editor/selection_manager.dart';
 import 'package:crystal/services/editor/undo_redo_manager.dart';
 
 class TextManipulator {
-  final EditorSelectionManager editorSelectionManager;
-  final EditorCursorManager editorCursorManager;
+  final SelectionManager selectionManager;
+  final CursorController cursorController;
   final Buffer buffer;
   final FoldingManager foldingManager;
   final UndoRedoManager undoRedoManager;
   final Function() notifyListeners;
 
   TextManipulator({
-    required this.editorSelectionManager,
-    required this.editorCursorManager,
+    required this.selectionManager,
+    required this.cursorController,
     required this.buffer,
     required this.foldingManager,
     required this.undoRedoManager,
@@ -27,10 +27,10 @@ class TextManipulator {
   });
 
   void insertTab() {
-    if (editorSelectionManager.hasSelection()) {
+    if (selectionManager.hasSelection()) {
       var newCursors =
-          editorSelectionManager.insertTab(buffer, editorCursorManager.cursors);
-      editorCursorManager.setAllCursors(newCursors);
+          selectionManager.insertTab(buffer, cursorController.cursors);
+      cursorController.setAllCursors(newCursors);
     } else {
       // Insert tab at cursor position
       insertChar('    ');
@@ -41,12 +41,12 @@ class TextManipulator {
   }
 
   void backTab() {
-    if (editorSelectionManager.hasSelection()) {
+    if (selectionManager.hasSelection()) {
       var newCursors =
-          editorSelectionManager.backTab(buffer, editorCursorManager.cursors);
-      editorCursorManager.setAllCursors(newCursors);
+          selectionManager.backTab(buffer, cursorController.cursors);
+      cursorController.setAllCursors(newCursors);
     } else {
-      editorCursorManager.backTab(buffer);
+      cursorController.backTab(buffer);
     }
 
     buffer.incrementVersion();
@@ -54,7 +54,7 @@ class TextManipulator {
   }
 
   void insertChar(String c) {
-    if (editorSelectionManager.hasSelection()) {
+    if (selectionManager.hasSelection()) {
       deleteSelection();
     }
 
@@ -68,7 +68,7 @@ class TextManipulator {
       String currentLine = buffer.getLine(currentCursor.line);
       String newLine;
 
-      if (editorCursorManager.insertMode) {
+      if (cursorController.insertMode) {
         // Insert mode - insert character
         newLine = currentLine.substring(0, currentCursor.column) +
             c +
@@ -95,11 +95,11 @@ class TextManipulator {
   }
 
   void insertNewLine() {
-    if (editorSelectionManager.hasSelection()) {
+    if (selectionManager.hasSelection()) {
       deleteSelection();
     }
 
-    editorCursorManager.insertNewLine(buffer);
+    cursorController.insertNewLine(buffer);
     notifyListeners();
   }
 
@@ -124,7 +124,7 @@ class TextManipulator {
   }
 
   void delete() {
-    if (editorSelectionManager.hasSelection()) {
+    if (selectionManager.hasSelection()) {
       deleteSelection();
       return;
     }
@@ -136,7 +136,7 @@ class TextManipulator {
   }
 
   void backspace() {
-    if (editorSelectionManager.hasSelection()) {
+    if (selectionManager.hasSelection()) {
       deleteSelection();
       return;
     }
@@ -148,12 +148,11 @@ class TextManipulator {
   }
 
   void deleteSelection() {
-    if (!editorSelectionManager.hasSelection()) return;
+    if (!selectionManager.hasSelection()) return;
 
     // Sort selections in reverse order to handle overlapping selections correctly
-    var sortedSelections =
-        List<Selection>.from(editorSelectionManager.selections)
-          ..sort((a, b) => b.startLine.compareTo(a.startLine));
+    var sortedSelections = List<Selection>.from(selectionManager.selections)
+      ..sort((a, b) => b.startLine.compareTo(a.startLine));
 
     // Track folded regions that need to be removed
     final foldedRegionsToRemove = <int>{};
@@ -197,8 +196,8 @@ class TextManipulator {
     }
 
     // Perform deletion
-    var newStartLinesColumns = editorSelectionManager.deleteSelection(buffer);
-    editorCursorManager.setAllCursors(newStartLinesColumns);
+    var newStartLinesColumns = selectionManager.deleteSelection(buffer);
+    cursorController.setAllCursors(newStartLinesColumns);
     buffer.incrementVersion();
 
     // Clean up any remaining folded regions that might be invalid
@@ -216,7 +215,7 @@ class TextManipulator {
   // Private helper methods
 
   List<Cursor> _getSortedCursors() {
-    return List.from(editorCursorManager.cursors)
+    return List.from(cursorController.cursors)
       ..sort((a, b) {
         if (a.line != b.line) return a.line.compareTo(b.line);
         return a.column.compareTo(b.column);
@@ -238,7 +237,7 @@ class TextManipulator {
   }
 
   void _unfoldBeforeDelete() {
-    for (var cursor in editorCursorManager.cursors) {
+    for (var cursor in cursorController.cursors) {
       _unfoldAtCursorForDelete(cursor);
       _unfoldAtClosingSymbolForDelete(cursor);
     }
@@ -272,12 +271,12 @@ class TextManipulator {
 
   void _updateFoldedRegions() {
     final affectedLines =
-        editorCursorManager.cursors.map((cursor) => cursor.line).toSet();
+        cursorController.cursors.map((cursor) => cursor.line).toSet();
     foldingManager.updateFoldedRegionsAfterEdit(affectedLines);
   }
 
   void _unfoldBeforeBackspace() {
-    for (var cursor in editorCursorManager.cursors) {
+    for (var cursor in cursorController.cursors) {
       foldingManager.unfoldAtCursor(cursor);
       foldingManager.unfoldBeforeCursor(cursor);
       foldingManager.unfoldAtClosingSymbol(cursor);
@@ -312,12 +311,12 @@ class TextManipulator {
   }
 
   void _performDelete() {
-    editorCursorManager.delete(buffer);
+    cursorController.delete(buffer);
     buffer.incrementVersion();
   }
 
   void _performBackspace() {
-    editorCursorManager.backspace(buffer);
+    cursorController.backspace(buffer);
     buffer.incrementVersion();
   }
 }

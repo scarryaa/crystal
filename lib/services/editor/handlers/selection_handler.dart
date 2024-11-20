@@ -1,31 +1,30 @@
 import 'dart:math';
 
-import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/editor/position.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/models/text_range.dart';
-import 'package:crystal/services/editor/editor_cursor_manager.dart';
-import 'package:crystal/services/editor/editor_selection_manager.dart';
+import 'package:crystal/services/editor/controllers/cursor_controller.dart';
 import 'package:crystal/services/editor/folding_manager.dart';
+import 'package:crystal/services/editor/selection_manager.dart';
 
 class SelectionHandler {
-  final EditorSelectionManager selectionManager;
+  final SelectionManager selectionManager;
   final Buffer buffer;
-  final EditorCursorManager cursorManager;
+  final CursorController cursorController;
   final FoldingManager foldingManager;
 
   SelectionHandler({
     required this.selectionManager,
     required this.buffer,
-    required this.cursorManager,
+    required this.cursorController,
     required this.foldingManager,
   });
 
   TextRange getSelectedLineRange() {
     if (!selectionManager.hasSelection()) {
       // If no selection, return range containing only current line
-      int currentLine = cursorManager.getCursorLine();
+      int currentLine = cursorController.getCursorLine();
       return TextRange(
         start: Position(line: currentLine, column: 0),
         end: Position(
@@ -66,7 +65,7 @@ class SelectionHandler {
   }
 
   void updateSelection() {
-    selectionManager.updateSelection(cursorManager.cursors);
+    selectionManager.updateSelection(cursorController.cursors);
   }
 
   void clearSelection() {
@@ -86,7 +85,7 @@ class SelectionHandler {
   }
 
   void startSelection() {
-    selectionManager.startSelection(cursorManager.cursors);
+    selectionManager.startSelection(cursorController.cursors);
   }
 
   bool _isValidLineNumber(int lineNumber) {
@@ -109,13 +108,13 @@ class SelectionHandler {
   }
 
   void _updateCursorForFoldedRegion(int endLine) {
-    cursorManager.clearAll();
-    cursorManager.addCursor(Cursor(endLine, buffer.getLineLength(endLine)));
+    cursorController.clearAll();
+
+    cursorController.addCursor(endLine, buffer.getLineLength(endLine));
   }
 
   void _updateCursorForSingleLine(int lineNumber) {
-    cursorManager.clearAll();
-    cursorManager
-        .addCursor(Cursor(lineNumber, buffer.getLineLength(lineNumber)));
+    cursorController.clearAll();
+    cursorController.addCursor(lineNumber, buffer.getLineLength(lineNumber));
   }
 }
