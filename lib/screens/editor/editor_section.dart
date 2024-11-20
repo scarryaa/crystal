@@ -1,10 +1,16 @@
 import 'dart:ui';
 
+import 'package:crystal/models/editor/commands/search_config.dart';
+import 'package:crystal/models/editor/config/completion_config.dart';
+import 'package:crystal/models/editor/config/editor_view_config.dart';
+import 'package:crystal/models/editor/config/file_config.dart';
+import 'package:crystal/models/editor/config/scroll_config.dart';
 import 'package:crystal/models/editor/split_view.dart';
 import 'package:crystal/models/global_hover_state.dart';
 import 'package:crystal/providers/editor_state_provider.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
+import 'package:crystal/services/editor/editor_services.dart';
 import 'package:crystal/services/editor/editor_tab_manager.dart';
 import 'package:crystal/services/file_service.dart';
 import 'package:crystal/services/git_service.dart';
@@ -259,57 +265,73 @@ class EditorSection extends StatelessWidget {
                                       builder: (context, selectedIndex, _) {
                                         return EditorView(
                                           key: editorViewKey,
-                                          editorConfigService:
-                                              editorConfigService,
-                                          editorLayoutService:
-                                              EditorLayoutService.instance,
-                                          state: splitView.activeEditor!,
-                                          searchTerm: searchService.searchTerm,
-                                          searchTermMatches:
-                                              searchService.searchTermMatches,
-                                          currentSearchTermMatch: searchService
-                                              .currentSearchTermMatch,
-                                          onSearchTermChanged: (newTerm) =>
-                                              searchService.updateSearchMatches(
-                                                  newTerm,
-                                                  splitView.activeEditor),
-                                          scrollToCursor: () =>
-                                              scrollToCursor(row, col),
-                                          onEditorClosed: onEditorClosed,
-                                          saveFileAs: () => splitView
-                                              .activeEditor!
-                                              .saveFileAs(
-                                                  splitView.activeEditor!.path),
-                                          saveFile: () =>
-                                              splitView.activeEditor!.saveFile(
-                                                  splitView.activeEditor!.path),
-                                          openNewTab: openNewTab,
-                                          activeEditorIndex: () =>
-                                              splitView.activeEditorIndex,
-                                          verticalScrollController: scrollManager
-                                              .editorVerticalScrollController,
-                                          horizontalScrollController: scrollManager
-                                              .editorHorizontalScrollController,
-                                          fileName: path
-                                              .split(
-                                                  splitView.activeEditor!.path)
-                                              .last,
-                                          isDirty: splitView.activeEditor
-                                                  ?.buffer.isDirty ??
-                                              false,
-                                          suggestions: editorTabManager
-                                                  .activeEditor?.suggestions ??
-                                              [],
-                                          selectedSuggestionIndex:
-                                              selectedIndex,
-                                          onCompletionSelect: (item) {
-                                            editorTabManager.activeEditor
-                                                ?.acceptCompletion(item);
-                                          },
-                                          gitService: gitService,
-                                          globalHoverState: globalHoverState,
-                                          row: row,
-                                          col: col,
+                                          config: EditorViewConfig(
+                                            row: row,
+                                            col: col,
+                                            scrollConfig: ScrollConfig(
+                                              verticalController: scrollManager
+                                                  .editorVerticalScrollController,
+                                              horizontalController: scrollManager
+                                                  .editorHorizontalScrollController,
+                                              scrollToCursor: () =>
+                                                  scrollToCursor(row, col),
+                                            ),
+                                            fileConfig: FileConfig(
+                                              fileName: path
+                                                  .split(splitView
+                                                      .activeEditor!.path)
+                                                  .last,
+                                              isDirty: splitView.activeEditor
+                                                      ?.buffer.isDirty ??
+                                                  false,
+                                              onEditorClosed: onEditorClosed,
+                                              saveFileAs: () => splitView
+                                                  .activeEditor!
+                                                  .saveFileAs(splitView
+                                                      .activeEditor!.path),
+                                              saveFile: () => splitView
+                                                  .activeEditor!
+                                                  .saveFile(splitView
+                                                      .activeEditor!.path),
+                                              openNewTab: openNewTab,
+                                              activeEditorIndex: () =>
+                                                  splitView.activeEditorIndex,
+                                            ),
+                                            searchConfig: SearchConfig(
+                                              searchTerm:
+                                                  searchService.searchTerm,
+                                              matches: searchService
+                                                  .searchTermMatches,
+                                              currentMatch: searchService
+                                                  .currentSearchTermMatch,
+                                              onSearchTermChanged: (newTerm) =>
+                                                  searchService
+                                                      .updateSearchMatches(
+                                                          newTerm,
+                                                          splitView
+                                                              .activeEditor),
+                                            ),
+                                            completionConfig: CompletionConfig(
+                                              suggestions: editorTabManager
+                                                      .activeEditor
+                                                      ?.suggestions ??
+                                                  [],
+                                              selectedIndex: selectedIndex,
+                                              onSelect: (item) {
+                                                editorTabManager.activeEditor
+                                                    ?.acceptCompletion(item);
+                                              },
+                                            ),
+                                            services: EditorServices(
+                                              configService:
+                                                  editorConfigService,
+                                              layoutService:
+                                                  EditorLayoutService.instance,
+                                              gitService: gitService,
+                                            ),
+                                            state: splitView.activeEditor!,
+                                            globalHoverState: globalHoverState,
+                                          ),
                                         );
                                       })
                                   : Container(
