@@ -21,14 +21,17 @@ import 'package:crystal/services/editor/editor_selection_manager.dart';
 import 'package:crystal/services/editor/editor_tab_manager.dart';
 import 'package:crystal/services/editor/folding_manager.dart';
 import 'package:crystal/services/editor/handlers/command_handler.dart';
-import 'package:crystal/services/editor/handlers/completion_handler.dart';
+import 'package:crystal/services/editor/handlers/completion_manager.dart';
 import 'package:crystal/services/editor/handlers/cursor_movement_handler.dart';
+import 'package:crystal/services/editor/handlers/cursor_operations_manager.dart';
 import 'package:crystal/services/editor/handlers/folding_handler.dart';
 import 'package:crystal/services/editor/handlers/input_handler.dart';
 import 'package:crystal/services/editor/handlers/lsp_manager.dart';
 import 'package:crystal/services/editor/handlers/scroll_handler.dart';
 import 'package:crystal/services/editor/handlers/selection_handler.dart';
+import 'package:crystal/services/editor/handlers/selection_operations_manager.dart';
 import 'package:crystal/services/editor/handlers/text_manipulator.dart';
+import 'package:crystal/services/editor/handlers/text_operations_manager.dart';
 import 'package:crystal/services/editor/undo_redo_manager.dart';
 import 'package:crystal/services/file_service.dart';
 import 'package:crystal/services/git_service.dart';
@@ -44,6 +47,10 @@ class EditorState extends ChangeNotifier {
   late final EditorEventEmitter eventEmitter;
   late final EditorCoreState coreState;
   late final CommandHandler commandHandler;
+
+  late final TextOperationsManager textOperationsManager;
+  late final SelectionOperationsManager selectionOperationsManager;
+  late final CursorOperationsManager cursorOperationsManager;
 
   late final LSPManager lspManager;
   late final CompletionManager completionManager;
@@ -145,6 +152,12 @@ class EditorState extends ChangeNotifier {
         buffer: buffer,
         notifyListeners: notifyListeners,
         getSelectedText: getSelectedText);
+    textOperationsManager = TextOperationsManager(
+      buffer: buffer,
+      textManipulator: textManipulator,
+      onTextChanged: _emitTextChangedEvent,
+      updateCompletions: updateCompletions,
+    );
     selectionHandler = SelectionHandler(
         selectionManager: editorSelectionManager,
         buffer: buffer,
@@ -196,6 +209,21 @@ class EditorState extends ChangeNotifier {
         tapCallback: tapCallback,
         scrollToLine: scrollToLine,
         notifyListeners: notifyListeners);
+    selectionOperationsManager = SelectionOperationsManager(
+      selectionManager: editorSelectionManager,
+      buffer: buffer,
+      notifyListeners: notifyListeners,
+      emitSelectionChangedEvent: eventEmitter.emitSelectionChangedEvent,
+      selectionHandler: selectionHandler,
+      cursorManager: editorCursorManager,
+    );
+
+    cursorOperationsManager = CursorOperationsManager(
+      cursorManager: editorCursorManager,
+      movementHandler: cursorMovementHandler,
+      emitCursorChangedEvent: _emitCursorChangedEvent,
+      notifyListeners: notifyListeners,
+    );
 
     buffer.addListener(() async {
       await lspService.sendDidChangeNotification(buffer.content);
@@ -217,9 +245,9 @@ class EditorState extends ChangeNotifier {
   Future<void> save() => coreState.save();
   Future<bool> saveFile(String path) => coreState.saveFile(path);
   Future<bool> saveFileAs(String path) async => coreState.saveFileAs(path);
-  bool get showCaret => editorCursorManager.showCaret;
-  CursorShape get cursorShape => editorCursorManager.cursorShape;
-  int get cursorLine => editorCursorManager.getCursorLine();
+  bool get showCaret => cursorOperationsManager.showCaret;
+  CursorShape get cursorShape => cursorOperationsManager.cursorShape;
+  int get cursorLine => cursorOperationsManager.cursorLine;
   Map<int, int> get foldingRanges => foldingManager.foldingState.foldingRanges;
   Buffer get buffer => coreState.buffer;
   bool get showCompletions => completionManager.showCompletions;
@@ -229,13 +257,13 @@ class EditorState extends ChangeNotifier {
 
   // Setters
   set showCompletions(bool show) => completionManager.showCompletions = show;
-  set showCaret(bool show) => editorCursorManager.showCaret = show;
+  set showCaret(bool show) => cursorOperationsManager.showCaret = show;
 
   // Events
   void _emitCursorChangedEvent() {
     EditorEventBus.emit(CursorEvent(
       cursors: editorCursorManager.cursors,
-      line: editorCursorManager.getCursorLine(),
+      line: cursorOperationsManager.cursorLine,
       column: editorCursorManager.cursors.isNotEmpty
           ? editorCursorManager.cursors.first.column
           : 0,
@@ -255,6 +283,7 @@ class EditorState extends ChangeNotifier {
       gitService.updateDocumentChanges(
           coreState.relativePath ?? '', buffer.lines);
     }
+    notifyListeners();
   }
 
   // LSP Methods
@@ -266,33 +295,14 @@ class EditorState extends ChangeNotifier {
       lspManager.showHover(line, character);
   Future<List<lsp_models.Diagnostic>?> showDiagnostics(int line, int col) =>
       lspManager.showDiagnostics(line, col);
-
   String formatRustDiagnostics(List<lsp_models.Diagnostic> diagnostics) =>
       lspManager.formatRustDiagnostics(diagnostics);
   String getSeverityLabel(lsp_models.DiagnosticSeverity severity) =>
       lspManager.getSeverityLabel(severity);
-  Future<void> goToDefinition(int line, int character) async {
-    final response = await lspService.getDefinition(line, character);
-    if (response != null) {
-      final location = response['uri'];
-      if (location != null) {
-        // Remove the file:// prefix
-        final path = location.toString().replaceFirst('file://', '');
-        await tapCallback(path);
-
-        // Jump to the definition location if provided
-        if (response['range'] != null) {
-          final targetLine = response['range']['start']['line'];
-          final targetCharacter = response['range']['start']['character'];
-          editorCursorManager.setCursor(targetLine, targetCharacter);
-          scrollToLine(targetLine);
-        }
-      }
-    }
-  }
+  Future<void> goToDefinition(int line, int character) async =>
+      lspManager.goToDefinition(line, character);
 
   void scrollToLine(int line) {
-    // Assuming a fixed line height of 20 pixels
     const lineHeight = 20.0;
     updateVerticalScrollOffset(line * lineHeight);
   }
@@ -394,29 +404,6 @@ class EditorState extends ChangeNotifier {
     return lineText.substring(start, end);
   }
 
-  void restoreSelections(List<Selection> selections) {
-    editorSelectionManager.clearAll();
-    for (var selection in selections) {
-      editorSelectionManager.addSelection(selection);
-    }
-    eventEmitter.emitSelectionChangedEvent();
-
-    notifyListeners();
-  }
-
-  void updateSelection() {
-    editorSelectionManager.updateSelection(editorCursorManager.cursors);
-    eventEmitter.emitSelectionChangedEvent();
-
-    notifyListeners();
-  }
-
-  void clearSelection() {
-    editorSelectionManager.clearAll();
-    notifyListeners();
-    eventEmitter.emitSelectionChangedEvent();
-  }
-
   int getLastPastedLineCount() {
     // Get the last command from undo stack
     if (!undoRedoManager.canUndo) {
@@ -469,41 +456,12 @@ class EditorState extends ChangeNotifier {
       foldingHandler.toggleFold(startLine, endLine);
 
   // Buffer / Text manipulation
-  void insertNewLine() {
-    textManipulator.insertNewLine();
-    updateCompletions();
-    _emitTextChangedEvent();
-  }
-
-  void backspace() {
-    textManipulator.backspace();
-    updateCompletions();
-    _emitTextChangedEvent();
-  }
-
-  void delete() {
-    textManipulator.delete();
-    updateCompletions();
-    _emitTextChangedEvent();
-  }
-
-  void backTab() {
-    textManipulator.backTab();
-    updateCompletions();
-    _emitTextChangedEvent();
-  }
-
-  void insertTab() {
-    textManipulator.insertTab();
-    updateCompletions();
-    _emitTextChangedEvent();
-  }
-
-  void insertChar(String c) {
-    textManipulator.insertChar(c);
-    updateCompletions();
-    _emitTextChangedEvent();
-  }
+  void insertNewLine() => textOperationsManager.insertNewLine();
+  void backspace() => textOperationsManager.backspace();
+  void delete() => textOperationsManager.delete();
+  void backTab() => textOperationsManager.backTab();
+  void insertTab() => textOperationsManager.insertTab();
+  void insertChar(String c) => textOperationsManager.insertChar(c);
 
   // Undo/redo management
   void copy() {
@@ -552,94 +510,42 @@ class EditorState extends ChangeNotifier {
           bool isControlPressed, bool isShiftPressed, LogicalKeyboardKey key) =>
       inputHandler.handleSpecialKeys(isControlPressed, isShiftPressed, key);
 
-  // SelectionManager methods
-
-  /// Clear all selections and add a single selection that encompasses the whole document.
-  ///
-  /// Creates a new [Selection] that spans from the start (0,0) to the last character
-  /// of the last line in the document. Updates the [EditorSelectionManager] with this
-  /// new selection and notifies listeners of the change.
-
-  void selectAll() {
-    selectionHandler.selectAll();
-    eventEmitter.emitSelectionChangedEvent();
-    notifyListeners();
-  }
-
-  void selectLine(bool extend, int lineNumber) {
-    selectionHandler.selectLine(extend, lineNumber);
-    eventEmitter.emitSelectionChangedEvent();
-    notifyListeners();
-  }
-
-  void startSelection() {
-    selectionHandler.startSelection();
-    eventEmitter.emitSelectionChangedEvent();
-    notifyListeners();
-  }
-
-  bool hasSelection() => selectionHandler.hasSelection();
-  TextRange getSelectedLineRange() => selectionHandler.getSelectedLineRange();
-
-  String getSelectedText() {
-    return editorSelectionManager.getSelectedText(coreState.buffer);
-  }
+  // Selection methods
+  void selectAll() => selectionOperationsManager.selectAll();
+  void selectLine(bool extend, int lineNumber) =>
+      selectionOperationsManager.selectLine(extend, lineNumber);
+  void startSelection() => selectionOperationsManager.startSelection();
+  bool hasSelection() => selectionOperationsManager.hasSelection();
+  TextRange getSelectedLineRange() =>
+      selectionOperationsManager.getSelectedLineRange();
+  String getSelectedText() => selectionOperationsManager.getSelectedText();
+  void restoreSelections(List<Selection> selections) =>
+      selectionOperationsManager.restoreSelections(selections);
+  void updateSelection() => selectionOperationsManager.updateSelection();
+  void clearSelection() => selectionOperationsManager.clearSelection();
 
   // Cursor methods
-  void moveCursorToLineStart(bool isShiftPressed) {
-    cursorMovementHandler.moveCursorToLineStart(isShiftPressed);
-    _emitCursorChangedEvent();
-  }
-
-  void moveCursorToLineEnd(bool isShiftPressed) {
-    cursorMovementHandler.moveCursorToLineEnd(isShiftPressed);
-    _emitCursorChangedEvent();
-  }
-
-  void moveCursorToDocumentStart(bool isShiftPressed) {
-    cursorMovementHandler.moveCursorToDocumentStart(isShiftPressed);
-    _emitCursorChangedEvent();
-  }
-
-  void moveCursorToDocumentEnd(bool isShiftPressed) {
-    cursorMovementHandler.moveCursorToDocumentEnd(isShiftPressed);
-    _emitCursorChangedEvent();
-  }
-
-  void moveCursorPageUp(bool isShiftPressed) {
-    cursorMovementHandler.moveCursorPageUp(isShiftPressed);
-    _emitCursorChangedEvent();
-  }
-
-  void moveCursorPageDown(bool isShiftPressed) {
-    cursorMovementHandler.moveCursorPageDown(isShiftPressed);
-    _emitCursorChangedEvent();
-  }
-
-  void moveCursorUp(bool isShiftPressed) {
-    cursorMovementHandler.moveCursorUp(isShiftPressed);
-    _emitCursorChangedEvent();
-  }
-
-  void moveCursorDown(bool isShiftPressed) {
-    cursorMovementHandler.moveCursorDown(isShiftPressed);
-    _emitCursorChangedEvent();
-  }
-
-  void moveCursorLeft(bool isShiftPressed) {
-    cursorMovementHandler.moveCursorLeft(isShiftPressed);
-    _emitCursorChangedEvent();
-  }
-
-  void moveCursorRight(bool isShiftPressed) {
-    cursorMovementHandler.moveCursorRight(isShiftPressed);
-    _emitCursorChangedEvent();
-  }
-
-  void toggleCaret() {
-    editorCursorManager.toggleCaret();
-    notifyListeners();
-  }
+  void moveCursorToLineStart(bool isShiftPressed) =>
+      cursorOperationsManager.moveCursorToLineStart(isShiftPressed);
+  void moveCursorToLineEnd(bool isShiftPressed) =>
+      cursorOperationsManager.moveCursorToLineEnd(isShiftPressed);
+  void moveCursorToDocumentStart(bool isShiftPressed) =>
+      cursorOperationsManager.moveCursorToDocumentStart(isShiftPressed);
+  void moveCursorToDocumentEnd(bool isShiftPressed) =>
+      cursorOperationsManager.moveCursorToDocumentEnd(isShiftPressed);
+  void moveCursorPageUp(bool isShiftPressed) =>
+      cursorOperationsManager.moveCursorPageUp(isShiftPressed);
+  void moveCursorPageDown(bool isShiftPressed) =>
+      cursorOperationsManager.moveCursorPageDown(isShiftPressed);
+  void moveCursorUp(bool isShiftPressed) =>
+      cursorOperationsManager.moveCursorUp(isShiftPressed);
+  void moveCursorDown(bool isShiftPressed) =>
+      cursorOperationsManager.moveCursorDown(isShiftPressed);
+  void moveCursorLeft(bool isShiftPressed) =>
+      cursorOperationsManager.moveCursorLeft(isShiftPressed);
+  void moveCursorRight(bool isShiftPressed) =>
+      cursorOperationsManager.moveCursorRight(isShiftPressed);
+  void toggleCaret() => cursorOperationsManager.toggleCaret();
 
   // Scroll methods
   void updateVerticalScrollOffset(double offset) =>
