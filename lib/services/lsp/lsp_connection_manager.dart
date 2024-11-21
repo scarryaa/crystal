@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -23,12 +24,109 @@ class LSPConnectionManager {
 
   Future<void> initializeConnection(
       String executable, List<String> args) async {
-    languageServer = await Process.start(executable, args, environment: {
-      'PATH': Platform.environment['PATH']!,
-      'NODE_PATH': Platform.environment['NODE_PATH'] ?? ''
-    });
+    // Verify executable before starting
+    if (!await verifyExecutable(executable)) {
+      throw Exception('Failed to verify executable: $executable');
+    }
+
+    try {
+      _logger.info('Starting language server: $executable');
+      _logger.info('Arguments: $args');
+      _logger.info('PATH: ${Platform.environment['PATH']}');
+
+      languageServer = await Process.start(executable, args, environment: {
+        'PATH': Platform.environment['PATH']!,
+        'NODE_PATH': Platform.environment['NODE_PATH'] ?? ''
+      });
+
+      languageServer?.stderr.transform(utf8.decoder).listen((String data) {
+        _logger.warning('Language server stderr: $data');
+      });
+    } catch (e) {
+      _logger.severe('Failed to start language server', e);
+      rethrow;
+    }
 
     _setupMessageHandling();
+  }
+
+  Future<bool> verifyExecutable(String executable) async {
+    try {
+      // First try to find the executable in PATH
+      final String? executablePath = await _findExecutableInPath(executable);
+
+      if (executablePath == null) {
+        _logger.severe('Executable not found in PATH: $executable');
+        return false;
+      }
+
+      _logger.info('Found executable at: $executablePath');
+
+      // Check if file is executable
+      final file = File(executablePath);
+      final stat = await file.stat();
+
+      if (Platform.isWindows) {
+        if (!executablePath.toLowerCase().endsWith('.exe')) {
+          _logger.warning(
+              'Windows executable should end with .exe: $executablePath');
+        }
+      } else {
+        // Check execute permission on Unix-like systems
+        if ((stat.mode & 0x49) == 0) {
+          _logger.severe(
+              'Executable does not have execute permissions: $executablePath');
+          return false;
+        }
+      }
+
+      // Try to run with --version or --help to verify
+      try {
+        final result = await Process.run(executablePath, ['--version']);
+        _logger.info('Executable version check output: ${result.stdout}');
+        return result.exitCode == 0;
+      } catch (e) {
+        _logger.warning('Version check failed, trying help command');
+        try {
+          final result = await Process.run(executablePath, ['--help']);
+          return result.exitCode == 0;
+        } catch (e) {
+          _logger.severe('Help command also failed: $e');
+          return false;
+        }
+      }
+    } catch (e) {
+      _logger.severe('Error verifying executable: $e');
+      return false;
+    }
+  }
+
+  Future<String?> _findExecutableInPath(String executable) async {
+    // If the executable is already a full path, just return it
+    if (await File(executable).exists()) {
+      return executable;
+    }
+
+    // Get the PATH environment variable
+    final String pathEnv = Platform.environment['PATH'] ?? '';
+    final List<String> pathDirs = pathEnv.split(Platform.isWindows ? ';' : ':');
+
+    // On Windows, also check for .exe extension
+    final List<String> executableNames =
+        Platform.isWindows ? [executable, '$executable.exe'] : [executable];
+
+    // Search for the executable in each PATH directory
+    for (final String dir in pathDirs) {
+      for (final String execName in executableNames) {
+        final String path = '${dir.trim()}${Platform.pathSeparator}$execName';
+        if (await File(path).exists()) {
+          return path;
+        }
+      }
+    }
+
+    // If we get here, we couldn't find the executable
+    return null;
   }
 
   Future<Map<String, dynamic>> initialize(
@@ -37,12 +135,11 @@ class LSPConnectionManager {
       'processId': pid,
       'rootUri': rootUri,
       'capabilities': capabilities,
-      'trace': 'verbose'
     });
   }
 
   Future<void> waitForInitialization() async {
-    await sendRequest('initialized', {});
+    sendMessage({'jsonrpc': '2.0', 'method': 'initialized', 'params': {}});
   }
 
   void sendMessage(Map<String, dynamic> message) {
