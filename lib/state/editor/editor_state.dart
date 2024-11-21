@@ -140,7 +140,7 @@ class EditorState extends ChangeNotifier {
       completionService: _completionService,
       notifyListeners: notifyListeners,
     );
-    final textController = TextController(
+    textController = TextController(
       buffer: buffer,
       selectionController: selectionController,
       cursorController: cursorController,
@@ -187,6 +187,7 @@ class EditorState extends ChangeNotifier {
 
     cursorController.onCursorChange = coreState.updateBreadcrumbs;
     lspController = LSPController(this);
+    lspController.initialize();
 
     buffer.addListener(() async {
       await lspController.sendDidChangeNotification(buffer.content);

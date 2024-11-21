@@ -4,11 +4,14 @@ import 'package:crystal/services/editor/handlers/lsp_manager.dart';
 import 'package:crystal/services/lsp_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:flutter/foundation.dart';
+import 'package:logging/logging.dart';
 
 class LSPController {
   final LSPService _service;
   late final LSPManager _manager;
   final EditorState _editor;
+
+  final Logger _logger = Logger('LSPController');
 
   ValueNotifier<bool> get isRunningNotifier => _service.isRunningNotifier;
   ValueNotifier<String> get statusMessageNotifier =>
@@ -47,11 +50,20 @@ class LSPController {
 
   // Document management
   Future<void> sendDidOpenNotification(String text) async {
-    await _service.sendDidOpenNotification(text);
+    try {
+      await _service.sendDidOpenNotification(text);
+    } catch (e, stackTrace) {
+      _logger.warning('Error sending open notification', e, stackTrace);
+      // Consider showing an error to the user or handling it differently
+    }
   }
 
   Future<void> sendDidChangeNotification(String text) async {
-    await _service.sendDidChangeNotification(text);
+    try {
+      await _service.sendDidChangeNotification(text);
+    } catch (e, stackTrace) {
+      _logger.warning('Error sending change notification', e, stackTrace);
+    }
   }
 
   // LSP features

@@ -1,295 +1,157 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:crystal/models/editor/events/event_models.dart';
 import 'package:crystal/models/editor/lsp_models.dart';
 import 'package:crystal/models/server_command.dart';
 import 'package:crystal/services/editor/editor_event_bus.dart';
+import 'package:crystal/services/lsp/diagnostics_manager.dart';
+import 'package:crystal/services/lsp/document_manager.dart';
+import 'package:crystal/services/lsp/lsp_connection_manager.dart';
+import 'package:crystal/services/lsp/message_processor.dart';
+import 'package:crystal/services/lsp/progress_tracker.dart';
 import 'package:crystal/services/lsp_config_manager.dart';
 import 'package:crystal/state/editor/editor_state.dart';
+import 'package:crystal/state/lsp/lsp_state.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 
 class LSPService {
+  final LSPConnectionManager connection;
+  late final DocumentManager documents;
+  final DiagnosticsManager diagnostics;
+  final ProgressTracker progress;
+  final MessageProcessor messageProcessor;
+  final LSPState state;
   final EditorState editor;
-  Process? languageServer;
-  int _messageId = 1;
-  final _logger = Logger('LSPService');
-  final Map<int, Completer<dynamic>> _pendingRequests = {};
-  int _documentVersion = 1;
-  final Map<String, int> _openDocuments = {};
-  final Map<String, List<Diagnostic>> _fileDiagnostics = {};
-  final List<Function()> _diagnosticsListeners = [];
-  ServerCommand? currentServerCommand;
-  final ValueNotifier<bool> isRunningNotifier = ValueNotifier<bool>(false);
-  final ValueNotifier<String> statusMessageNotifier = ValueNotifier<String>('');
-  final ValueNotifier<bool> isInitializingNotifier = ValueNotifier<bool>(false);
-  final ValueNotifier<bool> workProgressNotifier = ValueNotifier<bool>(false);
-  final ValueNotifier<String> workProgressMessage = ValueNotifier<String>('');
-  final Set<String> _activeProgressTokens = {};
-  bool isInitializing = false;
-  Timer? _analysisTimeoutTimer;
-  static const analysisTimeout = Duration(seconds: 10);
-  String? currentServerName;
 
-  LSPService(this.editor);
+  final List<Function()> _diagnosticsListeners = [];
+
+  final _logger = Logger('LSPService');
+
+  LSPService(this.editor)
+      : connection = LSPConnectionManager(),
+        diagnostics = DiagnosticsManager(editor),
+        progress = ProgressTracker(),
+        messageProcessor = MessageProcessor(),
+        state = LSPState() {
+    documents = DocumentManager(connection);
+  }
 
   Future<void> initialize() async {
-    _clearAnalysisState(); // Clear any existing state
-    isInitializingNotifier.value = true;
+    if (state.isInitializing.value || state.isRunning.value) return;
 
-    try {
-      await LSPConfigManager.createDefaultConfigs();
-      await _initializeLanguageServer();
-    } finally {
-      isInitializingNotifier.value = false;
-    }
-  }
-
-  void _handleWorkDoneProgress(Map<String, dynamic> params) {
-    final token = params['token'];
-    _activeProgressTokens.add(token.toString());
-    workProgressNotifier.value = true;
-    workProgressMessage.value = 'Analyzing...';
-    _logger.info('Work progress started with token: $token');
-    _resetAnalysisTimeout();
-  }
-
-  void _handleProgress(Map<String, dynamic> params) {
-    try {
-      final token = params['token'].toString();
-      final value = params['value'] as Map<String, dynamic>;
-      final kind = value['kind'] as String;
-
-      switch (kind) {
-        case 'begin':
-          _activeProgressTokens.add(token);
-          workProgressNotifier.value = true;
-          workProgressMessage.value = value['title'] ?? 'Working...';
-          _resetAnalysisTimeout();
-          break;
-        case 'report':
-          if (_activeProgressTokens.contains(token)) {
-            workProgressMessage.value =
-                value['message'] ?? workProgressMessage.value;
-          }
-          break;
-        case 'end':
-          _activeProgressTokens.remove(token);
-          if (_activeProgressTokens.isEmpty) {
-            _clearAnalysisState();
-          }
-          break;
-      }
-    } catch (e) {
-      _clearAnalysisState(); // Force clear on error
-      _logger.severe('Error handling progress', e);
-    }
-  }
-
-  Future<void> _initializeLanguageServer() async {
-    try {
-      await initializeLanguageServer();
-      sendDidOpenNotification(editor.buffer.content);
-    } catch (e, stackTrace) {
-      _logger.severe(
-          'Unexpected error initializing language server', e, stackTrace);
-    }
-  }
-
-  void _resetAnalysisTimeout() {
-    _analysisTimeoutTimer?.cancel();
-    _analysisTimeoutTimer = Timer(analysisTimeout, () {
-      _logger.warning(
-          'Analysis timeout reached - forcing clear of analysis state');
-      _clearAnalysisState();
-      workProgressNotifier.value = false;
-      workProgressMessage.value = '';
-      _activeProgressTokens.clear();
-    });
-  }
-
-  void _clearAnalysisState() {
-    _analysisTimeoutTimer?.cancel();
-    _analysisTimeoutTimer = null;
-    _activeProgressTokens.clear();
-    workProgressNotifier.value = false;
-    workProgressMessage.value = '';
-  }
-
-  Future<ServerCommand?> getLSPCommandForLanguage(String extension) async {
-    final config = await LSPConfigManager.getLanguageConfig(extension);
-    if (config == null) {
-      _logger
-          .warning('No language server configured for extension: $extension');
-      return null;
-    }
-
-    return ServerCommand(config['executable'] as String,
-        List<String>.from(config['args'] as List));
-  }
-
-  Future<void> initializeLanguageServer() async {
+    state.isInitializing.value = true;
     int retryCount = 0;
-    isRunningNotifier.value = false;
+    const maxRetries = 3;
+    const retryDelay = Duration(seconds: 2);
 
-    while (retryCount < 3) {
+    while (retryCount < maxRetries) {
       try {
-        // Ensure previous server is closed before starting new one
-        dispose();
-
-        final fileExtension = p.extension(editor.path);
-        currentServerCommand = await getLSPCommandForLanguage(fileExtension);
-
-        if (currentServerCommand == null) {
-          _logger.warning('No language server for $fileExtension');
+        final serverCommand = await _getServerCommand();
+        if (serverCommand == null) {
+          _logger.warning('No server command found for this file type');
           return;
         }
 
-        _logger.info('Starting language server initialization...');
-        _logger.info(
-            'Server command: ${currentServerCommand?.executable} ${currentServerCommand?.args}');
+        // Start the server process
+        await connection.initializeConnection(
+          serverCommand.executable,
+          serverCommand.args,
+        );
 
-        languageServer = await Process.start(
-            currentServerCommand!.executable, currentServerCommand!.args,
-            environment: {
-              'PATH': Platform.environment['PATH']!,
-              'NODE_PATH': Platform.environment['NODE_PATH'] ?? ''
-            });
+        // Initialize the LSP server
+        final response = await connection.initialize(
+          'file://${p.dirname(p.dirname(editor.path))}',
+          _getClientCapabilities(),
+        );
 
-        languageServer?.stderr.transform(utf8.decoder).listen((data) {
-          _logger.severe('LSP Server Error: $data');
-        });
+        // Wait for initialization to complete
+        await connection.waitForInitialization();
+        connection.onNotification = _handleServerNotification;
+        connection.onConfigurationRequest = _handleConfigurationRequest;
 
-        _setupMessageHandling();
+        state.currentServerName = _extractServerInfo(response);
+        state.currentServerCommand = serverCommand;
+        state.isRunning.value = true;
 
-        // Wait for server startup
-        await Future.delayed(const Duration(milliseconds: 500));
-
-        final response = await sendRequest('initialize', {
-          'processId': languageServer?.pid,
-          'rootUri': 'file://${p.dirname(p.dirname(editor.path))}',
-          'capabilities': _getClientCapabilities(),
-        });
-
-        _logger.info('Initialize response: $response');
-        // Log specific capabilities
-        _logger.info('Server capabilities: ${response['capabilities']}');
-        sendNotification('initialized', {});
-        isRunningNotifier.value = true;
-        return;
-      } catch (e, stack) {
-        _logger.warning('Initialize attempt $retryCount failed', e, stack);
+        await openDocument();
+        _logger.info('LSP server successfully initialized');
+        break;
+      } catch (e, stackTrace) {
         retryCount++;
-        // Kill the process before retrying
-        dispose();
-        await Future.delayed(const Duration(seconds: 2));
+        _logger.warning(
+          'Failed to initialize LSP server (attempt $retryCount of $maxRetries)',
+          e,
+          stackTrace,
+        );
+
+        if (retryCount >= maxRetries) {
+          _logger.severe(
+              'Failed to initialize LSP server after $maxRetries attempts');
+          EditorEventBus.emit(ErrorEvent(
+            message: 'LSP Server Error',
+            error:
+                'Failed to initialize language server after multiple attempts',
+          ));
+          break;
+        }
+
+        await Future.delayed(retryDelay);
       }
     }
 
-    isRunningNotifier.value = false;
-    throw Exception('Failed to initialize language server after 3 attempts');
+    state.isInitializing.value = false;
   }
 
-  void _handleServerNotification(Map<String, dynamic> notification) {
-    final method = notification['method'] as String;
-    final params = notification['params'];
+  Future<void> reconnect() async {
+    _logger.info('Attempting to reconnect to LSP server...');
 
-    switch (method) {
-      case 'textDocument/publishDiagnostics':
-        _handleDiagnostics(params);
-        break;
-      case 'window/logMessage':
-        _handleLogMessage(params);
-        break;
-      case 'window/showMessage':
-        _handleShowMessage(params);
-        break;
-      case 'window/workDoneProgress/create':
-        _handleWorkDoneProgress(params);
-        break;
-      case '/progress':
-        _handleProgress(params);
-        break;
-      default:
-        _logger.fine('Unhandled notification: $method');
+    // Clean up existing connection
+    connection.dispose();
+
+    // Reset state
+    state.isRunning.value = false;
+
+    // Try to initialize again
+    await initialize();
+  }
+
+  Future<void> openDocument() async {
+    final extension = p.extension(editor.path);
+    final languageId =
+        await LSPConfigManager.getLanguageForExtension(extension);
+
+    await documents.openDocument(
+        'file://${editor.path}', editor.buffer.content, languageId ?? '');
+  }
+
+  Future<void> sendDidChangeNotification(String text) async {
+    if (!isLanguageServerRunning()) {
+      _logger.warning('Cannot send didChange - language server not running');
+      return;
     }
-  }
 
-  void addDiagnosticsListener(Function() listener) {
-    _diagnosticsListeners.add(listener);
-  }
+    final uri = 'file://${editor.path}';
+    try {
+      if (!documents.isDocumentOpen(uri)) {
+        await sendDidOpenNotification(text);
+      }
 
-  void removeDiagnosticsListener(Function() listener) {
-    _diagnosticsListeners.remove(listener);
-  }
-
-  void notifyDiagnosticsListeners() {
-    for (var listener in _diagnosticsListeners) {
-      listener();
-    }
-  }
-
-  void _handleShowMessage(Map<String, dynamic> params) {
-    final message = params['message'] as String;
-    statusMessageNotifier.value = message;
-    final type = params['type'] as int;
-
-    switch (type) {
-      case 1: // Error
-        _logger.severe(message);
-        EditorEventBus.emit(ErrorEvent(
-          message: 'LSP Server Error',
-          error: message,
-        ));
-        break;
-
-      case 2: // Warning
-        _logger.warning(message);
-        EditorEventBus.emit(WarningEvent(
-          message: message,
-        ));
-        break;
-
-      case 3: // Info
-        _logger.info(message);
-        EditorEventBus.emit(InfoEvent(
-          message: message,
-        ));
-        break;
-
-      case 4: // Log
-        _logger.fine(message);
-        break;
-
-      default:
-        _logger.info(message);
-    }
-  }
-
-  void _handleLogMessage(Map<String, dynamic> params) {
-    final type = params['type'] as int;
-    final message = params['message'] as String;
-    switch (type) {
-      case 1:
-        _logger.severe(message);
-        break;
-      case 2:
-        _logger.warning(message);
-        break;
-      case 3:
-        _logger.info(message);
-        break;
-      case 4:
-        _logger.fine(message);
-        break;
+      await documents.updateDocument(uri, text);
+    } catch (e, stackTrace) {
+      _logger.severe('Failed to send didChange notification', e, stackTrace);
     }
   }
 
   Future<void> sendDidOpenNotification(String text) async {
-    if (!isLanguageServerRunning()) {
+    if (!state.isRunning.value) {
+      _logger.info('LSP server not running, attempting to initialize...');
+      await initialize();
+    }
+
+    if (!state.isRunning.value) {
       _logger.warning('Cannot send didOpen - language server not running');
       return;
     }
@@ -298,130 +160,64 @@ class LSPService {
       final uri = 'file://${editor.path}';
       final extension = p.extension(editor.path);
       final languageId =
-          await LSPConfigManager.getLanguageForExtension(extension);
+          await LSPConfigManager.getLanguageForExtension(extension) ??
+              'plaintext';
 
-      sendNotification('textDocument/didOpen', {
-        'textDocument': {
-          'uri': uri,
-          'languageId': languageId,
-          'version': _documentVersion++,
-          'text': text
-        }
-      });
-      _openDocuments[uri] = _documentVersion;
+      await documents.openDocument(uri, text, languageId);
     } catch (e, stackTrace) {
       _logger.severe('Failed to send didOpen notification', e, stackTrace);
     }
   }
 
-  Future<void> sendDidChangeNotification(String text) async {
-    if (!isLanguageServerRunning()) return;
+  Future<Map<String, dynamic>?> getHover(int line, int character) async {
+    if (!state.isRunning.value) return null;
 
-    final uri = 'file://${editor.path}';
-    if (!_openDocuments.containsKey(uri)) {
-      await sendDidOpenNotification(text);
-      return;
-    }
-
-    try {
-      sendNotification('textDocument/didChange', {
-        'textDocument': {'uri': uri, 'version': _documentVersion++},
-        'contentChanges': [
-          {'text': text}
-        ]
-      });
-      _openDocuments[uri] = _documentVersion;
-    } catch (e) {
-      _logger.severe('Failed to send didChange notification', e);
-    }
+    return await connection.sendRequest('textDocument/hover', {
+      'textDocument': {'uri': 'file://${editor.path}'},
+      'position': {'line': line, 'character': character}
+    });
   }
 
   Future<Map<String, dynamic>?> getDefinition(int line, int character) async {
-    try {
-      return await sendRequest('textDocument/definition', {
-        'textDocument': {'uri': 'file://${editor.path}'},
-        'position': {'line': line, 'character': character}
-      });
-    } catch (e) {
-      _logger.warning('Failed to get definition', e);
+    if (!state.isRunning.value) return null;
+
+    return await connection.sendRequest('textDocument/definition', {
+      'textDocument': {'uri': 'file://${editor.path}'},
+      'position': {'line': line, 'character': character}
+    });
+  }
+
+  Future<Map<String, dynamic>> getCompletion(int line, int character) async {
+    return await connection.sendRequest('textDocument/completion', {
+      'textDocument': {'uri': 'file://${editor.path}'},
+      'position': {'line': line, 'character': character}
+    });
+  }
+
+  // Helper methods
+  Future<ServerCommand?> _getServerCommand() async {
+    final extension = p.extension(editor.path);
+    final config = await LSPConfigManager.getLanguageConfig(extension);
+    if (config == null) {
+      _logger
+          .warning('No language server configured for extension: $extension');
       return null;
     }
+
+    return ServerCommand(
+      config['executable'] as String,
+      List<String>.from(config['args'] as List),
+    );
   }
 
-  void _handleServerResponse(Map<String, dynamic> response) {
-    _logger.info('Handling server response: $response');
-    final id = response['id'] as int;
-    final completer = _pendingRequests.remove(id);
-
-    // Extract server info from initialize response
-    if (response['result']?['serverInfo'] != null) {
-      final serverInfo = response['result']['serverInfo'];
-      final serverName = serverInfo['name'] as String;
-      final serverVersion = serverInfo['version'] as String;
-      currentServerName = '$serverName v$serverVersion';
+  String? _extractServerInfo(Map<String, dynamic> response) {
+    final serverInfo = response['result']?['serverInfo'];
+    if (serverInfo != null) {
+      final name = serverInfo['name'] as String;
+      final version = serverInfo['version'] as String;
+      return '$name v$version';
     }
-
-    if (completer == null) {
-      _logger.warning('No pending request found for id: $id');
-      return;
-    }
-
-    if (response.containsKey('error')) {
-      completer.completeError(response['error']);
-    } else {
-      completer.complete(response['result']);
-    }
-  }
-
-  Future<Map<String, dynamic>> sendRequest(
-      String method, Map<String, dynamic> params) async {
-    final id = _messageId++;
-    final completer = Completer<Map<String, dynamic>>();
-    _pendingRequests[id] = completer;
-
-    try {
-      final request = {
-        'jsonrpc': '2.0',
-        'id': id,
-        'method': method,
-        'params': params
-      };
-
-      final requestJson = jsonEncode(request);
-      final message = 'Content-Length: ${requestJson.length}\r\n'
-          'Content-Type: application/vscode-jsonrpc; charset=utf-8\r\n'
-          '\r\n'
-          '$requestJson';
-
-      languageServer!.stdin.write(message);
-      await languageServer!.stdin.flush();
-
-      return await completer.future.timeout(
-        const Duration(seconds: 5),
-        onTimeout: () {
-          _pendingRequests.remove(id);
-          throw TimeoutException('Request timed out: $method');
-        },
-      );
-    } catch (e) {
-      _pendingRequests.remove(id);
-      throw Exception('Failed to send request: $e');
-    }
-  }
-
-  bool isLanguageServerRunning() {
-    return languageServer != null && languageServer!.pid != 0;
-  }
-
-  void _setupMessageHandling() {
-    languageServer?.stdout.transform(utf8.decoder).listen((String data) {
-      _logger.info('Server stdout: $data');
-      if (data.trim().isNotEmpty) {
-        _handleServerMessage(data);
-      }
-    }, onError: (error) {
-      _logger.severe('Error from language server', error);
-    });
+    return null;
   }
 
   Map<String, dynamic> _getClientCapabilities() {
@@ -650,137 +446,92 @@ class LSPService {
     };
   }
 
-  Future<bool> isDartSdkAvailable() async {
-    try {
-      final result = await Process.run('dart', ['--version']);
-      return result.exitCode == 0;
-    } catch (e) {
-      _logger.severe('Dart SDK not found: $e');
-      return false;
+  void addDiagnosticsListener(Function() listener) {
+    diagnostics.addListener(listener);
+  }
+
+  void removeDiagnosticsListener(Function() listener) {
+    diagnostics.removeListener(listener);
+  }
+
+  // Handle server notifications
+  void _handleServerNotification(Map<String, dynamic> notification) {
+    final method = notification['method'] as String;
+    final params = notification['params'];
+
+    switch (method) {
+      case 'textDocument/publishDiagnostics':
+        diagnostics.handleDiagnostics(params);
+        break;
+      case 'window/logMessage':
+        _handleLogMessage(params);
+        break;
+      case 'window/showMessage':
+        _handleShowMessage(params);
+        break;
+      case 'window/workDoneProgress/create':
+        progress.handleProgress(params);
+        break;
+      case '/progress':
+        progress.handleProgress(params);
+        break;
+      default:
+        _logger.fine('Unhandled notification: $method');
     }
   }
 
-  void sendNotification(String method, Map<String, dynamic> params) {
-    if (languageServer == null) return;
+  void _handleShowMessage(Map<String, dynamic> params) {
+    final message = params['message'] as String;
+    state.statusMessage.value = message;
+    final type = params['type'] as int;
 
-    try {
-      final notification = {
-        'jsonrpc': '2.0',
-        'method': method,
-        'params': params
-      };
-
-      final notificationJson = jsonEncode(notification);
-      final message = 'Content-Length: ${notificationJson.length}\r\n'
-          'Content-Type: application/vscode-jsonrpc; charset=utf-8\r\n'
-          '\r\n'
-          '$notificationJson';
-
-      languageServer!.stdin.write(message);
-    } catch (e, stackTrace) {
-      _logger.severe('Failed to send notification: $method', e, stackTrace);
+    switch (type) {
+      case 1: // Error
+        _logger.severe(message);
+        EditorEventBus.emit(ErrorEvent(
+          message: 'LSP Server Error',
+          error: message,
+        ));
+        break;
+      case 2: // Warning
+        _logger.warning(message);
+        EditorEventBus.emit(WarningEvent(
+          message: message,
+        ));
+        break;
+      case 3: // Info
+        _logger.info(message);
+        EditorEventBus.emit(InfoEvent(
+          message: message,
+        ));
+        break;
+      case 4: // Log
+        _logger.fine(message);
+        break;
     }
   }
 
-  void _handleServerMessage(String message) {
-    try {
-      // Split messages if multiple are received
-      final messages = message
-          .split('Content-Length: ')
-          .where((m) => m.isNotEmpty)
-          .map((m) => 'Content-Length: $m');
-
-      for (var msg in messages) {
-        String jsonContent = '';
-
-        final headerEnd = msg.indexOf('\r\n\r\n');
-        if (headerEnd != -1) {
-          final lengthMatch = RegExp(r'Content-Length: (\d+)').firstMatch(msg);
-          if (lengthMatch != null) {
-            final length = int.parse(lengthMatch.group(1)!);
-            final content = msg.substring(headerEnd + 4);
-            if (content.length >= length) {
-              jsonContent = content.substring(0, length);
-            }
-          }
-        }
-
-        if (jsonContent.isNotEmpty) {
-          _processJsonContent(jsonContent);
-        }
-      }
-    } catch (e, stack) {
-      _logger.severe('Error handling server message', e, stack);
+  void _handleLogMessage(Map<String, dynamic> params) {
+    final type = params['type'] as int;
+    final message = params['message'] as String;
+    switch (type) {
+      case 1:
+        _logger.severe(message);
+        break;
+      case 2:
+        _logger.warning(message);
+        break;
+      case 3:
+        _logger.info(message);
+        break;
+      case 4:
+        _logger.fine(message);
+        break;
     }
   }
 
-  void _processJsonContent(String content) {
-    try {
-      final response = jsonDecode(content);
-      _logger.info('Processed JSON content: $response');
-
-      if (response['method'] == 'workspace/configuration') {
-        _handleConfigurationRequest(response);
-      } else if (response['method'] == 'window/workDoneProgress/create') {
-        _handleWorkDoneProgress(response['params']);
-      } else if (response.containsKey('method')) {
-        _handleServerNotification(response);
-      } else {
-        _handleServerResponse(response);
-      }
-    } catch (e, stack) {
-      _logger.severe('Error processing JSON content: $content', e, stack);
-    }
-  }
-
-  void _handleDiagnostics(Map<String, dynamic> params) {
-    try {
-      final uri = params['uri'] as String?;
-      if (uri == null || uri.isEmpty) {
-        _logger.warning('Received diagnostics with empty URI');
-        return;
-      }
-
-      final diagnosticsList = params['diagnostics'] as List?;
-      if (diagnosticsList == null) {
-        _logger.warning('Received diagnostics without a diagnostics list');
-        return;
-      }
-
-      final diagnostics = diagnosticsList
-          .map((d) => Diagnostic.fromJson(d as Map<String, dynamic>))
-          .toList();
-
-      final filePath = Uri.parse(uri).toFilePath();
-      updateDiagnostics(filePath, diagnostics);
-    } catch (e, stack) {
-      _logger.severe('Error handling diagnostics: $e\n$stack');
-      _logger.severe('Raw diagnostics data: $params');
-    }
-  }
-
-  void updateDiagnostics(String filePath, List<Diagnostic> diagnostics) {
-    _fileDiagnostics[filePath] = diagnostics;
-
-    // If this is the current file being edited, update the editor state
-    if (filePath == editor.path) {
-      editor.updateDiagnostics(diagnostics);
-    }
-
-    // Notify listeners about the change in diagnostics
-    notifyDiagnosticsListeners();
-  }
-
-  List<Diagnostic> getDiagnostics(String filePath) {
-    return _fileDiagnostics[filePath] ?? [];
-  }
-
-  Map<String, List<Diagnostic>> getAllDiagnostics() {
-    return Map.from(_fileDiagnostics);
-  }
-
+  // Configuration handling
   void _handleConfigurationRequest(Map<String, dynamic> request) {
-    // Respond to configuration request
     final response = {
       'jsonrpc': '2.0',
       'id': request['id'],
@@ -793,65 +544,56 @@ class LSPService {
       ]
     };
 
-    final responseJson = jsonEncode(response);
-    final message = 'Content-Length: ${responseJson.length}\r\n'
-        'Content-Type: application/vscode-jsonrpc; charset=utf-8\r\n'
-        '\r\n'
-        '$responseJson';
-
-    languageServer?.stdin.write(message);
-    languageServer?.stdin.flush();
+    connection.sendMessage(response);
   }
 
-  Future<Map<String, dynamic>?> getHover(int line, int character) async {
-    if (!isLanguageServerRunning()) {
-      _logger.warning('Language server not running');
-      return null;
-    }
-
+  // Dart SDK availability check
+  Future<bool> isDartSdkAvailable() async {
     try {
-      final response = await sendRequest('textDocument/hover', {
-        'textDocument': {'uri': 'file://${editor.path}'},
-        'position': {'line': line, 'character': character}
-      });
-
-      if (!response.containsKey('contents')) {
-        _logger.warning('Invalid hover response structure');
-        return null;
-      }
-
-      return response;
+      final result = await Process.run('dart', ['--version']);
+      return result.exitCode == 0;
     } catch (e) {
-      _logger.warning('Failed to get hover information', e);
-      return null;
+      _logger.severe('Dart SDK not found: $e');
+      return false;
     }
   }
 
-  void dispose() async {
-    _clearAnalysisState();
-    _analysisTimeoutTimer?.cancel();
-    _analysisTimeoutTimer = null;
-
-    if (languageServer != null) {
-      try {
-        languageServer?.kill();
-        await languageServer?.exitCode;
-        languageServer = null;
-        isRunningNotifier.value = false;
-      } catch (e) {
-        _logger.warning('Error disposing language server', e);
-      }
-    }
-  }
-
+  // Analysis state management
   bool isAnalysisStuck() {
-    return _analysisTimeoutTimer != null;
+    return progress.isAnalysisInProgress();
   }
 
-  Future<Map<String, dynamic>> getCompletion(int line, int character) async {
-    return sendRequest('textDocument/completion', {
-      'textDocument': {'uri': 'file://${editor.path}'},
-      'position': {'line': line, 'character': character}
-    });
+  bool isLanguageServerRunning() {
+    return state.isRunning.value;
+  }
+
+  // Diagnostics access methods
+  List<Diagnostic> getDiagnostics(String filePath) {
+    return diagnostics.getDiagnostics(filePath);
+  }
+
+  Map<String, List<Diagnostic>> getAllDiagnostics() {
+    return diagnostics.getAllDiagnostics();
+  }
+
+  // Server status
+  String? get serverName => state.currentServerName;
+
+  // ValueNotifier access
+  ValueNotifier<bool> get isRunningNotifier => state.isRunning;
+  ValueNotifier<bool> get isInitializingNotifier => state.isInitializing;
+  ValueNotifier<String> get statusMessageNotifier => state.statusMessage;
+  ValueNotifier<bool> get workProgressNotifier => progress.workProgress;
+  ValueNotifier<String> get workProgressMessage => progress.workProgressMessage;
+
+  // Getters
+  String get currentServerName => state.currentServerName ?? 'Unknown';
+  ServerCommand? get currentServerCommand => state.currentServerCommand;
+
+  void dispose() {
+    _diagnosticsListeners.clear();
+    progress.clearProgress();
+    state.dispose();
+    connection.dispose();
   }
 }
