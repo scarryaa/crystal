@@ -8,11 +8,8 @@ import 'package:crystal/models/editor/commands/navigation_commands.dart';
 import 'package:crystal/models/editor/config/config_paths.dart';
 import 'package:crystal/models/editor/config/editor_view_config.dart';
 import 'package:crystal/models/editor/events/event_models.dart';
-import 'package:crystal/models/editor/lsp_models.dart' as lsp_models;
 import 'package:crystal/models/editor/position.dart';
-import 'package:crystal/models/git_models.dart';
 import 'package:crystal/models/text_range.dart';
-import 'package:crystal/models/word_info.dart';
 import 'package:crystal/services/command_palette_service.dart';
 import 'package:crystal/services/editor/editor_event_bus.dart';
 import 'package:crystal/services/editor/editor_input_handler.dart';
@@ -20,13 +17,19 @@ import 'package:crystal/services/editor/handlers/keyboard/editor_keyboard_handle
 import 'package:crystal/services/editor/handlers/keyboard/file_handler.dart';
 import 'package:crystal/services/editor/handlers/keyboard/navigation_handler.dart';
 import 'package:crystal/services/editor/handlers/keyboard/text_editing_handler.dart';
+import 'package:crystal/services/editor/view/cursor_manager.dart';
+import 'package:crystal/services/editor/view/editor_painter_manager.dart';
+import 'package:crystal/services/editor/view/focus_manager.dart';
+import 'package:crystal/services/editor/view/git_manager.dart';
+import 'package:crystal/services/editor/view/hover_manager.dart';
+import 'package:crystal/services/editor/view/key_event_manager.dart';
 import 'package:crystal/state/editor/editor_syntax_highlighter.dart';
 import 'package:crystal/widgets/blame_info_widget.dart';
 import 'package:crystal/widgets/editor/completion_widget.dart';
 import 'package:crystal/widgets/editor/editor_painter.dart';
 import 'package:crystal/widgets/hover_info_widget.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart' hide TextRange;
+import 'package:flutter/material.dart' hide TextRange hide FocusManager;
 
 class EditorView extends StatefulWidget {
   final EditorViewConfig config;
@@ -41,73 +44,16 @@ class EditorView extends StatefulWidget {
 }
 
 class EditorViewState extends State<EditorView> {
-  final FocusNode _focusNode = FocusNode();
-  bool _isFocused = false;
-  double _cachedMaxLineWidth = 0;
-  Timer? _caretTimer;
+  late final CursorManager cursorManager;
+  late final FocusManager focusManager;
+  late final HoverManager hoverManager;
+  late final GitManager gitManager;
+  late final KeyEventManager keyEventManager;
+  late final EditorPainterManager editorPainterManager;
   late final EditorInputHandler editorInputHandler;
-  EditorSyntaxHighlighter? editorSyntaxHighlighter;
   late final EditorKeyboardHandler editorKeyboardHandler;
-  EditorPainter? editorPainter;
-  List<BlameLine>? blameInfo;
-  Timer? _hoverTimer;
-  bool _isHoveringPopup = false;
-  bool _isHoveringWord = false;
-  WordInfo? _lastHoveredWord;
-  bool _isTyping = false;
-  Offset? _hoverPosition;
-  TextRange? _hoveredWordRange;
-  Timer? _wordHighlightTimer;
-  Position? _lastCursorPosition;
-  Timer? _cursorMoveTimer;
-  bool _isCursorMovementRecent = false;
-  List<lsp_models.Diagnostic>? hoveredInfo;
 
-  void _handleCursorMove() {
-    if (widget.config.state.cursors.isEmpty) return;
-
-    final currentCursor = widget.config.state.cursors.first;
-    final currentPosition = Position(
-      line: currentCursor.line,
-      column: currentCursor.column,
-    );
-
-    if (_lastCursorPosition != currentPosition) {
-      _lastCursorPosition = currentPosition;
-      _isCursorMovementRecent = true;
-      _cancelHoverOperations();
-
-      // Reset the cursor movement flag after a short delay
-      _cursorMoveTimer?.cancel();
-      _cursorMoveTimer = Timer(const Duration(milliseconds: 300), () {
-        if (mounted) {
-          setState(() {
-            _isCursorMovementRecent = false;
-          });
-        }
-      });
-    }
-  }
-
-  void _cancelHoverOperations() {
-    _hoverTimer?.cancel();
-    _wordHighlightTimer?.cancel();
-
-    if (!mounted) return;
-
-    setState(() {
-      _isHoveringWord = false;
-      _hoveredWordRange = null;
-      _lastHoveredWord = null;
-      _hoverPosition = null;
-    });
-
-    EditorEventBus.emit(HoverEvent(
-      line: -100,
-      character: -100,
-      content: '',
-    ));
-  }
+  EditorSyntaxHighlighter? editorSyntaxHighlighter;
 
   @override
   void didUpdateWidget(EditorView oldWidget) {
@@ -119,7 +65,7 @@ class EditorViewState extends State<EditorView> {
         editorLayoutService: widget.config.services.layoutService,
         fileName: widget.config.fileConfig.fileName,
       );
-      _initializeGit();
+      gitManager.initializeGit();
       widget.config.services.gitService
           .setOriginalContent(widget.config.state.relativePath ?? '');
     }
@@ -129,19 +75,27 @@ class EditorViewState extends State<EditorView> {
   void initState() {
     super.initState();
 
+    hoverManager = HoverManager(config: widget.config);
+    cursorManager = CursorManager(widget.config, hoverManager);
+    focusManager = FocusManager(config: widget.config);
+    gitManager = GitManager(config: widget.config);
+    editorPainterManager = EditorPainterManager(config: widget.config);
+
     EditorEventBus.on<CursorEvent>().listen((_) {
-      _handleCursorMove();
+      cursorManager.handleCursorMove();
     });
 
-    widget.config.scrollConfig.verticalController.addListener(_hidePopups);
-    widget.config.scrollConfig.horizontalController.addListener(_hidePopups);
-    _initializeGit();
+    widget.config.scrollConfig.verticalController
+        .addListener(hoverManager.hidePopups);
+    widget.config.scrollConfig.horizontalController
+        .addListener(hoverManager.hidePopups);
+    gitManager.initializeGit();
 
     EditorEventBus.on<TextEvent>().listen((_) {
-      if (!_isHoveringPopup) {
+      if (!hoverManager.isHoveringPopup) {
         setState(() {
-          _isHoveringPopup = false;
-          _isHoveringWord = false;
+          hoverManager.isHoveringPopup = false;
+          hoverManager.isHoveringWord = false;
         });
         // Force emit a hover clear event
         EditorEventBus.emit(HoverEvent(
@@ -152,20 +106,21 @@ class EditorViewState extends State<EditorView> {
       }
     });
 
-    _focusNode.addListener(() {
+    focusManager.focusNode.addListener(() {
       setState(() {
-        _isFocused = _focusNode.hasFocus;
-        if (!_isFocused) {
+        focusManager.isFocused = focusManager.focusNode.hasFocus;
+        if (!focusManager.isFocused) {
           widget.config.state.showCaret = false;
-          _stopCaretBlinking();
+          focusManager.stopCaretBlinking();
         } else {
-          _startCaretBlinking();
+          focusManager.startCaretBlinking();
         }
       });
     });
 
     editorInputHandler = EditorInputHandler(
-        resetCaretBlink: _resetCaretBlink, requestFocus: requestFocus);
+        resetCaretBlink: focusManager.resetCaretBlink,
+        requestFocus: requestFocus);
 
     editorKeyboardHandler = EditorKeyboardHandler(
       // Base handlers
@@ -218,7 +173,7 @@ class EditorViewState extends State<EditorView> {
           getLastPastedLineCount: widget.config.state.getLastPastedLineCount,
           getSelectedLineRange: widget.config.state.getSelectedLineRange,
         ),
-        updateSingleLineWidth: updateSingleLineWidth,
+        updateSingleLineWidth: editorPainterManager.updateSingleLineWidth,
         onSearchTermChanged: widget.config.searchConfig.onSearchTermChanged,
         searchTerm: widget.config.searchConfig.searchTerm,
       ),
@@ -236,31 +191,14 @@ class EditorViewState extends State<EditorView> {
       editorLayoutService: widget.config.services.layoutService,
       fileName: widget.config.fileConfig.fileName,
     );
-    updateCachedMaxLineWidth();
-    _startCaretBlinking();
+    keyEventManager = KeyEventManager(editorKeyboardHandler);
+
+    editorPainterManager.updateCachedMaxLineWidth();
+    focusManager.startCaretBlinking();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _focusNode.requestFocus();
+      focusManager.focusNode.requestFocus();
     });
-  }
-
-  Future<void> _initializeGit() async {
-    try {
-      final blame = await widget.config.services.gitService
-          .getBlame(widget.config.state.path);
-      if (mounted) {
-        setState(() {
-          blameInfo = blame;
-        });
-      }
-    } catch (e) {
-      debugPrint('Git initialization failed: $e');
-      if (mounted) {
-        setState(() {
-          blameInfo = [];
-        });
-      }
-    }
   }
 
   Offset _getCompletionOverlayPosition() {
@@ -275,92 +213,19 @@ class EditorViewState extends State<EditorView> {
     return Offset(x, y);
   }
 
-  void updateSingleLineWidth(int lineIndex) {
-    if (editorPainter == null ||
-        lineIndex < 0 ||
-        lineIndex >= widget.config.state.buffer.lines.length) {
-      return;
-    }
-
-    final line = widget.config.state.buffer.lines[lineIndex];
-    final lineWidth = editorPainter!.measureLineWidth(line);
-
-    // Only update if this line was previously the longest
-    if (lineWidth < _cachedMaxLineWidth && _isLongestLine(lineIndex)) {
-      _updateMaxWidthEfficiently();
-    } else if (lineWidth > _cachedMaxLineWidth) {
-      _cachedMaxLineWidth = lineWidth;
-      setState(() {});
-    }
-  }
-
-  bool _isLongestLine(int lineIndex) {
-    final currentLineWidth = editorPainter!
-        .measureLineWidth(widget.config.state.buffer.lines[lineIndex]);
-    return currentLineWidth >= _cachedMaxLineWidth;
-  }
-
-  void _updateMaxWidthEfficiently() {
-    // Keep track of the longest line index to avoid full recalculation
-    double maxWidth = 0;
-    for (int i = 0; i < widget.config.state.buffer.lines.length; i++) {
-      final lineWidth =
-          editorPainter!.measureLineWidth(widget.config.state.buffer.lines[i]);
-      maxWidth = math.max(maxWidth, lineWidth);
-    }
-    _cachedMaxLineWidth = maxWidth;
-    setState(() {});
-  }
-
   @override
   void dispose() {
-    _cursorMoveTimer?.cancel();
-    _hoverTimer?.cancel();
-    _wordHighlightTimer?.cancel();
-    widget.config.scrollConfig.verticalController.removeListener(_hidePopups);
-    widget.config.scrollConfig.horizontalController.removeListener(_hidePopups);
-    _stopCaretBlinking();
-    _focusNode.dispose();
+    focusManager.dispose();
+    cursorManager.dispose();
+    hoverManager.dispose();
+    hoverManager.wordHighlightTimer?.cancel();
+    widget.config.scrollConfig.verticalController
+        .removeListener(hoverManager.hidePopups);
+    widget.config.scrollConfig.horizontalController
+        .removeListener(hoverManager.hidePopups);
+    focusManager.stopCaretBlinking();
+    focusManager.focusNode.dispose();
     super.dispose();
-  }
-
-  void _startCaretBlinking() {
-    if (mounted) {
-      _caretTimer?.cancel();
-      _caretTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
-        setState(() {
-          widget.config.state.toggleCaret();
-        });
-      });
-    }
-  }
-
-  void _stopCaretBlinking() {
-    _caretTimer?.cancel();
-    _caretTimer = null;
-  }
-
-  void _resetCaretBlink() {
-    if (mounted) {
-      setState(() {
-        widget.config.state.showCaret = true;
-      });
-      _startCaretBlinking();
-    }
-  }
-
-  void updateCachedMaxLineWidth() {
-    _cachedMaxLineWidth = _maxLineWidth();
-  }
-
-  double _maxLineWidth() {
-    if (editorPainter == null) return 0;
-
-    return widget.config.state.buffer.lines.fold<double>(0, (maxWidth, line) {
-      final lineWidth =
-          editorPainter == null ? 0.0 : editorPainter!.measureLineWidth(line);
-      return math.max(maxWidth, lineWidth);
-    });
   }
 
   int getVisibleLineCount() {
@@ -377,17 +242,20 @@ class EditorViewState extends State<EditorView> {
 
   void onHoverPopup() {
     setState(() {
-      _isHoveringPopup = true;
+      hoverManager.isHoveringPopup = true;
     });
   }
 
   void onLeavePopup() {
     if (mounted) {
       setState(() {
-        _isHoveringPopup = false;
+        hoverManager.isHoveringPopup = false;
       });
     }
   }
+
+  void updateCachedMaxLineWidth() =>
+      editorPainterManager.updateCachedMaxLineWidth();
 
   @override
   Widget build(BuildContext context) {
@@ -398,7 +266,7 @@ class EditorViewState extends State<EditorView> {
           (widget.config.services.configService.config.isFileExplorerVisible
               ? widget.config.services.configService.config.fileExplorerWidth
               : 0),
-      _cachedMaxLineWidth +
+      editorPainterManager.cachedMaxLineWidth +
           widget.config.services.layoutService.config.horizontalPadding,
     );
     final height = math.max(
@@ -421,7 +289,7 @@ class EditorViewState extends State<EditorView> {
       }
     }
 
-    editorPainter = EditorPainter(
+    editorPainterManager.editorPainter = EditorPainter(
       editorConfigService: widget.config.services.configService,
       editorLayoutService: widget.config.services.layoutService,
       editorSyntaxHighlighter: editorSyntaxHighlighter!,
@@ -430,12 +298,12 @@ class EditorViewState extends State<EditorView> {
       searchTermMatches: widget.config.searchConfig.matches,
       currentSearchTermMatch: widget.config.searchConfig.currentMatch,
       viewportHeight: MediaQuery.of(context).size.height,
-      isFocused: _isFocused,
-      blameInfo: blameInfo ?? [],
-      hoverPosition: _hoverPosition,
-      hoveredWordRange: _hoveredWordRange,
+      isFocused: focusManager.isFocused,
+      blameInfo: gitManager.blameInfo ?? [],
+      hoverPosition: hoverManager.hoverPosition,
+      hoveredWordRange: hoverManager.hoveredWordRange,
       currentWordOccurrences: currentWordOccurrences,
-      hoveredInfo: hoveredInfo,
+      hoveredInfo: hoverManager.hoveredInfo,
     );
     widget.config.state.scrollState
         .updateViewportHeight(MediaQuery.of(context).size.height);
@@ -454,9 +322,9 @@ class EditorViewState extends State<EditorView> {
                         .currentTheme?.background ??
                     Colors.white,
                 child: Focus(
-                  focusNode: _focusNode,
+                  focusNode: focusManager.focusNode,
                   onKeyEvent: (node, event) {
-                    _handleKeyEventAsync(node, event);
+                    keyEventManager.handleKeyEventAsync(node, event);
                     return KeyEventResult.handled;
                   },
                   autofocus: true,
@@ -464,23 +332,25 @@ class EditorViewState extends State<EditorView> {
                     onEnter: (_) => widget.config.globalHoverState
                         .setActiveEditor(widget.config.row, widget.config.col),
                     onExit: (_) {
-                      _wordHighlightTimer?.cancel();
+                      hoverManager.wordHighlightTimer?.cancel();
 
-                      if (!_isHoveringPopup) {
+                      if (!hoverManager.isHoveringPopup) {
                         Future.delayed(const Duration(milliseconds: 50), () {
-                          if (!_isHoveringPopup && mounted) {
+                          if (!hoverManager.isHoveringPopup && mounted) {
                             widget.config.globalHoverState.clearActiveEditor();
                           }
                         });
                       }
                     },
                     onHover: (PointerHoverEvent event) {
-                      if (_isTyping || _isCursorMovementRecent) {
-                        _handleEmptyWord();
+                      if (keyEventManager.isTyping ||
+                          cursorManager.isCursorMovementRecent) {
+                        hoverManager.handleEmptyWord();
                         return;
                       }
 
-                      final cursorPosition = _getPositionFromOffset(Offset(
+                      final cursorPosition =
+                          hoverManager.getPositionFromOffset(Offset(
                         event.localPosition.dx +
                             widget.config.scrollConfig.horizontalController
                                 .offset,
@@ -489,46 +359,49 @@ class EditorViewState extends State<EditorView> {
                                 .config.scrollConfig.verticalController.offset,
                       ));
 
-                      final wordInfo = _getWordInfoAtPosition(cursorPosition);
+                      final wordInfo =
+                          hoverManager.getWordInfoAtPosition(cursorPosition);
 
                       // Check if the hovered word is different from the last hovered word
-                      if (_lastHoveredWord?.word != wordInfo?.word ||
-                          _lastHoveredWord?.startColumn !=
+                      if (hoverManager.lastHoveredWord?.word !=
+                              wordInfo?.word ||
+                          hoverManager.lastHoveredWord?.startColumn !=
                               wordInfo?.startColumn ||
-                          _lastHoveredWord?.startLine != wordInfo?.startLine) {
-                        if (!_isHoveringPopup) {
-                          _handleEmptyWord();
+                          hoverManager.lastHoveredWord?.startLine !=
+                              wordInfo?.startLine) {
+                        if (!hoverManager.isHoveringPopup) {
+                          hoverManager.handleEmptyWord();
                         }
                       }
 
                       // Cancel any existing timers
-                      _wordHighlightTimer?.cancel();
+                      hoverManager.wordHighlightTimer?.cancel();
 
                       // Handle the case where no word is hovered
                       if (wordInfo == null) {
-                        _wordHighlightTimer =
+                        hoverManager.wordHighlightTimer =
                             Timer(const Duration(milliseconds: 100), () {
                           if (mounted) {
-                            _handleEmptyWord();
+                            hoverManager.handleEmptyWord();
                           }
                         });
                         return;
                       }
 
                       // Update the last hovered word and hover position
-                      _lastHoveredWord = wordInfo;
+                      hoverManager.lastHoveredWord = wordInfo;
                       setState(() {
-                        _hoverPosition = event.localPosition;
+                        hoverManager.hoverPosition = event.localPosition;
                       });
 
                       // Set a new timer to handle the word highlight and diagnostics
-                      _wordHighlightTimer =
+                      hoverManager.wordHighlightTimer =
                           Timer(const Duration(milliseconds: 300), () async {
                         if (!mounted) return;
 
                         setState(() {
-                          _isHoveringWord = true;
-                          _hoveredWordRange = TextRange(
+                          hoverManager.isHoveringWord = true;
+                          hoverManager.hoveredWordRange = TextRange(
                             start: Position(
                               line: cursorPosition.line,
                               column: wordInfo.startColumn,
@@ -547,7 +420,7 @@ class EditorViewState extends State<EditorView> {
 
                         // Update state with the diagnostics if still mounted
                         setState(() {
-                          hoveredInfo = diagnostics;
+                          hoverManager.hoveredInfo = diagnostics;
                         });
 
                         await widget.config.state.showHover(
@@ -557,14 +430,14 @@ class EditorViewState extends State<EditorView> {
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onTapDown: (details) {
-                        _hidePopups();
-                        _cancelHoverOperations();
+                        hoverManager.hidePopups();
+                        hoverManager.cancelHoverOperations();
                         editorInputHandler.handleTap(
                           details,
                           widget.config.scrollConfig.verticalController.offset,
                           widget
                               .config.scrollConfig.horizontalController.offset,
-                          editorPainter,
+                          editorPainterManager.editorPainter,
                           widget.config.state,
                         );
                       },
@@ -573,7 +446,7 @@ class EditorViewState extends State<EditorView> {
                         details,
                         widget.config.scrollConfig.verticalController.offset,
                         widget.config.scrollConfig.horizontalController.offset,
-                        editorPainter,
+                        editorPainterManager.editorPainter,
                         widget.config.state,
                       ),
                       onPanUpdate: (details) =>
@@ -581,7 +454,7 @@ class EditorViewState extends State<EditorView> {
                         details,
                         widget.config.scrollConfig.verticalController.offset,
                         widget.config.scrollConfig.horizontalController.offset,
-                        editorPainter,
+                        editorPainterManager.editorPainter,
                         widget.config.state,
                       ),
                       child: ScrollbarTheme(
@@ -624,18 +497,19 @@ class EditorViewState extends State<EditorView> {
                                     child: Stack(
                                       children: [
                                         CustomPaint(
-                                          painter: editorPainter,
+                                          painter: editorPainterManager
+                                              .editorPainter,
                                           size: Size(width, height),
                                         ),
-                                        if (blameInfo != null &&
-                                            blameInfo!.isNotEmpty)
+                                        if (gitManager.blameInfo != null &&
+                                            gitManager.blameInfo!.isNotEmpty)
                                           Positioned.fill(
                                             child: BlameInfoWidget(
                                               editorConfigService: widget.config
                                                   .services.configService,
                                               editorLayoutService: widget.config
                                                   .services.layoutService,
-                                              blameInfo: blameInfo!,
+                                              blameInfo: gitManager.blameInfo!,
                                               editorState: widget.config.state,
                                               size: Size(width, height),
                                               gitService: widget
@@ -648,7 +522,8 @@ class EditorViewState extends State<EditorView> {
                                               .config.services.layoutService,
                                           editorConfigService: widget
                                               .config.services.configService,
-                                          isHoveringWord: _isHoveringWord,
+                                          isHoveringWord:
+                                              hoverManager.isHoveringWord,
                                           onHoverPopup: onHoverPopup,
                                           onLeavePopup: onLeavePopup,
                                           row: widget.config.row,
@@ -685,88 +560,8 @@ class EditorViewState extends State<EditorView> {
         });
   }
 
-  void _hidePopups() {
-    if (mounted) {
-      setState(() {
-        _isHoveringPopup = false;
-        _isHoveringWord = false;
-        _hoveredWordRange = null;
-      });
-      EditorEventBus.emit(HoverEvent(
-        line: -100,
-        character: -100,
-        content: '',
-      ));
-    }
-  }
-
-  void _handleEmptyWord() {
-    _isHoveringWord = false;
-    EditorEventBus.emit(HoverEvent(
-      line: -100,
-      character: -100,
-      content: '',
-    ));
-
-    setState(() {
-      _hoveredWordRange = null;
-      _lastHoveredWord = null;
-    });
-  }
-
-  WordInfo? _getWordInfoAtPosition(Position position) {
-    final line = widget.config.state.buffer.getLine(position.line);
-    final wordBoundaryPattern = RegExp(r'[a-zA-Z0-9_]+');
-    final matches = wordBoundaryPattern.allMatches(line);
-
-    for (final match in matches) {
-      if (match.start <= position.column && position.column <= match.end) {
-        return WordInfo(
-          word: line.substring(match.start, match.end),
-          startColumn: match.start,
-          endColumn: match.end,
-          startLine: position.line,
-        );
-      }
-    }
-    return null;
-  }
-
-  Position _getPositionFromOffset(Offset offset) {
-    final line =
-        (offset.dy / widget.config.services.layoutService.config.lineHeight)
-            .floor();
-    final column =
-        (offset.dx / widget.config.services.layoutService.config.charWidth)
-            .floor();
-    return Position(line: line, column: column);
-  }
-
   void requestFocus() {
-    _focusNode.requestFocus();
-  }
-
-  Future<void> _handleKeyEventAsync(FocusNode node, KeyEvent event) async {
-    await _handleKeyEvent(node, event);
-  }
-
-  Future<KeyEventResult> _handleKeyEvent(FocusNode node, KeyEvent event) async {
-    _resetCaretBlink();
-    _isTyping = true;
-
-    if (!_isHoveringPopup) {
-      _cancelHoverOperations();
-    }
-
-    Timer(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        setState(() {
-          _isTyping = false;
-        });
-      }
-    });
-
-    return await editorKeyboardHandler.handleKeyEvent(node, event);
+    focusManager.focusNode.requestFocus();
   }
 
   Future<void> _openConfig() async {
