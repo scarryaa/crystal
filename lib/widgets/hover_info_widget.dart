@@ -45,7 +45,7 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   bool _isHoveringInfoPopup = false;
   bool _isHoveringDiagnosticsPopup = false;
   double diagnosticsHeight = 0;
-  final double spaceBetweenPopups = 16.0;
+  final double spaceBetweenPopups = 8.0;
   OverlayEntry? _overlayEntry;
   String _lastHoveredWord = '';
   bool _isMouseDown = false;
@@ -53,10 +53,11 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   final double _diagnosticItemPadding = 8.0;
   final double _diagnosticIconSize = 16.0;
   final double _diagnosticMinHeight = 36.0;
+  final double maxDiagnosticsHeight = 200.0;
+  final double minDiagnosticsHeight = 100.0;
+
   bool _showDiagnosticsPopup = false;
   bool _showHoverInfoPopup = false;
-  final double _diagnosticsMinHeight = 100.0;
-  final double _diagnosticsMaxHeight = 200.0;
 
   @override
   void initState() {
@@ -92,8 +93,6 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   }
 
   void _calculateDiagnosticsHeight(List<Diagnostic> diagnostics) {
-    const double maxDiagnosticsHeight = 200.0;
-    const double minDiagnosticsHeight = 100.0;
     const double containerVerticalPadding = 24.0;
     const double itemVerticalPadding = 8.0;
 
@@ -187,13 +186,13 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
         diagnosticsPopupTop = infoPopupTop + actualHeight + spaceBetweenPopups;
       } else if (diagnostics.isNotEmpty) {
         // Only diagnostics
-        diagnosticsPopupTop = infoPopupTop;
+        diagnosticsPopupTop = infoPopupTop + diagnosticsHeight + 32;
       }
     } else {
       // Try positioning above since there's space
       infoPopupTop = cursorScreenY - actualHeight - 10;
       diagnosticsPopupTop =
-          infoPopupTop - diagnosticsHeight - spaceBetweenPopups;
+          infoPopupTop - diagnosticsHeight - spaceBetweenPopups / 2;
     }
 
     if (event.diagnosticRange != null) {
@@ -341,7 +340,7 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
       );
       textPainter.layout(maxWidth: maxWidth);
 
-      totalHeight += textPainter.height + 4;
+      totalHeight += textPainter.height;
 
       // Early return if we exceed maxHeight
       if (totalHeight > maxHeight) {
