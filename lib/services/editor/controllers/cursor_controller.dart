@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 
 class CursorController extends ChangeNotifier {
   final Buffer buffer;
-  final FoldingManager foldingManager;
+  FoldingManager? foldingManager;
   final SelectionManager selectionManager;
 
   Function(int line, int column)? onCursorChange;
@@ -81,27 +81,34 @@ class CursorController extends ChangeNotifier {
   }
 
   void moveCursorPageUp(bool isShiftPressed) {
-    _handleMovement(isShiftPressed, () => movePageUp(buffer, foldingManager));
+    if (foldingManager == null) return;
+    _handleMovement(isShiftPressed, () => movePageUp(buffer, foldingManager!));
   }
 
   void moveCursorPageDown(bool isShiftPressed) {
-    _handleMovement(isShiftPressed, () => movePageDown(buffer, foldingManager));
+    if (foldingManager == null) return;
+    _handleMovement(
+        isShiftPressed, () => movePageDown(buffer, foldingManager!));
   }
 
   void moveCursorUp(bool isShiftPressed) {
-    _handleMovement(isShiftPressed, () => moveUp(buffer, foldingManager));
+    if (foldingManager == null) return;
+    _handleMovement(isShiftPressed, () => moveUp(buffer, foldingManager!));
   }
 
   void moveCursorDown(bool isShiftPressed) {
-    _handleMovement(isShiftPressed, () => moveDown(buffer, foldingManager));
+    if (foldingManager == null) return;
+    _handleMovement(isShiftPressed, () => moveDown(buffer, foldingManager!));
   }
 
   void moveCursorLeft(bool isShiftPressed) {
-    _handleMovement(isShiftPressed, () => moveLeft(buffer, foldingManager));
+    if (foldingManager == null) return;
+    _handleMovement(isShiftPressed, () => moveLeft(buffer, foldingManager!));
   }
 
   void moveCursorRight(bool isShiftPressed) {
-    _handleMovement(isShiftPressed, () => moveRight(buffer, foldingManager));
+    if (foldingManager == null) return;
+    _handleMovement(isShiftPressed, () => moveRight(buffer, foldingManager!));
   }
 
   // Basic movement implementations

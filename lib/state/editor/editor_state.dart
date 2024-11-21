@@ -13,6 +13,7 @@ import 'package:crystal/models/selection.dart';
 import 'package:crystal/models/text_range.dart';
 import 'package:crystal/services/editor/completion_service.dart';
 import 'package:crystal/services/editor/controllers/cursor_controller.dart';
+import 'package:crystal/services/editor/controllers/text_controller.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_event_bus.dart';
 import 'package:crystal/services/editor/editor_event_emitter.dart';
@@ -28,8 +29,6 @@ import 'package:crystal/services/editor/handlers/lsp_manager.dart';
 import 'package:crystal/services/editor/handlers/scroll_handler.dart';
 import 'package:crystal/services/editor/handlers/selection_handler.dart';
 import 'package:crystal/services/editor/handlers/selection_operations_manager.dart';
-import 'package:crystal/services/editor/handlers/text_manipulator.dart';
-import 'package:crystal/services/editor/handlers/text_operations_manager.dart';
 import 'package:crystal/services/editor/selection_manager.dart';
 import 'package:crystal/services/editor/undo_redo_manager.dart';
 import 'package:crystal/services/file_service.dart';
@@ -44,17 +43,17 @@ import 'package:path/path.dart' as p;
 
 class EditorState extends ChangeNotifier {
   late final CursorController cursorController;
+  late final TextController textController;
+
   late final EditorEventEmitter eventEmitter;
   late final EditorCoreState coreState;
   late final CommandHandler commandHandler;
 
-  late final TextOperationsManager textOperationsManager;
   late final SelectionOperationsManager selectionOperationsManager;
 
   late final LSPManager lspManager;
   late final CompletionManager completionManager;
   late final InputHandler inputHandler;
-  late final TextManipulator textManipulator;
   late final SelectionHandler selectionHandler;
   late final FoldingHandler foldingHandler;
   late final ScrollHandler scrollHandler;
@@ -94,10 +93,8 @@ class EditorState extends ChangeNotifier {
     required this.gitService,
   }) {
     final filename = path != null && path.isNotEmpty ? p.split(path).last : '';
-
     final buffer = Buffer();
     editorFileManager = EditorFileManager(buffer, fileService);
-
     eventEmitter = EditorEventEmitter(
       selectionManager: editorSelectionManager,
       buffer: buffer,
@@ -107,14 +104,9 @@ class EditorState extends ChangeNotifier {
       gitService: gitService,
     );
 
-    foldingManager = FoldingManager(
-      coreState.buffer,
-      useIndentationFolding: coreState.indentationBasedLanguages
-          .contains(detectedLanguage?.toLowerCase),
-    );
     cursorController = CursorController(
         buffer: buffer,
-        foldingManager: foldingManager,
+        foldingManager: null,
         selectionManager: editorSelectionManager);
 
     coreState = EditorCoreState(
@@ -129,6 +121,15 @@ class EditorState extends ChangeNotifier {
     detectedLanguage =
         LanguageDetectionService.getLanguageFromFilename(filename);
 
+    foldingManager = FoldingManager(buffer,
+        useIndentationFolding: coreState.indentationBasedLanguages
+            .contains(detectedLanguage?.toLowerCase));
+
+    cursorController.foldingManager = foldingManager;
+
+    detectedLanguage =
+        LanguageDetectionService.getLanguageFromFilename(filename);
+
     _completionService = CompletionService(this);
     completionManager = CompletionManager(
       cursorController: cursorController,
@@ -136,29 +137,25 @@ class EditorState extends ChangeNotifier {
       completionService: _completionService,
       notifyListeners: notifyListeners,
     );
-
-    textManipulator = TextManipulator(
+    final textController = TextController(
+      buffer: buffer,
       selectionManager: editorSelectionManager,
       cursorController: cursorController,
-      buffer: buffer,
       foldingManager: foldingManager,
       undoRedoManager: undoRedoManager,
-      notifyListeners: notifyListeners,
+      onTextChanged: () => _emitTextChangedEvent(),
+      updateCompletions: () => updateCompletions(),
+      notifyListeners: () => notifyListeners(),
     );
+
     commandHandler = CommandHandler(
         undoRedoManager: undoRedoManager,
         editorSelectionManager: editorSelectionManager,
         cursorController: cursorController,
-        textManipulator: textManipulator,
+        textController: textController,
         buffer: buffer,
         notifyListeners: notifyListeners,
         getSelectedText: getSelectedText);
-    textOperationsManager = TextOperationsManager(
-      buffer: buffer,
-      textManipulator: textManipulator,
-      onTextChanged: _emitTextChangedEvent,
-      updateCompletions: updateCompletions,
-    );
     selectionHandler = SelectionHandler(
         selectionManager: editorSelectionManager,
         buffer: buffer,
@@ -437,12 +434,12 @@ class EditorState extends ChangeNotifier {
       foldingHandler.toggleFold(startLine, endLine);
 
   // Buffer / Text manipulation
-  void insertNewLine() => textOperationsManager.insertNewLine();
-  void backspace() => textOperationsManager.backspace();
-  void delete() => textOperationsManager.delete();
-  void backTab() => textOperationsManager.backTab();
-  void insertTab() => textOperationsManager.insertTab();
-  void insertChar(String c) => textOperationsManager.insertChar(c);
+  void insertNewLine() => textController.insertNewLine();
+  void backspace() => textController.backspace();
+  void delete() => textController.delete();
+  void backTab() => textController.backTab();
+  void insertTab() => textController.insertTab();
+  void insertChar(String c) => textController.insertChar(c);
 
   // Undo/redo management
   void copy() {
