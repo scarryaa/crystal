@@ -97,7 +97,6 @@ class EditorViewState extends State<EditorView> {
 
     setState(() {
       _isHoveringWord = false;
-      _isHoveringPopup = false;
       _hoveredWordRange = null;
       _lastHoveredWord = null;
       _hoverPosition = null;
@@ -139,16 +138,18 @@ class EditorViewState extends State<EditorView> {
     _initializeGit();
 
     EditorEventBus.on<TextEvent>().listen((_) {
-      setState(() {
-        _isHoveringPopup = false;
-        _isHoveringWord = false;
-      });
-      // Force emit a hover clear event
-      EditorEventBus.emit(HoverEvent(
-        line: -100,
-        character: -100,
-        content: '',
-      ));
+      if (!_isHoveringPopup) {
+        setState(() {
+          _isHoveringPopup = false;
+          _isHoveringWord = false;
+        });
+        // Force emit a hover clear event
+        EditorEventBus.emit(HoverEvent(
+          line: -100,
+          character: -100,
+          content: '',
+        ));
+      }
     });
 
     _focusNode.addListener(() {
@@ -489,20 +490,15 @@ class EditorViewState extends State<EditorView> {
                       ));
 
                       final wordInfo = _getWordInfoAtPosition(cursorPosition);
+
                       // Check if the hovered word is different from the last hovered word
                       if (_lastHoveredWord?.word != wordInfo?.word ||
                           _lastHoveredWord?.startColumn !=
                               wordInfo?.startColumn ||
                           _lastHoveredWord?.startLine != wordInfo?.startLine) {
-                        _handleEmptyWord();
-                      }
-
-                      // Check if the hovered word is the same as the last hovered word
-                      if (_lastHoveredWord?.word == wordInfo?.word &&
-                          _lastHoveredWord?.startColumn ==
-                              wordInfo?.startColumn &&
-                          _lastHoveredWord?.startLine == wordInfo?.startLine) {
-                        return;
+                        if (!_isHoveringPopup) {
+                          _handleEmptyWord();
+                        }
                       }
 
                       // Cancel any existing timers
@@ -527,7 +523,7 @@ class EditorViewState extends State<EditorView> {
 
                       // Set a new timer to handle the word highlight and diagnostics
                       _wordHighlightTimer =
-                          Timer(const Duration(milliseconds: 400), () async {
+                          Timer(const Duration(milliseconds: 300), () async {
                         if (!mounted) return;
 
                         setState(() {
@@ -757,7 +753,10 @@ class EditorViewState extends State<EditorView> {
   Future<KeyEventResult> _handleKeyEvent(FocusNode node, KeyEvent event) async {
     _resetCaretBlink();
     _isTyping = true;
-    _cancelHoverOperations();
+
+    if (!_isHoveringPopup) {
+      _cancelHoverOperations();
+    }
 
     Timer(const Duration(milliseconds: 500), () {
       if (mounted) {

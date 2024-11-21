@@ -186,7 +186,7 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
       }
     } else {
       // Try positioning above since there's space
-      infoPopupTop = cursorScreenY - actualHeight - 10;
+      infoPopupTop = cursorScreenY - actualHeight;
       diagnosticsPopupTop =
           infoPopupTop - diagnosticsHeight - spaceBetweenPopups / 2;
     }
