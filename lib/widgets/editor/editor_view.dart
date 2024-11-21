@@ -344,7 +344,8 @@ class EditorViewState extends State<EditorView> {
                     },
                     onHover: (PointerHoverEvent event) {
                       if (keyEventManager.isTyping ||
-                          cursorManager.isCursorMovementRecent) {
+                          cursorManager.isCursorMovementRecent &&
+                              (!hoverManager.isHoveringPopup)) {
                         hoverManager.handleEmptyWord();
                         return;
                       }
@@ -399,19 +400,21 @@ class EditorViewState extends State<EditorView> {
                           Timer(const Duration(milliseconds: 300), () async {
                         if (!mounted) return;
 
-                        setState(() {
-                          hoverManager.isHoveringWord = true;
-                          hoverManager.hoveredWordRange = TextRange(
-                            start: Position(
-                              line: cursorPosition.line,
-                              column: wordInfo.startColumn,
-                            ),
-                            end: Position(
-                              line: cursorPosition.line,
-                              column: wordInfo.endColumn,
-                            ),
-                          );
-                        });
+                        if (!hoverManager.isHoveringWord) {
+                          setState(() {
+                            hoverManager.isHoveringWord = true;
+                            hoverManager.hoveredWordRange = TextRange(
+                              start: Position(
+                                line: cursorPosition.line,
+                                column: wordInfo.startColumn,
+                              ),
+                              end: Position(
+                                line: cursorPosition.line,
+                                column: wordInfo.endColumn,
+                              ),
+                            );
+                          });
+                        }
 
                         // Get the diagnostics for the new word
                         final diagnostics = await widget.config.state

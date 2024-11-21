@@ -54,6 +54,9 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   final double _diagnosticMinHeight = 36.0;
   final double maxDiagnosticsHeight = 200.0;
   final double minDiagnosticsHeight = 100.0;
+  String? _lastHoveredWord;
+  int? _lastHoveredLine;
+  int? _lastHoveredColumn;
 
   bool _showDiagnosticsPopup = false;
   bool _showHoverInfoPopup = false;
@@ -122,7 +125,14 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   }
 
   void _showOverlay(BuildContext context, HoverEvent event) {
-    _hideOverlay();
+    if (_lastHoveredWord != event.content ||
+        _lastHoveredLine != event.line ||
+        _lastHoveredColumn != event.character) {
+      _hideOverlay();
+      _lastHoveredWord = event.content;
+      _lastHoveredLine = event.line;
+      _lastHoveredColumn = event.character;
+    }
 
     if (_overlayEntry != null) return;
 
