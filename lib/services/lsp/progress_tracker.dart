@@ -13,9 +13,20 @@ class ProgressTracker {
 
   void handleProgress(Map<String, dynamic> params) {
     try {
-      final token = params['token'].toString();
-      final value = params['value'] as Map<String, dynamic>;
-      final kind = value['kind'] as String;
+      final token = params['token']?.toString();
+      final value = params['value'];
+
+      if (token == null || value == null) {
+        _logger.warning('Invalid progress params: $params');
+        return;
+      }
+
+      final kind = value['kind']?.toString();
+
+      if (kind == null) {
+        _logger.warning('Invalid progress kind: $value');
+        return;
+      }
 
       switch (kind) {
         case 'begin':
@@ -27,9 +38,11 @@ class ProgressTracker {
         case 'end':
           _endProgress(token);
           break;
+        default:
+          _logger.warning('Unknown progress kind: $kind');
       }
-    } catch (e) {
-      _logger.severe('Error handling progress', e);
+    } catch (e, stackTrace) {
+      _logger.severe('Error handling progress', e, stackTrace);
       clearProgress();
     }
   }
@@ -37,13 +50,14 @@ class ProgressTracker {
   void _beginProgress(String token, Map<String, dynamic> value) {
     _activeProgressTokens.add(token);
     workProgress.value = true;
-    workProgressMessage.value = value['title'] ?? 'Working...';
+    workProgressMessage.value = value['title']?.toString() ?? 'Working...';
     _resetAnalysisTimeout();
   }
 
   void _reportProgress(String token, Map<String, dynamic> value) {
     if (_activeProgressTokens.contains(token)) {
-      workProgressMessage.value = value['message'] ?? workProgressMessage.value;
+      workProgressMessage.value =
+          value['message']?.toString() ?? workProgressMessage.value;
     }
   }
 

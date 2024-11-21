@@ -13,7 +13,7 @@ class DocumentManager {
 
   Future<void> openDocument(String uri, String text, String languageId) async {
     try {
-      await _connection.sendRequest('textDocument/didOpen', {
+      _connection.sendNotification('textDocument/didOpen', {
         'textDocument': {
           'uri': uri,
           'languageId': languageId,

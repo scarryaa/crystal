@@ -243,6 +243,20 @@ class LSPConnectionManager {
     }
   }
 
+  void sendNotification(String method, Map<String, dynamic> params) {
+    try {
+      final notification = {
+        'jsonrpc': '2.0',
+        'method': method,
+        'params': params
+      };
+
+      _sendMessage(notification);
+    } catch (e) {
+      _logger.severe('Failed to send notification', e);
+    }
+  }
+
   void _sendMessage(Map<String, dynamic> message) {
     final messageJson = jsonEncode(message);
     final fullMessage = 'Content-Length: ${messageJson.length}\r\n'
