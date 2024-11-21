@@ -475,6 +475,7 @@ class EditorViewState extends State<EditorView> {
                     },
                     onHover: (PointerHoverEvent event) {
                       if (_isTyping || _isCursorMovementRecent) {
+                        _handleEmptyWord();
                         return;
                       }
 
@@ -488,6 +489,13 @@ class EditorViewState extends State<EditorView> {
                       ));
 
                       final wordInfo = _getWordInfoAtPosition(cursorPosition);
+                      // Check if the hovered word is different from the last hovered word
+                      if (_lastHoveredWord?.word != wordInfo?.word ||
+                          _lastHoveredWord?.startColumn !=
+                              wordInfo?.startColumn ||
+                          _lastHoveredWord?.startLine != wordInfo?.startLine) {
+                        _handleEmptyWord();
+                      }
 
                       // Check if the hovered word is the same as the last hovered word
                       if (_lastHoveredWord?.word == wordInfo?.word &&
@@ -519,7 +527,7 @@ class EditorViewState extends State<EditorView> {
 
                       // Set a new timer to handle the word highlight and diagnostics
                       _wordHighlightTimer =
-                          Timer(const Duration(milliseconds: 300), () async {
+                          Timer(const Duration(milliseconds: 400), () async {
                         if (!mounted) return;
 
                         setState(() {

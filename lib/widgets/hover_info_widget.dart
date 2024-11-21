@@ -47,7 +47,6 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   double diagnosticsHeight = 0;
   final double spaceBetweenPopups = 8.0;
   OverlayEntry? _overlayEntry;
-  String _lastHoveredWord = '';
   bool _isMouseDown = false;
   double _diagnosticsContentHeight = 0;
   final double _diagnosticItemPadding = 8.0;
@@ -124,7 +123,6 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
 
   void _showOverlay(BuildContext context, HoverEvent event) {
     _hideOverlay();
-    _lastHoveredWord = event.content;
 
     if (_overlayEntry != null) return;
 
