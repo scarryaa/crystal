@@ -3,12 +3,12 @@ import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/editor/events/event_models.dart';
 import 'package:crystal/models/editor/lsp_models.dart' as lsp_models;
 import 'package:crystal/models/text_range.dart';
+import 'package:crystal/services/editor/controllers/selection_controller.dart';
 import 'package:crystal/services/editor/editor_event_bus.dart';
-import 'package:crystal/services/editor/selection_manager.dart';
 import 'package:crystal/services/git_service.dart';
 
 class EditorEventEmitter {
-  final SelectionManager selectionManager;
+  final SelectionController selectionController;
   final Buffer buffer;
   final String path;
   final String? relativePath;
@@ -16,7 +16,7 @@ class EditorEventEmitter {
   final GitService gitService;
 
   EditorEventEmitter({
-    required this.selectionManager,
+    required this.selectionController,
     required this.buffer,
     required this.path,
     required this.relativePath,
@@ -33,8 +33,8 @@ class EditorEventEmitter {
       cursors: cursors,
       line: line,
       column: column,
-      hasSelection: selectionManager.hasSelection(),
-      selections: selectionManager.selections,
+      hasSelection: selectionController.hasSelection(),
+      selections: selectionController.selections,
     ));
   }
 
@@ -52,8 +52,8 @@ class EditorEventEmitter {
 
   void emitSelectionChangedEvent() {
     EditorEventBus.emit(SelectionEvent(
-      selections: selectionManager.selections,
-      hasSelection: selectionManager.hasSelection(),
+      selections: selectionController.selections,
+      hasSelection: selectionController.hasSelection(),
       selectedText: getSelectedText(),
     ));
   }

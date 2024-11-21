@@ -5,14 +5,14 @@ import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/editor/command.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/services/editor/controllers/cursor_controller.dart';
+import 'package:crystal/services/editor/controllers/selection_controller.dart';
 import 'package:crystal/services/editor/folding_manager.dart';
-import 'package:crystal/services/editor/selection_manager.dart';
 import 'package:crystal/services/editor/undo_redo_manager.dart';
 
 class TextController {
   final Buffer buffer;
-  final SelectionManager selectionManager;
   final CursorController cursorController;
+  final SelectionController selectionController;
   final FoldingManager foldingManager;
   final UndoRedoManager undoRedoManager;
   final Function() onTextChanged;
@@ -21,7 +21,7 @@ class TextController {
 
   TextController({
     required this.buffer,
-    required this.selectionManager,
+    required this.selectionController,
     required this.cursorController,
     required this.foldingManager,
     required this.undoRedoManager,
@@ -32,7 +32,7 @@ class TextController {
 
   // Public methods for text operations
   void insertNewLine() {
-    if (selectionManager.hasSelection()) {
+    if (selectionController.hasSelection()) {
       deleteSelection();
     }
     cursorController.insertNewLine(buffer);
@@ -40,7 +40,7 @@ class TextController {
   }
 
   void backspace() {
-    if (selectionManager.hasSelection()) {
+    if (selectionController.hasSelection()) {
       deleteSelection();
       return;
     }
@@ -51,7 +51,7 @@ class TextController {
   }
 
   void delete() {
-    if (selectionManager.hasSelection()) {
+    if (selectionController.hasSelection()) {
       deleteSelection();
       return;
     }
@@ -62,7 +62,7 @@ class TextController {
   }
 
   void insertChar(String c) {
-    if (selectionManager.hasSelection()) {
+    if (selectionController.hasSelection()) {
       deleteSelection();
     }
 
@@ -100,10 +100,10 @@ class TextController {
   }
 
   void deleteSelection() {
-    if (!selectionManager.hasSelection()) return;
+    if (!selectionController.hasSelection()) return;
 
     // Sort selections in reverse order to handle overlapping selections correctly
-    var sortedSelections = List<Selection>.from(selectionManager.selections)
+    var sortedSelections = List<Selection>.from(selectionController.selections)
       ..sort((a, b) => b.startLine.compareTo(a.startLine));
 
     // Track folded regions that need to be removed
@@ -148,7 +148,7 @@ class TextController {
     }
 
     // Perform deletion
-    var newStartLinesColumns = selectionManager.deleteSelection(buffer);
+    var newStartLinesColumns = selectionController.deleteSelection(buffer);
     cursorController.setAllCursors(newStartLinesColumns);
     buffer.incrementVersion();
 
@@ -165,9 +165,9 @@ class TextController {
   }
 
   void insertTab() {
-    if (selectionManager.hasSelection()) {
+    if (selectionController.hasSelection()) {
       var newCursors =
-          selectionManager.insertTab(buffer, cursorController.cursors);
+          selectionController.insertTab(buffer, cursorController.cursors);
       cursorController.setAllCursors(newCursors);
     } else {
       insertChar('    ');
@@ -176,9 +176,9 @@ class TextController {
   }
 
   void backTab() {
-    if (selectionManager.hasSelection()) {
+    if (selectionController.hasSelection()) {
       var newCursors =
-          selectionManager.backTab(buffer, cursorController.cursors);
+          selectionController.backTab(buffer, cursorController.cursors);
       cursorController.setAllCursors(newCursors);
     } else {
       cursorController.backTab(buffer);

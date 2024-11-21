@@ -1,13 +1,13 @@
 import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/services/editor/controllers/cursor_controller.dart';
+import 'package:crystal/services/editor/controllers/selection_controller.dart';
 import 'package:crystal/services/editor/controllers/text_controller.dart';
-import 'package:crystal/services/editor/selection_manager.dart';
 import 'package:crystal/services/editor/undo_redo_manager.dart';
 import 'package:flutter/services.dart';
 
 class CommandHandler {
   final UndoRedoManager undoRedoManager;
-  final SelectionManager editorSelectionManager;
+  final SelectionController selectionController;
   final CursorController cursorController;
   final TextController textController;
   final Buffer buffer;
@@ -16,7 +16,7 @@ class CommandHandler {
 
   CommandHandler({
     required this.undoRedoManager,
-    required this.editorSelectionManager,
+    required this.selectionController,
     required this.cursorController,
     required this.textController,
     required this.buffer,
@@ -51,7 +51,7 @@ class CommandHandler {
     ClipboardData? data = await Clipboard.getData(Clipboard.kTextPlain);
     if (data == null || data.text == null) return;
 
-    if (editorSelectionManager.hasSelection()) {
+    if (selectionController.hasSelection()) {
       textController.deleteSelection();
     }
 

@@ -3,14 +3,14 @@ import 'dart:math' as math;
 import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/buffer.dart';
 import 'package:crystal/models/editor/cursor_shape.dart';
+import 'package:crystal/services/editor/controllers/selection_controller.dart';
 import 'package:crystal/services/editor/folding_manager.dart';
-import 'package:crystal/services/editor/selection_manager.dart';
 import 'package:flutter/material.dart';
 
 class CursorController extends ChangeNotifier {
   final Buffer buffer;
   FoldingManager? foldingManager;
-  final SelectionManager selectionManager;
+  SelectionController? selectionController;
 
   Function(int line, int column)? onCursorChange;
   bool showCaret = true;
@@ -25,7 +25,7 @@ class CursorController extends ChangeNotifier {
   CursorController({
     required this.buffer,
     required this.foldingManager,
-    required this.selectionManager,
+    required this.selectionController,
   }) {
     reset();
   }
@@ -50,16 +50,17 @@ class CursorController extends ChangeNotifier {
 
   // Movement operations with selection support
   void _handleMovement(bool isShiftPressed, void Function() moveFunction) {
-    if (!selectionManager.hasSelection() && isShiftPressed) {
-      selectionManager.startSelection(_cursors);
+    if (selectionController == null) return;
+    if (!selectionController!.hasSelection() && isShiftPressed) {
+      selectionController!.startSelection(_cursors);
     }
 
     moveFunction();
 
     if (isShiftPressed) {
-      selectionManager.updateSelection(_cursors);
+      selectionController!.updateSelection();
     } else {
-      selectionManager.clearAll();
+      selectionController!.clearAll();
     }
     notifyListeners();
   }

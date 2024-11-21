@@ -5,11 +5,11 @@ import 'package:crystal/models/editor/events/event_models.dart';
 import 'package:crystal/models/selection.dart';
 import 'package:crystal/services/dialog_service.dart';
 import 'package:crystal/services/editor/controllers/cursor_controller.dart';
+import 'package:crystal/services/editor/controllers/selection_controller.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_event_bus.dart';
 import 'package:crystal/services/editor/editor_layout_service.dart';
 import 'package:crystal/services/editor/folding_manager.dart';
-import 'package:crystal/services/editor/selection_manager.dart';
 import 'package:crystal/services/file_service.dart';
 import 'package:crystal/state/editor/editor_state.dart';
 import 'package:file_picker/file_picker.dart';
@@ -21,7 +21,7 @@ class InputHandler {
   final EditorLayoutService editorLayoutService;
   final EditorConfigService editorConfigService;
   final CursorController cursorController;
-  final SelectionManager editorSelectionManager;
+  final SelectionController selectionController;
   final FoldingManager foldingManager;
   final Function() notifyListeners;
   final Function() undo;
@@ -38,7 +38,7 @@ class InputHandler {
     required this.editorLayoutService,
     required this.editorConfigService,
     required this.cursorController,
-    required this.editorSelectionManager,
+    required this.selectionController,
     required this.foldingManager,
     required this.notifyListeners,
     required this.undo,
@@ -54,11 +54,11 @@ class InputHandler {
   void handleDragStart(double dy, double dx,
       Function(String line) measureLineWidth, bool isAltPressed) {
     handleTap(dy, dx, measureLineWidth, isAltPressed);
-    editorSelectionManager.startSelection(cursorController.cursors);
+    selectionController.startSelection(cursorController.cursors);
     EditorEventBus.emit(SelectionEvent(
-        selections: editorSelectionManager.selections,
-        hasSelection: editorSelectionManager.hasSelection(),
-        selectedText: editorSelectionManager.getSelectedText(buffer)));
+        selections: selectionController.selections,
+        hasSelection: selectionController.hasSelection(),
+        selectedText: selectionController.getSelectedText()));
 
     notifyListeners();
   }
@@ -91,20 +91,20 @@ class InputHandler {
     if (isFolded && foldStart != null && foldEnd != null) {
       _handleFoldedSelection(bufferLine, targetColumn, foldStart, foldEnd);
     } else {
-      editorSelectionManager.updateSelection(cursorController.cursors);
+      selectionController.updateSelection();
     }
 
     EditorEventBus.emit(CursorEvent(
         cursors: cursorController.cursors,
         line: bufferLine,
         column: targetColumn,
-        hasSelection: editorSelectionManager.hasSelection(),
-        selections: editorSelectionManager.selections));
+        hasSelection: selectionController.hasSelection(),
+        selections: selectionController.selections));
 
     EditorEventBus.emit(SelectionEvent(
-        selections: editorSelectionManager.selections,
-        hasSelection: editorSelectionManager.hasSelection(),
-        selectedText: editorSelectionManager.getSelectedText(buffer)));
+        selections: selectionController.selections,
+        hasSelection: selectionController.hasSelection(),
+        selectedText: selectionController.getSelectedText()));
 
     notifyListeners();
   }
@@ -201,7 +201,7 @@ class InputHandler {
     if (!isAltPressed) {
       cursorController.clearAll();
       cursorController.addCursor(bufferLine, targetColumn);
-      editorSelectionManager.clearAll();
+      selectionController.clearAll();
     } else {
       _handleMultiCursor(bufferLine, targetColumn);
     }
@@ -210,8 +210,8 @@ class InputHandler {
         cursors: cursorController.cursors,
         line: bufferLine,
         column: targetColumn,
-        hasSelection: editorSelectionManager.hasSelection(),
-        selections: editorSelectionManager.selections));
+        hasSelection: selectionController.hasSelection(),
+        selections: selectionController.selections));
 
     notifyListeners();
   }
@@ -292,8 +292,8 @@ class InputHandler {
 
   void _handleFoldedSelection(
       int bufferLine, int targetColumn, int foldStart, int foldEnd) {
-    Selection? currentSelection = editorSelectionManager.selections.isNotEmpty
-        ? editorSelectionManager.selections.first
+    Selection? currentSelection = selectionController.selections.isNotEmpty
+        ? selectionController.selections.first
         : null;
 
     if (currentSelection != null) {
@@ -302,13 +302,13 @@ class InputHandler {
               targetColumn < currentSelection.anchorColumn);
 
       if (bufferLine <= foldStart && isSelectingBackwards) {
-        editorSelectionManager.updateSelectionToLine(
+        selectionController.updateSelectionToLine(
             buffer, foldStart, targetColumn);
       } else if (bufferLine >= foldStart && bufferLine <= foldEnd) {
-        editorSelectionManager.updateSelectionToLine(
+        selectionController.updateSelectionToLine(
             buffer, bufferLine, targetColumn);
       } else {
-        editorSelectionManager.updateSelectionToLine(
+        selectionController.updateSelectionToLine(
             buffer, foldEnd, buffer.getLineLength(foldEnd));
       }
     }
@@ -372,6 +372,6 @@ class InputHandler {
     } else {
       cursorController.addCursor(bufferLine, targetColumn);
     }
-    editorSelectionManager.clearAll();
+    selectionController.clearAll();
   }
 }

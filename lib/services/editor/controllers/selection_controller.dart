@@ -1,30 +1,98 @@
 import 'dart:math' as math;
-
 import 'package:crystal/models/cursor.dart';
 import 'package:crystal/models/editor/buffer.dart';
+import 'package:crystal/models/editor/position.dart';
 import 'package:crystal/models/selection.dart';
+import 'package:crystal/models/text_range.dart';
+import 'package:crystal/services/editor/controllers/cursor_controller.dart';
+import 'package:crystal/services/editor/folding_manager.dart';
 
-class SelectionManager {
+class SelectionController {
   List<Selection> _selections = [];
+  final CursorController cursorController;
+  final Buffer buffer;
+  FoldingManager? foldingManager;
+  final Function() notifyListeners;
+  Function()? emitSelectionChangedEvent;
+
   List<Selection> get selections => _selections;
 
-  bool hasSelection() {
-    return _selections.isNotEmpty;
+  SelectionController({
+    required this.cursorController,
+    required this.buffer,
+    required this.foldingManager,
+    required this.notifyListeners,
+    required this.emitSelectionChangedEvent,
+  });
+
+  bool hasSelection() => _selections.isNotEmpty;
+
+  List<Selection> getCurrentSelections() {
+    return selections.toList();
   }
 
-  void updateSelection(List<Cursor> cursors) {
+  void updateSelection() {
+    if (emitSelectionChangedEvent == null) return;
+
+    _updateSelectionWithCursors(cursorController.cursors);
+    emitSelectionChangedEvent!();
+    notifyListeners();
+  }
+
+  void _updateSelectionWithCursors(List<Cursor> cursors) {
+    if (foldingManager == null) return;
+
     for (int i = 0; i < math.min(cursors.length, _selections.length); i++) {
-      _selections[i] = _updateSingleSelection(_selections[i], cursors[i]);
+      var cursor = cursors[i];
+      // Check for folded region at cursor position
+      var foldedRegion = foldingManager!.getFoldedRegionForLine(cursor.line);
+      if (foldedRegion != null) {
+        cursor = Cursor(
+            foldedRegion.value, buffer.getLineLength(foldedRegion.value));
+      }
+      _selections[i] = _updateSingleSelection(_selections[i], cursor);
     }
+  }
+
+  String getSelectedText() {
+    if (foldingManager == null) return '';
+
+    StringBuffer sb = StringBuffer();
+    for (var selection in _selections) {
+      if (selection.startLine == selection.endLine) {
+        String line = buffer.getLine(selection.startLine);
+        sb.write(line.substring(selection.startColumn, selection.endColumn));
+        continue;
+      }
+
+      // Handle first line
+      sb.write(
+          buffer.getLine(selection.startLine).substring(selection.startColumn));
+      sb.write('\n');
+
+      // Handle middle lines with folding awareness
+      for (int i = selection.startLine + 1; i < selection.endLine; i++) {
+        var foldedRegion = foldingManager!.getFoldedRegionForLine(i);
+        if (foldedRegion != null) {
+          i = foldedRegion.value; // Skip to end of folded region
+          continue;
+        }
+        sb.write(buffer.getLine(i));
+        sb.write('\n');
+      }
+
+      // Handle last line
+      sb.write(
+          buffer.getLine(selection.endLine).substring(0, selection.endColumn));
+    }
+    return sb.toString();
   }
 
   Selection _updateSingleSelection(
       Selection currentSelection, Cursor currentCursor) {
-    if (_isSelectingBackwards(currentSelection, currentCursor)) {
-      return _createBackwardsSelection(currentSelection, currentCursor);
-    } else {
-      return _createForwardsSelection(currentSelection, currentCursor);
-    }
+    return _isSelectingBackwards(currentSelection, currentCursor)
+        ? _createBackwardsSelection(currentSelection, currentCursor)
+        : _createForwardsSelection(currentSelection, currentCursor);
   }
 
   bool _isSelectingBackwards(Selection selection, Cursor cursor) {
@@ -53,6 +121,46 @@ class SelectionManager {
       anchorLine: selection.anchorLine,
       anchorColumn: selection.anchorColumn,
     );
+  }
+
+  void selectAll() {
+    if (emitSelectionChangedEvent == null) return;
+
+    final lastLine = buffer.lineCount - 1;
+    _selections.clear();
+    _selections.add(Selection(
+        startLine: 0,
+        endLine: lastLine,
+        startColumn: 0,
+        endColumn: buffer.getLineLength(lastLine),
+        anchorLine: lastLine,
+        anchorColumn: buffer.getLineLength(lastLine)));
+    emitSelectionChangedEvent!();
+    notifyListeners();
+  }
+
+  TextRange getSelectedLineRange() {
+    if (!hasSelection()) {
+      int currentLine = cursorController.getCursorLine();
+      return TextRange(
+          start: Position(line: currentLine, column: 0),
+          end: Position(
+              line: currentLine, column: buffer.getLineLength(currentLine)));
+    }
+
+    int minLine = buffer.lineCount;
+    int maxLine = 0;
+
+    for (var selection in _selections) {
+      minLine =
+          math.min(minLine, math.min(selection.startLine, selection.endLine));
+      maxLine =
+          math.max(maxLine, math.max(selection.startLine, selection.endLine));
+    }
+
+    return TextRange(
+        start: Position(line: minLine, column: 0),
+        end: Position(line: maxLine, column: buffer.getLineLength(maxLine)));
   }
 
   void setAllSelections(List<Selection> selections) {
@@ -264,17 +372,6 @@ class SelectionManager {
     return newCursors;
   }
 
-  void selectAll(int endLine, int endColumn) {
-    clearAll();
-    _selections.add(Selection(
-        startLine: 0,
-        endLine: endLine,
-        startColumn: 0,
-        endColumn: endColumn,
-        anchorLine: endLine,
-        anchorColumn: endColumn));
-  }
-
   void selectLine(Buffer buffer, bool extend, int lineNumber) {
     if (extend && _selections.isNotEmpty) {
       // Extend selection to include target line
@@ -311,38 +408,5 @@ class SelectionManager {
 
   void addSelection(Selection selection) {
     _selections.add(selection);
-  }
-
-  String getSelectedText(Buffer buffer) {
-    StringBuffer sb = StringBuffer();
-    for (var selection in _selections) {
-      if (selection.startLine == selection.endLine) {
-        // Single line selection
-        String line = buffer.getLine(selection.startLine);
-        sb.write(line.substring(selection.startColumn, selection.endColumn));
-        continue;
-      }
-
-      // First line
-      sb.write(
-          buffer.getLine(selection.startLine).substring(selection.startColumn));
-      sb.write('\n');
-
-      // Middle lines
-      for (int i = selection.startLine + 1; i < selection.endLine; i++) {
-        sb.write(buffer.getLine(i));
-        sb.write('\n');
-
-        if (buffer.isLineFolded(i)) {
-          // Skip folded lines
-          i = buffer.getFoldedRange(i);
-        }
-      }
-
-      // Last line
-      sb.write(
-          buffer.getLine(selection.endLine).substring(0, selection.endColumn));
-    }
-    return sb.toString();
   }
 }

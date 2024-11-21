@@ -154,8 +154,8 @@ class SearchService {
     activeEditor.addCursor(matchLine, matchEndColumn);
 
     // Update selection to cover the entire match
-    activeEditor.editorSelectionManager.clearAll();
-    activeEditor.editorSelectionManager.addSelection(Selection(
+    activeEditor.clearAllSelections();
+    activeEditor.addSelection(Selection(
       startLine: matchLine,
       startColumn: match.startIndex,
       endLine: matchLine,

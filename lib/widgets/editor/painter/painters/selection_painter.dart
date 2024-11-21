@@ -167,7 +167,7 @@ class SelectionPainter {
   }
 
   void paint(Canvas canvas, int firstVisibleLine, int lastVisibleLine) {
-    if (!editorState.editorSelectionManager.hasSelection()) return;
+    if (!editorState.hasSelection()) return;
 
     const bufferLines = 5;
     int visualLine = 0;
@@ -184,7 +184,7 @@ class SelectionPainter {
 
     visualLine = max(0, firstVisibleLine - bufferLines);
 
-    for (var selection in editorState.editorSelectionManager.selections) {
+    for (var selection in editorState.selections) {
       final (selStartLine, selEndLine, startColumn, endColumn) =
           _normalizeSelection(selection);
 

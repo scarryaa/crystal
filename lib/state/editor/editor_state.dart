@@ -13,6 +13,7 @@ import 'package:crystal/models/selection.dart';
 import 'package:crystal/models/text_range.dart';
 import 'package:crystal/services/editor/completion_service.dart';
 import 'package:crystal/services/editor/controllers/cursor_controller.dart';
+import 'package:crystal/services/editor/controllers/selection_controller.dart';
 import 'package:crystal/services/editor/controllers/text_controller.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
 import 'package:crystal/services/editor/editor_event_bus.dart';
@@ -27,9 +28,6 @@ import 'package:crystal/services/editor/handlers/folding_handler.dart';
 import 'package:crystal/services/editor/handlers/input_handler.dart';
 import 'package:crystal/services/editor/handlers/lsp_manager.dart';
 import 'package:crystal/services/editor/handlers/scroll_handler.dart';
-import 'package:crystal/services/editor/handlers/selection_handler.dart';
-import 'package:crystal/services/editor/handlers/selection_operations_manager.dart';
-import 'package:crystal/services/editor/selection_manager.dart';
 import 'package:crystal/services/editor/undo_redo_manager.dart';
 import 'package:crystal/services/file_service.dart';
 import 'package:crystal/services/git_service.dart';
@@ -44,17 +42,15 @@ import 'package:path/path.dart' as p;
 class EditorState extends ChangeNotifier {
   late final CursorController cursorController;
   late final TextController textController;
+  late final SelectionController selectionController;
 
   late final EditorEventEmitter eventEmitter;
   late final EditorCoreState coreState;
   late final CommandHandler commandHandler;
 
-  late final SelectionOperationsManager selectionOperationsManager;
-
   late final LSPManager lspManager;
   late final CompletionManager completionManager;
   late final InputHandler inputHandler;
-  late final SelectionHandler selectionHandler;
   late final FoldingHandler foldingHandler;
   late final ScrollHandler scrollHandler;
   late Language? detectedLanguage;
@@ -65,7 +61,6 @@ class EditorState extends ChangeNotifier {
   final EditorLayoutService editorLayoutService;
   late final EditorFileManager editorFileManager;
   final EditorConfigService editorConfigService;
-  final SelectionManager editorSelectionManager = SelectionManager();
   final Function(String)? onDirectoryChanged;
   final FileService fileService;
   final Future<void> Function(String) tapCallback;
@@ -94,20 +89,27 @@ class EditorState extends ChangeNotifier {
   }) {
     final filename = path != null && path.isNotEmpty ? p.split(path).last : '';
     final buffer = Buffer();
+    cursorController = CursorController(
+      buffer: buffer,
+      foldingManager: null,
+      selectionController: null,
+    );
+
     editorFileManager = EditorFileManager(buffer, fileService);
+    selectionController = SelectionController(
+        cursorController: cursorController,
+        foldingManager: null,
+        buffer: buffer,
+        notifyListeners: notifyListeners,
+        emitSelectionChangedEvent: null);
     eventEmitter = EditorEventEmitter(
-      selectionManager: editorSelectionManager,
+      selectionController: selectionController,
       buffer: buffer,
       path: path!,
       relativePath: relativePath,
       getSelectedText: getSelectedText,
       gitService: gitService,
     );
-
-    cursorController = CursorController(
-        buffer: buffer,
-        foldingManager: null,
-        selectionManager: editorSelectionManager);
 
     coreState = EditorCoreState(
         path: path,
@@ -126,6 +128,10 @@ class EditorState extends ChangeNotifier {
             .contains(detectedLanguage?.toLowerCase));
 
     cursorController.foldingManager = foldingManager;
+    cursorController.selectionController = selectionController;
+    selectionController.foldingManager = foldingManager;
+    selectionController.emitSelectionChangedEvent =
+        eventEmitter.emitSelectionChangedEvent;
 
     detectedLanguage =
         LanguageDetectionService.getLanguageFromFilename(filename);
@@ -139,7 +145,7 @@ class EditorState extends ChangeNotifier {
     );
     final textController = TextController(
       buffer: buffer,
-      selectionManager: editorSelectionManager,
+      selectionController: selectionController,
       cursorController: cursorController,
       foldingManager: foldingManager,
       undoRedoManager: undoRedoManager,
@@ -150,23 +156,18 @@ class EditorState extends ChangeNotifier {
 
     commandHandler = CommandHandler(
         undoRedoManager: undoRedoManager,
-        editorSelectionManager: editorSelectionManager,
+        selectionController: selectionController,
         cursorController: cursorController,
         textController: textController,
         buffer: buffer,
         notifyListeners: notifyListeners,
         getSelectedText: getSelectedText);
-    selectionHandler = SelectionHandler(
-        selectionManager: editorSelectionManager,
-        buffer: buffer,
-        cursorController: cursorController,
-        foldingManager: foldingManager);
     inputHandler = InputHandler(
       buffer: buffer,
       editorLayoutService: editorLayoutService,
       editorConfigService: editorConfigService,
       cursorController: cursorController,
-      editorSelectionManager: editorSelectionManager,
+      selectionController: selectionController,
       foldingManager: foldingManager,
       notifyListeners: notifyListeners,
       undo: commandHandler.undo,
@@ -197,14 +198,6 @@ class EditorState extends ChangeNotifier {
         tapCallback: tapCallback,
         scrollToLine: scrollToLine,
         notifyListeners: notifyListeners);
-    selectionOperationsManager = SelectionOperationsManager(
-      selectionManager: editorSelectionManager,
-      buffer: buffer,
-      notifyListeners: notifyListeners,
-      emitSelectionChangedEvent: eventEmitter.emitSelectionChangedEvent,
-      selectionHandler: selectionHandler,
-      cursorController: cursorController,
-    );
 
     buffer.addListener(() async {
       await lspService.sendDidChangeNotification(buffer.content);
@@ -236,6 +229,7 @@ class EditorState extends ChangeNotifier {
       completionManager.selectedSuggestionIndexNotifier;
   List<CompletionItem> get suggestions => completionManager.suggestions;
   List<Cursor> get cursors => cursorController.cursors;
+  List<Selection> get selections => selectionController.selections;
 
   // Setters
   set showCompletions(bool show) => completionManager.showCompletions = show;
@@ -248,6 +242,10 @@ class EditorState extends ChangeNotifier {
   void clearAllCursors() => cursorController.clearAll();
   void addCursor(int line, int col) => cursorController.addCursor(line, col);
   void moveCursor(int line, int col) => cursorController.moveCursor(line, col);
+  void setAllSelections(List<Selection> newSelections) =>
+      selectionController.setAllSelections(newSelections);
+  void clearAllSelections() => selectionController.clearAll();
+  void addSelection(Selection s) => selectionController.addSelection(s);
 
   // Events
   void _emitTextChangedEvent() {
@@ -398,7 +396,7 @@ class EditorState extends ChangeNotifier {
 
   bool isLineJoinOperation() {
     // Check if next delete/backspace will join lines
-    if (editorSelectionManager.hasSelection()) {
+    if (selectionController.hasSelection()) {
       return false;
     }
 
@@ -489,18 +487,16 @@ class EditorState extends ChangeNotifier {
       inputHandler.handleSpecialKeys(isControlPressed, isShiftPressed, key);
 
   // Selection methods
-  void selectAll() => selectionOperationsManager.selectAll();
+  void selectAll() => selectionController.selectAll();
   void selectLine(bool extend, int lineNumber) =>
-      selectionOperationsManager.selectLine(extend, lineNumber);
-  void startSelection() => selectionOperationsManager.startSelection();
-  bool hasSelection() => selectionOperationsManager.hasSelection();
+      selectionController.selectLine(buffer, extend, lineNumber);
+  void startSelection() => selectionController.startSelection(cursors);
+  bool hasSelection() => selectionController.hasSelection();
   TextRange getSelectedLineRange() =>
-      selectionOperationsManager.getSelectedLineRange();
-  String getSelectedText() => selectionOperationsManager.getSelectedText();
-  void restoreSelections(List<Selection> selections) =>
-      selectionOperationsManager.restoreSelections(selections);
-  void updateSelection() => selectionOperationsManager.updateSelection();
-  void clearSelection() => selectionOperationsManager.clearSelection();
+      selectionController.getSelectedLineRange();
+  String getSelectedText() => selectionController.getSelectedText();
+  void updateSelection() => selectionController.updateSelection();
+  void clearSelection() => selectionController.clearAll();
 
   // Cursor methods
   void moveCursorToLineStart(bool isShiftPressed) =>

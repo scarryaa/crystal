@@ -159,7 +159,7 @@ class GutterPainter extends CustomPainter {
 
       if (visualLine >= firstVisibleVisualLine - bufferLines) {
         // Highlight current line first
-        if (!editorState.editorSelectionManager.hasSelection() &&
+        if (!editorState.hasSelection() &&
             editorState.cursors.any((cursor) => cursor.line == currentLine)) {
           canvas.drawRect(
               Rect.fromLTWH(
@@ -213,8 +213,8 @@ class GutterPainter extends CustomPainter {
   }
 
   TextStyle _getStyleForLine(int line) {
-    if (editorState.editorSelectionManager.hasSelection()) {
-      for (var selection in editorState.editorSelectionManager.selections) {
+    if (editorState.hasSelection()) {
+      for (var selection in editorState.selections) {
         int startLine = min(selection.anchorLine, selection.startLine);
         int endLine = max(selection.anchorLine, selection.endLine);
         if (line >= startLine && line <= endLine) {
