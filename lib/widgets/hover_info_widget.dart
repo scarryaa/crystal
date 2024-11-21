@@ -123,10 +123,8 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
   }
 
   void _showOverlay(BuildContext context, HoverEvent event) {
-    if (_lastHoveredWord != event.content) {
-      _hideOverlay();
-      _lastHoveredWord = event.content;
-    }
+    _hideOverlay();
+    _lastHoveredWord = event.content;
 
     if (_overlayEntry != null) return;
 
@@ -284,10 +282,6 @@ class _HoverInfoWidgetState extends State<HoverInfoWidget> {
 
         final diagnostics = event.diagnostics;
         final hasHoverContent = event.content.trim().isNotEmpty;
-        final hasDiagnosticRange = event.diagnosticRange != null;
-
-        _showDiagnosticsPopup = diagnostics.isNotEmpty;
-        _showHoverInfoPopup = hasHoverContent || hasDiagnosticRange;
 
         _showDiagnosticsPopup = diagnostics.isNotEmpty;
         _showHoverInfoPopup = hasHoverContent;
