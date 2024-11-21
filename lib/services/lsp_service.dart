@@ -187,7 +187,7 @@ class LSPService {
     });
   }
 
-  Future<Map<String, dynamic>> getCompletion(int line, int character) async {
+  Future<Map<String, dynamic>?> getCompletion(int line, int character) async {
     return await connection.sendRequest('textDocument/completion', {
       'textDocument': {'uri': 'file://${editor.path}'},
       'position': {'line': line, 'character': character}
@@ -210,8 +210,8 @@ class LSPService {
     );
   }
 
-  String? _extractServerInfo(Map<String, dynamic> response) {
-    final serverInfo = response['result']?['serverInfo'];
+  String? _extractServerInfo(Map<String, dynamic>? response) {
+    final serverInfo = response?['result']?['serverInfo'];
     if (serverInfo != null) {
       final name = serverInfo['name'] as String;
       final version = serverInfo['version'] as String;

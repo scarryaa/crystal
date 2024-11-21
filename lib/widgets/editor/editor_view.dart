@@ -488,15 +488,20 @@ class EditorViewState extends State<EditorView> {
                       ));
 
                       final wordInfo = _getWordInfoAtPosition(cursorPosition);
-                      if ((_lastHoveredWord?.word == wordInfo?.word &&
+
+                      // Check if the hovered word is the same as the last hovered word
+                      if (_lastHoveredWord?.word == wordInfo?.word &&
                           _lastHoveredWord?.startColumn ==
                               wordInfo?.startColumn &&
-                          _lastHoveredWord?.startLine == wordInfo?.startLine)) {
+                          _lastHoveredWord?.startLine == wordInfo?.startLine) {
                         return;
                       }
 
+                      // Cancel any existing timers
+                      _wordHighlightTimer?.cancel();
+
+                      // Handle the case where no word is hovered
                       if (wordInfo == null) {
-                        _wordHighlightTimer?.cancel();
                         _wordHighlightTimer =
                             Timer(const Duration(milliseconds: 100), () {
                           if (mounted) {
@@ -506,12 +511,13 @@ class EditorViewState extends State<EditorView> {
                         return;
                       }
 
+                      // Update the last hovered word and hover position
                       _lastHoveredWord = wordInfo;
                       setState(() {
                         _hoverPosition = event.localPosition;
                       });
 
-                      _wordHighlightTimer?.cancel();
+                      // Set a new timer to handle the word highlight and diagnostics
                       _wordHighlightTimer =
                           Timer(const Duration(milliseconds: 300), () async {
                         if (!mounted) return;
@@ -530,7 +536,7 @@ class EditorViewState extends State<EditorView> {
                           );
                         });
 
-                        // Get the diagnostics
+                        // Get the diagnostics for the new word
                         final diagnostics = await widget.config.state
                             .showDiagnostics(
                                 cursorPosition.line, wordInfo.startColumn);
@@ -540,7 +546,7 @@ class EditorViewState extends State<EditorView> {
                           hoveredInfo = diagnostics;
                         });
 
-                        widget.config.state.showHover(
+                        await widget.config.state.showHover(
                             cursorPosition.line, wordInfo.startColumn);
                       });
                     },

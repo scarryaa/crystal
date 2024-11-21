@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 
 class LSPConnectionManager {
@@ -129,7 +130,7 @@ class LSPConnectionManager {
     return null;
   }
 
-  Future<Map<String, dynamic>> initialize(
+  Future<Map<String, dynamic>?> initialize(
       String rootUri, Map<String, dynamic> capabilities) async {
     return await sendRequest('initialize', {
       'processId': pid,
@@ -195,6 +196,8 @@ class LSPConnectionManager {
       }
     } catch (e, stack) {
       _logger.severe('Error handling server message', e, stack);
+      debugPrint(e.toString());
+      debugPrint(stack.toString());
     }
   }
 
@@ -210,14 +213,18 @@ class LSPConnectionManager {
     if (response.containsKey('error')) {
       completer.completeError(response['error']);
     } else {
-      completer.complete(response['result']);
+      final result = response.containsKey('result') ? response['result'] : null;
+      if (result == null) {
+        _logger.warning('Result is null for id: $id');
+      }
+      completer.complete(result);
     }
   }
 
-  Future<Map<String, dynamic>> sendRequest(
+  Future<Map<String, dynamic>?> sendRequest(
       String method, Map<String, dynamic> params) async {
     final id = _messageId++;
-    final completer = Completer<Map<String, dynamic>>();
+    final completer = Completer<Map<String, dynamic>?>();
     _pendingRequests[id] = completer;
 
     try {

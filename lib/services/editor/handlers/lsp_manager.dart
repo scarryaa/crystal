@@ -43,32 +43,28 @@ class LSPManager {
   Future<void> showHover(int line, int character) async {
     final currentPosition = Position(line: line, column: character);
 
-    if (_lastHoverPosition != currentPosition && !_isHoveringPopup) {
+    if (_lastHoverPosition != currentPosition) {
       _hoverTimer?.cancel();
       _lastHoverPosition = currentPosition;
 
-      if (_lastHoverPosition == currentPosition && !_isHoveringPopup) {
-        await showDiagnostics(line, character);
-        final response = await lspService.getHover(line, character);
+      // Always fetch diagnostics and hover information
+      await showDiagnostics(line, character);
+      final response = await lspService.getHover(line, character);
 
-        if (!_isHoveringPopup) {
-          String content = '';
-          if (response != null) {
-            content = response['contents']?['value'] ?? '';
-          }
+      String content = '';
+      if (response != null) {
+        content = response['contents']?['value'] ?? '';
+      }
 
-          final matchingDiagnostics =
-              _getDiagnosticsForPosition(line, character);
-          final rustContent = _processRustDiagnostics(matchingDiagnostics);
+      final matchingDiagnostics = _getDiagnosticsForPosition(line, character);
+      final rustContent = _processRustDiagnostics(matchingDiagnostics);
 
-          if (rustContent.isNotEmpty) {
-            content =
-                content.isEmpty ? rustContent : '$content\n\n$rustContent';
-          }
+      if (rustContent.isNotEmpty) {
+        content = content.isEmpty ? rustContent : '$content\n\n$rustContent';
+      }
 
-          if (content.isEmpty) return;
-          _emitHoverEvent(line, character, content, matchingDiagnostics);
-        }
+      if (content.isNotEmpty) {
+        _emitHoverEvent(line, character, content, matchingDiagnostics);
       }
     }
   }
