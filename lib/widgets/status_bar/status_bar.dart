@@ -26,25 +26,26 @@ class StatusBar extends StatelessWidget {
           builder: (context, _) {
             final activeEditor =
                 editorStateProvider.editorTabManager.activeEditor;
-            final lspService = activeEditor?.lspService;
+            final lspController = activeEditor?.lspController;
 
-            if (activeEditor == null || lspService == null) {
+            if (activeEditor == null || lspController == null) {
               return const SizedBox();
             }
 
             return ListenableBuilder(
               listenable: Listenable.merge([
-                lspService.isRunningNotifier,
-                lspService.isInitializingNotifier,
-                lspService.workProgressNotifier,
-                lspService.workProgressMessage,
+                lspController.isRunningNotifier,
+                lspController.isInitializingNotifier,
+                lspController.workProgressNotifier,
+                lspController.workProgressMessage,
               ]),
               builder: (context, _) {
-                final isRunning = lspService.isRunningNotifier.value;
-                final isInitializing = lspService.isInitializingNotifier.value;
-                final hasProgress = lspService.workProgressNotifier.value;
-                final progressMessage = lspService.workProgressMessage.value;
-                final isStuck = lspService.isAnalysisStuck();
+                final isRunning = lspController.isRunningNotifier.value;
+                final isInitializing =
+                    lspController.isInitializingNotifier.value;
+                final hasProgress = lspController.workProgressNotifier.value;
+                final progressMessage = lspController.workProgressMessage.value;
+                final isStuck = lspController.isAnalysisStuck();
 
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -79,7 +80,7 @@ class StatusBar extends StatelessWidget {
                             : (hasProgress
                                 ? progressMessage
                                 : (isRunning
-                                    ? (lspService.currentServerName ?? 'LSP')
+                                    ? (lspController.currentServerName ?? 'LSP')
                                     : (isInitializing
                                         ? 'Starting LSP...'
                                         : 'LSP Failed'))),
@@ -94,8 +95,8 @@ class StatusBar extends StatelessWidget {
                           cursor: SystemMouseCursors.click,
                           child: GestureDetector(
                             onTap: () async {
-                              lspService.dispose();
-                              await lspService.initialize();
+                              lspController.dispose();
+                              await lspController.initialize();
                             },
                             child: Icon(
                               Icons.refresh,

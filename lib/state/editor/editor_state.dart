@@ -13,6 +13,7 @@ import 'package:crystal/models/selection.dart';
 import 'package:crystal/models/text_range.dart';
 import 'package:crystal/services/editor/completion_service.dart';
 import 'package:crystal/services/editor/controllers/cursor_controller.dart';
+import 'package:crystal/services/editor/controllers/lsp_controller.dart';
 import 'package:crystal/services/editor/controllers/selection_controller.dart';
 import 'package:crystal/services/editor/controllers/text_controller.dart';
 import 'package:crystal/services/editor/editor_config_service.dart';
@@ -26,13 +27,11 @@ import 'package:crystal/services/editor/handlers/command_handler.dart';
 import 'package:crystal/services/editor/handlers/completion_manager.dart';
 import 'package:crystal/services/editor/handlers/folding_handler.dart';
 import 'package:crystal/services/editor/handlers/input_handler.dart';
-import 'package:crystal/services/editor/handlers/lsp_manager.dart';
 import 'package:crystal/services/editor/handlers/scroll_handler.dart';
 import 'package:crystal/services/editor/undo_redo_manager.dart';
 import 'package:crystal/services/file_service.dart';
 import 'package:crystal/services/git_service.dart';
 import 'package:crystal/services/language_detection_service.dart';
-import 'package:crystal/services/lsp_service.dart';
 import 'package:crystal/state/editor/editor_core_state.dart';
 import 'package:crystal/state/editor/editor_scroll_state.dart';
 import 'package:flutter/material.dart' hide TextRange;
@@ -43,12 +42,12 @@ class EditorState extends ChangeNotifier {
   late final CursorController cursorController;
   late final TextController textController;
   late final SelectionController selectionController;
+  late final LSPController lspController;
 
   late final EditorEventEmitter eventEmitter;
   late final EditorCoreState coreState;
   late final CommandHandler commandHandler;
 
-  late final LSPManager lspManager;
   late final CompletionManager completionManager;
   late final InputHandler inputHandler;
   late final FoldingHandler foldingHandler;
@@ -70,9 +69,7 @@ class EditorState extends ChangeNotifier {
   final List<EditorState> editors;
   final EditorTabManager editorTabManager;
   final GitService gitService;
-  late final LSPService lspService;
   bool isHoverInfoVisible = false;
-  List<lsp_models.Diagnostic> get diagnostics => lspManager.diagnostics;
 
   EditorState({
     required VoidCallback resetGutterScroll,
@@ -189,18 +186,10 @@ class EditorState extends ChangeNotifier {
         notifyListeners: notifyListeners);
 
     cursorController.onCursorChange = coreState.updateBreadcrumbs;
-    lspService = LSPService(this);
-    lspService.initialize();
-    lspManager = LSPManager(
-        buffer: buffer,
-        setCursor: cursorController.setCursor,
-        lspService: lspService,
-        tapCallback: tapCallback,
-        scrollToLine: scrollToLine,
-        notifyListeners: notifyListeners);
+    lspController = LSPController(this);
 
     buffer.addListener(() async {
-      await lspService.sendDidChangeNotification(buffer.content);
+      await lspController.sendDidChangeNotification(buffer.content);
     });
     EditorEventBus.on<HoverEvent>().listen((event) {
       if (event.line >= 0 && event.character >= 0 && event.content.isNotEmpty) {
@@ -212,7 +201,7 @@ class EditorState extends ChangeNotifier {
   }
 
   // Getters
-  void resetGutterScroll() => coreState.resetGutterScroll();
+  List<lsp_models.Diagnostic> get diagnostics => lspController.diagnostics;
   String get path => coreState.path;
   String? get relativePath => coreState.relativePath;
   String get id => coreState.id;
@@ -237,6 +226,8 @@ class EditorState extends ChangeNotifier {
   set onCursorChange(Function(int, int)? changeFn) =>
       cursorController.onCursorChange = changeFn;
 
+  void resetGutterScroll() => coreState.resetGutterScroll();
+  void setCursor(int line, int col) => cursorController.setCursor(line, col);
   void setAllCursors(List<Cursor> cursors) =>
       cursorController.setAllCursors(cursors);
   void clearAllCursors() => cursorController.clearAll();
@@ -264,19 +255,19 @@ class EditorState extends ChangeNotifier {
 
   // LSP Methods
   void setIsHoveringPopup(bool isHovering) =>
-      lspManager.setIsHoveringPopup(isHovering);
+      lspController.setIsHoveringPopup(isHovering);
   void updateDiagnostics(List<lsp_models.Diagnostic> newDiagnostics) =>
-      lspManager.updateDiagnostics(newDiagnostics);
+      lspController.updateDiagnostics(newDiagnostics);
   Future<void> showHover(int line, int character) =>
-      lspManager.showHover(line, character);
+      lspController.showHover(line, character);
   Future<List<lsp_models.Diagnostic>?> showDiagnostics(int line, int col) =>
-      lspManager.showDiagnostics(line, col);
+      lspController.showDiagnostics(line, col);
   String formatRustDiagnostics(List<lsp_models.Diagnostic> diagnostics) =>
-      lspManager.formatRustDiagnostics(diagnostics);
+      lspController.formatRustDiagnostics();
   String getSeverityLabel(lsp_models.DiagnosticSeverity severity) =>
-      lspManager.getSeverityLabel(severity);
+      lspController.getSeverityLabel(severity);
   Future<void> goToDefinition(int line, int character) async =>
-      lspManager.goToDefinition(line, character);
+      lspController.goToDefinition(line, character);
 
   void scrollToLine(int line) {
     const lineHeight = 20.0;

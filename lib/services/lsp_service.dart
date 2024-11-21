@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:crystal/models/editor/events/event_models.dart';
 import 'package:crystal/models/editor/lsp_models.dart';
+import 'package:crystal/models/server_command.dart';
 import 'package:crystal/services/editor/editor_event_bus.dart';
 import 'package:crystal/services/lsp_config_manager.dart';
 import 'package:crystal/state/editor/editor_state.dart';
@@ -174,13 +175,11 @@ class LSPService {
         });
 
         _logger.info('Initialize response: $response');
-        if (response != null) {
-          // Log specific capabilities
-          _logger.info('Server capabilities: ${response['capabilities']}');
-          sendNotification('initialized', {});
-          isRunningNotifier.value = true;
-          return;
-        }
+        // Log specific capabilities
+        _logger.info('Server capabilities: ${response['capabilities']}');
+        sendNotification('initialized', {});
+        isRunningNotifier.value = true;
+        return;
       } catch (e, stack) {
         _logger.warning('Initialize attempt $retryCount failed', e, stack);
         retryCount++;
@@ -855,11 +854,4 @@ class LSPService {
       'position': {'line': line, 'character': character}
     });
   }
-}
-
-class ServerCommand {
-  final String executable;
-  final List<String> args;
-
-  const ServerCommand(this.executable, this.args);
 }

@@ -1,4 +1,4 @@
-import 'package:crystal/services/lsp_service.dart';
+import 'package:crystal/models/server_command.dart';
 
 class LSPConfiguration {
   final Map<String, ServerCommand> serverCommands;
