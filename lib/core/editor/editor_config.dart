@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 class EditorConfig {
+  late double widthPadding;
+  late double heightPadding;
   double fontSize;
   late double lineHeight;
   late double characterWidth;
@@ -24,12 +26,15 @@ class EditorConfig {
   }) {
     lineHeight = _measureLineHeight();
     characterWidth = _measureCharacterWidth();
+
+    widthPadding = characterWidth * 12;
+    heightPadding = lineHeight * 6;
   }
 
   double _measureCharacterWidth() {
     final textPainter = TextPainter(
       text: TextSpan(
-        text: "Ay",
+        text: "y",
         style: TextStyle(
           fontFamily: fontFamily,
           fontSize: fontSize,
@@ -39,7 +44,7 @@ class EditorConfig {
     );
 
     textPainter.layout();
-    return textPainter.height;
+    return textPainter.width;
   }
 
   double _measureLineHeight() {

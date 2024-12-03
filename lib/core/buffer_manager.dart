@@ -69,26 +69,6 @@ class BufferManager {
     return true;
   }
 
-  void _adjustCursorPositionBeforeDelete() {
-    // Deleting onto a previous line
-    if (cursorManager.cursorIndex - 1 < 0 && cursorManager.cursorLine > 0) {
-      cursorManager.cursorLine--;
-      cursorManager.cursorIndex = _lines[cursorManager.cursorLine].length;
-      cursorManager.targetCursorIndex = cursorManager.cursorIndex;
-    }
-  }
-
-  void _adjustCursorPositionAfterDelete() {
-    if (cursorManager.cursorIndex < 0 && cursorManager.cursorLine > 0) {
-      cursorManager.cursorLine--;
-      cursorManager.cursorIndex = _lines[cursorManager.cursorLine].length;
-      cursorManager.targetCursorIndex = cursorManager.cursorIndex;
-    } else {
-      cursorManager.cursorIndex--;
-      cursorManager.targetCursorIndex = cursorManager.cursorIndex;
-    }
-  }
-
   @override
   String toString() {
     return _lines.join('\n');

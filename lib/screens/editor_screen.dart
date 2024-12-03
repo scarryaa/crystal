@@ -12,8 +12,40 @@ class EditorScreen extends StatefulWidget {
 
 class _EditorScreenState extends State<EditorScreen> {
   EditorCore? core;
+  final ScrollController _editorVerticalScrollController = ScrollController();
+  final ScrollController _editorHorizontalScrollController = ScrollController();
+  final ScrollController _gutterVerticalScrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _editorVerticalScrollController.addListener(() {
+      if (_gutterVerticalScrollController.offset !=
+          _editorVerticalScrollController.offset) {
+        _gutterVerticalScrollController
+            .jumpTo(_editorVerticalScrollController.offset);
+      }
+    });
+
+    _gutterVerticalScrollController.addListener(() {
+      if (_gutterVerticalScrollController.offset !=
+          _editorVerticalScrollController.offset) {
+        _editorVerticalScrollController
+            .jumpTo(_gutterVerticalScrollController.offset);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _editorVerticalScrollController.dispose();
+    _gutterVerticalScrollController.dispose();
+    _editorHorizontalScrollController.dispose();
+    super.dispose();
+  }
 
   void _handleEditorCore(EditorCore core) {
+    // Needed to prevent setState during build error
     WidgetsBinding.instance.addPostFrameCallback((_) {
       setState(() {
         this.core = core;
@@ -25,9 +57,17 @@ class _EditorScreenState extends State<EditorScreen> {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        if (core != null) Gutter(core: core!),
-        Editor(
-          onCoreInitialized: _handleEditorCore,
+        if (core != null)
+          Gutter(
+            core: core!,
+            verticalScrollController: _gutterVerticalScrollController,
+          ),
+        Expanded(
+          child: Editor(
+            onCoreInitialized: _handleEditorCore,
+            verticalScrollController: _editorVerticalScrollController,
+            horizontalScrollController: _editorHorizontalScrollController,
+          ),
         ),
       ],
     );

@@ -9,9 +9,16 @@ import 'package:crystal/widgets/editor/editor_painter.dart';
 import 'package:flutter/material.dart';
 
 class Editor extends StatefulWidget {
+  final ScrollController horizontalScrollController;
+  final ScrollController verticalScrollController;
   final void Function(EditorCore)? onCoreInitialized;
 
-  const Editor({super.key, this.onCoreInitialized});
+  const Editor({
+    super.key,
+    this.onCoreInitialized,
+    required this.horizontalScrollController,
+    required this.verticalScrollController,
+  });
 
   @override
   State<StatefulWidget> createState() => _EditorState();
@@ -36,38 +43,46 @@ class _EditorState extends State<Editor> {
   }
 
   double _calculateWidgetHeight() {
-    return max(MediaQuery.of(context).size.height,
-        _core.lines.length * _core.config.lineHeight);
+    return max(
+        MediaQuery.of(context).size.height,
+        (_core.lines.length * _core.config.lineHeight) +
+            _core.config.heightPadding);
   }
 
   double _calculateWidgetWidth() {
     return max(MediaQuery.of(context).size.width - _core.config.minGutterWidth,
-        _calculateMaxLineWidth());
+        _calculateMaxLineWidth() + _core.config.widthPadding);
   }
 
   double _calculateMaxLineWidth() {
     return _core.lines.fold(
         0,
-        (value, element) =>
-            value + element.length * _core.config.characterWidth);
+        (maxWidth, element) =>
+            max(maxWidth, element.length * _core.config.characterWidth));
   }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-        width: _calculateWidgetWidth(),
-        height: _calculateWidgetHeight(),
-        child: Focus(
-            autofocus: true,
-            onKeyEvent: (node, keyEvent) =>
-                editorInputManager.handleKeyEvent(_core, keyEvent),
-            child: ListenableBuilder(
-                listenable: _core,
-                builder: (context, child) {
-                  return CustomPaint(
-                      painter: EditorPainter(
-                    core: _core,
-                  ));
-                })));
+    return ListenableBuilder(
+        listenable: _core,
+        builder: (context, child) {
+          return SingleChildScrollView(
+              scrollDirection: Axis.vertical,
+              controller: widget.verticalScrollController,
+              child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  controller: widget.horizontalScrollController,
+                  child: SizedBox(
+                      width: _calculateWidgetWidth(),
+                      height: _calculateWidgetHeight(),
+                      child: Focus(
+                          autofocus: true,
+                          onKeyEvent: (node, keyEvent) => editorInputManager
+                              .handleKeyEvent(_core, keyEvent),
+                          child: CustomPaint(
+                              painter: EditorPainter(
+                            core: _core,
+                          ))))));
+        });
   }
 }
