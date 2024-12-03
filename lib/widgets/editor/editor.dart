@@ -17,7 +17,6 @@ class _EditorState extends State<Editor> {
     bufferManager: BufferManager(),
     editorConfig: EditorConfig(),
   );
-
   final EditorConfig _config = EditorConfig();
 
   final EditorInputManager editorInputManager = EditorInputManager();

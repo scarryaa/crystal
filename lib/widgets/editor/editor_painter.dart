@@ -5,17 +5,15 @@ import 'package:flutter/material.dart';
 class EditorPainter extends CustomPainter with ChangeNotifier {
   final EditorCore core;
   final EditorConfig config;
-  final Color backgroundColor;
   late final TextStyle textStyle;
   final TextPainter textPainter = TextPainter(textDirection: TextDirection.ltr);
 
   EditorPainter({
     required this.core,
     required this.config,
-    this.backgroundColor = Colors.white,
   }) : super(repaint: core) {
     textStyle = TextStyle(
-      color: Colors.black,
+      color: config.textColor,
       fontSize: config.fontSize,
       fontFamily: config.fontFamily,
     );
@@ -31,7 +29,7 @@ class EditorPainter extends CustomPainter with ChangeNotifier {
   void drawBackground(Canvas canvas, Size size) {
     canvas.drawRect(
       Rect.fromLTWH(0, 0, size.width, size.height),
-      Paint()..color = backgroundColor,
+      Paint()..color = config.backgroundColor,
     );
   }
 
@@ -45,7 +43,7 @@ class EditorPainter extends CustomPainter with ChangeNotifier {
     canvas.drawRect(
       Rect.fromLTWH(_measureLineWidth(), core.cursorLine * config.lineHeight, 2,
           config.lineHeight),
-      Paint()..color = Colors.blue,
+      Paint()..color = config.caretColor,
     );
   }
 
@@ -62,7 +60,7 @@ class EditorPainter extends CustomPainter with ChangeNotifier {
   @override
   bool shouldRepaint(covariant EditorPainter oldDelegate) {
     return oldDelegate.core.lines != core.lines ||
-        oldDelegate.backgroundColor != backgroundColor ||
+        oldDelegate.config != config ||
         oldDelegate.textStyle != textStyle;
   }
 }

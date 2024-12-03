@@ -4,14 +4,18 @@ class EditorConfig {
   double fontSize;
   late double lineHeight;
   String fontFamily;
+  Color backgroundColor;
   Color textColor;
-  double cursorWidth;
+  Color caretColor;
+  double caretWidth;
 
   EditorConfig({
     this.fontSize = 14,
     this.fontFamily = "IBM Plex Mono",
+    this.backgroundColor = Colors.white,
     this.textColor = Colors.black,
-    this.cursorWidth = 2,
+    this.caretColor = Colors.blue,
+    this.caretWidth = 2,
   }) {
     lineHeight = _measureLineHeight();
   }
