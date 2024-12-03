@@ -63,26 +63,53 @@ class _EditorState extends State<Editor> {
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-        listenable: _core,
-        builder: (context, child) {
-          return SingleChildScrollView(
-              scrollDirection: Axis.vertical,
-              controller: widget.verticalScrollController,
-              child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  controller: widget.horizontalScrollController,
-                  child: SizedBox(
-                      width: _calculateWidgetWidth(),
-                      height: _calculateWidgetHeight(),
-                      child: Focus(
-                          autofocus: true,
-                          onKeyEvent: (node, keyEvent) => editorInputManager
-                              .handleKeyEvent(_core, keyEvent),
-                          child: CustomPaint(
-                              painter: EditorPainter(
-                            core: _core,
-                          ))))));
-        });
+    return ScrollbarTheme(
+        data: ScrollbarThemeData(
+          thickness: WidgetStateProperty.resolveWith((states) {
+            return 8;
+          }),
+          thumbColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.pressed)) {
+              return Colors.grey[500];
+            }
+            if (states.contains(WidgetState.hovered)) {
+              return Colors.grey[700];
+            }
+            return Colors.grey[600];
+          }),
+          radius: Radius.zero,
+          minThumbLength: 50,
+          crossAxisMargin: 0,
+        ),
+        child: ListenableBuilder(
+            listenable: _core,
+            builder: (context, child) {
+              return Scrollbar(
+                  controller: widget.verticalScrollController,
+                  interactive: true,
+                  child: Scrollbar(
+                      controller: widget.horizontalScrollController,
+                      interactive: true,
+                      notificationPredicate: (notification) =>
+                          notification.depth == 1,
+                      child: SingleChildScrollView(
+                          scrollDirection: Axis.vertical,
+                          controller: widget.verticalScrollController,
+                          child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              controller: widget.horizontalScrollController,
+                              child: SizedBox(
+                                  width: _calculateWidgetWidth(),
+                                  height: _calculateWidgetHeight(),
+                                  child: Focus(
+                                      autofocus: true,
+                                      onKeyEvent: (node, keyEvent) =>
+                                          editorInputManager.handleKeyEvent(
+                                              _core, keyEvent),
+                                      child: CustomPaint(
+                                          painter: EditorPainter(
+                                        core: _core,
+                                      ))))))));
+            }));
   }
 }
