@@ -1,8 +1,9 @@
 import 'package:crystal/core/buffer_manager.dart';
-import 'package:crystal/core/editor_core.dart';
+import 'package:crystal/core/editor/editor_config.dart';
+import 'package:crystal/core/editor/editor_core.dart';
+import 'package:crystal/widgets/editor/editor_input_manager.dart';
 import 'package:crystal/widgets/editor/editor_painter.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 class Editor extends StatefulWidget {
   const Editor({super.key});
@@ -12,28 +13,26 @@ class Editor extends StatefulWidget {
 }
 
 class _EditorState extends State<Editor> {
-  final EditorCore _core = EditorCore(bufferManager: BufferManager());
+  final EditorCore _core = EditorCore(
+    bufferManager: BufferManager(),
+    editorConfig: EditorConfig(),
+  );
 
-  KeyEventResult _handleKeyEvent(KeyEvent keyEvent) {
-    if (keyEvent is! KeyDownEvent && keyEvent is! KeyRepeatEvent) {
-      return KeyEventResult.ignored;
-    }
+  final EditorConfig _config = EditorConfig();
 
-    if (keyEvent.character == null) return KeyEventResult.ignored;
-
-    _core.insertChar(keyEvent.character!);
-    return KeyEventResult.handled;
-  }
+  final EditorInputManager editorInputManager = EditorInputManager();
 
   @override
   Widget build(BuildContext context) {
     return Focus(
         autofocus: true,
-        onKeyEvent: (node, keyEvent) => _handleKeyEvent(keyEvent),
+        onKeyEvent: (node, keyEvent) =>
+            editorInputManager.handleKeyEvent(_core, keyEvent),
         child: ListenableBuilder(
             listenable: _core,
             builder: (context, child) {
-              return CustomPaint(painter: EditorPainter(core: _core));
+              return CustomPaint(
+                  painter: EditorPainter(core: _core, config: _config));
             }));
   }
 }
