@@ -1,7 +1,7 @@
 class BufferManager {
-  final int cursorPosition = 0;
-  final int cursorLine = 0;
-  final List<String> _lines = ["Hello"];
+  int cursorPosition = 0;
+  int cursorLine = 0;
+  final List<String> _lines = [''];
 
   List<String> get lines => _lines;
 
@@ -9,6 +9,7 @@ class BufferManager {
     _lines[cursorLine] = _lines[cursorLine].substring(0, cursorPosition) +
         char +
         _lines[cursorLine].substring(cursorPosition);
+    cursorPosition++;
   }
 
   @override

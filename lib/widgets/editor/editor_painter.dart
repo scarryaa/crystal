@@ -1,17 +1,18 @@
 import 'package:crystal/core/editor_core.dart';
 import 'package:flutter/material.dart';
 
-class EditorPainter extends CustomPainter {
-  EditorCore core;
-  Color backgroundColor;
-  TextStyle textStyle;
-  TextPainter textPainter = TextPainter(textDirection: TextDirection.ltr);
+class EditorPainter extends CustomPainter with ChangeNotifier {
+  final EditorCore core;
+  final Color backgroundColor;
+  final TextStyle textStyle;
+  final TextPainter textPainter = TextPainter(textDirection: TextDirection.ltr);
 
   EditorPainter(
       {required this.core,
       this.backgroundColor = Colors.white,
       this.textStyle = const TextStyle(
-          color: Colors.black, fontSize: 14, fontFamily: 'IBM Plex Mono')});
+          color: Colors.black, fontSize: 14, fontFamily: 'IBM Plex Mono')})
+      : super(repaint: core);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -31,7 +32,9 @@ class EditorPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return true;
+  bool shouldRepaint(covariant EditorPainter oldDelegate) {
+    return oldDelegate.core != core ||
+        oldDelegate.backgroundColor != backgroundColor ||
+        oldDelegate.textStyle != textStyle;
   }
 }
