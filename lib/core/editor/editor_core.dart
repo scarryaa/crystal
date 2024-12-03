@@ -28,6 +28,7 @@ class EditorCore extends ChangeNotifier {
   int get cursorLine => _bufferManager.cursorLine;
   int get cursorPosition => _bufferManager.cursorPosition;
   List<String> get lines => _bufferManager.lines;
+  EditorConfig get config => _editorConfig;
 
   @override
   String toString() {

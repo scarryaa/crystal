@@ -1,21 +1,18 @@
-import 'package:crystal/core/editor/editor_config.dart';
 import 'package:crystal/core/editor/editor_core.dart';
 import 'package:flutter/material.dart';
 
 class EditorPainter extends CustomPainter with ChangeNotifier {
   final EditorCore core;
-  final EditorConfig config;
   late final TextStyle textStyle;
   final TextPainter textPainter = TextPainter(textDirection: TextDirection.ltr);
 
   EditorPainter({
     required this.core,
-    required this.config,
   }) : super(repaint: core) {
     textStyle = TextStyle(
-      color: config.textColor,
-      fontSize: config.fontSize,
-      fontFamily: config.fontFamily,
+      color: core.config.textColor,
+      fontSize: core.config.fontSize,
+      fontFamily: core.config.fontFamily,
     );
   }
 
@@ -29,7 +26,7 @@ class EditorPainter extends CustomPainter with ChangeNotifier {
   void drawBackground(Canvas canvas, Size size) {
     canvas.drawRect(
       Rect.fromLTWH(0, 0, size.width, size.height),
-      Paint()..color = config.backgroundColor,
+      Paint()..color = core.config.backgroundColor,
     );
   }
 
@@ -41,9 +38,9 @@ class EditorPainter extends CustomPainter with ChangeNotifier {
 
   void drawCursor(Canvas canvas) {
     canvas.drawRect(
-      Rect.fromLTWH(_measureLineWidth(), core.cursorLine * config.lineHeight, 2,
-          config.lineHeight),
-      Paint()..color = config.caretColor,
+      Rect.fromLTWH(_measureLineWidth(),
+          core.cursorLine * core.config.lineHeight, 2, core.config.lineHeight),
+      Paint()..color = core.config.caretColor,
     );
   }
 
@@ -60,7 +57,7 @@ class EditorPainter extends CustomPainter with ChangeNotifier {
   @override
   bool shouldRepaint(covariant EditorPainter oldDelegate) {
     return oldDelegate.core.lines != core.lines ||
-        oldDelegate.config != config ||
+        oldDelegate.core.config != core.config ||
         oldDelegate.textStyle != textStyle;
   }
 }

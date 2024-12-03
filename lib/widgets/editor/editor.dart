@@ -17,7 +17,6 @@ class _EditorState extends State<Editor> {
     bufferManager: BufferManager(),
     editorConfig: EditorConfig(),
   );
-  final EditorConfig _config = EditorConfig();
 
   final EditorInputManager editorInputManager = EditorInputManager();
 
@@ -31,7 +30,9 @@ class _EditorState extends State<Editor> {
             listenable: _core,
             builder: (context, child) {
               return CustomPaint(
-                  painter: EditorPainter(core: _core, config: _config));
+                  painter: EditorPainter(
+                core: _core,
+              ));
             }));
   }
 }
