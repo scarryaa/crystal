@@ -25,12 +25,25 @@ class BufferManager {
   void delete(int length) {
     if (_validateCursorPositionBeforeDelete() == false) return;
 
-    _adjustCursorPositionBeforeDelete();
-    _lines[cursorManager.cursorLine] = _lines[cursorManager.cursorLine]
-            .substring(0, cursorManager.cursorIndex - length) +
-        _lines[cursorManager.cursorLine].substring(
-            cursorManager.cursorIndex, _lines[cursorManager.cursorLine].length);
-    _adjustCursorPositionAfterDelete();
+    if (cursorManager.cursorIndex == 0 && cursorManager.cursorLine > 0) {
+      // When cursor is at the start of a line (except first line)
+      String currentLineContent = _lines[cursorManager.cursorLine];
+      // Remove the current line
+      _lines.removeAt(cursorManager.cursorLine);
+      // Move cursor to end of previous line
+      cursorManager.cursorLine--;
+      cursorManager.cursorIndex = _lines[cursorManager.cursorLine].length;
+      // Append current line content to previous line
+      _lines[cursorManager.cursorLine] += currentLineContent;
+    } else if (cursorManager.cursorIndex > 0) {
+      // When cursor is in the middle or end of a line
+      _lines[cursorManager.cursorLine] = _lines[cursorManager.cursorLine]
+              .substring(0, cursorManager.cursorIndex - length) +
+          _lines[cursorManager.cursorLine].substring(cursorManager.cursorIndex);
+      cursorManager.cursorIndex -= length;
+    }
+
+    cursorManager.targetCursorIndex = cursorManager.cursorIndex;
   }
 
   void deleteForwards(int length) {
