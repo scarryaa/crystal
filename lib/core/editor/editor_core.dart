@@ -1,62 +1,66 @@
 import 'package:crystal/core/buffer_manager.dart';
+import 'package:crystal/core/cursor_manager.dart';
 import 'package:crystal/core/editor/editor_config.dart';
 import 'package:flutter/material.dart';
 
 class EditorCore extends ChangeNotifier {
-  final BufferManager _bufferManager;
+  final BufferManager bufferManager;
+  final CursorManager cursorManager;
   final EditorConfig _editorConfig;
 
-  EditorCore({required bufferManager, required editorConfig})
-      : _bufferManager = bufferManager,
-        _editorConfig = editorConfig;
+  EditorCore(
+      {required this.bufferManager,
+      required this.cursorManager,
+      required editorConfig})
+      : _editorConfig = editorConfig;
 
   void moveLeft() {
-    _bufferManager.moveLeft();
+    cursorManager.moveLeft();
     notifyListeners();
   }
 
   void moveRight() {
-    _bufferManager.moveRight();
+    cursorManager.moveRight();
     notifyListeners();
   }
 
   void moveUp() {
-    _bufferManager.moveUp();
+    cursorManager.moveUp();
     notifyListeners();
   }
 
   void moveDown() {
-    _bufferManager.moveDown();
+    cursorManager.moveDown();
     notifyListeners();
   }
 
   void insertChar(String char) {
-    _bufferManager.insertCharacter(char);
+    bufferManager.insertCharacter(char);
     notifyListeners();
   }
 
   void insertLine() {
-    _bufferManager.insertNewline();
+    bufferManager.insertNewline();
     notifyListeners();
   }
 
   void delete(int length) {
-    _bufferManager.delete(length);
+    bufferManager.delete(length);
     notifyListeners();
   }
 
   void deleteForwards(int length) {
-    _bufferManager.deleteForwards(length);
+    bufferManager.deleteForwards(length);
     notifyListeners();
   }
 
-  int get cursorLine => _bufferManager.cursorLine;
-  int get cursorPosition => _bufferManager.cursorIndex;
-  List<String> get lines => _bufferManager.lines;
+  int get cursorLine => cursorManager.cursorLine;
+  int get cursorPosition => cursorManager.cursorIndex;
+  List<String> get lines => bufferManager.lines;
   EditorConfig get config => _editorConfig;
 
   @override
   String toString() {
-    return _bufferManager.toString();
+    return bufferManager.toString();
   }
 }
