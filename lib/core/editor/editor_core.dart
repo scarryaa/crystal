@@ -10,6 +10,26 @@ class EditorCore extends ChangeNotifier {
       : _bufferManager = bufferManager,
         _editorConfig = editorConfig;
 
+  void moveLeft() {
+    _bufferManager.moveLeft();
+    notifyListeners();
+  }
+
+  void moveRight() {
+    _bufferManager.moveRight();
+    notifyListeners();
+  }
+
+  void moveUp() {
+    _bufferManager.moveUp();
+    notifyListeners();
+  }
+
+  void moveDown() {
+    _bufferManager.moveDown();
+    notifyListeners();
+  }
+
   void insertChar(String char) {
     _bufferManager.insertCharacter(char);
     notifyListeners();
@@ -22,6 +42,11 @@ class EditorCore extends ChangeNotifier {
 
   void delete(int length) {
     _bufferManager.delete(length);
+    notifyListeners();
+  }
+
+  void deleteForwards(int length) {
+    _bufferManager.deleteForwards(length);
     notifyListeners();
   }
 

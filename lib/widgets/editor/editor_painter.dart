@@ -51,7 +51,7 @@ class EditorPainter extends CustomPainter with ChangeNotifier {
   }
 
   double _measureLineWidth() {
-    return core.lines[core.cursorLine].length * _measureCharWidth();
+    return core.cursorPosition * _measureCharWidth();
   }
 
   @override

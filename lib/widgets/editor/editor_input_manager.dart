@@ -8,6 +8,8 @@ class EditorInputManager {
       return KeyEventResult.ignored;
     }
 
+    if (handleArrowKeys(core, keyEvent)) return KeyEventResult.handled;
+
     switch (keyEvent.logicalKey) {
       case LogicalKeyboardKey.enter:
         core.insertLine();
@@ -15,6 +17,8 @@ class EditorInputManager {
       case LogicalKeyboardKey.backspace:
         core.delete(1);
         break;
+      case LogicalKeyboardKey.delete:
+        core.deleteForwards(1);
       default:
         if (keyEvent.character == null) return KeyEventResult.ignored;
 
@@ -25,7 +29,22 @@ class EditorInputManager {
     return KeyEventResult.handled;
   }
 
-  void handleBackspace(EditorCore core) {
-    core.delete(1);
+  bool handleArrowKeys(EditorCore core, KeyEvent keyEvent) {
+    switch (keyEvent.logicalKey) {
+      case LogicalKeyboardKey.arrowLeft:
+        core.moveLeft();
+        return true;
+      case LogicalKeyboardKey.arrowRight:
+        core.moveRight();
+        return true;
+      case LogicalKeyboardKey.arrowUp:
+        core.moveUp();
+        return true;
+      case LogicalKeyboardKey.arrowDown:
+        core.moveDown();
+        return true;
+      default:
+        return false;
+    }
   }
 }

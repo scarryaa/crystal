@@ -5,6 +5,28 @@ class BufferManager {
 
   List<String> get lines => List<String>.from(_lines);
 
+  void moveLeft() {
+    if (cursorPosition > 0) {
+      cursorPosition--;
+    } else if (cursorLine > 0) {
+      cursorLine--;
+      cursorPosition = _lines[cursorLine].length;
+    }
+  }
+
+  void moveRight() {
+    if (cursorPosition > _lines[cursorLine].length) {
+      cursorLine++;
+      cursorPosition = 0;
+    } else if (cursorPosition < _lines[_lines.length].length) {
+      cursorPosition++;
+    }
+  }
+
+  void moveUp() {}
+
+  void moveDown() {}
+
   void insertCharacter(String char) {
     _lines[cursorLine] = _lines[cursorLine].substring(0, cursorPosition) +
         char +
@@ -22,9 +44,25 @@ class BufferManager {
     if (_validateCursorPositionBeforeDelete() == false) return;
 
     _adjustCursorPositionBeforeDelete();
-    _lines[cursorLine] = _lines[cursorLine].substring(0,
-        cursorPosition - length < 0 ? cursorPosition : cursorPosition - length);
+    _lines[cursorLine] = _lines[cursorLine]
+            .substring(0, cursorPosition - length) +
+        _lines[cursorLine].substring(cursorPosition, _lines[cursorLine].length);
     _adjustCursorPositionAfterDelete();
+  }
+
+  void deleteForwards(int length) {
+    // Check if there is actually content after the cursor
+    if (_lines[cursorLine].length > cursorPosition) {
+      // Deleting before the end of the line
+      if (cursorPosition < _lines[cursorLine].length) {
+        _lines[cursorLine] =
+            _lines[cursorLine].substring(0, _lines[cursorLine].length - length);
+        // Deleting at the end of the line
+      } else {
+        _lines[cursorLine + 1] = _lines[cursorLine + 1]
+            .substring(0, _lines[cursorLine + 1].length - length);
+      }
+    }
   }
 
   bool _validateCursorPositionBeforeDelete() {
