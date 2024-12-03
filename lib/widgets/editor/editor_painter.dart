@@ -33,7 +33,7 @@ class EditorPainter extends CustomPainter with ChangeNotifier {
 
   @override
   bool shouldRepaint(covariant EditorPainter oldDelegate) {
-    return oldDelegate.core != core ||
+    return oldDelegate.core.lines != core.lines ||
         oldDelegate.backgroundColor != backgroundColor ||
         oldDelegate.textStyle != textStyle;
   }

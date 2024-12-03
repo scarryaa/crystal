@@ -3,7 +3,7 @@ class BufferManager {
   int cursorLine = 0;
   final List<String> _lines = [''];
 
-  List<String> get lines => _lines;
+  List<String> get lines => List<String>.from(_lines);
 
   void insertCharacter(String char) {
     _lines[cursorLine] = _lines[cursorLine].substring(0, cursorPosition) +
