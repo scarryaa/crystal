@@ -113,19 +113,21 @@ class EditorPainter extends CustomPainter with ChangeNotifier {
 
       canvas.drawRRect(
           RRect.fromRectAndRadius(Rect.fromLTWH(left, top, width, height),
-              const Radius.circular(2.0)),
-          Paint()..color = Colors.blue.withOpacity(0.3));
+              Radius.circular(core.config.selectionRadius)),
+          Paint()..color = core.config.selectionColor);
     }
   }
 
   void drawCursor(Canvas canvas) {
-    canvas.drawRect(
-      Rect.fromLTWH(
-        _measureLineWidth(),
-        core.cursorLine * core.config.lineHeight,
-        core.config.caretWidth,
-        core.config.lineHeight,
-      ),
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+          Rect.fromLTWH(
+            _measureLineWidth(),
+            core.cursorLine * core.config.lineHeight,
+            core.config.caretWidth,
+            core.config.lineHeight,
+          ),
+          Radius.circular(core.config.caretRadius)),
       Paint()..color = core.config.caretColor,
     );
   }

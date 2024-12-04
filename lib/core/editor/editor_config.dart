@@ -12,6 +12,9 @@ class EditorConfig {
   Color textColor;
   Color gutterTextcolor;
   Color caretColor;
+  double caretRadius;
+  double selectionRadius;
+  late Color selectionColor;
   double caretWidth;
 
   EditorConfig({
@@ -22,10 +25,13 @@ class EditorConfig {
     this.textColor = Colors.black,
     this.gutterTextcolor = Colors.grey,
     this.caretColor = Colors.blue,
+    this.caretRadius = 2.0,
+    this.selectionRadius = 2.0,
     this.caretWidth = 2,
   }) {
     lineHeight = _measureLineHeight();
     characterWidth = _measureCharacterWidth();
+    selectionColor = Colors.blue.withOpacity(0.3);
 
     widthPadding = characterWidth * 12;
     heightPadding = lineHeight * 6;
