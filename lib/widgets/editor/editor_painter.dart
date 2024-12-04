@@ -40,7 +40,7 @@ class EditorPainter extends CustomPainter {
 
   void drawText(Canvas canvas) {
     textPainter.text = TextSpan(
-        text: core.getLines(firstVisibleLine, lastVisibleLine).join('\n'),
+        text: core.getLines(firstVisibleLine, lastVisibleLine + 5).join('\n'),
         style: textStyle);
     textPainter.layout();
     textPainter.paint(
@@ -50,7 +50,7 @@ class EditorPainter extends CustomPainter {
   void drawSelection(Canvas canvas) {
     if (!core.hasSelection()) return;
 
-    var lines = core.getLines(firstVisibleLine, lastVisibleLine);
+    var lines = core.getLines(firstVisibleLine, lastVisibleLine + 5);
     for (var i = 0; i < lines.length; i++) {
       var line = lines[i];
       drawSelectionForSingleLine(canvas, i + firstVisibleLine, line);
