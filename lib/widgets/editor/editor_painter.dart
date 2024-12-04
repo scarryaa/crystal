@@ -111,7 +111,9 @@ class EditorPainter extends CustomPainter with ChangeNotifier {
         }
       }
 
-      canvas.drawRect(Rect.fromLTWH(left, top, width, height),
+      canvas.drawRRect(
+          RRect.fromRectAndRadius(Rect.fromLTWH(left, top, width, height),
+              const Radius.circular(2.0)),
           Paint()..color = Colors.blue.withOpacity(0.3));
     }
   }
