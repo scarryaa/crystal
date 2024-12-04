@@ -10,7 +10,7 @@ class EditorPainter extends CustomPainter {
   final double viewportHeight;
 
   late final TextStyle textStyle;
-  final TextPainter textPainter = TextPainter(textDirection: TextDirection.ltr);
+  late final TextPainter textPainter;
 
   EditorPainter({
     required this.core,
@@ -25,6 +25,9 @@ class EditorPainter extends CustomPainter {
       fontWeight: core.config.fontWeight,
       fontFeatures: const [FontFeature.enable('kern')],
     );
+
+    textPainter = TextPainter(
+        textDirection: core.config.textDirection ?? TextDirection.ltr);
   }
 
   @override

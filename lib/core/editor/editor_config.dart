@@ -18,6 +18,7 @@ class EditorConfig {
   late Color selectionColor;
   double caretWidth;
   int lineBuffer;
+  final TextDirection? textDirection;
 
   EditorConfig({
     this.fontSize = 15,
@@ -32,6 +33,7 @@ class EditorConfig {
     this.selectionRadius = 2.0,
     this.caretWidth = 2,
     this.lineBuffer = 5,
+    this.textDirection,
   }) {
     lineHeight = _measureLineHeight();
     characterWidth = _measureCharacterWidth();

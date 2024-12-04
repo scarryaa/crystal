@@ -44,6 +44,55 @@ class SelectionManager {
     endIndex = bufferManager.lines[endLine].length;
   }
 
+  void selectRange(BufferManager bufferManager, int startLine, int startIndex,
+      int endLine, int endIndex) {
+    this.startLine = max(0, startLine);
+    anchor = this.startIndex =
+        max(0, min(bufferManager.lines[startLine].length, startIndex));
+    this.endLine = min(bufferManager.lines.length, endLine);
+    this.endIndex = max(0, min(bufferManager.lines[endLine].length, endIndex));
+  }
+
+  int selectWord(BufferManager bufferManager, int cursorLine, int cursorIndex) {
+    String lineContent = bufferManager.lines[cursorLine];
+
+    if (cursorIndex < 0 || cursorIndex >= lineContent.length) {
+      return cursorIndex;
+    }
+
+    int start = cursorIndex;
+    int end = cursorIndex;
+
+    // Move start backwards to find the beginning of the word
+    while (start > 0 && isWordCharacter(lineContent[start - 1])) {
+      start--;
+    }
+
+    // Move end forwards to find the end of the word
+    while (end < lineContent.length && isWordCharacter(lineContent[end])) {
+      end++;
+    }
+
+    anchor = end;
+    startIndex = start;
+    endIndex = end;
+    startLine = endLine = cursorLine;
+
+    return end;
+  }
+
+  bool isWordCharacter(String char) {
+    return RegExp(r'\w').hasMatch(char);
+  }
+
+  void selectLine(BufferManager bufferManager, int cursorLine) {
+    anchor = startIndex = 0;
+    startLine = endLine = cursorLine;
+    endIndex = bufferManager.lines[startLine].length;
+    endLine++;
+    endIndex = 0;
+  }
+
   void updateSelection(BufferManager bufferManager,
       SelectionDirection direction, int currentIndex, int targetIndex) {
     switch (direction) {

@@ -27,7 +27,7 @@ class Editor extends StatefulWidget {
 
 class _EditorState extends State<Editor> {
   late final EditorCore _core;
-  final EditorInputManager editorInputManager = EditorInputManager();
+  late final EditorInputManager editorInputManager;
   final ValueNotifier<bool> _scrollChanged = ValueNotifier<bool>(false);
 
   @override
@@ -40,6 +40,8 @@ class _EditorState extends State<Editor> {
       cursorManager: CursorManager(bufferManager),
       editorConfig: EditorConfig(),
     );
+
+    editorInputManager = EditorInputManager(_core);
 
     _core.bufferManager.cursorManager = _core.cursorManager;
     widget.onCoreInitialized?.call(_core);
@@ -144,35 +146,58 @@ class _EditorState extends State<Editor> {
                       interactive: true,
                       notificationPredicate: (notification) =>
                           notification.depth == 1,
-                      child: SingleChildScrollView(
-                          scrollDirection: Axis.vertical,
-                          controller: widget.verticalScrollController,
+                      child: Listener(
+                          onPointerDown: (event) =>
+                              editorInputManager.handleMouseEvent(
+                                  event.localPosition,
+                                  Offset(
+                                      widget.horizontalScrollController.offset,
+                                      widget.verticalScrollController.offset),
+                                  event),
+                          onPointerMove: (event) =>
+                              editorInputManager.handleMouseEvent(
+                                  event.localPosition,
+                                  Offset(
+                                      widget.horizontalScrollController.offset,
+                                      widget.verticalScrollController.offset),
+                                  event),
+                          onPointerUp: (event) =>
+                              editorInputManager.handleMouseEvent(
+                                  event.localPosition,
+                                  Offset(
+                                      widget.horizontalScrollController.offset,
+                                      widget.verticalScrollController.offset),
+                                  event),
                           child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              controller: widget.horizontalScrollController,
-                              child: SizedBox(
-                                  width: _calculateWidgetWidth(),
-                                  height: _calculateWidgetHeight(),
-                                  child: Focus(
-                                      autofocus: true,
-                                      onKeyEvent: (node, keyEvent) =>
-                                          handleKeyEvent(node, keyEvent),
-                                      child: CustomPaint(
-                                          painter: EditorPainter(
-                                        core: _core,
-                                        firstVisibleLine: firstVisibleLine,
-                                        lastVisibleLine: lastVisibleLine,
-                                        viewportHeight: MediaQuery.of(context)
-                                                .size
-                                                .height +
-                                            _core.config.heightPadding +
-                                            (widget.verticalScrollController
-                                                    .hasClients
-                                                ? widget
-                                                    .verticalScrollController
-                                                    .offset
-                                                : 0),
-                                      ))))))));
+                              scrollDirection: Axis.vertical,
+                              controller: widget.verticalScrollController,
+                              child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  controller: widget.horizontalScrollController,
+                                  child: SizedBox(
+                                      width: _calculateWidgetWidth(),
+                                      height: _calculateWidgetHeight(),
+                                      child: Focus(
+                                          autofocus: true,
+                                          onKeyEvent: (node, keyEvent) =>
+                                              handleKeyEvent(node, keyEvent),
+                                          child: CustomPaint(
+                                              painter: EditorPainter(
+                                            core: _core,
+                                            firstVisibleLine: firstVisibleLine,
+                                            lastVisibleLine: lastVisibleLine,
+                                            viewportHeight: MediaQuery.of(
+                                                        context)
+                                                    .size
+                                                    .height +
+                                                _core.config.heightPadding +
+                                                (widget.verticalScrollController
+                                                        .hasClients
+                                                    ? widget
+                                                        .verticalScrollController
+                                                        .offset
+                                                    : 0),
+                                          )))))))));
             }));
   }
 }

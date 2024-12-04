@@ -1,9 +1,22 @@
 import 'package:crystal/core/editor/editor_core.dart';
 import 'package:crystal/models/selection/selection_direction.dart';
+import 'package:crystal/widgets/editor/managers/editor_mouse_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class EditorInputManager {
+  final EditorCore core;
+  late EditorMouseManager mouseManager;
+
+  EditorInputManager(this.core) {
+    mouseManager = EditorMouseManager(core);
+  }
+
+  void handleMouseEvent(
+      Offset localPosition, Offset scrollPosition, PointerEvent event) {
+    mouseManager.handleMouseEvent(event, localPosition, scrollPosition);
+  }
+
   Future<KeyEventResult> handleKeyEvent(
       EditorCore core, KeyEvent keyEvent) async {
     if (keyEvent is! KeyDownEvent && keyEvent is! KeyRepeatEvent) {
