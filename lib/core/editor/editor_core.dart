@@ -109,6 +109,7 @@ class EditorCore extends ChangeNotifier {
   void selectAll() {
     selectionManager.selectAll(bufferManager);
     cursorManager.cursorLine = bufferManager.lines.length - 1;
+    cursorManager.cursorIndex = bufferManager.lines[cursorLine].length;
     notifyListeners();
   }
 
