@@ -1,18 +1,27 @@
 import 'package:crystal/core/buffer_manager.dart';
 import 'package:crystal/core/cursor_manager.dart';
 import 'package:crystal/core/editor/editor_config.dart';
+import 'package:crystal/core/selection_manager.dart';
+import 'package:crystal/models/selection/direction.dart';
 import 'package:flutter/material.dart';
 
 class EditorCore extends ChangeNotifier {
   final BufferManager bufferManager;
+  final SelectionManager selectionManager;
   final CursorManager cursorManager;
   final EditorConfig _editorConfig;
 
   EditorCore(
       {required this.bufferManager,
+      required this.selectionManager,
       required this.cursorManager,
       required editorConfig})
       : _editorConfig = editorConfig;
+
+  void moveTo(int line, int column) {
+    cursorManager.moveTo(line, column);
+    notifyListeners();
+  }
 
   void moveLeft() {
     cursorManager.moveLeft();
@@ -35,22 +44,58 @@ class EditorCore extends ChangeNotifier {
   }
 
   void insertChar(String char) {
+    deleteSelectionIfNeeded();
     bufferManager.insertCharacter(char);
     notifyListeners();
   }
 
   void insertLine() {
+    deleteSelectionIfNeeded();
     bufferManager.insertNewline();
     notifyListeners();
   }
 
   void delete(int length) {
+    if (deleteSelectionIfNeeded()) return;
     bufferManager.delete(length);
     notifyListeners();
   }
 
   void deleteForwards(int length) {
+    if (deleteSelectionIfNeeded()) return;
     bufferManager.deleteForwards(length);
+    notifyListeners();
+  }
+
+  bool hasSelection() {
+    return selectionManager.hasSelection();
+  }
+
+  void startSelection() {
+    selectionManager.startSelection(cursorLine, cursorPosition);
+    notifyListeners();
+  }
+
+  void clearSelection() {
+    selectionManager.startSelection(-1, -1);
+    notifyListeners();
+  }
+
+  bool deleteSelectionIfNeeded() {
+    if (hasSelection()) {
+      selectionManager.deleteSelection(bufferManager, cursorPosition);
+      clearSelection();
+      return true;
+    }
+
+    return false;
+  }
+
+  void handleSelection(SelectionDirection direction) {
+    if (!hasSelection()) startSelection();
+
+    selectionManager.updateSelection(bufferManager, direction,
+        cursorManager.cursorIndex, cursorManager.targetCursorIndex);
     notifyListeners();
   }
 

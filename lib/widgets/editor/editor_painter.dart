@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:crystal/core/editor/editor_core.dart';
 import 'package:flutter/material.dart';
 
@@ -25,6 +27,7 @@ class EditorPainter extends CustomPainter with ChangeNotifier {
   void paint(Canvas canvas, Size size) {
     drawBackground(canvas, size);
     drawText(canvas);
+    drawSelection(canvas);
     drawCursor(canvas);
   }
 
@@ -42,6 +45,67 @@ class EditorPainter extends CustomPainter with ChangeNotifier {
     textPainter.layout();
     textPainter.paint(
         canvas, Offset(0, firstVisibleLine * core.config.lineHeight));
+  }
+
+  void drawSelection(Canvas canvas) {
+    if (!core.hasSelection()) return;
+
+    var lines = core.getLines(firstVisibleLine, lastVisibleLine);
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      drawSelectionForSingleLine(canvas, i, line);
+    }
+  }
+
+  void drawSelectionForSingleLine(Canvas canvas, int lineNumber, String line) {
+    if (!core.selectionManager.hasSelection()) return;
+
+    int normalizedStartLine =
+        min(core.selectionManager.startLine, core.selectionManager.endLine);
+    int normalizedEndLine =
+        max(core.selectionManager.startLine, core.selectionManager.endLine);
+    int normalizedStartIndex =
+        normalizedStartLine == core.selectionManager.startLine
+            ? core.selectionManager.startIndex
+            : core.selectionManager.endIndex;
+    int normalizedEndIndex = normalizedEndLine == core.selectionManager.endLine
+        ? core.selectionManager.endIndex
+        : core.selectionManager.startIndex;
+
+    // Check if this line is within selection range
+    if (lineNumber >= normalizedStartLine && lineNumber <= normalizedEndLine) {
+      double top = lineNumber * core.config.lineHeight;
+      double height = core.config.lineHeight;
+      double left = 0;
+      double width = 0;
+
+      // Middle lines
+      if (lineNumber > normalizedStartLine && lineNumber < normalizedEndLine) {
+        width = line.length * core.config.characterWidth;
+      }
+      // Single line selection
+      else if (normalizedStartLine == normalizedEndLine) {
+        left = min(normalizedStartIndex, normalizedEndIndex) *
+            core.config.characterWidth;
+        width = (max(normalizedStartIndex, normalizedEndIndex) -
+                min(normalizedStartIndex, normalizedEndIndex)) *
+            core.config.characterWidth;
+      }
+      // Start line
+      else if (lineNumber == normalizedStartLine) {
+        left = normalizedStartIndex * core.config.characterWidth;
+        width =
+            (line.length - normalizedStartIndex) * core.config.characterWidth;
+      }
+      // End line
+      else if (lineNumber == normalizedEndLine) {
+        left = 0;
+        width = normalizedEndIndex * core.config.characterWidth;
+      }
+
+      canvas.drawRect(Rect.fromLTWH(left, top, width, height),
+          Paint()..color = Colors.blue.withOpacity(0.3));
+    }
   }
 
   void drawCursor(Canvas canvas) {

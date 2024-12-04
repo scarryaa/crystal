@@ -4,6 +4,7 @@ import 'package:crystal/core/buffer_manager.dart';
 import 'package:crystal/core/cursor_manager.dart';
 import 'package:crystal/core/editor/editor_config.dart';
 import 'package:crystal/core/editor/editor_core.dart';
+import 'package:crystal/core/selection_manager.dart';
 import 'package:crystal/widgets/editor/editor_input_manager.dart';
 import 'package:crystal/widgets/editor/editor_painter.dart';
 import 'package:flutter/material.dart';
@@ -36,6 +37,7 @@ class _EditorState extends State<Editor> {
     final bufferManager = BufferManager();
     _core = EditorCore(
       bufferManager: bufferManager,
+      selectionManager: SelectionManager(),
       cursorManager: CursorManager(bufferManager),
       editorConfig: EditorConfig(),
     );

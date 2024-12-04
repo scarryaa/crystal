@@ -10,6 +10,11 @@ class CursorManager {
 
   CursorManager(this._bufferManager);
 
+  void moveTo(int line, int column) {
+    cursorLine = line.clamp(0, _bufferManager.lines.length);
+    cursorIndex = column.clamp(0, _bufferManager.lines[cursorLine].length);
+  }
+
   void moveLeft() {
     if (cursorIndex > 0) {
       cursorIndex--;

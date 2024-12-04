@@ -22,6 +22,31 @@ class BufferManager {
     cursorManager.targetCursorIndex = cursorManager.cursorIndex;
   }
 
+  void deleteRange(int startLine, int endLine, int startIndex, int endIndex) {
+    int totalLength = 0;
+
+    for (int i = startLine; i <= endLine; i++) {
+      String line = lines[i];
+      if (startLine == endLine) {
+        // Single line deletion
+        totalLength += endIndex - startIndex;
+      } else if (i == startLine) {
+        // First line: from startIndex to end
+        totalLength += line.length - startIndex;
+      } else if (i == endLine) {
+        // Last line: from start to endIndex
+        totalLength += endIndex;
+      } else {
+        // Middle lines: full length
+        totalLength += line.length;
+      }
+    }
+
+    cursorManager.cursorIndex = startIndex;
+    cursorManager.cursorLine = startLine;
+    deleteForwards(totalLength);
+  }
+
   void delete(int length) {
     if (_validateCursorPositionBeforeDelete() == false) return;
 
@@ -47,18 +72,50 @@ class BufferManager {
   }
 
   void deleteForwards(int length) {
-    // Check if there is actually content after the cursor
-    if (_lines[cursorManager.cursorLine].length > cursorManager.cursorIndex) {
-      // Deleting before the end of the line
-      if (cursorManager.cursorIndex < _lines[cursorManager.cursorLine].length) {
-        _lines[cursorManager.cursorLine] = _lines[cursorManager.cursorLine]
-            .substring(0, _lines[cursorManager.cursorLine].length - length);
-        // Deleting at the end of the line
-      } else {
-        _lines[cursorManager.cursorLine + 1] =
-            _lines[cursorManager.cursorLine + 1].substring(
-                0, _lines[cursorManager.cursorLine + 1].length - length);
+    // Get remaining characters in current line after cursor
+    int remainingInLine =
+        _lines[cursorManager.cursorLine].length - cursorManager.cursorIndex;
+
+    if (length > remainingInLine) {
+      // Multi-line deletion
+      int charsToDelete = length;
+      int currentLine = cursorManager.cursorLine;
+
+      // Keep track of first line's beginning
+      String firstLinePart =
+          _lines[currentLine].substring(0, cursorManager.cursorIndex);
+
+      while (charsToDelete > 0 && currentLine < _lines.length) {
+        // If we're still on first line, start from cursor
+        int startIndex = (currentLine == cursorManager.cursorLine)
+            ? cursorManager.cursorIndex
+            : 0;
+
+        int availableChars = _lines[currentLine].length - startIndex;
+
+        if (charsToDelete > availableChars) {
+          // Need to go to next line
+          charsToDelete -= (availableChars);
+          currentLine++;
+        } else {
+          // We can finish the deletion on this line
+          String endPart =
+              _lines[currentLine].substring(startIndex + charsToDelete);
+          _lines[cursorManager.cursorLine] = firstLinePart + endPart;
+
+          // Remove all lines in between
+          if (currentLine > cursorManager.cursorLine) {
+            _lines.removeRange(cursorManager.cursorLine + 1, currentLine + 1);
+          }
+          break;
+        }
       }
+    } else {
+      // Single-line deletion
+      _lines[cursorManager.cursorLine] = _lines[cursorManager.cursorLine]
+              .substring(0, cursorManager.cursorIndex) +
+          _lines[cursorManager.cursorLine]
+              .substring(cursorManager.cursorIndex + length);
     }
   }
 
