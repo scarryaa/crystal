@@ -128,6 +128,7 @@ class EditorCore extends ChangeNotifier {
     if (hasSelection()) {
       selectionManager.deleteSelection(bufferManager, cursorPosition);
       clearSelection();
+      onCursorMove?.call(cursorLine, cursorPosition);
       return true;
     }
 

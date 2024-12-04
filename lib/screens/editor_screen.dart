@@ -33,9 +33,10 @@ class _EditorScreenState extends State<EditorScreen> {
 
   void _handleCursorMove(int line, int column) {
     scrollManager.jumpToCursor(
-        core!,
-        scrollManager
-            .editorVerticalScrollController.position.viewportDimension);
+      core!,
+      scrollManager.editorVerticalScrollController.position.viewportDimension,
+      scrollManager.editorHorizontalScrollController.position.viewportDimension,
+    );
   }
 
   @override
