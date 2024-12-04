@@ -45,17 +45,17 @@ class GutterPainter extends CustomPainter {
         children: List.generate(
           end - start,
           (index) => TextSpan(
-            text: '${start + index + 1}\n',
-            style: TextStyle(
-              color: core.cursorLine == (start + index) ||
-                      (start + index >= core.selectionManager.startLine &&
-                          start + index <= core.selectionManager.endLine)
-                  ? Colors.black
-                  : Colors.grey,
-              fontSize: core.config.fontSize,
-              fontFamily: core.config.fontFamily,
-            ),
-          ),
+              text: '${start + index + 1}\n',
+              style: TextStyle(
+                color: core.cursorLine == (start + index) ||
+                        (start + index >= core.selectionManager.startLine &&
+                            start + index <= core.selectionManager.endLine)
+                    ? Colors.black
+                    : Colors.grey,
+                fontSize: core.config.fontSize,
+                fontFamily: core.config.fontFamily,
+                fontFeatures: const [FontFeature.enable('kern')],
+              ).copyWith()),
         ),
       )
       ..layout(

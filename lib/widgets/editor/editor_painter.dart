@@ -23,6 +23,7 @@ class EditorPainter extends CustomPainter {
       fontSize: core.config.fontSize,
       fontFamily: core.config.fontFamily,
       fontWeight: core.config.fontWeight,
+      fontFeatures: const [FontFeature.enable('kern')],
     );
   }
 
