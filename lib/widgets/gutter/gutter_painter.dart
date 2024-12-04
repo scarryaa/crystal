@@ -10,8 +10,6 @@ class GutterPainter extends CustomPainter {
   final int lastVisibleLine;
   final double viewportHeight;
 
-  late final int _lineNumberWidth;
-  late final double _gutterWidth;
   final TextPainter _textPainter =
       TextPainter(textDirection: TextDirection.ltr);
   late final Paint _backgroundPaint;
@@ -23,9 +21,6 @@ class GutterPainter extends CustomPainter {
     required this.viewportHeight,
   }) : super(repaint: core) {
     _backgroundPaint = Paint()..color = core.config.backgroundColor;
-    _lineNumberWidth = core.lines.length.toString().length;
-    _gutterWidth =
-        (_lineNumberWidth * core.config.characterWidth) + (_textPadding * 2);
   }
 
   @override
@@ -48,6 +43,27 @@ class GutterPainter extends CustomPainter {
     final end =
         min(core.lines.length, lastVisibleLine + core.config.lineBuffer);
 
+    final textStyle = TextStyle(
+      color: Colors.grey,
+      fontSize: core.config.fontSize,
+      fontFamily: core.config.fontFamily,
+      fontFeatures: const [FontFeature.enable('kern')],
+    );
+
+    double maxLineNumberWidth = 0;
+    for (int i = start; i < end; i++) {
+      _textPainter
+        ..text = TextSpan(
+          text: '${i + 1}',
+          style: textStyle,
+        )
+        ..layout(maxWidth: double.infinity);
+
+      maxLineNumberWidth = max(maxLineNumberWidth, _textPainter.width);
+    }
+
+    final gutterWidth = maxLineNumberWidth + (_textPadding * 2);
+
     _textPainter
       ..text = TextSpan(
         children: List.generate(
@@ -63,16 +79,16 @@ class GutterPainter extends CustomPainter {
                 fontSize: core.config.fontSize,
                 fontFamily: core.config.fontFamily,
                 fontFeatures: const [FontFeature.enable('kern')],
-              ).copyWith()),
+              )),
         ),
       )
       ..layout(
-        maxWidth: size.width,
+        maxWidth: gutterWidth,
         minWidth: 0,
       )
       ..paint(
         canvas,
-        Offset(size.width - _gutterWidth + _textPadding,
+        Offset(size.width - gutterWidth + _textPadding,
             firstVisibleLine * core.config.lineHeight),
       );
   }

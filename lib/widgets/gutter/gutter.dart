@@ -40,10 +40,20 @@ class _GutterState extends State<Gutter> {
   }
 
   double _calculateWidgetWidth() {
-    return max(
-        widget.core.config.minGutterWidth,
-        widget.core.lines.length.toString().length *
-            widget.core.config.characterWidth);
+    final textStyle = TextStyle(
+      fontSize: widget.core.config.fontSize,
+      fontFamily: widget.core.config.fontFamily,
+    );
+
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: widget.core.lines.length.toString(),
+        style: textStyle,
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+
+    return max(widget.core.config.minGutterWidth, textPainter.width + 40.0);
   }
 
   @override
