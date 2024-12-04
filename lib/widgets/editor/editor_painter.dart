@@ -7,6 +7,7 @@ class EditorPainter extends CustomPainter {
   final EditorCore core;
   final int firstVisibleLine;
   final int lastVisibleLine;
+  final double viewportHeight;
 
   late final TextStyle textStyle;
   final TextPainter textPainter = TextPainter(textDirection: TextDirection.ltr);
@@ -15,6 +16,7 @@ class EditorPainter extends CustomPainter {
     required this.core,
     required this.firstVisibleLine,
     required this.lastVisibleLine,
+    required this.viewportHeight,
   }) : super(repaint: core) {
     textStyle = TextStyle(
       color: core.config.textColor,
@@ -144,7 +146,8 @@ class EditorPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant EditorPainter oldDelegate) {
-    return oldDelegate.core.lines != core.lines ||
+    return oldDelegate.firstVisibleLine != firstVisibleLine ||
+        oldDelegate.lastVisibleLine != lastVisibleLine ||
         oldDelegate.core.config != core.config ||
         oldDelegate.textStyle != textStyle;
   }

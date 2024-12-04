@@ -163,6 +163,16 @@ class _EditorState extends State<Editor> {
                                         core: _core,
                                         firstVisibleLine: firstVisibleLine,
                                         lastVisibleLine: lastVisibleLine,
+                                        viewportHeight: MediaQuery.of(context)
+                                                .size
+                                                .height +
+                                            _core.config.heightPadding +
+                                            (widget.verticalScrollController
+                                                    .hasClients
+                                                ? widget
+                                                    .verticalScrollController
+                                                    .offset
+                                                : 0),
                                       ))))))));
             }));
   }

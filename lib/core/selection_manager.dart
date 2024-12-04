@@ -132,24 +132,23 @@ class SelectionManager {
   }
 
   String getSelectedText(BufferManager bufferManager) {
-    StringBuffer sb = StringBuffer();
-
     // Single line selection
     if (startLine == endLine) {
-      sb.write(bufferManager.lines[startLine].substring(startIndex, endIndex));
-    } else {
-      // First line
-      sb.writeln(bufferManager.lines[startLine].substring(startIndex));
-
-      // Middle lines
-      for (int i = startLine + 1; i < endLine; i++) {
-        sb.writeln(bufferManager.lines[i]);
-      }
-
-      // End line
-      sb.write(bufferManager.lines[endLine].substring(0, endIndex));
+      return bufferManager.lines[startLine].substring(startIndex, endIndex);
     }
 
-    return sb.toString();
+    // Multiline selection
+    final List<String> selectedLines = [
+      // First line
+      bufferManager.lines[startLine].substring(startIndex),
+
+      // Middle lines
+      ...bufferManager.lines.sublist(startLine + 1, endLine),
+
+      // Last line
+      bufferManager.lines[endLine].substring(0, endIndex)
+    ];
+
+    return selectedLines.join('\n');
   }
 }
