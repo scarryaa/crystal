@@ -30,6 +30,19 @@ class EditorScrollManager {
     });
   }
 
+  void recalculateScrollPosition(
+      EditorCore core, double viewportHeight, double viewportWidth) {
+    jumpToCursor(core, viewportHeight, viewportWidth);
+
+    final totalHeight = core.lines.length * core.config.lineHeight;
+    final maxScroll = max(0.0, totalHeight - viewportHeight);
+
+    if (editorVerticalScrollController.position.pixels > maxScroll) {
+      editorVerticalScrollController.jumpTo(maxScroll);
+      gutterVerticalScrollController.jumpTo(maxScroll);
+    }
+  }
+
   void jumpToCursor(
     EditorCore core,
     double screenHeight,

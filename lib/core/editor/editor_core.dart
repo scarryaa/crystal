@@ -12,6 +12,7 @@ class EditorCore extends ChangeNotifier {
   final CursorManager cursorManager;
   final EditorConfig _editorConfig;
 
+  void Function()? forceRefresh;
   void Function(int line, int column)? onCursorMove;
 
   EditorCore({
@@ -20,6 +21,7 @@ class EditorCore extends ChangeNotifier {
     required this.cursorManager,
     required editorConfig,
     this.onCursorMove,
+    this.forceRefresh,
   }) : _editorConfig = editorConfig;
 
   void moveTo(int line, int column) {
@@ -126,12 +128,18 @@ class EditorCore extends ChangeNotifier {
 
   bool deleteSelectionIfNeeded() {
     if (hasSelection()) {
+      final beforeLines = bufferManager.lines.length;
       selectionManager.deleteSelection(bufferManager, cursorPosition);
       clearSelection();
+
+      if (beforeLines != bufferManager.lines.length) {
+        forceRefresh?.call();
+      }
+
       onCursorMove?.call(cursorLine, cursorPosition);
+      notifyListeners();
       return true;
     }
-
     return false;
   }
 

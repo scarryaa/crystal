@@ -27,6 +27,7 @@ class _EditorScreenState extends State<EditorScreen> {
       setState(() {
         this.core = core;
         core.onCursorMove = _handleCursorMove;
+        core.forceRefresh = _forceRefresh;
       });
     });
   }
@@ -37,6 +38,18 @@ class _EditorScreenState extends State<EditorScreen> {
       scrollManager.editorVerticalScrollController.position.viewportDimension,
       scrollManager.editorHorizontalScrollController.position.viewportDimension,
     );
+  }
+
+  void _forceRefresh() {
+    setState(() {
+      // Recalculate scroll positions
+      scrollManager.recalculateScrollPosition(
+        core!,
+        scrollManager.editorVerticalScrollController.position.viewportDimension,
+        scrollManager
+            .editorHorizontalScrollController.position.viewportDimension,
+      );
+    });
   }
 
   @override

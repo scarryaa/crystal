@@ -161,6 +161,7 @@ class EditorPainter extends CustomPainter {
     return oldDelegate.firstVisibleLine != firstVisibleLine ||
         oldDelegate.lastVisibleLine != lastVisibleLine ||
         oldDelegate.core.config != core.config ||
+        oldDelegate.core.cursorPosition != core.cursorPosition ||
         oldDelegate.textStyle != textStyle;
   }
 }
