@@ -1,3 +1,6 @@
+import 'dart:math';
+
+import 'package:crystal/core/editor/editor_core.dart';
 import 'package:flutter/material.dart';
 
 class EditorScrollManager {
@@ -25,6 +28,26 @@ class EditorScrollManager {
             .jumpTo(gutterVerticalScrollController.offset);
       }
     });
+  }
+
+  void jumpToCursor(
+    EditorCore core,
+    double screenHeight,
+  ) {
+    double verticalOffsetTarget = core.cursorLine * core.config.lineHeight;
+    double currentOffset = editorVerticalScrollController.offset;
+    double bufferSpace = core.config.lineHeight * (core.config.lineBuffer + 2);
+
+    // If cursor is below visible area (with buffer)
+    if (verticalOffsetTarget + bufferSpace > screenHeight + currentOffset) {
+      editorVerticalScrollController
+          .jumpTo(verticalOffsetTarget - screenHeight + bufferSpace);
+    }
+    // If cursor is above visible area (with buffer)
+    else if (verticalOffsetTarget - bufferSpace < currentOffset) {
+      editorVerticalScrollController
+          .jumpTo(max(0, verticalOffsetTarget - bufferSpace));
+    }
   }
 
   void dispose() {

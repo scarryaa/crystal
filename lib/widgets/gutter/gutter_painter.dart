@@ -27,7 +27,6 @@ class GutterPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     drawBackground(canvas, size);
     drawLineNumbers(canvas, size);
-
     drawCurrentLineHighlight(canvas, size);
   }
 

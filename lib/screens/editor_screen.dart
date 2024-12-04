@@ -26,8 +26,16 @@ class _EditorScreenState extends State<EditorScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       setState(() {
         this.core = core;
+        core.onCursorMove = _handleCursorMove;
       });
     });
+  }
+
+  void _handleCursorMove(int line, int column) {
+    scrollManager.jumpToCursor(
+        core!,
+        scrollManager
+            .editorVerticalScrollController.position.viewportDimension);
   }
 
   @override

@@ -12,59 +12,71 @@ class EditorCore extends ChangeNotifier {
   final CursorManager cursorManager;
   final EditorConfig _editorConfig;
 
-  EditorCore(
-      {required this.bufferManager,
-      required this.selectionManager,
-      required this.cursorManager,
-      required editorConfig})
-      : _editorConfig = editorConfig;
+  void Function(int line, int column)? onCursorMove;
+
+  EditorCore({
+    required this.bufferManager,
+    required this.selectionManager,
+    required this.cursorManager,
+    required editorConfig,
+    this.onCursorMove,
+  }) : _editorConfig = editorConfig;
 
   void moveTo(int line, int column) {
     cursorManager.moveTo(line, column);
+    onCursorMove?.call(line, column);
     notifyListeners();
   }
 
   void moveLeft() {
     cursorManager.moveLeft();
+    onCursorMove?.call(cursorLine, cursorPosition);
     notifyListeners();
   }
 
   void moveRight() {
     cursorManager.moveRight();
+    onCursorMove?.call(cursorLine, cursorPosition);
     notifyListeners();
   }
 
   void moveUp() {
     cursorManager.moveUp();
+    onCursorMove?.call(cursorLine, cursorPosition);
     notifyListeners();
   }
 
   void moveDown() {
     cursorManager.moveDown();
+    onCursorMove?.call(cursorLine, cursorPosition);
     notifyListeners();
   }
 
   void insertChar(String char) {
     deleteSelectionIfNeeded();
     bufferManager.insertCharacter(char);
+    onCursorMove?.call(cursorLine, cursorPosition);
     notifyListeners();
   }
 
   void insertLine() {
     deleteSelectionIfNeeded();
     bufferManager.insertNewline();
+    onCursorMove?.call(cursorLine, cursorPosition);
     notifyListeners();
   }
 
   void delete(int length) {
     if (deleteSelectionIfNeeded()) return;
     bufferManager.delete(length);
+    onCursorMove?.call(cursorLine, cursorPosition);
     notifyListeners();
   }
 
   void deleteForwards(int length) {
     if (deleteSelectionIfNeeded()) return;
     bufferManager.deleteForwards(length);
+    onCursorMove?.call(cursorLine, cursorPosition);
     notifyListeners();
   }
 
@@ -88,6 +100,7 @@ class EditorCore extends ChangeNotifier {
 
     deleteSelectionIfNeeded();
     bufferManager.insertString(clipboardData);
+    onCursorMove?.call(cursorLine, cursorPosition);
     notifyListeners();
   }
 
