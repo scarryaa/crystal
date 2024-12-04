@@ -80,6 +80,17 @@ class _EditorState extends State<Editor> {
             max(maxWidth, element.length * _core.config.characterWidth));
   }
 
+  Future<KeyEventResult> handleKeyEventAsync(
+      FocusNode node, KeyEvent keyEvent) {
+    return editorInputManager.handleKeyEvent(_core, keyEvent);
+  }
+
+  KeyEventResult handleKeyEvent(FocusNode node, KeyEvent keyEvent) {
+    handleKeyEventAsync(node, keyEvent);
+
+    return KeyEventResult.handled;
+  }
+
   @override
   Widget build(BuildContext context) {
     return ScrollbarTheme(
@@ -147,8 +158,7 @@ class _EditorState extends State<Editor> {
                                   child: Focus(
                                       autofocus: true,
                                       onKeyEvent: (node, keyEvent) =>
-                                          editorInputManager.handleKeyEvent(
-                                              _core, keyEvent),
+                                          handleKeyEvent(node, keyEvent),
                                       child: CustomPaint(
                                           painter: EditorPainter(
                                         core: _core,

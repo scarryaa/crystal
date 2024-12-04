@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:crystal/core/editor/editor_core.dart';
 import 'package:flutter/material.dart';
 
-class EditorPainter extends CustomPainter with ChangeNotifier {
+class EditorPainter extends CustomPainter {
   final EditorCore core;
   final int firstVisibleLine;
   final int lastVisibleLine;
@@ -72,7 +72,7 @@ class EditorPainter extends CustomPainter with ChangeNotifier {
 
     // Check if this line is within selection range
     if (lineNumber >= normalizedStartLine && lineNumber <= normalizedEndLine) {
-      double top = lineNumber * core.config.lineHeight;
+      double top = (firstVisibleLine + lineNumber) * core.config.lineHeight;
       double height = core.config.lineHeight;
       double left = 0;
       double width = 0;

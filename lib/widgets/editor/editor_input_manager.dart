@@ -1,10 +1,11 @@
 import 'package:crystal/core/editor/editor_core.dart';
-import 'package:crystal/models/selection/direction.dart';
+import 'package:crystal/models/selection/selection_direction.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class EditorInputManager {
-  KeyEventResult handleKeyEvent(EditorCore core, KeyEvent keyEvent) {
+  Future<KeyEventResult> handleKeyEvent(
+      EditorCore core, KeyEvent keyEvent) async {
     if (keyEvent is! KeyDownEvent && keyEvent is! KeyRepeatEvent) {
       return KeyEventResult.ignored;
     }
@@ -14,7 +15,7 @@ class EditorInputManager {
         HardwareKeyboard.instance.isControlPressed ||
             HardwareKeyboard.instance.isMetaPressed;
 
-    if (handleCtrlKeys(core, keyEvent, isMetaOrCtrlPressed)) {
+    if (await handleCtrlKeys(core, keyEvent, isMetaOrCtrlPressed)) {
       return KeyEventResult.handled;
     }
 
@@ -65,16 +66,22 @@ class EditorInputManager {
     }
   }
 
-  bool handleCtrlKeys(
-      EditorCore core, KeyEvent keyEvent, bool isMetaOrCtrlPressed) {
+  Future<bool> handleCtrlKeys(
+      EditorCore core, KeyEvent keyEvent, bool isMetaOrCtrlPressed) async {
     if (!isMetaOrCtrlPressed) return false;
 
-    switch (keyEvent) {
+    switch (keyEvent.logicalKey) {
+      case LogicalKeyboardKey.keyA:
+        core.selectAll();
+        return true;
       case LogicalKeyboardKey.keyC:
+        core.copy();
         return true;
       case LogicalKeyboardKey.keyV:
+        await core.paste();
         return true;
       case LogicalKeyboardKey.keyX:
+        core.cut();
         return true;
       default:
         return false;

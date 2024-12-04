@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:crystal/core/buffer_manager.dart';
-import 'package:crystal/models/selection/direction.dart';
+import 'package:crystal/models/selection/selection_direction.dart';
 
 class SelectionManager {
   int anchor = -1;
@@ -36,6 +36,12 @@ class SelectionManager {
       bufferManager.deleteRange(normalizedStartLine, normalizedEndLine,
           normalizedStartIndex, normalizedEndIndex);
     }
+  }
+
+  void selectAll(BufferManager bufferManager) {
+    anchor = startIndex = startLine = 0;
+    endLine = bufferManager.lines.length - 1;
+    endIndex = bufferManager.lines[endLine].length;
   }
 
   void updateSelection(BufferManager bufferManager,
@@ -123,5 +129,27 @@ class SelectionManager {
         anchor == -1 &&
         startIndex == -1 &&
         endIndex == -1);
+  }
+
+  String getSelectedText(BufferManager bufferManager) {
+    StringBuffer sb = StringBuffer();
+
+    // Single line selection
+    if (startLine == endLine) {
+      sb.write(bufferManager.lines[startLine].substring(startIndex, endIndex));
+    } else {
+      // First line
+      sb.writeln(bufferManager.lines[startLine].substring(startIndex));
+
+      // Middle lines
+      for (int i = startLine + 1; i < endLine; i++) {
+        sb.writeln(bufferManager.lines[i]);
+      }
+
+      // End line
+      sb.write(bufferManager.lines[endLine].substring(0, endIndex));
+    }
+
+    return sb.toString();
   }
 }

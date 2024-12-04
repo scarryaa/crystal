@@ -2,8 +2,9 @@ import 'package:crystal/core/buffer_manager.dart';
 import 'package:crystal/core/cursor_manager.dart';
 import 'package:crystal/core/editor/editor_config.dart';
 import 'package:crystal/core/selection_manager.dart';
-import 'package:crystal/models/selection/direction.dart';
+import 'package:crystal/models/selection/selection_direction.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class EditorCore extends ChangeNotifier {
   final BufferManager bufferManager;
@@ -64,6 +65,34 @@ class EditorCore extends ChangeNotifier {
   void deleteForwards(int length) {
     if (deleteSelectionIfNeeded()) return;
     bufferManager.deleteForwards(length);
+    notifyListeners();
+  }
+
+  void copy() {
+    Clipboard.setData(
+        ClipboardData(text: selectionManager.getSelectedText(bufferManager)));
+    notifyListeners();
+  }
+
+  void cut() {
+    Clipboard.setData(
+        ClipboardData(text: selectionManager.getSelectedText(bufferManager)));
+    deleteSelectionIfNeeded();
+    notifyListeners();
+  }
+
+  Future<void> paste() async {
+    String? clipboardData =
+        (await Clipboard.getData(Clipboard.kTextPlain))?.text;
+    if (clipboardData == null) return;
+
+    deleteSelectionIfNeeded();
+    bufferManager.insertString(clipboardData);
+    notifyListeners();
+  }
+
+  void selectAll() {
+    selectionManager.selectAll(bufferManager);
     notifyListeners();
   }
 

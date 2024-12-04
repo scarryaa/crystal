@@ -6,6 +6,23 @@ class BufferManager {
 
   List<String> get lines => List<String>.from(_lines);
 
+  void insertString(String string) {
+    List<String> linesToAdd = string.split('\n');
+    int numberOfLinesAdded = linesToAdd.length - 1;
+
+    if (numberOfLinesAdded == 0) {
+      _lines[cursorManager.cursorLine] += linesToAdd.first;
+      cursorManager.cursorIndex += linesToAdd.first.length;
+      cursorManager.targetCursorIndex = cursorManager.cursorIndex;
+    } else {
+      _lines.removeAt(cursorManager.cursorLine);
+      _lines.insertAll(cursorManager.cursorLine, linesToAdd);
+      cursorManager.cursorLine += numberOfLinesAdded;
+      cursorManager.cursorIndex = linesToAdd.last.length;
+      cursorManager.targetCursorIndex = cursorManager.cursorIndex;
+    }
+  }
+
   void insertCharacter(String char) {
     _lines[cursorManager.cursorLine] = _lines[cursorManager.cursorLine]
             .substring(0, cursorManager.cursorIndex) +
