@@ -30,15 +30,23 @@ class GutterPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Draw background
+    drawBackground(canvas, size);
+    drawLineNumbers(canvas, size);
+
+    drawCurrentLineHighlight(canvas, size);
+  }
+
+  void drawBackground(Canvas canvas, Size size) {
     canvas.drawRect(
       Rect.fromLTWH(0, 0, size.width, viewportHeight),
       _backgroundPaint,
     );
+  }
 
-    // Draw line numbers
+  void drawLineNumbers(Canvas canvas, Size size) {
     final start = firstVisibleLine;
-    final end = min(core.lines.length, lastVisibleLine + 5);
+    final end =
+        min(core.lines.length, lastVisibleLine + core.config.lineBuffer);
 
     _textPainter
       ..text = TextSpan(
@@ -67,8 +75,6 @@ class GutterPainter extends CustomPainter {
         Offset(size.width - _gutterWidth + _textPadding,
             firstVisibleLine * core.config.lineHeight),
       );
-
-    drawCurrentLineHighlight(canvas, size);
   }
 
   void drawCurrentLineHighlight(Canvas canvas, Size size) {

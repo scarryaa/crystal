@@ -29,7 +29,6 @@ class _EditorState extends State<Editor> {
   late final EditorCore _core;
   final EditorInputManager editorInputManager = EditorInputManager();
   final ValueNotifier<bool> _scrollChanged = ValueNotifier<bool>(false);
-  final lineBuffer = 5;
 
   @override
   void initState() {
@@ -120,7 +119,7 @@ class _EditorState extends State<Editor> {
                           0,
                           (widget.verticalScrollController.offset ~/
                                   _core.config.lineHeight) -
-                              lineBuffer)
+                              _core.config.lineBuffer)
                       : 0;
 
               final int lastVisibleLine = firstVisibleLine +
@@ -130,12 +129,12 @@ class _EditorState extends State<Editor> {
                           (widget.verticalScrollController.position
                                       .viewportDimension ~/
                                   _core.config.lineHeight) +
-                              lineBuffer)
+                              _core.config.lineBuffer)
                       : min(
                           _core.lines.length,
                           (MediaQuery.of(context).size.height ~/
                                   _core.config.lineHeight) +
-                              lineBuffer));
+                              _core.config.lineBuffer));
 
               return Scrollbar(
                   controller: widget.verticalScrollController,
