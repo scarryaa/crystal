@@ -4,6 +4,7 @@ class EditorConfig {
   late double widthPadding;
   late double heightPadding;
   double fontSize;
+  FontWeight fontWeight;
   late double lineHeight;
   late double characterWidth;
   double minGutterWidth;
@@ -18,11 +19,12 @@ class EditorConfig {
   double caretWidth;
 
   EditorConfig({
-    this.fontSize = 14,
+    this.fontSize = 15,
+    this.fontWeight = FontWeight.w400,
     this.minGutterWidth = 60,
     this.fontFamily = "IBM Plex Mono",
     this.backgroundColor = Colors.white,
-    this.textColor = Colors.black,
+    this.textColor = const Color(0xFF2F3337),
     this.gutterTextcolor = Colors.grey,
     this.caretColor = Colors.blue,
     this.caretRadius = 2.0,

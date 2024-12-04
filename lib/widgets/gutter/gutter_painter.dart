@@ -12,7 +12,6 @@ class GutterPainter extends CustomPainter {
 
   late final int _lineNumberWidth;
   late final double _gutterWidth;
-  late final TextStyle _lineNumberStyle;
   final TextPainter _textPainter =
       TextPainter(textDirection: TextDirection.ltr);
   late final Paint _backgroundPaint;
@@ -27,18 +26,6 @@ class GutterPainter extends CustomPainter {
     _lineNumberWidth = core.lines.length.toString().length;
     _gutterWidth =
         (_lineNumberWidth * core.config.characterWidth) + (_textPadding * 2);
-    _lineNumberStyle = TextStyle(
-      fontFamily: core.config.fontFamily,
-      fontSize: core.config.fontSize,
-      color: core.config.gutterTextcolor,
-    );
-  }
-
-  TextSpan _generateLineNumberSpan(int lineNumber) {
-    return TextSpan(
-      style: _lineNumberStyle,
-      text: '${lineNumber.toString().padLeft(_lineNumberWidth)}\n',
-    );
   }
 
   @override
@@ -56,7 +43,20 @@ class GutterPainter extends CustomPainter {
     _textPainter
       ..text = TextSpan(
         children: List.generate(
-            end - start, (index) => _generateLineNumberSpan(start + index + 1)),
+          end - start,
+          (index) => TextSpan(
+            text: '${start + index + 1}\n',
+            style: TextStyle(
+              color: core.cursorLine == (start + index) ||
+                      (start + index >= core.selectionManager.startLine &&
+                          start + index <= core.selectionManager.endLine)
+                  ? Colors.black
+                  : Colors.grey,
+              fontSize: core.config.fontSize,
+              fontFamily: core.config.fontFamily,
+            ),
+          ),
+        ),
       )
       ..layout(
         maxWidth: size.width,
@@ -72,6 +72,8 @@ class GutterPainter extends CustomPainter {
   }
 
   void drawCurrentLineHighlight(Canvas canvas, Size size) {
+    if (core.hasSelection()) return;
+
     canvas.drawRect(
         Rect.fromLTWH(0, core.cursorManager.cursorLine * core.config.lineHeight,
             size.width, core.config.lineHeight),

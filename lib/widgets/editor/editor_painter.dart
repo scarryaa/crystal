@@ -22,6 +22,7 @@ class EditorPainter extends CustomPainter {
       color: core.config.textColor,
       fontSize: core.config.fontSize,
       fontFamily: core.config.fontFamily,
+      fontWeight: core.config.fontWeight,
     );
   }
 
@@ -51,6 +52,8 @@ class EditorPainter extends CustomPainter {
   }
 
   void drawCurrentLineHighlight(Canvas canvas, Size size) {
+    if (core.hasSelection()) return;
+
     canvas.drawRect(
         Rect.fromLTWH(0, core.cursorManager.cursorLine * core.config.lineHeight,
             size.width, core.config.lineHeight),
