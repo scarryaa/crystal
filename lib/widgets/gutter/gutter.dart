@@ -19,6 +19,19 @@ class Gutter extends StatefulWidget {
 }
 
 class _GutterState extends State<Gutter> {
+  final int lineBuffer = 5;
+  final ValueNotifier<bool> _scrollChanged = ValueNotifier<bool>(false);
+
+  @override
+  void initState() {
+    super.initState();
+    widget.verticalScrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    _scrollChanged.value = !_scrollChanged.value;
+  }
+
   double _calculateWidgetHeight() {
     return max(
         MediaQuery.of(context).size.height,
@@ -36,8 +49,32 @@ class _GutterState extends State<Gutter> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-        listenable: widget.core,
+        listenable: Listenable.merge([widget.core, _scrollChanged]),
         builder: (context, child) {
+          final int firstVisibleLine =
+              widget.verticalScrollController.hasClients
+                  ? max(
+                      0,
+                      (widget.verticalScrollController.offset ~/
+                              widget.core.config.lineHeight) -
+                          lineBuffer)
+                  : 0;
+
+          final int lastVisibleLine = firstVisibleLine +
+              (widget.verticalScrollController.hasClients
+                  ? min(
+                      widget.core.lines.length,
+                      (widget.verticalScrollController.position
+                                  .viewportDimension
+                                  .toInt() ~/
+                              widget.core.config.lineHeight) +
+                          lineBuffer)
+                  : min(
+                      widget.core.lines.length,
+                      (MediaQuery.of(context).size.height ~/
+                              widget.core.config.lineHeight) +
+                          lineBuffer));
+
           return ScrollConfiguration(
               behavior: const ScrollBehavior().copyWith(scrollbars: false),
               child: SingleChildScrollView(
@@ -47,7 +84,11 @@ class _GutterState extends State<Gutter> {
                       width: _calculateWidgetWidth(),
                       height: _calculateWidgetHeight(),
                       child: CustomPaint(
-                          painter: GutterPainter(core: widget.core)))));
+                          painter: GutterPainter(
+                        core: widget.core,
+                        firstVisibleLine: firstVisibleLine,
+                        lastVisibleLine: lastVisibleLine,
+                      )))));
         });
   }
 }

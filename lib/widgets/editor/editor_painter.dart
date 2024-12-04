@@ -3,11 +3,16 @@ import 'package:flutter/material.dart';
 
 class EditorPainter extends CustomPainter with ChangeNotifier {
   final EditorCore core;
+  final int firstVisibleLine;
+  final int lastVisibleLine;
+
   late final TextStyle textStyle;
   final TextPainter textPainter = TextPainter(textDirection: TextDirection.ltr);
 
   EditorPainter({
     required this.core,
+    required this.firstVisibleLine,
+    required this.lastVisibleLine,
   }) : super(repaint: core) {
     textStyle = TextStyle(
       color: core.config.textColor,
@@ -31,15 +36,22 @@ class EditorPainter extends CustomPainter with ChangeNotifier {
   }
 
   void drawText(Canvas canvas) {
-    textPainter.text = TextSpan(text: core.toString(), style: textStyle);
+    textPainter.text = TextSpan(
+        text: core.getLines(firstVisibleLine, lastVisibleLine).join('\n'),
+        style: textStyle);
     textPainter.layout();
-    textPainter.paint(canvas, Offset.zero);
+    textPainter.paint(
+        canvas, Offset(0, firstVisibleLine * core.config.lineHeight));
   }
 
   void drawCursor(Canvas canvas) {
     canvas.drawRect(
-      Rect.fromLTWH(_measureLineWidth(),
-          core.cursorLine * core.config.lineHeight, 2, core.config.lineHeight),
+      Rect.fromLTWH(
+        _measureLineWidth(),
+        core.cursorLine * core.config.lineHeight,
+        core.config.caretWidth,
+        core.config.lineHeight,
+      ),
       Paint()..color = core.config.caretColor,
     );
   }

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:crystal/core/editor/editor_core.dart';
 import 'package:flutter/material.dart';
 
@@ -5,9 +7,13 @@ class GutterPainter extends CustomPainter {
   final double textPadding = 25.0;
   final EditorCore core;
   final TextPainter textPainter = TextPainter(textDirection: TextDirection.ltr);
+  final int firstVisibleLine;
+  final int lastVisibleLine;
 
   GutterPainter({
     required this.core,
+    required this.firstVisibleLine,
+    required this.lastVisibleLine,
   });
 
   @override
@@ -27,7 +33,7 @@ class GutterPainter extends CustomPainter {
 
     textPainter.text = TextSpan(
         children: List.generate(
-            totalLines,
+            min(totalLines, firstVisibleLine + lastVisibleLine),
             (i) => TextSpan(
                 style: TextStyle(
                   fontFamily: core.config.fontFamily,

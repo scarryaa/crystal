@@ -27,6 +27,8 @@ class Editor extends StatefulWidget {
 class _EditorState extends State<Editor> {
   late final EditorCore _core;
   final EditorInputManager editorInputManager = EditorInputManager();
+  final ValueNotifier<bool> _scrollChanged = ValueNotifier<bool>(false);
+  final lineBuffer = 5;
 
   @override
   void initState() {
@@ -40,6 +42,21 @@ class _EditorState extends State<Editor> {
 
     _core.bufferManager.cursorManager = _core.cursorManager;
     widget.onCoreInitialized?.call(_core);
+
+    widget.verticalScrollController.addListener(_onScroll);
+    widget.horizontalScrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    widget.verticalScrollController.removeListener(_onScroll);
+    widget.horizontalScrollController.removeListener(_onScroll);
+    _scrollChanged.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    _scrollChanged.value = !_scrollChanged.value;
   }
 
   double _calculateWidgetHeight() {
@@ -82,8 +99,32 @@ class _EditorState extends State<Editor> {
           crossAxisMargin: 0,
         ),
         child: ListenableBuilder(
-            listenable: _core,
+            listenable: Listenable.merge([_core, _scrollChanged]),
             builder: (context, child) {
+              final int firstVisibleLine =
+                  widget.verticalScrollController.hasClients
+                      ? max(
+                          0,
+                          (widget.verticalScrollController.offset ~/
+                                  _core.config.lineHeight) -
+                              lineBuffer)
+                      : 0;
+
+              final int lastVisibleLine = firstVisibleLine +
+                  (widget.verticalScrollController.hasClients
+                      ? min(
+                          _core.lines.length,
+                          (widget.verticalScrollController.position
+                                      .viewportDimension
+                                      .toInt() ~/
+                                  _core.config.lineHeight) +
+                              lineBuffer)
+                      : min(
+                          _core.lines.length,
+                          (MediaQuery.of(context).size.height ~/
+                                  _core.config.lineHeight) +
+                              lineBuffer));
+
               return Scrollbar(
                   controller: widget.verticalScrollController,
                   interactive: true,
@@ -109,6 +150,8 @@ class _EditorState extends State<Editor> {
                                       child: CustomPaint(
                                           painter: EditorPainter(
                                         core: _core,
+                                        firstVisibleLine: firstVisibleLine,
+                                        lastVisibleLine: lastVisibleLine,
                                       ))))))));
             }));
   }
