@@ -64,33 +64,30 @@ class GutterPainter extends CustomPainter {
 
     final gutterWidth = maxLineNumberWidth + (_textPadding * 2);
 
-    _textPainter
-      ..text = TextSpan(
-        children: List.generate(
-          end - start,
-          (index) => TextSpan(
-              text: '${start + index + 1}\n',
-              style: TextStyle(
-                color: core.cursorLine == (start + index) ||
-                        (start + index >= core.selectionManager.startLine &&
-                            start + index <= core.selectionManager.endLine)
-                    ? Colors.black
-                    : Colors.grey,
-                fontSize: core.config.fontSize,
-                fontFamily: core.config.fontFamily,
-                fontFeatures: const [FontFeature.enable('kern')],
-              )),
-        ),
-      )
-      ..layout(
-        maxWidth: gutterWidth,
-        minWidth: 0,
-      )
-      ..paint(
-        canvas,
-        Offset(size.width - gutterWidth + _textPadding,
-            firstVisibleLine * core.config.lineHeight),
-      );
+    for (int i = 0; i < end - start; i++) {
+      final lineNumber = start + i + 1;
+      _textPainter
+        ..text = TextSpan(
+          text: '$lineNumber',
+          style: TextStyle(
+            color: core.cursorLine == (start + i) ||
+                    (start + i >= core.selectionManager.startLine &&
+                        start + i <= core.selectionManager.endLine)
+                ? Colors.black
+                : Colors.grey,
+            fontSize: core.config.fontSize,
+            fontFamily: core.config.fontFamily,
+            fontFeatures: const [FontFeature.enable('kern')],
+          ),
+        )
+        ..layout(maxWidth: gutterWidth);
+
+      final x = size.width - _textPainter.width - _textPadding;
+      final y = (i * core.config.lineHeight) +
+          (firstVisibleLine * core.config.lineHeight);
+
+      _textPainter.paint(canvas, Offset(x, y));
+    }
   }
 
   void drawCurrentLineHighlight(Canvas canvas, Size size) {
