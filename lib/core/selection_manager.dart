@@ -23,14 +23,12 @@ class SelectionManager {
     int normalizedStartLine = min(startLine, endLine);
     int normalizedEndLine = max(startLine, endLine);
 
-    // If on same line, simply use min/max of indices
     if (normalizedStartLine == normalizedEndLine) {
       int normalizedStartIndex = min(startIndex, endIndex);
       int normalizedEndIndex = max(startIndex, endIndex);
       bufferManager.deleteRange(normalizedStartLine, normalizedEndLine,
           normalizedStartIndex, normalizedEndIndex);
     } else {
-      // If on different lines, indices correspond to their respective lines
       int normalizedStartIndex =
           (normalizedStartLine == startLine) ? startIndex : endIndex;
       int normalizedEndIndex =

@@ -58,8 +58,6 @@ class EditorPainter extends CustomPainter with ChangeNotifier {
   }
 
   void drawSelectionForSingleLine(Canvas canvas, int lineNumber, String line) {
-    if (!core.selectionManager.hasSelection()) return;
-
     int normalizedStartLine =
         min(core.selectionManager.startLine, core.selectionManager.endLine);
     int normalizedEndLine =
@@ -81,7 +79,7 @@ class EditorPainter extends CustomPainter with ChangeNotifier {
 
       // Middle lines
       if (lineNumber > normalizedStartLine && lineNumber < normalizedEndLine) {
-        width = line.length * core.config.characterWidth;
+        width = (line.length + 1) * core.config.characterWidth;
       }
       // Single line selection
       else if (normalizedStartLine == normalizedEndLine) {
@@ -94,13 +92,23 @@ class EditorPainter extends CustomPainter with ChangeNotifier {
       // Start line
       else if (lineNumber == normalizedStartLine) {
         left = normalizedStartIndex * core.config.characterWidth;
-        width =
-            (line.length - normalizedStartIndex) * core.config.characterWidth;
+        width = (line.length - normalizedStartIndex + 1) *
+            core.config.characterWidth;
       }
       // End line
       else if (lineNumber == normalizedEndLine) {
         left = 0;
         width = normalizedEndIndex * core.config.characterWidth;
+      }
+
+      // Show empty line selection indicator
+      if (line.isEmpty && normalizedStartLine != normalizedEndLine) {
+        if ((lineNumber != core.cursorLine) ||
+            (core.selectionManager.startIndex == core.cursorPosition &&
+                lineNumber == normalizedStartLine)) {
+          left = 0;
+          width = core.config.characterWidth;
+        }
       }
 
       canvas.drawRect(Rect.fromLTWH(left, top, width, height),

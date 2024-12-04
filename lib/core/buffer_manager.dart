@@ -23,32 +23,44 @@ class BufferManager {
   }
 
   void deleteRange(int startLine, int endLine, int startIndex, int endIndex) {
-    int totalLength = 0;
-
-    for (int i = startLine; i <= endLine; i++) {
-      String line = lines[i];
-      if (startLine == endLine) {
-        // Single line deletion
-        totalLength += endIndex - startIndex;
-      } else if (i == startLine) {
-        // First line: from startIndex to end
-        totalLength += line.length - startIndex;
-      } else if (i == endLine) {
-        // Last line: from start to endIndex
-        totalLength += endIndex;
-      } else {
-        // Middle lines: full length
-        totalLength += line.length;
-      }
+    if (startLine < 0 ||
+        endLine >= _lines.length ||
+        startLine > endLine ||
+        startIndex < 0 ||
+        endIndex > _lines[endLine].length) {
+      throw ArgumentError('Invalid range parameters');
     }
 
-    cursorManager.cursorIndex = startIndex;
+    // Single line deletion
+    if (startLine == endLine) {
+      String currentLine = _lines[startLine];
+      _lines[startLine] = currentLine.substring(0, startIndex) +
+          currentLine.substring(endIndex);
+
+      cursorManager.cursorLine = startLine;
+      cursorManager.cursorIndex = startIndex;
+      return;
+    }
+
+    // Multi-line deletion
+    // Keep the text before startIndex in the first line
+    String firstLinePart = _lines[startLine].substring(0, startIndex);
+
+    // Keep the text after endIndex in the last line
+    String lastLinePart = _lines[endLine].substring(endIndex);
+
+    // Remove intermediate lines
+    _lines.removeRange(startLine + 1, endLine + 1);
+
+    // Combine first and last line parts
+    _lines[startLine] = firstLinePart + lastLinePart;
+
     cursorManager.cursorLine = startLine;
-    deleteForwards(totalLength);
+    cursorManager.cursorIndex = startIndex;
   }
 
   void delete(int length) {
-    if (_validateCursorPositionBeforeDelete() == false) return;
+    if (!_validateCursorPositionBeforeDelete()) return;
 
     if (cursorManager.cursorIndex == 0 && cursorManager.cursorLine > 0) {
       // When cursor is at the start of a line (except first line)
@@ -72,50 +84,47 @@ class BufferManager {
   }
 
   void deleteForwards(int length) {
-    // Get remaining characters in current line after cursor
-    int remainingInLine =
-        _lines[cursorManager.cursorLine].length - cursorManager.cursorIndex;
+    if (length <= 0) return;
 
-    if (length > remainingInLine) {
-      // Multi-line deletion
-      int charsToDelete = length;
-      int currentLine = cursorManager.cursorLine;
+    // Check if we're at the end of the document
+    if (cursorManager.cursorLine == _lines.length - 1 &&
+        cursorManager.cursorIndex >= _lines[cursorManager.cursorLine].length) {
+      return;
+    }
 
-      // Keep track of first line's beginning
-      String firstLinePart =
-          _lines[currentLine].substring(0, cursorManager.cursorIndex);
+    // Deletion within the same line
+    int currentLineLength = _lines[cursorManager.cursorLine].length;
+    int remainingInLine = currentLineLength - cursorManager.cursorIndex;
 
-      while (charsToDelete > 0 && currentLine < _lines.length) {
-        // If we're still on first line, start from cursor
-        int startIndex = (currentLine == cursorManager.cursorLine)
-            ? cursorManager.cursorIndex
-            : 0;
-
-        int availableChars = _lines[currentLine].length - startIndex;
-
-        if (charsToDelete > availableChars) {
-          // Need to go to next line
-          charsToDelete -= (availableChars);
-          currentLine++;
-        } else {
-          // We can finish the deletion on this line
-          String endPart =
-              _lines[currentLine].substring(startIndex + charsToDelete);
-          _lines[cursorManager.cursorLine] = firstLinePart + endPart;
-
-          // Remove all lines in between
-          if (currentLine > cursorManager.cursorLine) {
-            _lines.removeRange(cursorManager.cursorLine + 1, currentLine + 1);
-          }
-          break;
-        }
-      }
-    } else {
-      // Single-line deletion
+    if (length <= remainingInLine) {
       _lines[cursorManager.cursorLine] = _lines[cursorManager.cursorLine]
               .substring(0, cursorManager.cursorIndex) +
           _lines[cursorManager.cursorLine]
               .substring(cursorManager.cursorIndex + length);
+      return;
+    }
+
+    // Multi-line deletion
+    int remainingCharsToDelete = length;
+    int currentLine = cursorManager.cursorLine;
+
+    while (remainingCharsToDelete > 0 && currentLine < _lines.length - 1) {
+      String currentLineContent = _lines[currentLine];
+      int currentLineRemainingChars =
+          currentLineContent.length - cursorManager.cursorIndex;
+
+      if (remainingCharsToDelete <= currentLineRemainingChars) {
+        // Partial line deletion
+        _lines[currentLine] = currentLineContent.substring(
+                0, cursorManager.cursorIndex) +
+            currentLineContent
+                .substring(cursorManager.cursorIndex + remainingCharsToDelete);
+        break;
+      }
+
+      // Remove this line or part of it
+      remainingCharsToDelete -= currentLineRemainingChars + 1; // +1 for newline
+      _lines.removeAt(currentLine);
     }
   }
 
