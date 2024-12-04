@@ -30,12 +30,13 @@ class EditorPainter extends CustomPainter {
     drawBackground(canvas, size);
     drawText(canvas);
     drawSelection(canvas);
+    drawCurrentLineHighlight(canvas, size);
     drawCursor(canvas);
   }
 
   void drawBackground(Canvas canvas, Size size) {
     canvas.drawRect(
-      Rect.fromLTWH(0, 0, size.width, size.height),
+      Rect.fromLTWH(0, 0, size.width, viewportHeight),
       Paint()..color = core.config.backgroundColor,
     );
   }
@@ -47,6 +48,13 @@ class EditorPainter extends CustomPainter {
     textPainter.layout();
     textPainter.paint(
         canvas, Offset(0, firstVisibleLine * core.config.lineHeight));
+  }
+
+  void drawCurrentLineHighlight(Canvas canvas, Size size) {
+    canvas.drawRect(
+        Rect.fromLTWH(0, core.cursorManager.cursorLine * core.config.lineHeight,
+            size.width, core.config.lineHeight),
+        Paint()..color = Colors.blue.withOpacity(0.3));
   }
 
   void drawSelection(Canvas canvas) {

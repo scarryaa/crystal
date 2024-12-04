@@ -15,14 +15,15 @@ class GutterPainter extends CustomPainter {
   late final TextStyle _lineNumberStyle;
   final TextPainter _textPainter =
       TextPainter(textDirection: TextDirection.ltr);
-  final Paint _backgroundPaint = Paint()..color = Colors.white;
+  late final Paint _backgroundPaint;
 
   GutterPainter({
     required this.core,
     required this.firstVisibleLine,
     required this.lastVisibleLine,
     required this.viewportHeight,
-  }) {
+  }) : super(repaint: core) {
+    _backgroundPaint = Paint()..color = core.config.backgroundColor;
     _lineNumberWidth = core.lines.length.toString().length;
     _gutterWidth =
         (_lineNumberWidth * core.config.characterWidth) + (_textPadding * 2);
@@ -66,13 +67,23 @@ class GutterPainter extends CustomPainter {
         Offset(size.width - _gutterWidth + _textPadding,
             firstVisibleLine * core.config.lineHeight),
       );
+
+    drawCurrentLineHighlight(canvas, size);
+  }
+
+  void drawCurrentLineHighlight(Canvas canvas, Size size) {
+    canvas.drawRect(
+        Rect.fromLTWH(0, core.cursorManager.cursorLine * core.config.lineHeight,
+            size.width, core.config.lineHeight),
+        Paint()..color = Colors.blue.withOpacity(0.3));
   }
 
   @override
   bool shouldRepaint(GutterPainter oldDelegate) {
     return firstVisibleLine != oldDelegate.firstVisibleLine ||
         lastVisibleLine != oldDelegate.lastVisibleLine ||
-        !identical(core, oldDelegate.core);
+        !identical(core, oldDelegate.core) ||
+        core.cursorLine != oldDelegate.core.cursorLine;
   }
 
   @override
