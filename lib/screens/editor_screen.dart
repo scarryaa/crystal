@@ -1,6 +1,6 @@
 import 'package:crystal/core/editor/editor_core.dart';
 import 'package:crystal/widgets/editor/editor.dart';
-import 'package:crystal/widgets/editor/editor_scroll_manager.dart';
+import 'package:crystal/widgets/editor/managers/editor_scroll_manager.dart';
 import 'package:crystal/widgets/gutter/gutter.dart';
 import 'package:flutter/material.dart';
 

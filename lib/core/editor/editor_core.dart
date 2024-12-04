@@ -1,7 +1,7 @@
-import 'package:crystal/core/buffer_manager.dart';
-import 'package:crystal/core/cursor_manager.dart';
+import 'package:crystal/core/editor/buffer_manager.dart';
+import 'package:crystal/core/editor/cursor_manager.dart';
 import 'package:crystal/core/editor/editor_config.dart';
-import 'package:crystal/core/selection_manager.dart';
+import 'package:crystal/core/editor/selection_manager.dart';
 import 'package:crystal/models/selection/selection_direction.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

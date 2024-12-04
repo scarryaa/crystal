@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:crystal/core/buffer_manager.dart';
+import 'package:crystal/core/editor/buffer_manager.dart';
 import 'package:crystal/models/selection/selection_direction.dart';
 
 class SelectionManager {

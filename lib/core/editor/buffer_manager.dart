@@ -1,4 +1,4 @@
-import 'package:crystal/core/cursor_manager.dart';
+import 'package:crystal/core/editor/cursor_manager.dart';
 
 class BufferManager {
   final List<String> _lines = [''];

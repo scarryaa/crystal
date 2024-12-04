@@ -1,11 +1,11 @@
 import 'dart:math';
 
-import 'package:crystal/core/buffer_manager.dart';
-import 'package:crystal/core/cursor_manager.dart';
+import 'package:crystal/core/editor/buffer_manager.dart';
+import 'package:crystal/core/editor/cursor_manager.dart';
 import 'package:crystal/core/editor/editor_config.dart';
 import 'package:crystal/core/editor/editor_core.dart';
-import 'package:crystal/core/selection_manager.dart';
-import 'package:crystal/widgets/editor/editor_input_manager.dart';
+import 'package:crystal/core/editor/selection_manager.dart';
+import 'package:crystal/widgets/editor/managers/editor_input_manager.dart';
 import 'package:crystal/widgets/editor/editor_painter.dart';
 import 'package:flutter/material.dart';
 

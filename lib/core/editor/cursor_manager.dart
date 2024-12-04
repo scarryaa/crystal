@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:crystal/core/buffer_manager.dart';
+import 'package:crystal/core/editor/buffer_manager.dart';
 
 class CursorManager {
   final BufferManager _bufferManager;
