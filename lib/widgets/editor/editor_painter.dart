@@ -53,7 +53,7 @@ class EditorPainter extends CustomPainter {
     var lines = core.getLines(firstVisibleLine, lastVisibleLine);
     for (var i = 0; i < lines.length; i++) {
       var line = lines[i];
-      drawSelectionForSingleLine(canvas, i, line);
+      drawSelectionForSingleLine(canvas, i + firstVisibleLine, line);
     }
   }
 
@@ -72,7 +72,7 @@ class EditorPainter extends CustomPainter {
 
     // Check if this line is within selection range
     if (lineNumber >= normalizedStartLine && lineNumber <= normalizedEndLine) {
-      double top = (firstVisibleLine + lineNumber) * core.config.lineHeight;
+      double top = lineNumber * core.config.lineHeight;
       double height = core.config.lineHeight;
       double left = 0;
       double width = 0;

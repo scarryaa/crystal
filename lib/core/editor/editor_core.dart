@@ -134,7 +134,10 @@ class EditorCore extends ChangeNotifier {
   EditorConfig get config => _editorConfig;
 
   List<String> getLines(int startLine, int endLine) {
-    return bufferManager.lines.skip(startLine).take(endLine).toList();
+    return bufferManager.lines
+        .skip(startLine)
+        .take(endLine - startLine)
+        .toList();
   }
 
   @override

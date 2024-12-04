@@ -128,8 +128,7 @@ class _EditorState extends State<Editor> {
                       ? min(
                           _core.lines.length,
                           (widget.verticalScrollController.position
-                                      .viewportDimension
-                                      .toInt() ~/
+                                      .viewportDimension ~/
                                   _core.config.lineHeight) +
                               lineBuffer)
                       : min(
