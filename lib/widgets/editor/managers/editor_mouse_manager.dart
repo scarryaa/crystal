@@ -2,27 +2,41 @@
 import 'dart:math';
 
 import 'package:crystal/core/editor/editor_core.dart';
+import 'package:crystal/models/editor/mouse/mouse_button_type.dart';
 import 'package:crystal/models/editor/mouse/mouse_click_type.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 
 class EditorMouseManager {
   final EditorCore core;
 
   bool _isDragging = false;
   (int, int)? _dragStartPosition;
-  (int, int)? _dragCurrentPosition;
 
   DateTime? _firstClickTime;
   DateTime? _secondClickTime;
   Offset? _lastClickPosition;
-  int _clickCount = 0;
 
   EditorMouseManager(this.core);
 
   void handleMouseEvent(
       PointerEvent event, Offset localPosition, Offset scrollPosition) {
+    MouseButtonType mouseButton;
+    switch (event.buttons) {
+      case kPrimaryMouseButton:
+        mouseButton = MouseButtonType.left;
+        break;
+      case kMiddleMouseButton:
+        mouseButton = MouseButtonType.middle;
+        break;
+      case kSecondaryMouseButton:
+        mouseButton = MouseButtonType.right;
+        break;
+      default:
+        return;
+    }
+
     if (event is PointerDownEvent) {
-      _handlePointerDown(event, localPosition, scrollPosition);
+      _handlePointerDown(event, localPosition, scrollPosition, mouseButton);
     } else if (event is PointerMoveEvent) {
       _handlePointerMove(event, localPosition, scrollPosition);
     } else if (event is PointerUpEvent) {
@@ -30,29 +44,49 @@ class EditorMouseManager {
     }
   }
 
-  void _handlePointerDown(
-      PointerDownEvent event, Offset localPosition, Offset scrollPosition) {
+  void _handlePointerDown(PointerDownEvent event, Offset localPosition,
+      Offset scrollPosition, MouseButtonType mouseButton) {
     final textPosition =
         _convertPositionToTextIndex(localPosition, scrollPosition);
 
-    final clickType = _determineClickType(textPosition, localPosition);
+    switch (mouseButton) {
+      case MouseButtonType.left:
+        final clickType = _determineClickType(textPosition, localPosition);
 
-    switch (clickType) {
-      case MouseClickType.single:
-        _handleSingleClick(textPosition.$1, textPosition.$2);
+        switch (clickType) {
+          case MouseClickType.single:
+            _handleSingleClick(textPosition.$1, textPosition.$2);
+            break;
+          case MouseClickType.double:
+            _handleDoubleClick(textPosition.$1, textPosition.$2);
+            break;
+          case MouseClickType.triple:
+            _handleTripleClick(textPosition.$1, textPosition.$2);
+            break;
+        }
+
+        _isDragging = true;
+        _dragStartPosition = textPosition;
         break;
-      case MouseClickType.double:
-        _handleDoubleClick(textPosition.$1, textPosition.$2);
+
+      case MouseButtonType.middle:
+        _handleMiddleClick(textPosition.$1, textPosition.$2);
+        _dragStartPosition = null;
         break;
-      case MouseClickType.triple:
-        _handleTripleClick(textPosition.$1, textPosition.$2);
+
+      case MouseButtonType.right:
+        _handleRightClick(textPosition.$1, textPosition.$2);
+        _dragStartPosition = null;
         break;
     }
+  }
 
-    // Start dragging
-    _isDragging = true;
-    _dragStartPosition = textPosition;
-    _dragCurrentPosition = textPosition;
+  void _handleMiddleClick(int cursorLine, int cursorIndex) {
+    core.paste();
+  }
+
+  void _handleRightClick(int cursorLine, int cursorIndex) {
+    // TODO
   }
 
   void _handlePointerMove(
@@ -60,9 +94,6 @@ class EditorMouseManager {
     if (_isDragging) {
       final currentPosition =
           _convertPositionToTextIndex(localPosition, scrollPosition);
-
-      // Update current dragging position
-      _dragCurrentPosition = currentPosition;
 
       if (_dragStartPosition != null) {
         // Select from drag start to current position
@@ -76,7 +107,6 @@ class EditorMouseManager {
       PointerUpEvent event, Offset localPosition, Offset scrollPosition) {
     _isDragging = false;
     _dragStartPosition = null;
-    _dragCurrentPosition = null;
   }
 
   MouseClickType _determineClickType(
@@ -94,7 +124,6 @@ class EditorMouseManager {
     // First click
     if (_firstClickTime == null) {
       _firstClickTime = now;
-      _clickCount = 1;
       _lastClickPosition = localPosition;
       return MouseClickType.single;
     }
@@ -104,7 +133,6 @@ class EditorMouseManager {
       final timeDiff = now.difference(_firstClickTime!);
       if (timeDiff.inMilliseconds < 300) {
         _secondClickTime = now;
-        _clickCount = 2;
         _lastClickPosition = localPosition;
         return MouseClickType.double;
       }
@@ -112,7 +140,6 @@ class EditorMouseManager {
       // Reset if too slow
       _resetClickTracking();
       _firstClickTime = now;
-      _clickCount = 1;
       _lastClickPosition = localPosition;
       return MouseClickType.single;
     }
@@ -130,7 +157,6 @@ class EditorMouseManager {
     // Reset if conditions not met
     _resetClickTracking();
     _firstClickTime = now;
-    _clickCount = 1;
     _lastClickPosition = localPosition;
     return MouseClickType.single;
   }
@@ -138,7 +164,6 @@ class EditorMouseManager {
   void _resetClickTracking() {
     _firstClickTime = null;
     _secondClickTime = null;
-    _clickCount = 0;
     _lastClickPosition = null;
   }
 
