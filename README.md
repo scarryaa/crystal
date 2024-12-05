@@ -1,16 +1,46 @@
 # crystal
 
-A new Flutter project.
+crystal aims to be a modern, fast, lightweight code cross-platform code editor (Linux/MacOS/Windows/Web?/Mobile??).
 
-## Getting Started
+## Features
+- Basic text editing (basic selections, cursor movement, text entry)
+- Basic gutter (line numbers)
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Planned Features 
+- Multiple selections
+- Multiple cursors 
+- Syntax highlighting
+- File management
+  - Open/Save/Save As
+  - Recent files
+  - File browser/tree view
+- Search and Replace
+  - Regular expressions support
+  - Find in files
+- Code folding/collapsing
+- Auto-completion
+- Auto-indentation
+- Bracket matching
+- Split view/panes
+- Customizable themes
+- Customizable keyboard shortcuts
+- Undo/Redo functionality
+- Plugin system
+- Git integration
+- Minimap navigation
+- Status bar
+  - Line/column position
+  - File encoding
+  - File type
+- Configuration options
+  - Tab size
+  - Encoding settings
+  - Line endings
+- Language Server Protocol (LSP) support
+  - Document highlights
+  - Hover information
+  - Signature help
+  - Go to definition
+  - Find references
+  - Symbol listing
+- Command Palette
