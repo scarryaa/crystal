@@ -81,9 +81,7 @@ class EditorMouseManager {
     }
   }
 
-  void _handleMiddleClick(int cursorLine, int cursorIndex) {
-    core.paste();
-  }
+  void _handleMiddleClick(int cursorLine, int cursorIndex) {}
 
   void _handleRightClick(int cursorLine, int cursorIndex) {
     // TODO

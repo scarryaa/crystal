@@ -102,17 +102,14 @@ class BufferManager {
 
   void deleteForwards(int length) {
     if (length <= 0) return;
-
     // Check if we're at the end of the document
     if (cursorManager.cursorLine == _lines.length - 1 &&
         cursorManager.cursorIndex >= _lines[cursorManager.cursorLine].length) {
       return;
     }
-
     // Deletion within the same line
     int currentLineLength = _lines[cursorManager.cursorLine].length;
     int remainingInLine = currentLineLength - cursorManager.cursorIndex;
-
     if (length <= remainingInLine) {
       _lines[cursorManager.cursorLine] = _lines[cursorManager.cursorLine]
               .substring(0, cursorManager.cursorIndex) +
@@ -120,16 +117,13 @@ class BufferManager {
               .substring(cursorManager.cursorIndex + length);
       return;
     }
-
     // Multi-line deletion
     int remainingCharsToDelete = length;
     int currentLine = cursorManager.cursorLine;
-
     while (remainingCharsToDelete > 0 && currentLine < _lines.length - 1) {
       String currentLineContent = _lines[currentLine];
       int currentLineRemainingChars =
           currentLineContent.length - cursorManager.cursorIndex;
-
       if (remainingCharsToDelete <= currentLineRemainingChars) {
         // Partial line deletion
         _lines[currentLine] = currentLineContent.substring(
@@ -138,10 +132,22 @@ class BufferManager {
                 .substring(cursorManager.cursorIndex + remainingCharsToDelete);
         break;
       }
-
       // Remove this line or part of it
       remainingCharsToDelete -= currentLineRemainingChars + 1; // +1 for newline
-      _lines.removeAt(currentLine);
+
+      if (currentLineRemainingChars == 0) {
+        // We are at the end of a non-empty line
+        // Combine current line with the next line
+        if (currentLine + 1 < _lines.length) {
+          _lines[currentLine] += _lines[currentLine + 1];
+          _lines.removeAt(currentLine + 1);
+        }
+      } else {
+        _lines[currentLine] =
+            currentLineContent.substring(0, cursorManager.cursorIndex);
+      }
+
+      currentLine++;
     }
   }
 
