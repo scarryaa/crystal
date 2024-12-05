@@ -5,8 +5,8 @@ import 'package:crystal/core/editor/cursor_manager.dart';
 import 'package:crystal/core/editor/editor_config.dart';
 import 'package:crystal/core/editor/editor_core.dart';
 import 'package:crystal/core/editor/selection_manager.dart';
-import 'package:crystal/widgets/editor/managers/editor_input_manager.dart';
 import 'package:crystal/widgets/editor/editor_painter.dart';
+import 'package:crystal/widgets/editor/managers/editor_input_manager.dart';
 import 'package:flutter/material.dart';
 
 class Editor extends StatefulWidget {

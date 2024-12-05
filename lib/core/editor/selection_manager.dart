@@ -20,18 +20,18 @@ class SelectionManager {
 
   void deleteSelection(BufferManager bufferManager, int currentIndex) {
     // First determine which indices to use based on line numbers
-    int normalizedStartLine = min(startLine, endLine);
-    int normalizedEndLine = max(startLine, endLine);
+    final int normalizedStartLine = min(startLine, endLine);
+    final int normalizedEndLine = max(startLine, endLine);
 
     if (normalizedStartLine == normalizedEndLine) {
-      int normalizedStartIndex = min(startIndex, endIndex);
-      int normalizedEndIndex = max(startIndex, endIndex);
+      final int normalizedStartIndex = min(startIndex, endIndex);
+      final int normalizedEndIndex = max(startIndex, endIndex);
       bufferManager.deleteRange(normalizedStartLine, normalizedEndLine,
           normalizedStartIndex, normalizedEndIndex);
     } else {
-      int normalizedStartIndex =
+      final int normalizedStartIndex =
           (normalizedStartLine == startLine) ? startIndex : endIndex;
-      int normalizedEndIndex =
+      final int normalizedEndIndex =
           (normalizedEndLine == endLine) ? endIndex : startIndex;
       bufferManager.deleteRange(normalizedStartLine, normalizedEndLine,
           normalizedStartIndex, normalizedEndIndex);
@@ -63,7 +63,7 @@ class SelectionManager {
   }
 
   int selectWord(BufferManager bufferManager, int cursorLine, int cursorIndex) {
-    String lineContent = bufferManager.lines[cursorLine];
+    final String lineContent = bufferManager.lines[cursorLine];
 
     if (cursorIndex < 0 || cursorIndex >= lineContent.length) {
       return cursorIndex;

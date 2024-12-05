@@ -48,9 +48,11 @@ class EditorScrollManager {
     double screenHeight,
     double screenWidth,
   ) {
-    double verticalOffsetTarget = core.cursorLine * core.config.lineHeight;
-    double currentOffset = editorVerticalScrollController.offset;
-    double bufferSpace = core.config.lineHeight * (core.config.lineBuffer + 2);
+    final double verticalOffsetTarget =
+        core.cursorLine * core.config.lineHeight;
+    final double currentOffset = editorVerticalScrollController.offset;
+    final double bufferSpace =
+        core.config.lineHeight * (core.config.lineBuffer + 2);
 
     // If cursor is below visible area
     if (verticalOffsetTarget + bufferSpace > screenHeight + currentOffset) {
@@ -64,10 +66,11 @@ class EditorScrollManager {
     }
 
     // Horizontal scrolling
-    double horizontalOffsetTarget =
+    final double horizontalOffsetTarget =
         core.cursorPosition * core.config.characterWidth;
-    double currentHorizontalOffset = editorHorizontalScrollController.offset;
-    double horizontalBufferSpace = core.config.widthPadding;
+    final double currentHorizontalOffset =
+        editorHorizontalScrollController.offset;
+    final double horizontalBufferSpace = core.config.widthPadding;
 
     // If cursor is to the right of visible area
     if (horizontalOffsetTarget + horizontalBufferSpace >

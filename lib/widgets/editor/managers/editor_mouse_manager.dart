@@ -200,7 +200,7 @@ extension EditorCoreMouseExtensions on EditorCore {
     cursorLine = min(cursorLine, bufferManager.lines.length - 1);
     cursorIndex = min(cursorIndex, bufferManager.lines[cursorLine].length);
 
-    int wordEnd =
+    final int wordEnd =
         selectionManager.selectWord(bufferManager, cursorLine, cursorIndex);
     if (wordEnd <= bufferManager.lines[cursorLine].length) {
       cursorManager.cursorIndex = wordEnd;

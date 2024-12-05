@@ -16,8 +16,8 @@ class BufferManager {
   List<String> get lines => List<String>.from(_lines);
 
   void insertString(String string) {
-    List<String> linesToAdd = string.split('\n');
-    int numberOfLinesAdded = linesToAdd.length - 1;
+    final List<String> linesToAdd = string.split('\n');
+    final int numberOfLinesAdded = linesToAdd.length - 1;
 
     if (numberOfLinesAdded == 0) {
       _lines[cursorManager.cursorLine] += linesToAdd.first;
@@ -59,7 +59,7 @@ class BufferManager {
 
     // Single line deletion
     if (startLine == endLine) {
-      String currentLine = _lines[startLine];
+      final String currentLine = _lines[startLine];
       _lines[startLine] = currentLine.substring(0, startIndex) +
           currentLine.substring(endIndex);
 
@@ -70,10 +70,10 @@ class BufferManager {
 
     // Multi-line deletion
     // Keep the text before startIndex in the first line
-    String firstLinePart = _lines[startLine].substring(0, startIndex);
+    final String firstLinePart = _lines[startLine].substring(0, startIndex);
 
     // Keep the text after endIndex in the last line
-    String lastLinePart = _lines[endLine].substring(endIndex);
+    final String lastLinePart = _lines[endLine].substring(endIndex);
 
     // Remove intermediate lines
     _lines.removeRange(startLine + 1, endLine + 1);
@@ -90,7 +90,7 @@ class BufferManager {
 
     if (cursorManager.cursorIndex == 0 && cursorManager.cursorLine > 0) {
       // When cursor is at the start of a line (except first line)
-      String currentLineContent = _lines[cursorManager.cursorLine];
+      final String currentLineContent = _lines[cursorManager.cursorLine];
       // Remove the current line
       _lines.removeAt(cursorManager.cursorLine);
       // Move cursor to end of previous line
@@ -117,8 +117,8 @@ class BufferManager {
       return;
     }
     // Deletion within the same line
-    int currentLineLength = _lines[cursorManager.cursorLine].length;
-    int remainingInLine = currentLineLength - cursorManager.cursorIndex;
+    final int currentLineLength = _lines[cursorManager.cursorLine].length;
+    final int remainingInLine = currentLineLength - cursorManager.cursorIndex;
     if (length <= remainingInLine) {
       _lines[cursorManager.cursorLine] = _lines[cursorManager.cursorLine]
               .substring(0, cursorManager.cursorIndex) +
@@ -130,8 +130,8 @@ class BufferManager {
     int remainingCharsToDelete = length;
     int currentLine = cursorManager.cursorLine;
     while (remainingCharsToDelete > 0 && currentLine < _lines.length - 1) {
-      String currentLineContent = _lines[currentLine];
-      int currentLineRemainingChars =
+      final String currentLineContent = _lines[currentLine];
+      final int currentLineRemainingChars =
           currentLineContent.length - cursorManager.cursorIndex;
       if (remainingCharsToDelete <= currentLineRemainingChars) {
         // Partial line deletion

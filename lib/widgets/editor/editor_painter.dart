@@ -67,30 +67,31 @@ class EditorPainter extends CustomPainter {
   void drawSelection(Canvas canvas) {
     if (!core.hasSelection()) return;
 
-    var lines = core.getLines(firstVisibleLine, lastVisibleLine + 5);
+    final lines = core.getLines(firstVisibleLine, lastVisibleLine + 5);
     for (var i = 0; i < lines.length; i++) {
-      var line = lines[i];
+      final line = lines[i];
       drawSelectionForSingleLine(canvas, i + firstVisibleLine, line);
     }
   }
 
   void drawSelectionForSingleLine(Canvas canvas, int lineNumber, String line) {
-    int normalizedStartLine =
+    final int normalizedStartLine =
         min(core.selectionManager.startLine, core.selectionManager.endLine);
-    int normalizedEndLine =
+    final int normalizedEndLine =
         max(core.selectionManager.startLine, core.selectionManager.endLine);
-    int normalizedStartIndex =
+    final int normalizedStartIndex =
         normalizedStartLine == core.selectionManager.startLine
             ? core.selectionManager.startIndex
             : core.selectionManager.endIndex;
-    int normalizedEndIndex = normalizedEndLine == core.selectionManager.endLine
-        ? core.selectionManager.endIndex
-        : core.selectionManager.startIndex;
+    final int normalizedEndIndex =
+        normalizedEndLine == core.selectionManager.endLine
+            ? core.selectionManager.endIndex
+            : core.selectionManager.startIndex;
 
     // Check if this line is within selection range
     if (lineNumber >= normalizedStartLine && lineNumber <= normalizedEndLine) {
-      double top = lineNumber * core.config.lineHeight;
-      double height = core.config.lineHeight;
+      final double top = lineNumber * core.config.lineHeight;
+      final double height = core.config.lineHeight;
       double left = 0;
       double width = 0;
 

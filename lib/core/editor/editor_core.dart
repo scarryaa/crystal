@@ -96,7 +96,7 @@ class EditorCore extends ChangeNotifier {
   }
 
   Future<void> paste() async {
-    String? clipboardData =
+    final String? clipboardData =
         (await Clipboard.getData(Clipboard.kTextPlain))?.text;
     if (clipboardData == null) return;
 

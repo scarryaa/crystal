@@ -24,7 +24,7 @@ class EditorConfig {
     this.fontSize = 15,
     this.fontWeight = FontWeight.w400,
     this.minGutterWidth = 60,
-    this.fontFamily = "IBM Plex Mono",
+    this.fontFamily = 'IBM Plex Mono',
     this.backgroundColor = Colors.white,
     this.textColor = const Color(0xFF2F3337),
     this.gutterTextcolor = Colors.grey,
@@ -46,7 +46,7 @@ class EditorConfig {
   double _measureCharacterWidth() {
     final textPainter = TextPainter(
       text: TextSpan(
-        text: "y",
+        text: 'y',
         style: TextStyle(
           fontFamily: fontFamily,
           fontSize: fontSize,
@@ -62,7 +62,7 @@ class EditorConfig {
   double _measureLineHeight() {
     final textPainter = TextPainter(
       text: TextSpan(
-        text: "Ay",
+        text: 'Ay',
         style: TextStyle(
           fontFamily: fontFamily,
           fontSize: fontSize,
