@@ -174,10 +174,11 @@ class SelectionManager {
 
   bool hasSelection() {
     return !(startLine == -1 &&
-        endLine == -1 &&
-        anchor == -1 &&
-        startIndex == -1 &&
-        endIndex == -1);
+            endLine == -1 &&
+            anchor == -1 &&
+            startIndex == -1 &&
+            endIndex == -1) &&
+        (startLine != endLine || startIndex != endIndex);
   }
 
   String getSelectedText(BufferManager bufferManager) {

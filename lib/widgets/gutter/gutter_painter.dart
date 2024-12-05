@@ -70,8 +70,12 @@ class GutterPainter extends CustomPainter {
           text: '$lineNumber',
           style: TextStyle(
             color: core.cursorLine == (start + i) ||
-                    (start + i >= core.selectionManager.startLine &&
-                        start + i <= core.selectionManager.endLine)
+                    (start + i >=
+                            min(core.selectionManager.startLine,
+                                core.selectionManager.endLine) &&
+                        start + i <=
+                            max(core.selectionManager.endLine,
+                                core.selectionManager.startLine))
                 ? Colors.black
                 : Colors.grey,
             fontSize: core.config.fontSize,
