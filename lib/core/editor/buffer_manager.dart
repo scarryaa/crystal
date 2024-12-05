@@ -1,9 +1,17 @@
 import 'package:crystal/core/editor/cursor_manager.dart';
 
 class BufferManager {
-  final List<String> _lines = [''];
+  final List<String> _lines;
   late final CursorManager cursorManager;
 
+  BufferManager({List<String>? initialLines, CursorManager? cursorManager})
+      : _lines = initialLines ?? [''] {
+    cursorManager = cursorManager ?? CursorManager(this);
+  }
+
+  String getLineAt(int index) => _lines[index];
+  int get lineCount => _lines.length;
+  String get currentLine => _lines[cursorManager.cursorLine];
   List<String> get lines => List<String>.from(_lines);
 
   void insertString(String string) {
