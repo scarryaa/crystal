@@ -10,6 +10,7 @@ class BufferManager {
   }
 
   String getLineAt(int index) => _lines[index];
+  set lines(List<String> lines) => lines = lines;
   int get lineCount => _lines.length;
   String get currentLine => _lines[cursorManager.cursorLine];
   List<String> get lines => List<String>.from(_lines);

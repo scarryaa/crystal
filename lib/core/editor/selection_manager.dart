@@ -39,6 +39,11 @@ class SelectionManager {
   }
 
   void selectAll(BufferManager bufferManager) {
+    if (bufferManager.lines.isEmpty) {
+      startLine = endLine = 0;
+      startIndex = endIndex = anchor = 0;
+      return;
+    }
     anchor = startIndex = startLine = 0;
     endLine = bufferManager.lines.length - 1;
     endIndex = bufferManager.lines[endLine].length;
@@ -47,10 +52,14 @@ class SelectionManager {
   void selectRange(BufferManager bufferManager, int startLine, int startIndex,
       int endLine, int endIndex) {
     this.startLine = max(0, startLine);
-    anchor = this.startIndex =
-        max(0, min(bufferManager.lines[startLine].length, startIndex));
-    this.endLine = min(bufferManager.lines.length, endLine);
-    this.endIndex = max(0, min(bufferManager.lines[endLine].length, endIndex));
+    this.endLine = max(0, min(bufferManager.lines.length - 1, endLine));
+
+    this.startIndex =
+        max(0, min(bufferManager.lines[this.startLine].length, startIndex));
+    this.endIndex =
+        max(0, min(bufferManager.lines[this.endLine].length, endIndex));
+
+    anchor = this.startIndex;
   }
 
   int selectWord(BufferManager bufferManager, int cursorLine, int cursorIndex) {
@@ -82,7 +91,7 @@ class SelectionManager {
   }
 
   bool isWordCharacter(String char) {
-    return RegExp(r'\w').hasMatch(char);
+    return RegExp(r'[a-zA-Z0-9_]').hasMatch(char);
   }
 
   void selectLine(BufferManager bufferManager, int cursorLine) {
