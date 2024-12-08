@@ -15,6 +15,7 @@ class EditorCore extends ChangeNotifier {
 
   void Function()? forceRefresh;
   void Function(int line, int column)? onCursorMove;
+  void Function(String)? onEdit;
 
   EditorCore({
     required this.bufferManager,
@@ -60,6 +61,7 @@ class EditorCore extends ChangeNotifier {
     deleteSelectionIfNeeded();
     bufferManager.insertCharacter(char);
     onCursorMove?.call(cursorLine, cursorPosition);
+    onEdit?.call(bufferManager.toString());
     notifyListeners();
   }
 
@@ -67,6 +69,7 @@ class EditorCore extends ChangeNotifier {
     deleteSelectionIfNeeded();
     bufferManager.insertNewline();
     onCursorMove?.call(cursorLine, cursorPosition);
+    onEdit?.call(bufferManager.toString());
     notifyListeners();
   }
 
@@ -74,6 +77,7 @@ class EditorCore extends ChangeNotifier {
     if (deleteSelectionIfNeeded()) return;
     bufferManager.delete(length);
     onCursorMove?.call(cursorLine, cursorPosition);
+    onEdit?.call(bufferManager.toString());
     notifyListeners();
   }
 
@@ -81,7 +85,13 @@ class EditorCore extends ChangeNotifier {
     if (deleteSelectionIfNeeded()) return;
     bufferManager.deleteForwards(length);
     onCursorMove?.call(cursorLine, cursorPosition);
+    onEdit?.call(bufferManager.toString());
     notifyListeners();
+  }
+
+  void setBuffer(String content) {
+    bufferManager.setText(content);
+    onEdit?.call(bufferManager.toString());
   }
 
   void copy() {
@@ -94,6 +104,7 @@ class EditorCore extends ChangeNotifier {
     Clipboard.setData(
         ClipboardData(text: selectionManager.getSelectedText(bufferManager)));
     deleteSelectionIfNeeded();
+    onEdit?.call(bufferManager.toString());
     notifyListeners();
   }
 
@@ -105,6 +116,7 @@ class EditorCore extends ChangeNotifier {
     deleteSelectionIfNeeded();
     bufferManager.insertString(clipboardData);
     onCursorMove?.call(cursorLine, cursorPosition);
+    onEdit?.call(bufferManager.toString());
     notifyListeners();
   }
 
@@ -140,6 +152,7 @@ class EditorCore extends ChangeNotifier {
       }
 
       onCursorMove?.call(cursorLine, cursorPosition);
+      onEdit?.call(bufferManager.toString());
       notifyListeners();
       return true;
     }

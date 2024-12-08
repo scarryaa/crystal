@@ -18,7 +18,6 @@ class EditorScreen extends StatefulWidget {
 
 class EditorScreenState extends State<EditorScreen>
     with TickerProviderStateMixin {
-  EditorCore? core;
   EditorScrollManager scrollManager = EditorScrollManager();
   late final EditorTabManager tabManager;
   late final FileExplorerViewModel fileExplorerViewModel;
@@ -36,9 +35,14 @@ class EditorScreenState extends State<EditorScreen>
     file.readAsString().then((content) {
       setState(() {
         tabManager.openTab(EditorScrollManager(), path, content);
-        if (core != null) {
-          core!.bufferManager.setText(content);
-        }
+      });
+    });
+  }
+
+  void _handleEditorCore(EditorCore core, String path) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setState(() {
+        tabManager.registerCore(path, core);
       });
     });
   }
@@ -49,110 +53,80 @@ class EditorScreenState extends State<EditorScreen>
     super.dispose();
   }
 
-  void _handleEditorCore(EditorCore core) {
-    // Needed to prevent setState during build error
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      setState(() {
-        this.core = core;
-        core.onCursorMove = _handleCursorMove;
-        core.forceRefresh = _forceRefresh;
-      });
-    });
-  }
-
-  void _handleCursorMove(int line, int column) {
-    tabManager.getScrollManager(core!.path).jumpToCursor(
-          core!,
-          tabManager
-              .getScrollManager(core!.path)
-              .editorVerticalScrollController
-              .position
-              .viewportDimension,
-          tabManager
-              .getScrollManager(core!.path)
-              .editorHorizontalScrollController
-              .position
-              .viewportDimension,
-        );
-  }
-
-  void _forceRefresh() {
-    setState(() {
-      // Recalculate scroll positions
-      scrollManager.recalculateScrollPosition(
-        core!,
-        scrollManager.editorVerticalScrollController.position.viewportDimension,
-        scrollManager
-            .editorHorizontalScrollController.position.viewportDimension,
-      );
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Material(
-        child: Column(
-      children: [
-        Expanded(
-          child: Row(
+    return ListenableBuilder(
+        listenable: tabManager,
+        builder: (context, child) {
+          return Material(
+              child: Column(
             children: [
-              FileExplorer(
-                width: 200,
-                viewModel: fileExplorerViewModel,
-              ),
               Expanded(
-                  child: Column(children: [
-                TabBar(
-                  tabAlignment: TabAlignment.start,
-                  controller: tabManager.controller,
-                  isScrollable: true,
-                  tabs: tabManager.tabs.map((path) {
-                    return Tab(
-                      child: Row(
-                        children: [
-                          Text(path.split(Platform.pathSeparator).last),
-                          IconButton(
-                            icon: const Icon(Icons.close, size: 16),
-                            onPressed: () => tabManager.closeTab(path),
-                          )
-                        ],
+                child: Row(
+                  children: [
+                    FileExplorer(
+                      width: 200,
+                      viewModel: fileExplorerViewModel,
+                    ),
+                    Expanded(
+                        child: Column(children: [
+                      TabBar(
+                        tabAlignment: TabAlignment.start,
+                        controller: tabManager.controller,
+                        isScrollable: true,
+                        indicator: const BoxDecoration(
+                            border: Border(bottom: BorderSide.none)),
+                        tabs: tabManager.tabs.map((path) {
+                          return Tab(
+                            child: Row(
+                              children: [
+                                Text(path.split(Platform.pathSeparator).last),
+                                IconButton(
+                                  icon: const Icon(Icons.close, size: 16),
+                                  onPressed: () => tabManager.closeTab(path),
+                                )
+                              ],
+                            ),
+                          );
+                        }).toList(),
                       ),
-                    );
-                  }).toList(),
+                      Expanded(
+                          child: Row(children: [
+                        if (tabManager.getActiveCore() != null)
+                          Gutter(
+                            core: tabManager.getActiveCore()!,
+                            verticalScrollController: tabManager
+                                .getScrollManager(
+                                    tabManager.getActiveCore()!.path)
+                                .gutterVerticalScrollController,
+                            tabBarHeight: tabBarHeight,
+                          ),
+                        Expanded(
+                          child: TabBarView(
+                            controller: tabManager.controller,
+                            children: tabManager.tabs.map((path) {
+                              final scrollManager =
+                                  tabManager.getScrollManager(path);
+                              return Editor(
+                                onCoreInitialized: (core) =>
+                                    _handleEditorCore(core, path),
+                                verticalScrollController: scrollManager
+                                    .editorVerticalScrollController,
+                                horizontalScrollController: scrollManager
+                                    .editorHorizontalScrollController,
+                                path: path,
+                                tabBarHeight: tabBarHeight,
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ]))
+                    ])),
+                  ],
                 ),
-                Expanded(
-                    child: Row(children: [
-                  if (core != null)
-                    Gutter(
-                      core: core!,
-                      verticalScrollController: tabManager
-                          .getScrollManager(core!.path)
-                          .gutterVerticalScrollController,
-                      tabBarHeight: tabBarHeight,
-                    ),
-                  Expanded(
-                    child: TabBarView(
-                      controller: tabManager.controller,
-                      children: tabManager.tabs.map((path) {
-                        final scrollManager = tabManager.getScrollManager(path);
-                        return Editor(
-                          onCoreInitialized: _handleEditorCore,
-                          verticalScrollController:
-                              scrollManager.editorVerticalScrollController,
-                          horizontalScrollController:
-                              scrollManager.editorHorizontalScrollController,
-                          path: path,
-                          tabBarHeight: tabBarHeight,
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ]))
-              ])),
+              ),
             ],
-          ),
-        ),
-      ],
-    ));
+          ));
+        });
   }
 }
