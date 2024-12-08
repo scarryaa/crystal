@@ -6,11 +6,13 @@ import 'package:crystal/widgets/editor/managers/editor_scroll_manager.dart';
 import 'package:flutter/material.dart';
 
 class EditorTabManager extends ChangeNotifier {
+  final Map<String, FocusNode> focusNodes = {};
   final Map<String, (int, int, int, int, int)> selections = {};
   final Map<String, (int, int)> cursorPositions = {};
   final Map<String, EditorCore> cores = {};
   late TabController controller;
   final List<String> tabs = [];
+  final Map<String, String> originalFileContents = {};
   final Map<String, String> fileContents = {};
   final Map<String, EditorScrollManager> scrollManagers = {};
   final TickerProvider vsync;
@@ -44,6 +46,7 @@ class EditorTabManager extends ChangeNotifier {
           scrollManager.gutterVerticalScrollController
               .jumpTo(scrollManager.editorVerticalScrollController.offset);
         }
+        focusNodes[currentPath]!.requestFocus();
       });
       notifyListeners();
     }
@@ -61,6 +64,10 @@ class EditorTabManager extends ChangeNotifier {
       scrollManager.editorVerticalScrollController.position.viewportDimension,
       scrollManager.editorHorizontalScrollController.position.viewportDimension,
     );
+  }
+
+  bool isTabDirty(String path) {
+    return originalFileContents[path] != fileContents[path];
   }
 
   void registerCore(String path, EditorCore core) {
@@ -108,12 +115,17 @@ class EditorTabManager extends ChangeNotifier {
     if (!tabs.contains(path)) {
       tabs.add(path);
       fileContents[path] = content;
+      originalFileContents[path] = content;
       scrollManagers[path] = scrollManager;
+      focusNodes[path] = FocusNode();
 
       final oldController = controller;
       oldController.removeListener(_handleTabChange);
       initController();
       oldController.dispose();
+
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => focusNodes[path]?.requestFocus());
     } else {
       controller.animateTo(tabs.indexOf(path));
     }

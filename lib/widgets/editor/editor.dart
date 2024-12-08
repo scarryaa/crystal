@@ -13,6 +13,7 @@ class Editor extends StatefulWidget {
   final ScrollController horizontalScrollController;
   final ScrollController verticalScrollController;
   final void Function(EditorCore)? onCoreInitialized;
+  final FocusNode focusNode;
   final String path;
   final double tabBarHeight;
   final double fileExplorerWidth;
@@ -23,6 +24,7 @@ class Editor extends StatefulWidget {
     this.onCoreInitialized,
     required this.horizontalScrollController,
     required this.verticalScrollController,
+    required this.focusNode,
     required this.path,
     required this.tabBarHeight,
     required this.fileExplorerWidth,
@@ -37,7 +39,6 @@ class _EditorState extends State<Editor> with AutomaticKeepAliveClientMixin {
   late final EditorCore _core;
   late final EditorInputManager editorInputManager;
   final ValueNotifier<bool> _scrollChanged = ValueNotifier<bool>(false);
-  final FocusNode focusNode = FocusNode();
 
   @override
   bool get wantKeepAlive => true;
@@ -164,7 +165,7 @@ class _EditorState extends State<Editor> with AutomaticKeepAliveClientMixin {
                           notification.depth == 1,
                       child: Listener(
                           onPointerDown: (event) {
-                            focusNode.requestFocus();
+                            widget.focusNode.requestFocus();
                             editorInputManager.handleMouseEvent(
                                 event.localPosition,
                                 Offset(widget.horizontalScrollController.offset,
@@ -207,7 +208,7 @@ class _EditorState extends State<Editor> with AutomaticKeepAliveClientMixin {
                                       width: _calculateWidgetWidth(),
                                       height: _calculateWidgetHeight(),
                                       child: Focus(
-                                          focusNode: focusNode,
+                                          focusNode: widget.focusNode,
                                           autofocus: true,
                                           onKeyEvent: (node, keyEvent) =>
                                               handleKeyEvent(node, keyEvent),

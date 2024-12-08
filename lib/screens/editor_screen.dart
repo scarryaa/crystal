@@ -4,6 +4,7 @@ import 'package:crystal/core/editor/editor_core.dart';
 import 'package:crystal/widgets/editor/editor.dart';
 import 'package:crystal/widgets/editor/managers/editor_scroll_manager.dart';
 import 'package:crystal/widgets/editor/managers/editor_tab_manager.dart';
+import 'package:crystal/widgets/editor/tabs/custom_tab_bar.dart';
 import 'package:crystal/widgets/file_explorer/file_explorer.dart';
 import 'package:crystal/widgets/file_explorer/viewmodel/file_explorer_view_model.dart';
 import 'package:crystal/widgets/gutter/gutter.dart';
@@ -21,7 +22,8 @@ class EditorScreenState extends State<EditorScreen>
   EditorScrollManager scrollManager = EditorScrollManager();
   late final EditorTabManager tabManager;
   late final FileExplorerViewModel fileExplorerViewModel;
-  final tabBarHeight = 48.0;
+  final tabBarHeight = 32.0;
+  final tabBarPadding = 4.0;
   double _gutterWidth = 0;
 
   @override
@@ -74,64 +76,53 @@ class EditorScreenState extends State<EditorScreen>
                     ),
                     Expanded(
                         child: Column(children: [
-                      TabBar(
-                        tabAlignment: TabAlignment.start,
-                        controller: tabManager.controller,
-                        isScrollable: true,
-                        indicator: const BoxDecoration(
-                            border: Border(bottom: BorderSide.none)),
-                        tabs: tabManager.tabs.map((path) {
-                          return Tab(
-                            child: Row(
-                              children: [
-                                Text(path.split(Platform.pathSeparator).last),
-                                IconButton(
-                                  icon: const Icon(Icons.close, size: 16),
-                                  onPressed: () => tabManager.closeTab(path),
-                                )
-                              ],
-                            ),
-                          );
-                        }).toList(),
+                      CustomTabBar(
+                        tabBarHeight: tabBarHeight,
+                        tabManager: tabManager,
                       ),
                       Expanded(
-                          child: Row(children: [
-                        if (activeCore != null && currentPath != null)
-                          Gutter(
-                            key: ValueKey(currentPath),
-                            core: activeCore,
-                            verticalScrollController: tabManager
-                                .getScrollManager(currentPath)
-                                .gutterVerticalScrollController,
-                            tabBarHeight: tabBarHeight,
-                            onWidthChanged: (width) {
-                              WidgetsBinding.instance.addPostFrameCallback(
-                                  (_) => setState(() => _gutterWidth = width));
-                            },
-                          ),
-                        Expanded(
-                          child: TabBarView(
-                            physics: const NeverScrollableScrollPhysics(),
-                            controller: tabManager.controller,
-                            children: tabManager.tabs.map((path) {
-                              final scrollManager =
-                                  tabManager.getScrollManager(path);
-                              return Editor(
-                                fileExplorerWidth: fileExplorerViewModel.width,
-                                gutterWidth: _gutterWidth,
-                                onCoreInitialized: (core) =>
-                                    _handleEditorCore(core, path),
-                                verticalScrollController: scrollManager
-                                    .editorVerticalScrollController,
-                                horizontalScrollController: scrollManager
-                                    .editorHorizontalScrollController,
-                                path: path,
-                                tabBarHeight: tabBarHeight,
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                      ]))
+                          child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                            if (activeCore != null && currentPath != null)
+                              Gutter(
+                                key: ValueKey(currentPath),
+                                core: activeCore,
+                                verticalScrollController: tabManager
+                                    .getScrollManager(currentPath)
+                                    .gutterVerticalScrollController,
+                                tabBarHeight: tabBarHeight + tabBarPadding,
+                                onWidthChanged: (width) {
+                                  WidgetsBinding.instance.addPostFrameCallback(
+                                      (_) =>
+                                          setState(() => _gutterWidth = width));
+                                },
+                              ),
+                            Expanded(
+                              child: TabBarView(
+                                physics: const NeverScrollableScrollPhysics(),
+                                controller: tabManager.controller,
+                                children: tabManager.tabs.map((path) {
+                                  final scrollManager =
+                                      tabManager.getScrollManager(path);
+                                  return Editor(
+                                    focusNode: tabManager.focusNodes[path]!,
+                                    fileExplorerWidth:
+                                        fileExplorerViewModel.width,
+                                    gutterWidth: _gutterWidth,
+                                    onCoreInitialized: (core) =>
+                                        _handleEditorCore(core, path),
+                                    verticalScrollController: scrollManager
+                                        .editorVerticalScrollController,
+                                    horizontalScrollController: scrollManager
+                                        .editorHorizontalScrollController,
+                                    path: path,
+                                    tabBarHeight: tabBarHeight + tabBarPadding,
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                          ]))
                     ])),
                   ],
                 ),
