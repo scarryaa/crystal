@@ -7,6 +7,7 @@ import 'package:crystal/core/editor/editor_core.dart';
 import 'package:crystal/core/editor/selection_manager.dart';
 import 'package:crystal/widgets/editor/editor_painter.dart';
 import 'package:crystal/widgets/editor/managers/editor_input_manager.dart';
+import 'package:crystal/widgets/editor/managers/editor_tab_manager.dart';
 import 'package:flutter/material.dart';
 
 class Editor extends StatefulWidget {
@@ -160,14 +161,26 @@ class _EditorState extends State<Editor> {
                                 Offset(widget.horizontalScrollController.offset,
                                     widget.verticalScrollController.offset),
                                 event);
+                            _core.onSelectionChange?.call(
+                                _core.selectionManager.anchor,
+                                _core.selectionManager.startIndex,
+                                _core.selectionManager.endIndex,
+                                _core.selectionManager.startLine,
+                                _core.selectionManager.endLine);
                           },
-                          onPointerMove: (event) =>
-                              editorInputManager.handleMouseEvent(
-                                  event.localPosition,
-                                  Offset(
-                                      widget.horizontalScrollController.offset,
-                                      widget.verticalScrollController.offset),
-                                  event),
+                          onPointerMove: (event) {
+                            editorInputManager.handleMouseEvent(
+                                event.localPosition,
+                                Offset(widget.horizontalScrollController.offset,
+                                    widget.verticalScrollController.offset),
+                                event);
+                            _core.onSelectionChange?.call(
+                                _core.selectionManager.anchor,
+                                _core.selectionManager.startIndex,
+                                _core.selectionManager.endIndex,
+                                _core.selectionManager.startLine,
+                                _core.selectionManager.endLine);
+                          },
                           onPointerUp: (event) =>
                               editorInputManager.handleMouseEvent(
                                   event.localPosition,

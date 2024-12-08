@@ -1,10 +1,13 @@
 import 'dart:io';
 import 'dart:math';
 import 'package:crystal/core/editor/editor_core.dart';
+import 'package:crystal/widgets/editor/managers/editor_mouse_manager.dart';
 import 'package:crystal/widgets/editor/managers/editor_scroll_manager.dart';
 import 'package:flutter/material.dart';
 
 class EditorTabManager extends ChangeNotifier {
+  final Map<String, (int, int, int, int, int)> selections = {};
+  final Map<String, (int, int)> cursorPositions = {};
   final Map<String, EditorCore> cores = {};
   late TabController controller;
   final List<String> tabs = [];
@@ -22,6 +25,8 @@ class EditorTabManager extends ChangeNotifier {
     final core = cores[path];
     if (core == null) return;
 
+    cursorPositions[path] =
+        (core.cursorManager.cursorLine, core.cursorManager.cursorIndex);
     scrollManager.jumpToCursor(
       core,
       scrollManager.editorVerticalScrollController.position.viewportDimension,
@@ -34,10 +39,23 @@ class EditorTabManager extends ChangeNotifier {
     core.onCursorMove = (line, column) => _handleCursorMove(path, line, column);
     core.forceRefresh = () => _forceRefresh(path);
     core.onEdit = (content) => fileContents[path] = content;
+    core.onSelectionChange =
+        (anchor, startIndex, endIndex, startLine, endLine) {
+      selections[path] = (anchor, startIndex, endIndex, startLine, endLine);
+    };
 
     final content = fileContents[path] ?? File(path).readAsStringSync();
     fileContents[path] = content;
     core.setBuffer(content);
+
+    if (selections[path] != null) {
+      final selection = selections[path]!;
+      core.selectRange(selection.$4, selection.$2, selection.$5, selection.$3);
+    }
+
+    if (cursorPositions[path] != null) {
+      core.moveCursorTo(cursorPositions[path]!.$1, cursorPositions[path]!.$2);
+    }
   }
 
   void _forceRefresh(String path) {
@@ -74,6 +92,7 @@ class EditorTabManager extends ChangeNotifier {
     } else {
       controller.animateTo(tabs.indexOf(path));
     }
+    notifyListeners();
   }
 
   void closeTab(String path) {

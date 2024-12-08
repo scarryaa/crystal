@@ -79,6 +79,8 @@ class EditorMouseManager {
         _dragStartPosition = null;
         break;
     }
+
+    core.onCursorMove!(textPosition.$1, textPosition.$2);
   }
 
   void _handleMiddleClick(int cursorLine, int cursorIndex) {}

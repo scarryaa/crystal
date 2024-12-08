@@ -16,6 +16,7 @@ class EditorCore extends ChangeNotifier {
   void Function()? forceRefresh;
   void Function(int line, int column)? onCursorMove;
   void Function(String)? onEdit;
+  void Function(int, int, int, int, int)? onSelectionChange;
 
   EditorCore({
     required this.bufferManager,
@@ -36,24 +37,48 @@ class EditorCore extends ChangeNotifier {
   void moveLeft() {
     cursorManager.moveLeft();
     onCursorMove?.call(cursorLine, cursorPosition);
+    onSelectionChange?.call(
+        selectionManager.anchor,
+        selectionManager.startIndex,
+        selectionManager.endIndex,
+        selectionManager.startLine,
+        selectionManager.endLine);
     notifyListeners();
   }
 
   void moveRight() {
     cursorManager.moveRight();
     onCursorMove?.call(cursorLine, cursorPosition);
+    onSelectionChange?.call(
+        selectionManager.anchor,
+        selectionManager.startIndex,
+        selectionManager.endIndex,
+        selectionManager.startLine,
+        selectionManager.endLine);
     notifyListeners();
   }
 
   void moveUp() {
     cursorManager.moveUp();
     onCursorMove?.call(cursorLine, cursorPosition);
+    onSelectionChange?.call(
+        selectionManager.anchor,
+        selectionManager.startIndex,
+        selectionManager.endIndex,
+        selectionManager.startLine,
+        selectionManager.endLine);
     notifyListeners();
   }
 
   void moveDown() {
     cursorManager.moveDown();
     onCursorMove?.call(cursorLine, cursorPosition);
+    onSelectionChange?.call(
+        selectionManager.anchor,
+        selectionManager.startIndex,
+        selectionManager.endIndex,
+        selectionManager.startLine,
+        selectionManager.endLine);
     notifyListeners();
   }
 
@@ -62,6 +87,12 @@ class EditorCore extends ChangeNotifier {
     bufferManager.insertCharacter(char);
     onCursorMove?.call(cursorLine, cursorPosition);
     onEdit?.call(bufferManager.toString());
+    onSelectionChange?.call(
+        selectionManager.anchor,
+        selectionManager.startIndex,
+        selectionManager.endIndex,
+        selectionManager.startLine,
+        selectionManager.endLine);
     notifyListeners();
   }
 
@@ -70,6 +101,12 @@ class EditorCore extends ChangeNotifier {
     bufferManager.insertNewline();
     onCursorMove?.call(cursorLine, cursorPosition);
     onEdit?.call(bufferManager.toString());
+    onSelectionChange?.call(
+        selectionManager.anchor,
+        selectionManager.startIndex,
+        selectionManager.endIndex,
+        selectionManager.startLine,
+        selectionManager.endLine);
     notifyListeners();
   }
 
@@ -78,6 +115,12 @@ class EditorCore extends ChangeNotifier {
     bufferManager.delete(length);
     onCursorMove?.call(cursorLine, cursorPosition);
     onEdit?.call(bufferManager.toString());
+    onSelectionChange?.call(
+        selectionManager.anchor,
+        selectionManager.startIndex,
+        selectionManager.endIndex,
+        selectionManager.startLine,
+        selectionManager.endLine);
     notifyListeners();
   }
 
@@ -86,6 +129,12 @@ class EditorCore extends ChangeNotifier {
     bufferManager.deleteForwards(length);
     onCursorMove?.call(cursorLine, cursorPosition);
     onEdit?.call(bufferManager.toString());
+    onSelectionChange?.call(
+        selectionManager.anchor,
+        selectionManager.startIndex,
+        selectionManager.endIndex,
+        selectionManager.startLine,
+        selectionManager.endLine);
     notifyListeners();
   }
 
@@ -105,6 +154,12 @@ class EditorCore extends ChangeNotifier {
         ClipboardData(text: selectionManager.getSelectedText(bufferManager)));
     deleteSelectionIfNeeded();
     onEdit?.call(bufferManager.toString());
+    onSelectionChange?.call(
+        selectionManager.anchor,
+        selectionManager.startIndex,
+        selectionManager.endIndex,
+        selectionManager.startLine,
+        selectionManager.endLine);
     notifyListeners();
   }
 
@@ -117,6 +172,12 @@ class EditorCore extends ChangeNotifier {
     bufferManager.insertString(clipboardData);
     onCursorMove?.call(cursorLine, cursorPosition);
     onEdit?.call(bufferManager.toString());
+    onSelectionChange?.call(
+        selectionManager.anchor,
+        selectionManager.startIndex,
+        selectionManager.endIndex,
+        selectionManager.startLine,
+        selectionManager.endLine);
     notifyListeners();
   }
 
@@ -124,6 +185,12 @@ class EditorCore extends ChangeNotifier {
     selectionManager.selectAll(bufferManager);
     cursorManager.cursorLine = bufferManager.lines.length - 1;
     cursorManager.cursorIndex = bufferManager.lines[cursorLine].length;
+    onSelectionChange?.call(
+        selectionManager.anchor,
+        selectionManager.startIndex,
+        selectionManager.endIndex,
+        selectionManager.startLine,
+        selectionManager.endLine);
     notifyListeners();
   }
 
@@ -133,11 +200,23 @@ class EditorCore extends ChangeNotifier {
 
   void startSelection() {
     selectionManager.startSelection(cursorLine, cursorPosition);
+    onSelectionChange?.call(
+        selectionManager.anchor,
+        selectionManager.startIndex,
+        selectionManager.endIndex,
+        selectionManager.startLine,
+        selectionManager.endLine);
     notifyListeners();
   }
 
   void clearSelection() {
     selectionManager.startSelection(-1, -1);
+    onSelectionChange?.call(
+        selectionManager.anchor,
+        selectionManager.startIndex,
+        selectionManager.endIndex,
+        selectionManager.startLine,
+        selectionManager.endLine);
     notifyListeners();
   }
 
@@ -153,6 +232,12 @@ class EditorCore extends ChangeNotifier {
 
       onCursorMove?.call(cursorLine, cursorPosition);
       onEdit?.call(bufferManager.toString());
+      onSelectionChange?.call(
+          selectionManager.anchor,
+          selectionManager.startIndex,
+          selectionManager.endIndex,
+          selectionManager.startLine,
+          selectionManager.endLine);
       notifyListeners();
       return true;
     }
@@ -164,6 +249,12 @@ class EditorCore extends ChangeNotifier {
 
     selectionManager.updateSelection(bufferManager, direction,
         cursorManager.cursorIndex, cursorManager.targetCursorIndex);
+    onSelectionChange?.call(
+        selectionManager.anchor,
+        selectionManager.startIndex,
+        selectionManager.endIndex,
+        selectionManager.startLine,
+        selectionManager.endLine);
     notifyListeners();
   }
 
