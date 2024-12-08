@@ -9,6 +9,8 @@ class EditorPainter extends CustomPainter {
   final int lastVisibleLine;
   final double viewportHeight;
 
+  double? cachedCharacterWidth;
+
   late final TextStyle textStyle;
   late final TextPainter textPainter;
 
@@ -23,7 +25,12 @@ class EditorPainter extends CustomPainter {
       fontSize: core.config.fontSize,
       fontFamily: core.config.fontFamily,
       fontWeight: core.config.fontWeight,
-      fontFeatures: const [FontFeature.enable('kern')],
+      fontFeatures: const [
+        FontFeature.enable('kern'),
+        FontFeature.enable('liga')
+      ],
+      decoration: TextDecoration.none,
+      decorationColor: Colors.transparent,
     );
 
     textPainter = TextPainter(
@@ -151,9 +158,14 @@ class EditorPainter extends CustomPainter {
   }
 
   double _measureCharWidth() {
-    textPainter.text = TextSpan(text: 'w', style: textStyle);
-    textPainter.layout();
-    return textPainter.width;
+    if (cachedCharacterWidth != null) {
+      return cachedCharacterWidth!;
+    } else {
+      textPainter.text = TextSpan(text: 'w', style: textStyle);
+      textPainter.layout();
+      cachedCharacterWidth = textPainter.width;
+      return cachedCharacterWidth!;
+    }
   }
 
   double _measureLineWidth() {

@@ -11,6 +11,7 @@ class EditorCore extends ChangeNotifier {
   final SelectionManager selectionManager;
   final CursorManager cursorManager;
   final EditorConfig _editorConfig;
+  final String path;
 
   void Function()? forceRefresh;
   void Function(int line, int column)? onCursorMove;
@@ -22,6 +23,7 @@ class EditorCore extends ChangeNotifier {
     required editorConfig,
     this.onCursorMove,
     this.forceRefresh,
+    required this.path,
   }) : _editorConfig = editorConfig;
 
   void moveTo(int line, int column) {

@@ -7,11 +7,13 @@ import 'package:flutter/material.dart';
 class Gutter extends StatefulWidget {
   final EditorCore core;
   final ScrollController verticalScrollController;
+  final double tabBarHeight;
 
   const Gutter({
     super.key,
     required this.core,
     required this.verticalScrollController,
+    required this.tabBarHeight,
   });
 
   @override
@@ -34,7 +36,7 @@ class _GutterState extends State<Gutter> {
 
   double _calculateWidgetHeight() {
     return max(
-        MediaQuery.of(context).size.height,
+        MediaQuery.of(context).size.height - widget.tabBarHeight,
         (widget.core.lines.length * widget.core.config.lineHeight) +
             widget.core.config.heightPadding);
   }

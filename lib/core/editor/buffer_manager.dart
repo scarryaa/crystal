@@ -1,7 +1,7 @@
 import 'package:crystal/core/editor/cursor_manager.dart';
 
 class BufferManager {
-  final List<String> _lines;
+  List<String> _lines;
   late final CursorManager cursorManager;
 
   BufferManager({List<String>? initialLines, CursorManager? cursorManager})
@@ -30,6 +30,10 @@ class BufferManager {
       cursorManager.cursorIndex = linesToAdd.last.length;
       cursorManager.targetCursorIndex = cursorManager.cursorIndex;
     }
+  }
+
+  void setText(String text) {
+    _lines = text.split('\n');
   }
 
   void insertCharacter(String char) {

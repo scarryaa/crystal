@@ -13,12 +13,16 @@ class Editor extends StatefulWidget {
   final ScrollController horizontalScrollController;
   final ScrollController verticalScrollController;
   final void Function(EditorCore)? onCoreInitialized;
+  final String path;
+  final double tabBarHeight;
 
   const Editor({
     super.key,
     this.onCoreInitialized,
     required this.horizontalScrollController,
     required this.verticalScrollController,
+    required this.path,
+    required this.tabBarHeight,
   });
 
   @override
@@ -29,6 +33,7 @@ class _EditorState extends State<Editor> {
   late final EditorCore _core;
   late final EditorInputManager editorInputManager;
   final ValueNotifier<bool> _scrollChanged = ValueNotifier<bool>(false);
+  final FocusNode focusNode = FocusNode();
 
   @override
   void initState() {
@@ -39,6 +44,7 @@ class _EditorState extends State<Editor> {
       selectionManager: SelectionManager(),
       cursorManager: CursorManager(bufferManager),
       editorConfig: EditorConfig(),
+      path: widget.path,
     );
 
     editorInputManager = EditorInputManager(_core);
@@ -64,7 +70,7 @@ class _EditorState extends State<Editor> {
 
   double _calculateWidgetHeight() {
     return max(
-        MediaQuery.of(context).size.height,
+        MediaQuery.of(context).size.height - widget.tabBarHeight,
         (_core.lines.length * _core.config.lineHeight) +
             _core.config.heightPadding);
   }
@@ -147,13 +153,14 @@ class _EditorState extends State<Editor> {
                       notificationPredicate: (notification) =>
                           notification.depth == 1,
                       child: Listener(
-                          onPointerDown: (event) =>
-                              editorInputManager.handleMouseEvent(
-                                  event.localPosition,
-                                  Offset(
-                                      widget.horizontalScrollController.offset,
-                                      widget.verticalScrollController.offset),
-                                  event),
+                          onPointerDown: (event) {
+                            focusNode.requestFocus();
+                            editorInputManager.handleMouseEvent(
+                                event.localPosition,
+                                Offset(widget.horizontalScrollController.offset,
+                                    widget.verticalScrollController.offset),
+                                event);
+                          },
                           onPointerMove: (event) =>
                               editorInputManager.handleMouseEvent(
                                   event.localPosition,
@@ -178,6 +185,7 @@ class _EditorState extends State<Editor> {
                                       width: _calculateWidgetWidth(),
                                       height: _calculateWidgetHeight(),
                                       child: Focus(
+                                          focusNode: focusNode,
                                           autofocus: true,
                                           onKeyEvent: (node, keyEvent) =>
                                               handleKeyEvent(node, keyEvent),
