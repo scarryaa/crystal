@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 class FileExplorerViewModel extends ChangeNotifier {
   final List<FileItem> items = [];
   late final String currentPath;
+  final double width = 200;
 
   FileExplorerViewModel({String? initialPath}) {
     currentPath = initialPath ?? Directory.current.path;

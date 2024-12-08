@@ -15,6 +15,8 @@ class Editor extends StatefulWidget {
   final void Function(EditorCore)? onCoreInitialized;
   final String path;
   final double tabBarHeight;
+  final double fileExplorerWidth;
+  final double gutterWidth;
 
   const Editor({
     super.key,
@@ -23,6 +25,8 @@ class Editor extends StatefulWidget {
     required this.verticalScrollController,
     required this.path,
     required this.tabBarHeight,
+    required this.fileExplorerWidth,
+    required this.gutterWidth,
   });
 
   @override
@@ -79,8 +83,9 @@ class _EditorState extends State<Editor> with AutomaticKeepAliveClientMixin {
   }
 
   double _calculateWidgetWidth() {
-    return max(MediaQuery.of(context).size.width - _core.config.minGutterWidth,
-        _calculateMaxLineWidth() + _core.config.widthPadding);
+    return max(MediaQuery.of(context).size.width - widget.gutterWidth,
+            _calculateMaxLineWidth() + _core.config.widthPadding) -
+        widget.fileExplorerWidth;
   }
 
   double _calculateMaxLineWidth() {

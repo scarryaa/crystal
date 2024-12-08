@@ -8,13 +8,22 @@ class Gutter extends StatefulWidget {
   final EditorCore core;
   final ScrollController verticalScrollController;
   final double tabBarHeight;
+  final void Function(double width)? onWidthChanged;
 
   const Gutter({
     super.key,
     required this.core,
     required this.verticalScrollController,
     required this.tabBarHeight,
+    this.onWidthChanged,
   });
+
+  double getGutterWidth(BuildContext context) {
+    return (key as GlobalKey<_GutterState>)
+            .currentState
+            ?._calculateWidgetWidth() ??
+        0.0;
+  }
 
   @override
   State<StatefulWidget> createState() => _GutterState();
@@ -61,6 +70,9 @@ class _GutterState extends State<Gutter> with AutomaticKeepAliveClientMixin {
   @override
   Widget build(BuildContext context) {
     super.build(context);
+
+    final gutterWidth = _calculateWidgetWidth();
+    widget.onWidthChanged?.call(gutterWidth);
 
     return ListenableBuilder(
         listenable: Listenable.merge([widget.core, _scrollChanged]),

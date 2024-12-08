@@ -22,6 +22,7 @@ class EditorScreenState extends State<EditorScreen>
   late final EditorTabManager tabManager;
   late final FileExplorerViewModel fileExplorerViewModel;
   final tabBarHeight = 48.0;
+  double _gutterWidth = 0;
 
   @override
   void initState() {
@@ -103,6 +104,10 @@ class EditorScreenState extends State<EditorScreen>
                                 .getScrollManager(currentPath)
                                 .gutterVerticalScrollController,
                             tabBarHeight: tabBarHeight,
+                            onWidthChanged: (width) {
+                              WidgetsBinding.instance.addPostFrameCallback(
+                                  (_) => setState(() => _gutterWidth = width));
+                            },
                           ),
                         Expanded(
                           child: TabBarView(
@@ -112,6 +117,8 @@ class EditorScreenState extends State<EditorScreen>
                               final scrollManager =
                                   tabManager.getScrollManager(path);
                               return Editor(
+                                fileExplorerWidth: fileExplorerViewModel.width,
+                                gutterWidth: _gutterWidth,
                                 onCoreInitialized: (core) =>
                                     _handleEditorCore(core, path),
                                 verticalScrollController: scrollManager
