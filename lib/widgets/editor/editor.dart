@@ -7,7 +7,6 @@ import 'package:crystal/core/editor/editor_core.dart';
 import 'package:crystal/core/editor/selection_manager.dart';
 import 'package:crystal/widgets/editor/editor_painter.dart';
 import 'package:crystal/widgets/editor/managers/editor_input_manager.dart';
-import 'package:crystal/widgets/editor/managers/editor_tab_manager.dart';
 import 'package:flutter/material.dart';
 
 class Editor extends StatefulWidget {
@@ -30,11 +29,14 @@ class Editor extends StatefulWidget {
   State<StatefulWidget> createState() => _EditorState();
 }
 
-class _EditorState extends State<Editor> {
+class _EditorState extends State<Editor> with AutomaticKeepAliveClientMixin {
   late final EditorCore _core;
   late final EditorInputManager editorInputManager;
   final ValueNotifier<bool> _scrollChanged = ValueNotifier<bool>(false);
   final FocusNode focusNode = FocusNode();
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -101,6 +103,8 @@ class _EditorState extends State<Editor> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+
     return ScrollbarTheme(
         data: ScrollbarThemeData(
           thickness: WidgetStateProperty.resolveWith((states) {

@@ -58,6 +58,9 @@ class EditorScreenState extends State<EditorScreen>
     return ListenableBuilder(
         listenable: tabManager,
         builder: (context, child) {
+          final currentPath = tabManager.getCurrentPath();
+          final activeCore = tabManager.getActiveCore();
+
           return Material(
               child: Column(
             children: [
@@ -92,17 +95,18 @@ class EditorScreenState extends State<EditorScreen>
                       ),
                       Expanded(
                           child: Row(children: [
-                        if (tabManager.getActiveCore() != null)
+                        if (activeCore != null && currentPath != null)
                           Gutter(
-                            core: tabManager.getActiveCore()!,
+                            key: ValueKey(currentPath),
+                            core: activeCore,
                             verticalScrollController: tabManager
-                                .getScrollManager(
-                                    tabManager.getActiveCore()!.path)
+                                .getScrollManager(currentPath)
                                 .gutterVerticalScrollController,
                             tabBarHeight: tabBarHeight,
                           ),
                         Expanded(
                           child: TabBarView(
+                            physics: const NeverScrollableScrollPhysics(),
                             controller: tabManager.controller,
                             children: tabManager.tabs.map((path) {
                               final scrollManager =

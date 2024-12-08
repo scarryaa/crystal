@@ -20,6 +20,35 @@ class EditorTabManager extends ChangeNotifier {
         length: 0, vsync: vsync, animationDuration: Duration.zero);
   }
 
+  void initController() {
+    controller = TabController(
+        length: tabs.length,
+        vsync: vsync,
+        animationDuration: Duration.zero,
+        initialIndex: tabs.length - 1);
+
+    controller.addListener(_handleTabChange);
+  }
+
+  void _handleTabChange() {
+    if (!controller.indexIsChanging) {
+      final currentPath = getCurrentPath();
+      if (currentPath == null) return;
+
+      final scrollManager = scrollManagers[currentPath];
+      if (scrollManager == null) return;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (scrollManager.gutterVerticalScrollController.hasClients &&
+            scrollManager.editorVerticalScrollController.hasClients) {
+          scrollManager.gutterVerticalScrollController
+              .jumpTo(scrollManager.editorVerticalScrollController.offset);
+        }
+      });
+      notifyListeners();
+    }
+  }
+
   void _handleCursorMove(String path, int line, int column) {
     final scrollManager = getScrollManager(path);
     final core = cores[path];
@@ -82,17 +111,19 @@ class EditorTabManager extends ChangeNotifier {
       scrollManagers[path] = scrollManager;
 
       final oldController = controller;
-      controller = TabController(
-          length: tabs.length,
-          vsync: vsync,
-          initialIndex: tabs.length - 1,
-          animationDuration: Duration.zero);
-
+      oldController.removeListener(_handleTabChange);
+      initController();
       oldController.dispose();
     } else {
       controller.animateTo(tabs.indexOf(path));
     }
-    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    controller.removeListener(_handleTabChange);
+    controller.dispose();
+    super.dispose();
   }
 
   void closeTab(String path) {
@@ -102,7 +133,8 @@ class EditorTabManager extends ChangeNotifier {
       controller = TabController(
           length: max(0, tabs.length - 1),
           vsync: vsync,
-          initialIndex: max(0, index - 1));
+          initialIndex: max(0, index - 1),
+          animationDuration: Duration.zero);
 
       tabs.removeAt(index);
       fileContents.remove(path);
@@ -122,9 +154,10 @@ class EditorTabManager extends ChangeNotifier {
     return fileContents[tabs[controller.index]];
   }
 
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
+  String? getCurrentPath() {
+    if (tabs.isEmpty) return null;
+    if (controller.index < 0 || controller.index >= tabs.length) return null;
+
+    return tabs[controller.index];
   }
 }

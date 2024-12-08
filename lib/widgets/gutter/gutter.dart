@@ -20,7 +20,7 @@ class Gutter extends StatefulWidget {
   State<StatefulWidget> createState() => _GutterState();
 }
 
-class _GutterState extends State<Gutter> {
+class _GutterState extends State<Gutter> with AutomaticKeepAliveClientMixin {
   final int lineBuffer = 5;
   final ValueNotifier<bool> _scrollChanged = ValueNotifier<bool>(false);
 
@@ -60,6 +60,8 @@ class _GutterState extends State<Gutter> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+
     return ListenableBuilder(
         listenable: Listenable.merge([widget.core, _scrollChanged]),
         builder: (context, child) {
@@ -108,4 +110,7 @@ class _GutterState extends State<Gutter> {
                       )))));
         });
   }
+
+  @override
+  bool get wantKeepAlive => true;
 }
