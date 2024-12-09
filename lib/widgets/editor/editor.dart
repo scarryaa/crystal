@@ -84,9 +84,11 @@ class _EditorState extends State<Editor> with AutomaticKeepAliveClientMixin {
   }
 
   double _calculateWidgetWidth() {
-    return max(MediaQuery.of(context).size.width - widget.gutterWidth,
-            _calculateMaxLineWidth() + _core.config.widthPadding) -
-        widget.fileExplorerWidth;
+    return max(
+        MediaQuery.of(context).size.width -
+            widget.gutterWidth -
+            widget.fileExplorerWidth,
+        _calculateMaxLineWidth() + _core.config.widthPadding);
   }
 
   double _calculateMaxLineWidth() {
