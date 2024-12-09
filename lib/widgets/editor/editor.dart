@@ -7,11 +7,13 @@ import 'package:crystal/core/editor/editor_core.dart';
 import 'package:crystal/core/editor/selection_manager.dart';
 import 'package:crystal/widgets/editor/editor_painter.dart';
 import 'package:crystal/widgets/editor/managers/editor_input_manager.dart';
+import 'package:crystal/widgets/editor/managers/editor_state_manager.dart';
 import 'package:flutter/material.dart';
 
 class Editor extends StatefulWidget {
   final ScrollController horizontalScrollController;
   final ScrollController verticalScrollController;
+  final EditorStateManager stateManager;
   final void Function(EditorCore)? onCoreInitialized;
   final FocusNode focusNode;
   final String path;
@@ -24,6 +26,7 @@ class Editor extends StatefulWidget {
     this.onCoreInitialized,
     required this.horizontalScrollController,
     required this.verticalScrollController,
+    required this.stateManager,
     required this.focusNode,
     required this.path,
     required this.tabBarHeight,
@@ -74,6 +77,9 @@ class _EditorState extends State<Editor> with AutomaticKeepAliveClientMixin {
 
   void _onScroll() {
     _scrollChanged.value = !_scrollChanged.value;
+    widget.stateManager.scrollPositions[widget.path] = Offset(
+        widget.horizontalScrollController.offset,
+        widget.verticalScrollController.offset);
   }
 
   double _calculateWidgetHeight() {
@@ -230,6 +236,8 @@ class _EditorState extends State<Editor> with AutomaticKeepAliveClientMixin {
                                                         .verticalScrollController
                                                         .offset
                                                     : 0),
+                                            primaryColor:
+                                                Theme.of(context).primaryColor,
                                           )))))))));
             }));
   }

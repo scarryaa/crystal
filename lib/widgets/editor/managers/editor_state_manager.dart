@@ -16,6 +16,7 @@ class EditorStateManager extends ChangeNotifier {
   final Map<String, (int, int, int, int, int)> selections = {};
   final Map<String, FocusNode> focusNodes = {};
   final Map<String, EditorScrollManager> scrollManagers = {};
+  final Map<String, Offset> scrollPositions = {};
 
   EditorStateManager({
     required this.contentManager,

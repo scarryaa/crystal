@@ -8,6 +8,7 @@ class EditorPainter extends CustomPainter {
   final int firstVisibleLine;
   final int lastVisibleLine;
   final double viewportHeight;
+  final Color primaryColor;
 
   double? cachedCharacterWidth;
 
@@ -19,6 +20,7 @@ class EditorPainter extends CustomPainter {
     required this.firstVisibleLine,
     required this.lastVisibleLine,
     required this.viewportHeight,
+    this.primaryColor = Colors.blue,
   }) : super(repaint: core) {
     textStyle = TextStyle(
       color: core.config.textColor,

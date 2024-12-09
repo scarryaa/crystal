@@ -23,12 +23,20 @@ class _CustomTabBarState extends State<CustomTabBar> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-        listenable: widget.tabController.contentManager,
-        builder: (context, child) {
-          return SizedBox(
-              height: widget.tabBarHeight,
-              child: Row(children: [
-                TabBar(
+      listenable: widget.tabController.contentManager,
+      builder: (context, child) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(
+              bottom: BorderSide(color: Colors.grey, width: 0),
+            ),
+          ),
+          height: widget.tabBarHeight,
+          child: Row(
+            children: [
+              Expanded(
+                child: TabBar(
                   splashFactory: NoSplash.splashFactory,
                   tabAlignment: TabAlignment.start,
                   controller: widget.tabController.controller,
@@ -37,24 +45,42 @@ class _CustomTabBarState extends State<CustomTabBar> {
                   indicatorPadding: EdgeInsets.zero,
                   padding: EdgeInsets.zero,
                   indicator: const BoxDecoration(
-                      border: Border(bottom: BorderSide.none)),
+                    color: Colors.transparent,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: Colors.grey,
+                        width: 1,
+                      ),
+                    ),
+                  ),
                   tabs: widget.tabController.tabs.map((path) {
                     return CustomTab(
-                        isDirty: widget.tabController.contentManager
-                            .isContentDirty(path),
-                        tabController: widget.tabController,
-                        path: path,
-                        tabBarHeight: widget.tabBarHeight);
+                      isDirty: widget.tabController.contentManager
+                          .isContentDirty(path),
+                      tabController: widget.tabController,
+                      path: path,
+                      tabBarHeight: widget.tabBarHeight,
+                    );
                   }).toList(),
                 ),
-                const Spacer(),
-                CustomTabButton(
-                    tabController: widget.tabController,
-                    icon: Icons.add,
-                    iconSize: 16,
-                    onPressed: () async => widget.tabController.openTab(
-                        EditorScrollManager(), await Utils.getTempPath(), '')),
-              ]));
-        });
+              ),
+              CustomTabButton(
+                tabController: widget.tabController,
+                icon: Icons.add,
+                iconSize: 16,
+                onPressed: () async {
+                  final tempPath = await Utils.getTempPath();
+                  widget.tabController.openTab(
+                    EditorScrollManager(),
+                    tempPath,
+                    '',
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }

@@ -9,6 +9,7 @@ class GutterPainter extends CustomPainter {
   final int firstVisibleLine;
   final int lastVisibleLine;
   final double viewportHeight;
+  final Color primaryColor;
 
   final TextPainter _textPainter =
       TextPainter(textDirection: TextDirection.ltr);
@@ -19,6 +20,7 @@ class GutterPainter extends CustomPainter {
     required this.firstVisibleLine,
     required this.lastVisibleLine,
     required this.viewportHeight,
+    this.primaryColor = Colors.blue,
   }) : super(repaint: core) {
     _backgroundPaint = Paint()..color = core.config.backgroundColor;
   }

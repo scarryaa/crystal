@@ -134,6 +134,7 @@ class EditorScreenState extends State<EditorScreen>
                                               final scrollManager = stateManager
                                                   .getScrollManager(path);
                                               return Editor(
+                                                stateManager: stateManager,
                                                 focusNode: stateManager
                                                     .focusNodes[path]!,
                                                 fileExplorerWidth:

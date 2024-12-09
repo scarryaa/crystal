@@ -114,16 +114,18 @@ class _GutterState extends State<Gutter> with AutomaticKeepAliveClientMixin {
                       width: _calculateWidgetWidth(),
                       height: _calculateWidgetHeight(),
                       child: CustomPaint(
-                          painter: GutterPainter(
-                        core: widget.core,
-                        firstVisibleLine: firstVisibleLine,
-                        lastVisibleLine: lastVisibleLine,
-                        viewportHeight: MediaQuery.of(context).size.height +
-                            widget.core.config.heightPadding +
-                            (widget.verticalScrollController.hasClients
-                                ? widget.verticalScrollController.offset
-                                : 0),
-                      )))));
+                        painter: GutterPainter(
+                          core: widget.core,
+                          firstVisibleLine: firstVisibleLine,
+                          lastVisibleLine: lastVisibleLine,
+                          viewportHeight: MediaQuery.of(context).size.height +
+                              widget.core.config.heightPadding +
+                              (widget.verticalScrollController.hasClients
+                                  ? widget.verticalScrollController.offset
+                                  : 0),
+                          primaryColor: Theme.of(context).primaryColor,
+                        ),
+                      ))));
         });
   }
 

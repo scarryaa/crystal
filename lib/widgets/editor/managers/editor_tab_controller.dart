@@ -33,7 +33,7 @@ class EditorTabController extends ChangeNotifier {
         if (scrollManager.gutterVerticalScrollController.hasClients &&
             scrollManager.editorVerticalScrollController.hasClients) {
           scrollManager.gutterVerticalScrollController
-              .jumpTo(scrollManager.editorVerticalScrollController.offset);
+              .jumpTo(stateManager.scrollPositions[currentPath]?.dy ?? 0);
         }
         stateManager.focusNodes[currentPath]!.requestFocus();
       });
@@ -61,7 +61,7 @@ class EditorTabController extends ChangeNotifier {
     }
   }
 
-  void closeTab(String path) {
+  void closeTab(EditorScrollManager scrollManager, String path) {
     final index = tabs.indexOf(path);
     if (index != -1) {
       final oldController = controller;
@@ -77,6 +77,8 @@ class EditorTabController extends ChangeNotifier {
       stateManager.scrollManagers.remove(path);
       oldController.dispose();
       notifyListeners();
+
+      WidgetsBinding.instance.addPostFrameCallback((_) => _handleTabChange());
     }
   }
 

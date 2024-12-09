@@ -25,7 +25,9 @@ class _CustomTabState extends State<CustomTab> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTertiaryTapDown: (_) => widget.tabController.closeTab(widget.path),
+      onTertiaryTapDown: (_) => widget.tabController.closeTab(
+          widget.tabController.stateManager.scrollManagers[widget.path]!,
+          widget.path),
       child: Container(
         padding: const EdgeInsets.only(left: 12.0, top: 2.0),
         decoration: BoxDecoration(
@@ -65,7 +67,10 @@ class _CustomTabState extends State<CustomTab> {
                   ),
                 ),
                 icon: const Icon(Icons.close, size: 16),
-                onPressed: () => widget.tabController.closeTab(widget.path),
+                onPressed: () => widget.tabController.closeTab(
+                    widget.tabController.stateManager
+                        .scrollManagers[widget.path]!,
+                    widget.path),
               ),
               Container(width: 8.0),
             ],
