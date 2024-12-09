@@ -25,31 +25,43 @@ class CustomTab extends StatefulWidget {
 class _CustomTabState extends State<CustomTab> {
   @override
   Widget build(BuildContext context) {
-    return Tab(
-        height: widget.tabBarHeight,
-        child: Row(
-          children: [
-            DirtyIndicator(isDirty: widget.isDirty),
-            Container(width: 8.0),
-            Text(widget.path.split(Platform.pathSeparator).last),
-            Container(width: 8.0),
-            IconButton(
-              hoverColor: Colors.grey.withOpacity(0.5),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(
-                minWidth: 20,
-                minHeight: 20,
-              ),
-              style: IconButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-              icon: const Icon(Icons.close, size: 16),
-              onPressed: () => widget.tabController.closeTab(widget.path),
-            ),
-            Container(width: 8.0),
-          ],
-        ));
+    return GestureDetector(
+        onTertiaryTapDown: (_) => widget.tabController.closeTab(widget.path),
+        child: Container(
+            padding: const EdgeInsets.only(left: 12.0, top: 2.0),
+            decoration: BoxDecoration(
+                color: widget.tabController.controller.index ==
+                        widget.tabController.tabs.indexOf(widget.path)
+                    ? Theme.of(context).primaryColor.withOpacity(0.2)
+                    : Colors.transparent,
+                border: const Border(
+                    right: BorderSide(color: Colors.grey, width: 1))),
+            child: Tab(
+                height: widget.tabBarHeight,
+                child: Row(
+                  children: [
+                    DirtyIndicator(isDirty: widget.isDirty),
+                    Container(width: 8.0),
+                    Text(widget.path.split(Platform.pathSeparator).last),
+                    Container(width: 8.0),
+                    IconButton(
+                      hoverColor: Colors.grey.withOpacity(0.5),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 20,
+                        minHeight: 20,
+                      ),
+                      style: IconButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      icon: const Icon(Icons.close, size: 16),
+                      onPressed: () =>
+                          widget.tabController.closeTab(widget.path),
+                    ),
+                    Container(width: 8.0),
+                  ],
+                ))));
   }
 }
