@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:crystal/core/editor/editor_core.dart';
+import 'package:crystal/models/editor/selection/selection.dart';
 import 'package:crystal/widgets/editor/managers/editor_content_manager.dart';
 import 'package:crystal/widgets/editor/managers/editor_mouse_manager.dart';
 import 'package:crystal/widgets/editor/managers/editor_scroll_manager.dart';
@@ -13,7 +14,7 @@ class EditorStateManager extends ChangeNotifier {
 
   final Map<String, EditorCore> cores = {};
   final Map<String, (int, int)> cursorPositions = {};
-  final Map<String, (int, int, int, int, int)> selections = {};
+  final Map<String, Selection> selections = {};
   final Map<String, FocusNode> focusNodes = {};
   final Map<String, EditorScrollManager> scrollManagers = {};
   final Map<String, Offset> scrollPositions = {};
@@ -53,7 +54,12 @@ class EditorStateManager extends ChangeNotifier {
     core.onEdit = (content) => contentManager.updateFileContent(path, content);
     core.onSelectionChange =
         (anchor, startIndex, endIndex, startLine, endLine) {
-      selections[path] = (anchor, startIndex, endIndex, startLine, endLine);
+      selections[path] = Selection(
+          anchor: anchor,
+          startIndex: startIndex,
+          endIndex: endIndex,
+          startLine: startLine,
+          endLine: endLine);
     };
 
     final content =
@@ -62,14 +68,10 @@ class EditorStateManager extends ChangeNotifier {
     core.setBuffer(content);
 
     // Prevents the first line from being highlighted on tab switch when the selection is out of bounds
-    if (selections[path] != null &&
-        selections[path]!.$1 != -1 &&
-        selections[path]!.$2 != -1 &&
-        selections[path]!.$3 != -1 &&
-        selections[path]!.$4 != -1 &&
-        selections[path]!.$5 != -1) {
+    if (selections[path] != null && selections[path]!.hasSelection()) {
       final selection = selections[path]!;
-      core.selectRange(selection.$4, selection.$2, selection.$5, selection.$3);
+      core.selectRange(selection.startLine, selection.startIndex,
+          selection.endLine, selection.endIndex);
     }
 
     if (cursorPositions[path] != null) {
@@ -97,6 +99,4 @@ class EditorStateManager extends ChangeNotifier {
     if (tabController.tabs.isEmpty) return null;
     return cores[tabController.tabs[tabController.controller.index]];
   }
-
-  void updateSelection(String path, int anchor, int start, int end) {}
 }
