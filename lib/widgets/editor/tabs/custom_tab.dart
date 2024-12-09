@@ -42,7 +42,12 @@ class _CustomTabState extends State<CustomTab> {
                   children: [
                     DirtyIndicator(isDirty: widget.isDirty),
                     Container(width: 8.0),
-                    Text(widget.path.split(Platform.pathSeparator).last),
+                    Text(widget.path
+                            .split(Platform.pathSeparator)
+                            .last
+                            .startsWith('_temp')
+                        ? 'untitled'
+                        : widget.path.split(Platform.pathSeparator).last),
                     Container(width: 8.0),
                     IconButton(
                       hoverColor: Colors.grey.withOpacity(0.5),

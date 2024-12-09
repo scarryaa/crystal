@@ -96,7 +96,8 @@ class EditorScreenState extends State<EditorScreen>
                       ),
                       Expanded(
                           child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                             if (activeCore != null && currentPath != null)
                               Gutter(
