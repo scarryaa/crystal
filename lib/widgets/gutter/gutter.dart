@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:crystal/core/editor/editor_core.dart';
 import 'package:crystal/widgets/gutter/gutter_painter.dart';
+import 'package:crystal/widgets/gutter/managers/gutter_input_manager.dart';
 import 'package:flutter/material.dart';
 
 class Gutter extends StatefulWidget {
@@ -33,11 +34,14 @@ class _GutterState extends State<Gutter> with AutomaticKeepAliveClientMixin {
   final int lineBuffer = 5;
   final ValueNotifier<bool> _scrollChanged = ValueNotifier<bool>(false);
   late double _cachedGutterWidth = 0;
+  late final GutterInputManager gutterInputManager;
 
   @override
   void initState() {
     super.initState();
     widget.verticalScrollController.addListener(_onScroll);
+
+    gutterInputManager = GutterInputManager(widget.core);
   }
 
   void _onScroll() {
@@ -110,22 +114,49 @@ class _GutterState extends State<Gutter> with AutomaticKeepAliveClientMixin {
               child: SingleChildScrollView(
                   scrollDirection: Axis.vertical,
                   controller: widget.verticalScrollController,
-                  child: SizedBox(
-                      width: _calculateWidgetWidth(),
-                      height: _calculateWidgetHeight(),
-                      child: CustomPaint(
-                        painter: GutterPainter(
-                          core: widget.core,
-                          firstVisibleLine: firstVisibleLine,
-                          lastVisibleLine: lastVisibleLine,
-                          viewportHeight: MediaQuery.of(context).size.height +
-                              widget.core.config.heightPadding +
-                              (widget.verticalScrollController.hasClients
-                                  ? widget.verticalScrollController.offset
-                                  : 0),
-                          primaryColor: Theme.of(context).primaryColor,
-                        ),
-                      ))));
+                  child: Listener(
+                      onPointerDown: (event) {
+                        gutterInputManager.handleMouseEvent(
+                            event.localPosition,
+                            Offset(0.0, widget.verticalScrollController.offset),
+                            event);
+                        widget.core.onSelectionChange?.call(
+                            widget.core.selectionManager.anchor,
+                            widget.core.selectionManager.startIndex,
+                            widget.core.selectionManager.endIndex,
+                            widget.core.selectionManager.startLine,
+                            widget.core.selectionManager.endLine);
+                      },
+                      onPointerMove: (event) {
+                        gutterInputManager.handleMouseEvent(
+                            event.localPosition,
+                            Offset(0.0, widget.verticalScrollController.offset),
+                            event);
+                        widget.core.onSelectionChange?.call(
+                            widget.core.selectionManager.anchor,
+                            widget.core.selectionManager.startIndex,
+                            widget.core.selectionManager.endIndex,
+                            widget.core.selectionManager.startLine,
+                            widget.core.selectionManager.endLine);
+                      },
+                      child: SizedBox(
+                          width: _calculateWidgetWidth(),
+                          height: _calculateWidgetHeight(),
+                          child: CustomPaint(
+                            painter: GutterPainter(
+                              core: widget.core,
+                              firstVisibleLine: firstVisibleLine,
+                              lastVisibleLine: lastVisibleLine,
+                              viewportHeight: MediaQuery.of(context)
+                                      .size
+                                      .height +
+                                  widget.core.config.heightPadding +
+                                  (widget.verticalScrollController.hasClients
+                                      ? widget.verticalScrollController.offset
+                                      : 0),
+                              primaryColor: Theme.of(context).primaryColor,
+                            ),
+                          )))));
         });
   }
 
