@@ -94,6 +94,7 @@ class EditorTabController extends ChangeNotifier {
   String? getCurrentPath() {
     if (tabs.isEmpty) return null;
     if (controller.index < 0 || controller.index >= tabs.length) return null;
+    if (controller.indexIsChanging) return null;
 
     return tabs[controller.index];
   }

@@ -32,6 +32,7 @@ class Gutter extends StatefulWidget {
 class _GutterState extends State<Gutter> with AutomaticKeepAliveClientMixin {
   final int lineBuffer = 5;
   final ValueNotifier<bool> _scrollChanged = ValueNotifier<bool>(false);
+  late double _cachedGutterWidth = 0;
 
   @override
   void initState() {
@@ -72,7 +73,10 @@ class _GutterState extends State<Gutter> with AutomaticKeepAliveClientMixin {
     super.build(context);
 
     final gutterWidth = _calculateWidgetWidth();
-    widget.onWidthChanged?.call(gutterWidth);
+    if (_cachedGutterWidth != gutterWidth) {
+      _cachedGutterWidth = gutterWidth;
+      widget.onWidthChanged?.call(gutterWidth);
+    }
 
     return ListenableBuilder(
         listenable: Listenable.merge([widget.core, _scrollChanged]),
