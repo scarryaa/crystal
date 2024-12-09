@@ -77,8 +77,12 @@ class Selection {
     startLine = endLine = cursorLine;
     endIndex = bufferManager.lines[startLine].length;
     endLine++;
-    endLine = min(endLine, bufferManager.lines.length - 1);
-    endIndex = 0;
+
+    if (endLine > bufferManager.lines.length - 1) {
+      endLine = min(endLine, bufferManager.lines.length - 1);
+    } else {
+      endIndex = 0;
+    }
   }
 
   void updateSelection(BufferManager bufferManager,
