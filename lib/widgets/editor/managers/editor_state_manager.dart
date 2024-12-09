@@ -61,7 +61,13 @@ class EditorStateManager extends ChangeNotifier {
     contentManager.updateFileContent(path, content);
     core.setBuffer(content);
 
-    if (selections[path] != null) {
+    // Prevents the first line from being highlighted on tab switch when the selection is out of bounds
+    if (selections[path] != null &&
+        selections[path]!.$1 != -1 &&
+        selections[path]!.$2 != -1 &&
+        selections[path]!.$3 != -1 &&
+        selections[path]!.$4 != -1 &&
+        selections[path]!.$5 != -1) {
       final selection = selections[path]!;
       core.selectRange(selection.$4, selection.$2, selection.$5, selection.$3);
     }

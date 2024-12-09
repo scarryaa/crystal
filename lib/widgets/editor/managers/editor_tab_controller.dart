@@ -35,7 +35,6 @@ class EditorTabController extends ChangeNotifier {
               stateManager.scrollPositions[currentPath]!.dx,
               stateManager.scrollPositions[currentPath]!.dy));
         }
-        stateManager.focusNodes[currentPath]!.requestFocus();
       });
       notifyListeners();
     }
