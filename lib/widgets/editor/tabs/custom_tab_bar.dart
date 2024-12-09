@@ -22,35 +22,39 @@ class CustomTabBar extends StatefulWidget {
 class _CustomTabBarState extends State<CustomTabBar> {
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-        height: widget.tabBarHeight,
-        child: Row(children: [
-          TabBar(
-            splashFactory: NoSplash.splashFactory,
-            tabAlignment: TabAlignment.start,
-            controller: widget.tabController.controller,
-            isScrollable: true,
-            labelPadding: EdgeInsets.zero,
-            indicatorPadding: EdgeInsets.zero,
-            padding: EdgeInsets.zero,
-            indicator:
-                const BoxDecoration(border: Border(bottom: BorderSide.none)),
-            tabs: widget.tabController.tabs.map((path) {
-              return CustomTab(
-                  isDirty:
-                      widget.tabController.contentManager.isContentDirty(path),
-                  tabController: widget.tabController,
-                  path: path,
-                  tabBarHeight: widget.tabBarHeight);
-            }).toList(),
-          ),
-          const Spacer(),
-          CustomTabButton(
-              tabController: widget.tabController,
-              icon: Icons.add,
-              iconSize: 16,
-              onPressed: () async => widget.tabController.openTab(
-                  EditorScrollManager(), await Utils.getTempPath(), '')),
-        ]));
+    return ListenableBuilder(
+        listenable: widget.tabController.contentManager,
+        builder: (context, child) {
+          return SizedBox(
+              height: widget.tabBarHeight,
+              child: Row(children: [
+                TabBar(
+                  splashFactory: NoSplash.splashFactory,
+                  tabAlignment: TabAlignment.start,
+                  controller: widget.tabController.controller,
+                  isScrollable: true,
+                  labelPadding: EdgeInsets.zero,
+                  indicatorPadding: EdgeInsets.zero,
+                  padding: EdgeInsets.zero,
+                  indicator: const BoxDecoration(
+                      border: Border(bottom: BorderSide.none)),
+                  tabs: widget.tabController.tabs.map((path) {
+                    return CustomTab(
+                        isDirty: widget.tabController.contentManager
+                            .isContentDirty(path),
+                        tabController: widget.tabController,
+                        path: path,
+                        tabBarHeight: widget.tabBarHeight);
+                  }).toList(),
+                ),
+                const Spacer(),
+                CustomTabButton(
+                    tabController: widget.tabController,
+                    icon: Icons.add,
+                    iconSize: 16,
+                    onPressed: () async => widget.tabController.openTab(
+                        EditorScrollManager(), await Utils.getTempPath(), '')),
+              ]));
+        });
   }
 }

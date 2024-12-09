@@ -1,6 +1,7 @@
 import 'package:crystal/widgets/editor/managers/editor_tab_controller.dart';
+import 'package:flutter/material.dart';
 
-class EditorContentManager {
+class EditorContentManager extends ChangeNotifier {
   late final EditorTabController tabController;
   final Map<String, String> fileContents = {};
   final Map<String, String> originalContents = {};
@@ -16,5 +17,10 @@ class EditorContentManager {
   String? getCurrentContent() {
     if (tabController.tabs.isEmpty) return null;
     return fileContents[tabController.tabs[tabController.controller.index]];
+  }
+
+  void updateFileContent(String path, String content) {
+    fileContents[path] = content;
+    notifyListeners();
   }
 }

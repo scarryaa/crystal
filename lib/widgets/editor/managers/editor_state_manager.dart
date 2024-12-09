@@ -38,7 +38,7 @@ class EditorStateManager extends ChangeNotifier {
     core.onCursorMove =
         (line, column) => updateCursorPosition(path, line, column);
     core.forceRefresh = () => _forceRefresh(path);
-    core.onEdit = (content) => contentManager.fileContents[path] = content;
+    core.onEdit = (content) => contentManager.updateFileContent(path, content);
     core.onSelectionChange =
         (anchor, startIndex, endIndex, startLine, endLine) {
       selections[path] = (anchor, startIndex, endIndex, startLine, endLine);
@@ -46,7 +46,7 @@ class EditorStateManager extends ChangeNotifier {
 
     final content =
         contentManager.fileContents[path] ?? File(path).readAsStringSync();
-    contentManager.fileContents[path] = content;
+    contentManager.updateFileContent(path, content);
     core.setBuffer(content);
 
     if (selections[path] != null) {
