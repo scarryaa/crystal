@@ -45,6 +45,14 @@ class EditorInputManager {
         break;
       case LogicalKeyboardKey.delete:
         core.deleteForwards(1);
+      case LogicalKeyboardKey.tab:
+        if (isShiftPressed) {
+          // TODO
+          return KeyEventResult.handled;
+        }
+
+        core.insertChar('    ');
+        core.moveCursorTo(core.cursorLine, core.cursorPosition + 3);
       default:
         if (keyEvent.character == null) return KeyEventResult.ignored;
 
