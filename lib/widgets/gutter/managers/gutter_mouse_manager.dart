@@ -49,7 +49,7 @@ class GutterMouseManager {
   (int, int) _convertPositionToTextIndex(
       Offset localPosition, Offset scrollPosition) {
     return (
-      (localPosition.dy + scrollPosition.dy) ~/ core.config.lineHeight,
+      (localPosition.dy) ~/ core.config.lineHeight,
       (localPosition.dx + scrollPosition.dx) ~/ core.config.characterWidth
     );
   }

@@ -34,7 +34,7 @@ class _GutterState extends State<Gutter> with AutomaticKeepAliveClientMixin {
   final int lineBuffer = 5;
   final ValueNotifier<bool> _scrollChanged = ValueNotifier<bool>(false);
   late double _cachedGutterWidth = 0;
-  late final GutterInputManager gutterInputManager;
+  late GutterInputManager gutterInputManager;
 
   @override
   void initState() {
@@ -70,6 +70,12 @@ class _GutterState extends State<Gutter> with AutomaticKeepAliveClientMixin {
     )..layout();
 
     return max(widget.core.config.minGutterWidth, textPainter.width + 40.0);
+  }
+
+  @override
+  void didUpdateWidget(covariant Gutter oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    gutterInputManager = GutterInputManager(widget.core);
   }
 
   @override
