@@ -49,15 +49,10 @@ class _CustomTabBarState extends State<CustomTabBar> {
                   labelPadding: EdgeInsets.zero,
                   indicatorPadding: EdgeInsets.zero,
                   padding: EdgeInsets.zero,
-                  indicator: BoxDecoration(
-                    color: Colors.transparent,
+                  indicatorWeight: 0,
+                  indicator: const BoxDecoration(
                     border: Border(
-                      bottom: BorderSide(
-                        color: widget.tabController.tabs.isNotEmpty
-                            ? Colors.grey
-                            : Colors.transparent,
-                        width: widget.tabController.tabs.isNotEmpty ? 1 : 0,
-                      ),
+                      bottom: BorderSide.none,
                     ),
                   ),
                   tabs: widget.tabController.tabs.map((path) {
