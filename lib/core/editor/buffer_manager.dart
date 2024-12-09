@@ -46,7 +46,13 @@ class BufferManager {
   }
 
   void insertNewline() {
+    final String rightPart =
+        _lines[cursorManager.cursorLine].substring(cursorManager.cursorIndex);
+    _lines[cursorManager.cursorLine] = _lines[cursorManager.cursorLine]
+        .substring(0, cursorManager.cursorIndex);
     _lines.insert(cursorManager.cursorLine + 1, '');
+    _lines[cursorManager.cursorLine + 1] = rightPart;
+
     cursorManager.cursorLine++;
     cursorManager.cursorIndex = 0;
     cursorManager.targetCursorIndex = cursorManager.cursorIndex;
