@@ -31,6 +31,17 @@ class EditorStateManager extends ChangeNotifier {
 
     cursorPositions[path] =
         (core.cursorManager.cursorLine, core.cursorManager.cursorIndex);
+    scrollManagers[path]?.jumpToCursor(
+      core,
+      scrollManagers[path]!
+          .editorVerticalScrollController
+          .position
+          .viewportDimension,
+      scrollManagers[path]!
+          .editorHorizontalScrollController
+          .position
+          .viewportDimension,
+    );
   }
 
   void registerCore(String path, EditorCore core) {
