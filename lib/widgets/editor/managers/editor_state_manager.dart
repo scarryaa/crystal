@@ -1,0 +1,84 @@
+import 'dart:io';
+
+import 'package:crystal/core/editor/editor_core.dart';
+import 'package:crystal/widgets/editor/managers/editor_content_manager.dart';
+import 'package:crystal/widgets/editor/managers/editor_mouse_manager.dart';
+import 'package:crystal/widgets/editor/managers/editor_scroll_manager.dart';
+import 'package:crystal/widgets/editor/managers/editor_tab_controller.dart';
+import 'package:flutter/material.dart';
+
+class EditorStateManager extends ChangeNotifier {
+  final EditorContentManager contentManager;
+  late final EditorTabController tabController;
+
+  final Map<String, EditorCore> cores = {};
+  final Map<String, (int, int)> cursorPositions = {};
+  final Map<String, (int, int, int, int, int)> selections = {};
+  final Map<String, FocusNode> focusNodes = {};
+  final Map<String, EditorScrollManager> scrollManagers = {};
+
+  EditorStateManager({
+    required this.contentManager,
+  });
+
+  void setTabController(EditorTabController tabController) {
+    this.tabController = tabController;
+  }
+
+  void updateCursorPosition(String path, int line, int column) {
+    final core = cores[path];
+    if (core == null) return;
+
+    cursorPositions[path] =
+        (core.cursorManager.cursorLine, core.cursorManager.cursorIndex);
+  }
+
+  void registerCore(String path, EditorCore core) {
+    cores[path] = core;
+    core.onCursorMove =
+        (line, column) => updateCursorPosition(path, line, column);
+    core.forceRefresh = () => _forceRefresh(path);
+    core.onEdit = (content) => contentManager.fileContents[path] = content;
+    core.onSelectionChange =
+        (anchor, startIndex, endIndex, startLine, endLine) {
+      selections[path] = (anchor, startIndex, endIndex, startLine, endLine);
+    };
+
+    final content =
+        contentManager.fileContents[path] ?? File(path).readAsStringSync();
+    contentManager.fileContents[path] = content;
+    core.setBuffer(content);
+
+    if (selections[path] != null) {
+      final selection = selections[path]!;
+      core.selectRange(selection.$4, selection.$2, selection.$5, selection.$3);
+    }
+
+    if (cursorPositions[path] != null) {
+      core.moveCursorTo(cursorPositions[path]!.$1, cursorPositions[path]!.$2);
+    }
+  }
+
+  EditorScrollManager getScrollManager(String path) {
+    return scrollManagers[path] ?? EditorScrollManager();
+  }
+
+  void _forceRefresh(String path) {
+    final scrollManager = getScrollManager(path);
+    final core = cores[path];
+    if (core == null) return;
+
+    scrollManager.recalculateScrollPosition(
+      core,
+      scrollManager.editorVerticalScrollController.position.viewportDimension,
+      scrollManager.editorHorizontalScrollController.position.viewportDimension,
+    );
+  }
+
+  EditorCore? getActiveCore() {
+    if (tabController.tabs.isEmpty) return null;
+    return cores[tabController.tabs[tabController.controller.index]];
+  }
+
+  void updateSelection(String path, int anchor, int start, int end) {}
+}

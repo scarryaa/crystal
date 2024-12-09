@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:crystal/widgets/editor/managers/editor_tab_manager.dart';
+import 'package:crystal/widgets/editor/managers/editor_tab_controller.dart';
 import 'package:crystal/widgets/editor/tabs/dirty_indicator.dart';
 import 'package:flutter/material.dart';
 
@@ -8,14 +8,14 @@ class CustomTab extends StatefulWidget {
   final bool isDirty;
   final double tabBarHeight;
   final String path;
-  final EditorTabManager tabManager;
+  final EditorTabController tabController;
 
   const CustomTab({
     super.key,
     required this.isDirty,
     required this.tabBarHeight,
     required this.path,
-    required this.tabManager,
+    required this.tabController,
   });
 
   @override
@@ -46,7 +46,7 @@ class _CustomTabState extends State<CustomTab> {
                 ),
               ),
               icon: const Icon(Icons.close, size: 16),
-              onPressed: () => widget.tabManager.closeTab(widget.path),
+              onPressed: () => widget.tabController.closeTab(widget.path),
             ),
             Container(width: 8.0),
           ],

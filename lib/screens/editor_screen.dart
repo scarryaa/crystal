@@ -2,8 +2,10 @@ import 'dart:io';
 
 import 'package:crystal/core/editor/editor_core.dart';
 import 'package:crystal/widgets/editor/editor.dart';
+import 'package:crystal/widgets/editor/managers/editor_content_manager.dart';
 import 'package:crystal/widgets/editor/managers/editor_scroll_manager.dart';
-import 'package:crystal/widgets/editor/managers/editor_tab_manager.dart';
+import 'package:crystal/widgets/editor/managers/editor_state_manager.dart';
+import 'package:crystal/widgets/editor/managers/editor_tab_controller.dart';
 import 'package:crystal/widgets/editor/tabs/custom_tab_bar.dart';
 import 'package:crystal/widgets/file_explorer/file_explorer.dart';
 import 'package:crystal/widgets/file_explorer/viewmodel/file_explorer_view_model.dart';
@@ -20,7 +22,11 @@ class EditorScreen extends StatefulWidget {
 class EditorScreenState extends State<EditorScreen>
     with TickerProviderStateMixin {
   EditorScrollManager scrollManager = EditorScrollManager();
-  late final EditorTabManager tabManager;
+
+  late final EditorContentManager contentManager;
+  late final EditorStateManager stateManager;
+  late final EditorTabController tabController;
+
   late final FileExplorerViewModel fileExplorerViewModel;
   final tabBarHeight = 32.0;
   final tabBarPadding = 4.0;
@@ -30,14 +36,22 @@ class EditorScreenState extends State<EditorScreen>
   void initState() {
     super.initState();
     fileExplorerViewModel = FileExplorerViewModel();
-    tabManager = EditorTabManager(vsync: this);
+    contentManager = EditorContentManager();
+    stateManager = EditorStateManager(contentManager: contentManager);
+    tabController = EditorTabController(
+        vsync: this,
+        stateManager: stateManager,
+        contentManager: contentManager);
+
+    contentManager.setTabController(tabController);
+    stateManager.setTabController(tabController);
   }
 
   void openFile(String path) {
     final file = File(path);
     file.readAsString().then((content) {
       setState(() {
-        tabManager.openTab(EditorScrollManager(), path, content);
+        tabController.openTab(EditorScrollManager(), path, content);
       });
     });
   }
@@ -45,7 +59,7 @@ class EditorScreenState extends State<EditorScreen>
   void _handleEditorCore(EditorCore core, String path) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       setState(() {
-        tabManager.registerCore(path, core);
+        stateManager.registerCore(path, core);
       });
     });
   }
@@ -59,10 +73,10 @@ class EditorScreenState extends State<EditorScreen>
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-        listenable: tabManager,
+        listenable: Listenable.merge([tabController, stateManager]),
         builder: (context, child) {
-          final currentPath = tabManager.getCurrentPath();
-          final activeCore = tabManager.getActiveCore();
+          final currentPath = tabController.getCurrentPath();
+          final activeCore = stateManager.getActiveCore();
 
           return Material(
               child: Column(
@@ -78,7 +92,7 @@ class EditorScreenState extends State<EditorScreen>
                         child: Column(children: [
                       CustomTabBar(
                         tabBarHeight: tabBarHeight,
-                        tabManager: tabManager,
+                        tabController: tabController,
                       ),
                       Expanded(
                           child: Row(
@@ -88,7 +102,7 @@ class EditorScreenState extends State<EditorScreen>
                               Gutter(
                                 key: ValueKey(currentPath),
                                 core: activeCore,
-                                verticalScrollController: tabManager
+                                verticalScrollController: stateManager
                                     .getScrollManager(currentPath)
                                     .gutterVerticalScrollController,
                                 tabBarHeight: tabBarHeight + tabBarPadding,
@@ -101,12 +115,12 @@ class EditorScreenState extends State<EditorScreen>
                             Expanded(
                               child: TabBarView(
                                 physics: const NeverScrollableScrollPhysics(),
-                                controller: tabManager.controller,
-                                children: tabManager.tabs.map((path) {
+                                controller: tabController.controller,
+                                children: tabController.tabs.map((path) {
                                   final scrollManager =
-                                      tabManager.getScrollManager(path);
+                                      stateManager.getScrollManager(path);
                                   return Editor(
-                                    focusNode: tabManager.focusNodes[path]!,
+                                    focusNode: stateManager.focusNodes[path]!,
                                     fileExplorerWidth:
                                         fileExplorerViewModel.width,
                                     gutterWidth: _gutterWidth,
