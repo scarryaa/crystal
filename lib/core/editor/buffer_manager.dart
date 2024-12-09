@@ -67,13 +67,33 @@ class BufferManager {
   }
 
   void insertNewline() {
+    cursorManager.sortCursors();
+    int addedLines = 0;
+    int indexAdjustment = 0;
+    int currentLine = 0;
+
     for (var cursor in cursorManager.cursors) {
+      cursor.line += addedLines;
+
+      if (currentLine != cursor.line) {
+        indexAdjustment = 0;
+        currentLine = cursor.line;
+      }
+
+      cursor.index -= indexAdjustment;
+
       final String rightPart = _lines[cursor.line].substring(cursor.index);
-      _lines[cursor.line] = _lines[cursor.line].substring(0, cursor.index);
+      final String leftPart = _lines[cursor.line].substring(0, cursor.index);
+
+      _lines[cursor.line] = leftPart;
       _lines.insert(cursor.line + 1, '');
       _lines[cursor.line + 1] = rightPart;
 
       cursor.line++;
+      addedLines++;
+      currentLine++;
+      indexAdjustment += leftPart.length;
+
       cursor.index = 0;
       cursorManager.targetCursorIndex = cursor.index;
     }
