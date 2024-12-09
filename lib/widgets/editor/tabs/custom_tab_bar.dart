@@ -26,10 +26,15 @@ class _CustomTabBarState extends State<CustomTabBar> {
       listenable: widget.tabController.contentManager,
       builder: (context, child) {
         return Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: Colors.white,
             border: Border(
-              bottom: BorderSide(color: Colors.grey, width: 0),
+              bottom: BorderSide(
+                color: widget.tabController.tabs.isNotEmpty
+                    ? Colors.grey
+                    : Colors.transparent,
+                width: 0,
+              ),
             ),
           ),
           height: widget.tabBarHeight,
@@ -44,12 +49,14 @@ class _CustomTabBarState extends State<CustomTabBar> {
                   labelPadding: EdgeInsets.zero,
                   indicatorPadding: EdgeInsets.zero,
                   padding: EdgeInsets.zero,
-                  indicator: const BoxDecoration(
+                  indicator: BoxDecoration(
                     color: Colors.transparent,
                     border: Border(
                       bottom: BorderSide(
-                        color: Colors.grey,
-                        width: 1,
+                        color: widget.tabController.tabs.isNotEmpty
+                            ? Colors.grey
+                            : Colors.transparent,
+                        width: widget.tabController.tabs.isNotEmpty ? 1 : 0,
                       ),
                     ),
                   ),
@@ -64,19 +71,22 @@ class _CustomTabBarState extends State<CustomTabBar> {
                   }).toList(),
                 ),
               ),
-              CustomTabButton(
-                tabController: widget.tabController,
-                icon: Icons.add,
-                iconSize: 16,
-                onPressed: () async {
-                  final tempPath = await Utils.getTempPath();
-                  widget.tabController.openTab(
-                    EditorScrollManager(),
-                    tempPath,
-                    '',
-                  );
-                },
-              ),
+              if (widget.tabController.tabs.isNotEmpty)
+                Row(children: [
+                  CustomTabButton(
+                    tabController: widget.tabController,
+                    icon: Icons.add,
+                    iconSize: 16,
+                    onPressed: () async {
+                      final tempPath = await Utils.getTempPath();
+                      widget.tabController.openTab(
+                        EditorScrollManager(),
+                        tempPath,
+                        '',
+                      );
+                    },
+                  )
+                ]),
             ],
           ),
         );
