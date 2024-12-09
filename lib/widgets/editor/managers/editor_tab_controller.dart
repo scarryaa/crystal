@@ -30,13 +30,10 @@ class EditorTabController extends ChangeNotifier {
       if (scrollManager == null) return;
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (scrollManager.gutterVerticalScrollController.hasClients &&
-            scrollManager.editorVerticalScrollController.hasClients &&
-            scrollManager.editorHorizontalScrollController.hasClients) {
-          scrollManager.editorVerticalScrollController
-              .jumpTo(stateManager.scrollPositions[currentPath]?.dy ?? 0);
-          scrollManager.editorHorizontalScrollController
-              .jumpTo(stateManager.scrollPositions[currentPath]?.dx ?? 0);
+        if (stateManager.scrollPositions[currentPath] != null) {
+          scrollManager.jumpToOffset(Offset(
+              stateManager.scrollPositions[currentPath]!.dx,
+              stateManager.scrollPositions[currentPath]!.dy));
         }
         stateManager.focusNodes[currentPath]!.requestFocus();
       });

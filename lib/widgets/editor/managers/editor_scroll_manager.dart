@@ -86,6 +86,15 @@ class EditorScrollManager {
     }
   }
 
+  void jumpToOffset(Offset offset) {
+    if (editorVerticalScrollController.hasClients &&
+        editorHorizontalScrollController.hasClients &&
+        gutterVerticalScrollController.hasClients) {
+      editorVerticalScrollController.jumpTo(offset.dy);
+      editorHorizontalScrollController.jumpTo(offset.dx);
+    }
+  }
+
   void dispose() {
     editorVerticalScrollController.dispose();
     gutterVerticalScrollController.dispose();
