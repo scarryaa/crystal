@@ -77,6 +77,7 @@ class Selection {
     startLine = endLine = cursorLine;
     endIndex = bufferManager.lines[startLine].length;
     endLine++;
+    endLine = min(endLine, bufferManager.lines.length - 1);
     endIndex = 0;
   }
 

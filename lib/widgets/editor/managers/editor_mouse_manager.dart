@@ -216,6 +216,9 @@ extension EditorCoreMouseExtensions on EditorCore {
 
     selectionManager.selectLine(bufferManager, cursorLine);
     cursorManager.cursorLine++;
+    cursorManager.cursorLine =
+        min(cursorManager.cursorLine, bufferManager.lines.length - 1);
+
     cursorManager.cursorIndex = 0;
     notifyListeners();
   }
