@@ -2,11 +2,14 @@
 import 'dart:math';
 
 import 'package:crystal/core/editor/editor_core.dart';
+import 'package:crystal/models/editor/cursor/cursor.dart';
 import 'package:crystal/models/editor/mouse/mouse_button_type.dart';
 import 'package:crystal/models/editor/mouse/mouse_click_type.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-class EditorMouseManager {
+class EditorMouseManager extends ChangeNotifier {
   final EditorCore core;
 
   bool _isDragging = false;
@@ -42,6 +45,7 @@ class EditorMouseManager {
     } else if (event is PointerUpEvent) {
       _handlePointerUp(event, localPosition, scrollPosition);
     }
+    notifyListeners();
   }
 
   void _handlePointerDown(PointerDownEvent event, Offset localPosition,
@@ -176,8 +180,42 @@ class EditorMouseManager {
   }
 
   void _handleSingleClick(int cursorLine, int cursorIndex) {
-    core.moveCursorTo(cursorLine, cursorIndex);
-    core.clearSelection();
+    final isAltPressed = HardwareKeyboard.instance.isAltPressed;
+
+    // Ensure cursorLine is within bounds
+    cursorLine = min(cursorLine, core.bufferManager.lines.length - 1);
+    cursorLine = max(0, cursorLine);
+
+    // Ensure cursorIndex is within bounds for the current line
+    final lineLength = core.bufferManager.lines[cursorLine].length;
+    cursorIndex = min(cursorIndex, lineLength);
+    cursorIndex = max(0, cursorIndex);
+
+    if (isAltPressed) {
+      // Check for existing cursor at clicked position
+      final existingCursorIndex = core.cursorManager.cursors.indexWhere(
+          (cursor) => cursor.line == cursorLine && cursor.index == cursorIndex);
+
+      if (existingCursorIndex != -1 && core.cursorManager.cursors.length > 1) {
+        // Remove existing cursor if it's not the last one
+        core.cursorManager.removeCursorAt(existingCursorIndex);
+      } else if (existingCursorIndex == -1) {
+        // Add new cursor
+        final newCursor = Cursor(line: cursorLine, index: cursorIndex);
+        core.cursorManager.addCursor(newCursor);
+
+        // Move to the newly added cursor
+        final newCursorIndex = core.cursorManager.cursors.length - 1;
+        core.moveCursorTo(newCursorIndex, cursorLine, cursorIndex);
+      }
+    } else {
+      // Single cursor mode
+      core.cursorManager.clearCursors();
+      final newCursor = Cursor(line: cursorLine, index: cursorIndex);
+      core.cursorManager.addCursor(newCursor);
+      core.moveCursorTo(0, cursorLine, cursorIndex);
+      core.clearSelection();
+    }
   }
 
   void _handleDoubleClick(int cursorLine, int cursorIndex) {
@@ -190,11 +228,11 @@ class EditorMouseManager {
 }
 
 extension EditorCoreMouseExtensions on EditorCore {
-  void moveCursorTo(int cursorLine, int cursorIndex) {
+  void moveCursorTo(int index, int cursorLine, int cursorIndex) {
     cursorLine = min(cursorLine, bufferManager.lines.length - 1);
     cursorIndex = min(cursorIndex, bufferManager.lines[cursorLine].length);
 
-    cursorManager.moveTo(cursorLine, cursorIndex);
+    cursorManager.moveTo(index, cursorLine, cursorIndex);
     notifyListeners();
   }
 
@@ -205,7 +243,8 @@ extension EditorCoreMouseExtensions on EditorCore {
     final int wordEnd =
         selectionManager.selectWord(bufferManager, cursorLine, cursorIndex);
     if (wordEnd <= bufferManager.lines[cursorLine].length) {
-      cursorManager.cursorIndex = wordEnd;
+      cursorManager.clearCursors();
+      cursorManager.addCursor(Cursor(line: cursorLine, index: wordEnd));
     }
     notifyListeners();
   }
@@ -215,11 +254,14 @@ extension EditorCoreMouseExtensions on EditorCore {
     cursorIndex = min(cursorIndex, bufferManager.lines[cursorLine].length);
 
     selectionManager.selectLine(bufferManager, cursorLine);
-    cursorManager.cursorLine++;
-    cursorManager.cursorLine =
-        min(cursorManager.cursorLine, bufferManager.lines.length - 1);
+    cursorManager.clearCursors();
+    cursorManager.addCursor(Cursor(line: cursorLine, index: cursorIndex));
 
-    cursorManager.cursorIndex = 0;
+    cursorManager.firstCursor().line++;
+    cursorManager.firstCursor().line =
+        min(cursorManager.firstCursor().line, bufferManager.lines.length - 1);
+
+    cursorManager.firstCursor().index = 0;
     notifyListeners();
   }
 
@@ -228,11 +270,11 @@ extension EditorCoreMouseExtensions on EditorCore {
     startIndex = min(startIndex, bufferManager.lines[startLine].length);
     endLine = max(0, min(endLine, bufferManager.lines.length - 1));
     endIndex = min(endIndex, bufferManager.lines[endLine].length);
+    cursorManager.clearCursors();
 
     selectionManager.selectRange(
         bufferManager, startLine, startIndex, endLine, endIndex);
-    cursorManager.cursorLine = endLine;
-    cursorManager.cursorIndex = max(0, endIndex);
+    cursorManager.addCursor(Cursor(line: endLine, index: max(0, endIndex)));
     notifyListeners();
   }
 }

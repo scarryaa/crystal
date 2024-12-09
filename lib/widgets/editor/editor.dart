@@ -5,6 +5,7 @@ import 'package:crystal/core/editor/cursor_manager.dart';
 import 'package:crystal/core/editor/editor_config.dart';
 import 'package:crystal/core/editor/editor_core.dart';
 import 'package:crystal/core/editor/selection_manager.dart';
+import 'package:crystal/models/editor/cursor/cursor.dart';
 import 'package:crystal/widgets/editor/editor_painter.dart';
 import 'package:crystal/widgets/editor/managers/editor_input_manager.dart';
 import 'package:crystal/widgets/editor/managers/editor_state_manager.dart';
@@ -65,6 +66,7 @@ class _EditorState extends State<Editor> with AutomaticKeepAliveClientMixin {
 
     widget.verticalScrollController.addListener(_onScroll);
     widget.horizontalScrollController.addListener(_onScroll);
+    _core.cursorManager.addCursor(Cursor(line: 0, index: 0));
   }
 
   @override
@@ -221,24 +223,28 @@ class _EditorState extends State<Editor> with AutomaticKeepAliveClientMixin {
                                           onKeyEvent: (node, keyEvent) =>
                                               handleKeyEvent(node, keyEvent),
                                           child: CustomPaint(
+                                              willChange: true,
+                                              isComplex: true,
                                               painter: EditorPainter(
-                                            core: _core,
-                                            firstVisibleLine: firstVisibleLine,
-                                            lastVisibleLine: lastVisibleLine,
-                                            viewportHeight: MediaQuery.of(
-                                                        context)
-                                                    .size
-                                                    .height +
-                                                _core.config.heightPadding +
-                                                (widget.verticalScrollController
-                                                        .hasClients
-                                                    ? widget
-                                                        .verticalScrollController
-                                                        .offset
-                                                    : 0),
-                                            primaryColor:
-                                                Theme.of(context).primaryColor,
-                                          )))))))));
+                                                core: _core,
+                                                firstVisibleLine:
+                                                    firstVisibleLine,
+                                                lastVisibleLine:
+                                                    lastVisibleLine,
+                                                viewportHeight: MediaQuery.of(
+                                                            context)
+                                                        .size
+                                                        .height +
+                                                    _core.config.heightPadding +
+                                                    (widget.verticalScrollController
+                                                            .hasClients
+                                                        ? widget
+                                                            .verticalScrollController
+                                                            .offset
+                                                        : 0),
+                                                primaryColor: Theme.of(context)
+                                                    .primaryColor,
+                                              )))))))));
             }));
   }
 }

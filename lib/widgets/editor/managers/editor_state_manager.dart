@@ -31,8 +31,9 @@ class EditorStateManager extends ChangeNotifier {
     final core = cores[path];
     if (core == null) return;
 
-    cursorPositions[path] =
-        (core.cursorManager.cursorLine, core.cursorManager.cursorIndex);
+    // TODO
+    //cursorPositions[path] =
+    //(core.cursorManager.cursorLine, core.cursorManager.cursorIndex);
     scrollManagers[path]?.jumpToCursor(
       core,
       scrollManagers[path]!
@@ -75,7 +76,8 @@ class EditorStateManager extends ChangeNotifier {
     }
 
     if (cursorPositions[path] != null) {
-      core.moveCursorTo(cursorPositions[path]!.$1, cursorPositions[path]!.$2);
+      core.moveCursorTo(
+          0, cursorPositions[path]!.$1, cursorPositions[path]!.$2);
     }
   }
 

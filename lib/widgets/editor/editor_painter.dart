@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:crystal/core/editor/editor_core.dart';
+import 'package:crystal/models/editor/cursor/cursor.dart';
 import 'package:flutter/material.dart';
 
 class EditorPainter extends CustomPainter {
@@ -9,6 +10,7 @@ class EditorPainter extends CustomPainter {
   final int lastVisibleLine;
   final double viewportHeight;
   final Color primaryColor;
+  final Set highlightedLines = {};
 
   double? cachedCharacterWidth;
 
@@ -21,7 +23,7 @@ class EditorPainter extends CustomPainter {
     required this.lastVisibleLine,
     required this.viewportHeight,
     this.primaryColor = Colors.blue,
-  }) : super(repaint: core) {
+  }) : super(repaint: Listenable.merge([core, core.cursorManager])) {
     textStyle = TextStyle(
       color: core.config.textColor,
       fontSize: core.config.fontSize,
@@ -67,10 +69,17 @@ class EditorPainter extends CustomPainter {
   void drawCurrentLineHighlight(Canvas canvas, Size size) {
     if (core.hasSelection()) return;
 
-    canvas.drawRect(
-        Rect.fromLTWH(0, core.cursorManager.cursorLine * core.config.lineHeight,
-            size.width, core.config.lineHeight),
-        Paint()..color = Colors.blue.withOpacity(0.3));
+    for (var cursor in core.cursorManager.cursors) {
+      if (!highlightedLines.contains(cursor.line)) {
+        canvas.drawRect(
+            Rect.fromLTWH(0, cursor.line * core.config.lineHeight, size.width,
+                core.config.lineHeight),
+            Paint()..color = Colors.blue.withOpacity(0.3));
+        highlightedLines.add(cursor.line);
+      }
+    }
+
+    highlightedLines.clear();
   }
 
   void drawSelection(Canvas canvas) {
@@ -146,17 +155,19 @@ class EditorPainter extends CustomPainter {
   }
 
   void drawCursor(Canvas canvas) {
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-          Rect.fromLTWH(
-            _measureLineWidth(),
-            core.cursorLine * core.config.lineHeight,
-            core.config.caretWidth,
-            core.config.lineHeight,
-          ),
-          Radius.circular(core.config.caretRadius)),
-      Paint()..color = core.config.caretColor,
-    );
+    for (var cursor in core.cursorManager.cursors) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+            Rect.fromLTWH(
+              _measureLineWidth(cursor),
+              cursor.line * core.config.lineHeight,
+              core.config.caretWidth,
+              core.config.lineHeight,
+            ),
+            Radius.circular(core.config.caretRadius)),
+        Paint()..color = core.config.caretColor,
+      );
+    }
   }
 
   double _measureCharWidth() {
@@ -170,8 +181,8 @@ class EditorPainter extends CustomPainter {
     }
   }
 
-  double _measureLineWidth() {
-    return core.cursorPosition * _measureCharWidth();
+  double _measureLineWidth(Cursor cursor) {
+    return cursor.index * _measureCharWidth();
   }
 
   @override
@@ -180,6 +191,8 @@ class EditorPainter extends CustomPainter {
         oldDelegate.lastVisibleLine != lastVisibleLine ||
         oldDelegate.core.config != core.config ||
         oldDelegate.core.cursorPosition != core.cursorPosition ||
+        oldDelegate.core.cursorManager.cursors.length !=
+            core.cursorManager.cursors.length ||
         oldDelegate.textStyle != textStyle;
   }
 }

@@ -2,6 +2,7 @@ import 'package:crystal/core/editor/buffer_manager.dart';
 import 'package:crystal/core/editor/cursor_manager.dart';
 import 'package:crystal/core/editor/editor_config.dart';
 import 'package:crystal/core/editor/selection_manager.dart';
+import 'package:crystal/models/editor/cursor/cursor.dart';
 import 'package:crystal/models/selection/selection_direction.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -28,8 +29,8 @@ class EditorCore extends ChangeNotifier {
     required this.path,
   }) : _editorConfig = editorConfig;
 
-  void moveTo(int line, int column) {
-    cursorManager.moveTo(line, column);
+  void moveTo(int index, int line, int column) {
+    cursorManager.moveTo(index, line, column);
     onCursorMove?.call(line, column);
     notifyListeners();
   }
@@ -183,8 +184,10 @@ class EditorCore extends ChangeNotifier {
 
   void selectAll() {
     selectionManager.selectAll(bufferManager);
-    cursorManager.cursorLine = bufferManager.lines.length - 1;
-    cursorManager.cursorIndex = bufferManager.lines[cursorLine].length;
+    cursorManager.clearCursors();
+    cursorManager.addCursor(Cursor(
+        line: bufferManager.lines.length - 1,
+        index: bufferManager.lines[cursorLine].length));
     onSelectionChange?.call(
         selectionManager.anchor,
         selectionManager.startIndex,
@@ -247,8 +250,10 @@ class EditorCore extends ChangeNotifier {
   void handleSelection(SelectionDirection direction) {
     if (!hasSelection()) startSelection();
 
-    selectionManager.updateSelection(bufferManager, direction,
-        cursorManager.cursorIndex, cursorManager.targetCursorIndex);
+    for (var cursor in cursorManager.cursors) {
+      selectionManager.updateSelection(bufferManager, direction, cursor.index,
+          cursorManager.targetCursorIndex);
+    }
     onSelectionChange?.call(
         selectionManager.anchor,
         selectionManager.startIndex,
@@ -258,8 +263,8 @@ class EditorCore extends ChangeNotifier {
     notifyListeners();
   }
 
-  int get cursorLine => cursorManager.cursorLine;
-  int get cursorPosition => cursorManager.cursorIndex;
+  int get cursorLine => cursorManager.firstCursor().line;
+  int get cursorPosition => cursorManager.firstCursor().index;
   List<String> get lines => bufferManager.lines;
   EditorConfig get config => _editorConfig;
 

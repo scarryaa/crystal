@@ -52,7 +52,10 @@ class EditorInputManager {
         }
 
         core.insertChar('    ');
-        core.moveCursorTo(core.cursorLine, core.cursorPosition + 3);
+        for (int i = 0; i < core.cursorManager.cursors.length; i++) {
+          core.moveCursorTo(i, core.cursorManager.cursors[i].line,
+              core.cursorManager.cursors[i].index + 3);
+        }
       default:
         if (keyEvent.character == null) return KeyEventResult.ignored;
 

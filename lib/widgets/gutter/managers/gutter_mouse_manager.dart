@@ -42,7 +42,7 @@ class GutterMouseManager {
   }
 
   void _handleSingleClick(int cursorLine, int cursorIndex) {
-    core.moveCursorTo(cursorLine, cursorIndex);
+    core.moveCursorTo(0, cursorLine, cursorIndex);
     core.selectLine(cursorLine, cursorIndex);
   }
 

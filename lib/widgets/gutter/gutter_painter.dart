@@ -10,6 +10,7 @@ class GutterPainter extends CustomPainter {
   final int lastVisibleLine;
   final double viewportHeight;
   final Color primaryColor;
+  final Set highlightedLines = {};
 
   final TextPainter _textPainter =
       TextPainter(textDirection: TextDirection.ltr);
@@ -21,7 +22,7 @@ class GutterPainter extends CustomPainter {
     required this.lastVisibleLine,
     required this.viewportHeight,
     this.primaryColor = Colors.blue,
-  }) : super(repaint: core) {
+  }) : super(repaint: Listenable.merge([core, core.cursorManager])) {
     _backgroundPaint = Paint()..color = core.config.backgroundColor;
   }
 
@@ -71,15 +72,7 @@ class GutterPainter extends CustomPainter {
         ..text = TextSpan(
           text: '$lineNumber',
           style: TextStyle(
-            color: core.cursorLine == (start + i) ||
-                    (start + i >=
-                            min(core.selectionManager.startLine,
-                                core.selectionManager.endLine) &&
-                        start + i <=
-                            max(core.selectionManager.endLine,
-                                core.selectionManager.startLine))
-                ? Colors.black
-                : Colors.grey,
+            color: _isLineSelected(start + i) ? Colors.black : Colors.grey,
             fontSize: core.config.fontSize,
             fontFamily: core.config.fontFamily,
             fontFeatures: const [FontFeature.enable('kern')],
@@ -95,13 +88,30 @@ class GutterPainter extends CustomPainter {
     }
   }
 
+  bool _isLineSelected(int line) {
+    return core.cursorManager.cursors.any((cursor) => cursor.line == line) ||
+        (line >=
+                min(core.selectionManager.startLine,
+                    core.selectionManager.endLine) &&
+            line <=
+                max(core.selectionManager.endLine,
+                    core.selectionManager.startLine));
+  }
+
   void drawCurrentLineHighlight(Canvas canvas, Size size) {
     if (core.hasSelection()) return;
 
-    canvas.drawRect(
-        Rect.fromLTWH(0, core.cursorManager.cursorLine * core.config.lineHeight,
-            size.width, core.config.lineHeight),
-        Paint()..color = Colors.blue.withOpacity(0.3));
+    for (var cursor in core.cursorManager.cursors) {
+      if (!highlightedLines.contains(cursor.line)) {
+        canvas.drawRect(
+            Rect.fromLTWH(0, cursor.line * core.config.lineHeight, size.width,
+                core.config.lineHeight),
+            Paint()..color = Colors.blue.withOpacity(0.3));
+        highlightedLines.add(cursor.line);
+      }
+    }
+
+    highlightedLines.clear();
   }
 
   @override
