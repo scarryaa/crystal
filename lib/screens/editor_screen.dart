@@ -95,56 +95,70 @@ class EditorScreenState extends State<EditorScreen>
                         tabController: tabController,
                       ),
                       Expanded(
-                          child: Row(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                            if (activeCore != null && currentPath != null)
-                              Gutter(
-                                key: ValueKey(currentPath.isNotEmpty
-                                    ? '${currentPath}_gutter'
-                                    : null),
-                                core: activeCore,
-                                verticalScrollController: stateManager
-                                    .getScrollManager(currentPath)
-                                    .gutterVerticalScrollController,
-                                tabBarHeight: tabBarHeight + tabBarPadding,
-                                onWidthChanged: (width) {
-                                  WidgetsBinding.instance.addPostFrameCallback(
-                                      (_) =>
-                                          setState(() => _gutterWidth = width));
-                                },
-                              ),
-                            if (currentPath != null)
-                              Expanded(
-                                child: TabBarView(
-                                  key: ValueKey(currentPath.isNotEmpty
-                                      ? '${currentPath}_gutter'
-                                      : null),
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  controller: tabController.controller,
-                                  children: tabController.tabs.map((path) {
-                                    final scrollManager =
-                                        stateManager.getScrollManager(path);
-                                    return Editor(
-                                      focusNode: stateManager.focusNodes[path]!,
-                                      fileExplorerWidth:
-                                          fileExplorerViewModel.width,
-                                      gutterWidth: _gutterWidth,
-                                      onCoreInitialized: (core) =>
-                                          _handleEditorCore(core, path),
-                                      verticalScrollController: scrollManager
-                                          .editorVerticalScrollController,
-                                      horizontalScrollController: scrollManager
-                                          .editorHorizontalScrollController,
-                                      path: path,
-                                      tabBarHeight:
-                                          tabBarHeight + tabBarPadding,
-                                    );
-                                  }).toList(),
-                                ),
-                              ),
-                          ]))
+                          child: tabController.tabs.isNotEmpty
+                              ? Row(
+                                  mainAxisAlignment: MainAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                      if (activeCore != null &&
+                                          currentPath != null)
+                                        Gutter(
+                                          key: ValueKey(currentPath.isNotEmpty
+                                              ? '${currentPath}_gutter'
+                                              : null),
+                                          core: activeCore,
+                                          verticalScrollController: stateManager
+                                              .getScrollManager(currentPath)
+                                              .gutterVerticalScrollController,
+                                          tabBarHeight:
+                                              tabBarHeight + tabBarPadding,
+                                          onWidthChanged: (width) {
+                                            WidgetsBinding.instance
+                                                .addPostFrameCallback((_) =>
+                                                    setState(() =>
+                                                        _gutterWidth = width));
+                                          },
+                                        ),
+                                      if (currentPath != null)
+                                        Expanded(
+                                          child: TabBarView(
+                                            key: ValueKey(currentPath.isNotEmpty
+                                                ? '${currentPath}_gutter'
+                                                : null),
+                                            physics:
+                                                const NeverScrollableScrollPhysics(),
+                                            controller:
+                                                tabController.controller,
+                                            children:
+                                                tabController.tabs.map((path) {
+                                              final scrollManager = stateManager
+                                                  .getScrollManager(path);
+                                              return Editor(
+                                                focusNode: stateManager
+                                                    .focusNodes[path]!,
+                                                fileExplorerWidth:
+                                                    fileExplorerViewModel.width,
+                                                gutterWidth: _gutterWidth,
+                                                onCoreInitialized: (core) =>
+                                                    _handleEditorCore(
+                                                        core, path),
+                                                verticalScrollController:
+                                                    scrollManager
+                                                        .editorVerticalScrollController,
+                                                horizontalScrollController:
+                                                    scrollManager
+                                                        .editorHorizontalScrollController,
+                                                path: path,
+                                                tabBarHeight: tabBarHeight +
+                                                    tabBarPadding,
+                                              );
+                                            }).toList(),
+                                          ),
+                                        ),
+                                    ])
+                              : Container(
+                                  color: Colors.white,
+                                ))
                     ])),
                   ],
                 ),
