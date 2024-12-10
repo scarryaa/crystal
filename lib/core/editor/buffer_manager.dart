@@ -139,7 +139,7 @@ class BufferManager {
   void delete(int length) {
     cursorManager.sortCursors();
     int deletedLines = 0;
-    int sameLineAdjustment = 0;
+    final Map<int, int> lineAdjustments = {};
     final Map<int, int> indexAdjustments = {};
 
     for (var cursor in cursorManager.cursors) {
@@ -163,11 +163,12 @@ class BufferManager {
         _lines[cursor.line] += currentLineContent;
       } else if (cursor.index > 0) {
         // When cursor is in the middle or end of a line
-        final int adjustment =
-            -(indexAdjustments[cursor.line] ?? -sameLineAdjustment);
+        final int adjustment = -(indexAdjustments[cursor.line] ??
+            -(lineAdjustments[cursor.line] ?? 0));
         cursor.line -= deletedLines;
         cursor.index -= adjustment;
-        sameLineAdjustment += length;
+        lineAdjustments.update(cursor.line, (value) => value + length,
+            ifAbsent: () => length);
         _lines[cursor.line] =
             _lines[cursor.line].substring(0, cursor.index - length) +
                 _lines[cursor.line].substring(cursor.index);
