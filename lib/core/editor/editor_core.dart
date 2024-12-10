@@ -190,9 +190,8 @@ class EditorCore extends ChangeNotifier {
   void selectAll() {
     selectionManager.selectAll(bufferManager);
     cursorManager.clearCursors();
-    cursorManager.addCursor(Cursor(
-        line: bufferManager.lines.length - 1,
-        index: bufferManager.lines[bufferManager.lines.length - 1].length));
+    cursorManager.moveTo(0, bufferManager.lines.length - 1,
+        bufferManager.lines[bufferManager.lines.length - 1].length);
     onSelectionChange?.call(
         selectionManager.anchor,
         selectionManager.startIndex,
