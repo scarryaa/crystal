@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'dart:math';
+
 import 'package:crystal/core/editor/editor_core.dart';
 import 'package:crystal/models/selection/selection_direction.dart';
 import 'package:crystal/widgets/editor/managers/editor_mouse_manager.dart';
@@ -24,15 +27,17 @@ class EditorInputManager {
     }
 
     final bool isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
-    final bool isMetaOrCtrlPressed =
-        HardwareKeyboard.instance.isControlPressed ||
-            HardwareKeyboard.instance.isMetaPressed;
+    final bool isMetaOrCtrlPressed = Platform.isMacOS
+        ? HardwareKeyboard.instance.isMetaPressed
+        : HardwareKeyboard.instance.isControlPressed;
+    final bool isAltPressed = HardwareKeyboard.instance.isAltPressed;
 
     if (await handleCtrlKeys(core, keyEvent, isMetaOrCtrlPressed)) {
       return KeyEventResult.handled;
     }
 
-    if (handleArrowKeys(core, keyEvent, isShiftPressed)) {
+    if (handleArrowKeys(
+        core, keyEvent, isShiftPressed, isMetaOrCtrlPressed, isAltPressed)) {
       return KeyEventResult.handled;
     }
 
@@ -66,8 +71,8 @@ class EditorInputManager {
     return KeyEventResult.handled;
   }
 
-  bool handleArrowKeys(
-      EditorCore core, KeyEvent keyEvent, bool isShiftPressed) {
+  bool handleArrowKeys(EditorCore core, KeyEvent keyEvent, bool isShiftPressed,
+      bool isMetaOrCtrlPressed, bool isAltPressed) {
     switch (keyEvent.logicalKey) {
       case LogicalKeyboardKey.arrowLeft:
         _handleSelection(core, isShiftPressed, SelectionDirection.backward);
@@ -78,16 +83,39 @@ class EditorInputManager {
         core.moveRight();
         return true;
       case LogicalKeyboardKey.arrowUp:
-        _handleSelection(core, isShiftPressed, SelectionDirection.previousLine);
-        core.moveUp();
-        return true;
       case LogicalKeyboardKey.arrowDown:
-        _handleSelection(core, isShiftPressed, SelectionDirection.nextLine);
-        core.moveDown();
+        final isUpArrow = keyEvent.logicalKey == LogicalKeyboardKey.arrowUp;
+        final targetLine = isUpArrow
+            ? core.cursorLine - 1
+            : core.cursorManager.cursors.last.line + 1;
+
+        if (isAltPressed && isMetaOrCtrlPressed) {
+          // TODO add config option to toggle between Zed behavior (use starting cursor as anchor and
+          // skip lines where it is impossible for the cursor index to be reached) or VSCode behavior
+          // (always extend up or down and include lines that are less than the target cursor index)
+
+          // Multi-cursor behavior
+          if (targetLine < 0 ||
+              targetLine > core.bufferManager.lines.length - 1) {
+            return true;
+          }
+
+          core.addCursor(
+              targetLine,
+              min(core.cursorManager.targetCursorIndex,
+                  core.bufferManager.lines[targetLine].length));
+        } else {
+          _handleSelection(
+              core,
+              isShiftPressed,
+              isUpArrow
+                  ? SelectionDirection.previousLine
+                  : SelectionDirection.nextLine);
+          isUpArrow ? core.moveUp() : core.moveDown();
+        }
         return true;
-      default:
-        return false;
     }
+    return false;
   }
 
   Future<bool> handleCtrlKeys(

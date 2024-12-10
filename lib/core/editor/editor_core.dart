@@ -83,6 +83,11 @@ class EditorCore extends ChangeNotifier {
     notifyListeners();
   }
 
+  void addCursor(int line, int index) {
+    cursorManager.addCursor(Cursor(line: line, index: index));
+    cursorManager.sortCursors();
+  }
+
   void insertChar(String char) {
     deleteSelectionIfNeeded();
     bufferManager.insertCharacter(char);
