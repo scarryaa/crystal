@@ -187,7 +187,7 @@ class EditorCore extends ChangeNotifier {
     cursorManager.clearCursors();
     cursorManager.addCursor(Cursor(
         line: bufferManager.lines.length - 1,
-        index: bufferManager.lines[cursorLine].length));
+        index: bufferManager.lines[bufferManager.lines.length - 1].length));
     onSelectionChange?.call(
         selectionManager.anchor,
         selectionManager.startIndex,

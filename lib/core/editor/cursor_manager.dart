@@ -14,6 +14,9 @@ class CursorManager extends ChangeNotifier {
   CursorManager(this._bufferManager);
 
   Cursor firstCursor() {
+    if (cursors.isEmpty) {
+      addCursor(Cursor(line: 0, index: 0));
+    }
     return cursors.first;
   }
 
