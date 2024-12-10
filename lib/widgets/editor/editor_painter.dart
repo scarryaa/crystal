@@ -23,7 +23,9 @@ class EditorPainter extends CustomPainter {
     required this.lastVisibleLine,
     required this.viewportHeight,
     this.primaryColor = Colors.blue,
-  }) : super(repaint: Listenable.merge([core, core.cursorManager])) {
+  }) : super(
+            repaint: Listenable.merge(
+                [core, core.cursorManager, core.selectionManager])) {
     textStyle = TextStyle(
       color: core.config.textColor,
       fontSize: core.config.fontSize,

@@ -1,8 +1,9 @@
 import 'package:crystal/core/editor/buffer_manager.dart';
 import 'package:crystal/models/editor/selection/selection.dart';
 import 'package:crystal/models/selection/selection_direction.dart';
+import 'package:flutter/material.dart';
 
-class SelectionManager {
+class SelectionManager extends ChangeNotifier {
   Selection selection = Selection();
 
   int get startLine => selection.startLine;
@@ -13,6 +14,7 @@ class SelectionManager {
 
   void resetSelection() {
     selection.reset();
+    notifyListeners();
   }
 
   void startSelection(int line, int index) {

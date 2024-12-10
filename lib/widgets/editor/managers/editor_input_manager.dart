@@ -43,7 +43,16 @@ class EditorInputManager {
 
     switch (keyEvent.logicalKey) {
       case LogicalKeyboardKey.escape:
-        core.cursorManager.clearCursors();
+        // Zed and VSCode: If selections came first, and then multi-cursor after, clear multi-cursor first
+        // If multi-cursor came first, and then selections after, clear both
+        // TODO track order of interactions and implement this
+        if (core.cursorManager.cursors.length > 1) {
+          // Clear multi-cursor
+          core.cursorManager.clearCursors();
+        } else {
+          // Clear selection if there is no multi-cursor
+          core.selectionManager.resetSelection();
+        }
       case LogicalKeyboardKey.enter:
         core.insertLine();
         break;
