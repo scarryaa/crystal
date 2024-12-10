@@ -5,10 +5,10 @@ crystal aims to be a modern, fast, lightweight code cross-platform code editor (
 ## Features
 - Basic text editing (basic selections, cursor movement, text entry)
 - Basic gutter (line numbers)
+- Multiple cursors
 
 ## Planned Features 
 - Multiple selections
-- Multiple cursors 
 - Syntax highlighting
 - File management
   - Open/Save/Save As
