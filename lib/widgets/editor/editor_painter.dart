@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:crystal/core/editor/editor_core.dart';
 import 'package:crystal/models/editor/cursor/cursor.dart';
+import 'package:crystal/models/editor/selection/selection.dart';
 import 'package:flutter/material.dart';
 
 class EditorPainter extends CustomPainter {
@@ -47,7 +48,7 @@ class EditorPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     drawBackground(canvas, size);
     drawText(canvas);
-    drawSelection(canvas);
+    drawSelections(canvas);
     drawCurrentLineHighlight(canvas, size);
     drawCursor(canvas);
   }
@@ -84,29 +85,27 @@ class EditorPainter extends CustomPainter {
     highlightedLines.clear();
   }
 
-  void drawSelection(Canvas canvas) {
-    if (!core.hasSelection()) return;
-
+  void drawSelections(Canvas canvas) {
     final lines = core.getLines(firstVisibleLine, lastVisibleLine + 5);
-    for (var i = 0; i < lines.length; i++) {
-      final line = lines[i];
-      drawSelectionForSingleLine(canvas, i + firstVisibleLine, line);
+    for (var selection in core.selectionManager.selections) {
+      for (var i = 0; i < lines.length; i++) {
+        final line = lines[i];
+        drawSelectionForSingleLine(
+            canvas, selection, i + firstVisibleLine, line);
+      }
     }
   }
 
-  void drawSelectionForSingleLine(Canvas canvas, int lineNumber, String line) {
-    final int normalizedStartLine =
-        min(core.selectionManager.startLine, core.selectionManager.endLine);
-    final int normalizedEndLine =
-        max(core.selectionManager.startLine, core.selectionManager.endLine);
-    final int normalizedStartIndex =
-        normalizedStartLine == core.selectionManager.startLine
-            ? core.selectionManager.startIndex
-            : core.selectionManager.endIndex;
-    final int normalizedEndIndex =
-        normalizedEndLine == core.selectionManager.endLine
-            ? core.selectionManager.endIndex
-            : core.selectionManager.startIndex;
+  void drawSelectionForSingleLine(
+      Canvas canvas, Selection selection, int lineNumber, String line) {
+    final int normalizedStartLine = min(selection.startLine, selection.endLine);
+    final int normalizedEndLine = max(selection.startLine, selection.endLine);
+    final int normalizedStartIndex = normalizedStartLine == selection.startLine
+        ? selection.startIndex
+        : selection.endIndex;
+    final int normalizedEndIndex = normalizedEndLine == selection.endLine
+        ? selection.endIndex
+        : selection.startIndex;
 
     // Check if this line is within selection range
     if (lineNumber >= normalizedStartLine && lineNumber <= normalizedEndLine) {
@@ -142,7 +141,7 @@ class EditorPainter extends CustomPainter {
       // Show empty line selection indicator
       if (line.isEmpty && normalizedStartLine != normalizedEndLine) {
         if ((lineNumber != core.cursorLine) ||
-            (core.selectionManager.startIndex == core.cursorPosition &&
+            (selection.startIndex == core.cursorPosition &&
                 lineNumber == normalizedStartLine)) {
           left = 0;
           width = core.config.characterWidth;

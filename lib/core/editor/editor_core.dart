@@ -89,7 +89,7 @@ class EditorCore extends ChangeNotifier {
   }
 
   void insertChar(String char) {
-    deleteSelectionIfNeeded();
+    deleteSelectionsIfNeeded();
     bufferManager.insertCharacter(char);
     onCursorMove?.call(cursorLine, cursorPosition);
     onEdit?.call(bufferManager.toString());
@@ -103,7 +103,7 @@ class EditorCore extends ChangeNotifier {
   }
 
   void insertLine() {
-    deleteSelectionIfNeeded();
+    deleteSelectionsIfNeeded();
     bufferManager.insertNewline();
     onCursorMove?.call(cursorLine, cursorPosition);
     onEdit?.call(bufferManager.toString());
@@ -117,7 +117,7 @@ class EditorCore extends ChangeNotifier {
   }
 
   void delete(int length) {
-    if (deleteSelectionIfNeeded()) return;
+    if (deleteSelectionsIfNeeded()) return;
     bufferManager.delete(length);
     onCursorMove?.call(cursorLine, cursorPosition);
     onEdit?.call(bufferManager.toString());
@@ -131,7 +131,7 @@ class EditorCore extends ChangeNotifier {
   }
 
   void deleteForwards(int length) {
-    if (deleteSelectionIfNeeded()) return;
+    if (deleteSelectionsIfNeeded()) return;
     bufferManager.deleteForwards(length);
     onCursorMove?.call(cursorLine, cursorPosition);
     onEdit?.call(bufferManager.toString());
@@ -158,7 +158,7 @@ class EditorCore extends ChangeNotifier {
   void cut() {
     Clipboard.setData(
         ClipboardData(text: selectionManager.getSelectedText(bufferManager)));
-    deleteSelectionIfNeeded();
+    deleteSelectionsIfNeeded();
     onEdit?.call(bufferManager.toString());
     onSelectionChange?.call(
         selectionManager.anchor,
@@ -174,7 +174,7 @@ class EditorCore extends ChangeNotifier {
         (await Clipboard.getData(Clipboard.kTextPlain))?.text;
     if (clipboardData == null) return;
 
-    deleteSelectionIfNeeded();
+    deleteSelectionsIfNeeded();
     bufferManager.insertString(clipboardData);
     onCursorMove?.call(cursorLine, cursorPosition);
     onEdit?.call(bufferManager.toString());
@@ -217,7 +217,7 @@ class EditorCore extends ChangeNotifier {
   }
 
   void clearSelection() {
-    selectionManager.startSelection(-1, -1);
+    selectionManager.clearSelections();
     onSelectionChange?.call(
         selectionManager.anchor,
         selectionManager.startIndex,
@@ -227,11 +227,15 @@ class EditorCore extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool deleteSelectionIfNeeded() {
-    if (hasSelection()) {
+  bool deleteSelectionsIfNeeded() {
+    bool selectionDeleted = false;
+
+    selectionManager.selections
+        .sort((a, b) => b.startLine.compareTo(a.startLine));
+
+    for (var selection in selectionManager.selections) {
       final beforeLines = bufferManager.lines.length;
-      selectionManager.deleteSelection(bufferManager, cursorPosition);
-      clearSelection();
+      selection.deleteSelection(bufferManager, cursorPosition);
 
       if (beforeLines != bufferManager.lines.length) {
         forceRefresh?.call();
@@ -245,8 +249,13 @@ class EditorCore extends ChangeNotifier {
           selectionManager.endIndex,
           selectionManager.startLine,
           selectionManager.endLine);
+
+      selectionDeleted = true;
+    }
+    if (selectionDeleted) {
+      selectionManager.clearSelections();
       notifyListeners();
-      return true;
+      return selectionDeleted;
     }
     return false;
   }
@@ -254,10 +263,11 @@ class EditorCore extends ChangeNotifier {
   void handleSelection(SelectionDirection direction) {
     if (!hasSelection()) startSelection();
 
-    for (var cursor in cursorManager.cursors) {
-      selectionManager.updateSelection(bufferManager, direction, cursor.index,
-          cursorManager.targetCursorIndex);
+    for (int i = 0; i < cursorManager.cursors.length; i++) {
+      selectionManager.updateSelection(bufferManager, i, direction,
+          cursorManager.cursors[i].index, cursorManager.targetCursorIndex);
     }
+
     onSelectionChange?.call(
         selectionManager.anchor,
         selectionManager.startIndex,

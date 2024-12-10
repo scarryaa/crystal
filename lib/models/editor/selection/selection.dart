@@ -27,6 +27,14 @@ class Selection {
     startLine = endLine = anchor = startIndex = endIndex = -1;
   }
 
+  bool isNullSelection() {
+    return anchor == -1 &&
+        startIndex == -1 &&
+        endIndex == -1 &&
+        startLine == -1 &&
+        endLine == -1;
+  }
+
   void selectRange(BufferManager bufferManager, int startLine, int startIndex,
       int endLine, int endIndex) {
     this.startLine = max(0, startLine);
@@ -38,6 +46,19 @@ class Selection {
         max(0, min(bufferManager.lines[this.endLine].length, endIndex));
 
     anchor = this.startIndex;
+  }
+
+  void normalize(BufferManager bufferManager) {
+    if (startLine > endLine) {
+      final int temp2 = startIndex;
+
+      final int temp = startLine;
+      startLine = endLine;
+      endLine = temp;
+
+      startIndex = endIndex;
+      endIndex = temp2;
+    }
   }
 
   int selectWord(BufferManager bufferManager, int cursorLine, int cursorIndex) {
@@ -202,4 +223,18 @@ class Selection {
           normalizedStartIndex, normalizedEndIndex);
     }
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Selection &&
+          anchor == other.anchor &&
+          startLine == other.startLine &&
+          endLine == other.endLine &&
+          startIndex == other.startIndex &&
+          endIndex == other.endIndex;
+
+  @override
+  int get hashCode =>
+      Object.hash(anchor, startLine, endLine, startIndex, endIndex);
 }

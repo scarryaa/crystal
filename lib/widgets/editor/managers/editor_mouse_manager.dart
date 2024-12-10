@@ -35,7 +35,7 @@ class EditorMouseManager extends ChangeNotifier {
         mouseButton = MouseButtonType.right;
         break;
       default:
-        return;
+        mouseButton = MouseButtonType.left;
     }
 
     if (event is PointerDownEvent) {
@@ -100,7 +100,6 @@ class EditorMouseManager extends ChangeNotifier {
           _convertPositionToTextIndex(localPosition, scrollPosition);
 
       if (_dragStartPosition != null) {
-        // Select from drag start to current position
         core.selectRange(_dragStartPosition!.$1, _dragStartPosition!.$2,
             currentPosition.$1, currentPosition.$2);
       }
@@ -111,6 +110,7 @@ class EditorMouseManager extends ChangeNotifier {
       PointerUpEvent event, Offset localPosition, Offset scrollPosition) {
     _isDragging = false;
     _dragStartPosition = null;
+    core.selectionManager.mergeOverlappingSelections(core.bufferManager);
   }
 
   MouseClickType _determineClickType(
@@ -247,7 +247,7 @@ extension EditorCoreMouseExtensions on EditorCore {
     cursorLine = min(cursorLine, bufferManager.lines.length - 1);
     cursorIndex = min(cursorIndex, bufferManager.lines[cursorLine].length);
 
-    selectionManager.selectLine(bufferManager, cursorLine);
+    selectionManager.selectLine(bufferManager, 0, cursorLine);
     cursorManager.clearCursors();
     cursorManager.addCursor(Cursor(line: cursorLine, index: cursorIndex));
 
@@ -267,7 +267,7 @@ extension EditorCoreMouseExtensions on EditorCore {
     cursorManager.clearCursors();
 
     selectionManager.selectRange(
-        bufferManager, startLine, startIndex, endLine, endIndex);
+        bufferManager, 0, startLine, startIndex, endLine, endIndex);
     cursorManager.moveTo(0, endLine, max(0, endIndex));
     cursorManager.targetCursorIndex = endIndex;
     notifyListeners();
