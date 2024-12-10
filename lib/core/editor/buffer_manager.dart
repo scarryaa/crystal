@@ -22,7 +22,9 @@ class BufferManager {
 
     for (var cursor in cursorManager.cursors) {
       if (numberOfLinesAdded == 0) {
-        _lines[cursor.line] += linesToAdd.first;
+        _lines[cursor.line] = _lines[cursor.line].substring(0, cursor.index) +
+            string +
+            _lines[cursor.line].substring(cursor.index);
         cursor.index += linesToAdd.first.length;
         cursorManager.targetCursorIndex = cursor.index;
       } else {

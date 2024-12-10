@@ -188,4 +188,137 @@ void main() {
       expect(bufferManager.getLineAt(0), equals('hexllo'));
     });
   });
+
+  group('Multi-cursor Operations', () {
+    test('insert same character at multiple positions', () {
+      final cursor1 = MockCursor();
+      final cursor2 = MockCursor();
+
+      when(mockCursorManager.cursors).thenReturn([cursor1, cursor2]);
+      when(cursor1.line).thenReturn(0);
+      when(cursor2.line).thenReturn(0);
+      when(cursor1.index).thenReturn(1);
+      when(cursor2.index).thenReturn(3);
+
+      bufferManager = BufferManager(
+          initialLines: ['hello'], cursorManager: mockCursorManager);
+
+      bufferManager.insertCharacter('x');
+
+      expect(bufferManager.getLineAt(0), equals('hxelxlo'));
+      verify(mockCursorManager.mergeCursorsIfNeeded()).called(1);
+    });
+
+    test('insert string with multiple cursors', () {
+      final cursor1 = MockCursor();
+      final cursor2 = MockCursor();
+
+      when(mockCursorManager.cursors).thenReturn([cursor1, cursor2]);
+      when(cursor1.line).thenReturn(0);
+      when(cursor2.line).thenReturn(1);
+      when(cursor1.index).thenReturn(5); // at end of "first"
+      when(cursor2.index).thenReturn(6); // at end of "second"
+
+      bufferManager = BufferManager(
+          initialLines: ['first', 'second'], cursorManager: mockCursorManager);
+
+      bufferManager.insertString('test');
+
+      expect(bufferManager.lineCount, equals(2));
+      expect(bufferManager.getLineAt(0), equals('firsttest'));
+      expect(bufferManager.getLineAt(1), equals('secondtest'));
+    });
+
+    test('insert string with multiple cursors at different positions', () {
+      final cursor1 = MockCursor();
+      final cursor2 = MockCursor();
+
+      when(mockCursorManager.cursors).thenReturn([cursor1, cursor2]);
+      when(cursor1.line).thenReturn(0);
+      when(cursor2.line).thenReturn(1);
+      when(cursor1.index).thenReturn(2); // after "fi"
+      when(cursor2.index).thenReturn(3); // after "sec"
+
+      bufferManager = BufferManager(
+          initialLines: ['first', 'second'], cursorManager: mockCursorManager);
+
+      bufferManager.insertString('test');
+
+      expect(bufferManager.lineCount, equals(2));
+      expect(bufferManager.getLineAt(0), equals('fitestrst'));
+      expect(bufferManager.getLineAt(1), equals('sectestond'));
+    });
+
+    test('delete with multiple cursors on same line', () {
+      final cursor1 = MockCursor();
+      final cursor2 = MockCursor();
+
+      // Initial cursor positions
+      when(mockCursorManager.cursors).thenReturn([cursor1, cursor2]);
+      when(cursor1.line).thenReturn(0);
+      when(cursor2.line).thenReturn(0);
+      when(cursor1.index).thenReturn(3);
+      when(cursor2.index).thenReturn(7);
+
+      bufferManager = BufferManager(
+          initialLines: ['hello world'], cursorManager: mockCursorManager);
+
+      bufferManager.delete(1);
+
+      // Verify the text modification
+      expect(bufferManager.getLineAt(0), equals('helo wrld'));
+
+      // Verify cursor adjustments
+      verify(cursor1.index = 2).called(1);
+      verify(cursor2.index = 6).called(2);
+    });
+
+    test('insert newline with multiple cursors', () {
+      final cursor1 = MockCursor();
+      final cursor2 = MockCursor();
+
+      // Initial cursor positions
+      when(mockCursorManager.cursors).thenReturn([cursor1, cursor2]);
+      when(cursor1.line).thenReturn(0);
+      when(cursor2.line).thenReturn(1);
+      when(cursor1.index).thenReturn(2);
+      when(cursor2.index).thenReturn(3);
+
+      bufferManager = BufferManager(
+          initialLines: ['hello world'], cursorManager: mockCursorManager);
+
+      bufferManager.insertNewline();
+
+      // Verify text modifications
+      expect(bufferManager.lineCount, equals(3));
+      expect(bufferManager.getLineAt(0), equals('he'));
+      expect(bufferManager.getLineAt(1), equals('llo'));
+      expect(bufferManager.getLineAt(2), equals(' world'));
+
+      // Verify cursor adjustments
+      verify(cursor1.line = 1).called(1);
+      verify(cursor1.index = 0).called(1);
+      verify(cursor2.line = 2).called(2);
+      verify(cursor2.index = 0).called(1);
+    });
+
+    test('delete forwards with multiple cursors', () {
+      final cursor1 = MockCursor();
+      final cursor2 = MockCursor();
+
+      when(mockCursorManager.cursors).thenReturn([cursor1, cursor2]);
+      when(cursor1.line).thenReturn(0);
+      when(cursor2.line).thenReturn(1);
+      when(cursor1.index).thenReturn(2);
+      when(cursor2.index).thenReturn(1);
+
+      bufferManager = BufferManager(
+          initialLines: ['hello', 'world'], cursorManager: mockCursorManager);
+
+      bufferManager.deleteForwards(1);
+
+      expect(bufferManager.getLineAt(0), equals('helo'));
+      expect(bufferManager.getLineAt(1), equals('wrld'));
+    });
+  });
 }
