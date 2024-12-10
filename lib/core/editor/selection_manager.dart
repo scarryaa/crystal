@@ -125,7 +125,8 @@ class SelectionManager extends ChangeNotifier {
         // Merge overlapping selections
         final lastMerged = mergedSelections.last;
 
-        if (lastMerged.endLine <= selection.endLine) {
+        if (lastMerged.endLine <= selection.endLine &&
+            lastMerged.endIndex < selection.endIndex) {
           lastMerged.endIndex = selection.endIndex;
         }
         if (lastMerged.startLine >= selection.startLine &&

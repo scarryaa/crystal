@@ -210,7 +210,7 @@ class Selection {
     return selectedLines.join('\n');
   }
 
-  void deleteSelection(BufferManager bufferManager, int currentIndex) {
+  (int, int) deleteSelection(BufferManager bufferManager, int currentIndex) {
     // First determine which indices to use based on line numbers
     final int normalizedStartLine = min(startLine, endLine);
     final int normalizedEndLine = max(startLine, endLine);
@@ -220,6 +220,7 @@ class Selection {
       final int normalizedEndIndex = max(startIndex, endIndex);
       bufferManager.deleteRange(normalizedStartLine, normalizedEndLine,
           normalizedStartIndex, normalizedEndIndex);
+      return (0, normalizedEndIndex - normalizedStartIndex);
     } else {
       final int normalizedStartIndex =
           (normalizedStartLine == startLine) ? startIndex : endIndex;
@@ -227,6 +228,10 @@ class Selection {
           (normalizedEndLine == endLine) ? endIndex : startIndex;
       bufferManager.deleteRange(normalizedStartLine, normalizedEndLine,
           normalizedStartIndex, normalizedEndIndex);
+      return (
+        normalizedEndLine - normalizedStartLine,
+        normalizedEndIndex - normalizedStartIndex
+      );
     }
   }
 

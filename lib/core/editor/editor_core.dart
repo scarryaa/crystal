@@ -228,14 +228,30 @@ class EditorCore extends ChangeNotifier {
   }
 
   bool deleteSelectionsIfNeeded() {
+    if (!selectionManager.hasSelection()) return false;
+
     bool selectionDeleted = false;
 
-    selectionManager.selections
-        .sort((a, b) => b.startLine.compareTo(a.startLine));
+    selectionManager.selections.sort((a, b) {
+      final int endComparison = a.endIndex.compareTo(b.endIndex);
 
+      return endComparison != 0
+          ? endComparison
+          : a.startLine.compareTo(b.startLine);
+    });
+
+    final Map<int, int> lineAdjustments = {};
+    final Map<int, int> indexAdjustments = {};
     for (var selection in selectionManager.selections) {
       final beforeLines = bufferManager.lines.length;
-      selection.deleteSelection(bufferManager, cursorPosition);
+      selection.startIndex -= indexAdjustments[selection.startLine] ?? 0;
+      selection.endIndex -= indexAdjustments[selection.startLine] ?? 0;
+
+      final (int, int) result =
+          selection.deleteSelection(bufferManager, cursorPosition);
+      lineAdjustments[selection.startLine] = result.$1;
+      indexAdjustments.update(selection.startLine, (value) => value + result.$2,
+          ifAbsent: () => result.$2);
 
       if (beforeLines != bufferManager.lines.length) {
         forceRefresh?.call();
@@ -252,6 +268,23 @@ class EditorCore extends ChangeNotifier {
 
       selectionDeleted = true;
     }
+
+    cursorManager.clearCursors();
+    for (var selection in selectionManager.selections) {
+      final int line = selection.startLine;
+
+      int totalAdjustment = 0;
+      lineAdjustments.forEach((key, value) {
+        if (key < line) {
+          totalAdjustment += value;
+        }
+      });
+      cursorManager.addCursor(Cursor(
+          line: selection.startLine - totalAdjustment,
+          index: selection.startIndex));
+    }
+    cursorManager.mergeCursorsIfNeeded();
+
     if (selectionDeleted) {
       selectionManager.clearSelections();
       notifyListeners();

@@ -264,11 +264,9 @@ extension EditorCoreMouseExtensions on EditorCore {
     startIndex = min(startIndex, bufferManager.lines[startLine].length);
     endLine = max(0, min(endLine, bufferManager.lines.length - 1));
     endIndex = min(endIndex, bufferManager.lines[endLine].length);
-    cursorManager.clearCursors();
 
     selectionManager.selectRange(
         bufferManager, startIndex, 0, startLine, startIndex, endLine, endIndex);
-    cursorManager.moveTo(0, endLine, max(0, endIndex));
     cursorManager.targetCursorIndex = endIndex;
     notifyListeners();
   }
