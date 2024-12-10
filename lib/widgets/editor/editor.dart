@@ -121,130 +121,142 @@ class _EditorState extends State<Editor> with AutomaticKeepAliveClientMixin {
   Widget build(BuildContext context) {
     super.build(context);
 
-    return ScrollbarTheme(
-        data: ScrollbarThemeData(
-          thickness: WidgetStateProperty.resolveWith((states) {
-            return 8;
-          }),
-          thumbColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.pressed)) {
-              return Colors.grey[500];
-            }
-            if (states.contains(WidgetState.hovered)) {
-              return Colors.grey[700];
-            }
-            return Colors.grey[600];
-          }),
-          radius: Radius.zero,
-          minThumbLength: 50,
-          crossAxisMargin: 0,
-        ),
-        child: ListenableBuilder(
-            listenable: Listenable.merge([_core, _scrollChanged]),
-            builder: (context, child) {
-              final int firstVisibleLine =
-                  widget.verticalScrollController.hasClients
-                      ? max(
-                          0,
-                          (widget.verticalScrollController.offset ~/
-                                  _core.config.lineHeight) -
-                              _core.config.lineBuffer)
-                      : 0;
+    return MouseRegion(
+        cursor: SystemMouseCursors.text,
+        child: ScrollbarTheme(
+            data: ScrollbarThemeData(
+              thickness: WidgetStateProperty.resolveWith((states) {
+                return 8;
+              }),
+              thumbColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.pressed)) {
+                  return Colors.grey[500];
+                }
+                if (states.contains(WidgetState.hovered)) {
+                  return Colors.grey[700];
+                }
+                return Colors.grey[600];
+              }),
+              radius: Radius.zero,
+              minThumbLength: 50,
+              crossAxisMargin: 0,
+            ),
+            child: ListenableBuilder(
+                listenable: Listenable.merge([_core, _scrollChanged]),
+                builder: (context, child) {
+                  final int firstVisibleLine =
+                      widget.verticalScrollController.hasClients
+                          ? max(
+                              0,
+                              (widget.verticalScrollController.offset ~/
+                                      _core.config.lineHeight) -
+                                  _core.config.lineBuffer)
+                          : 0;
 
-              final int lastVisibleLine = firstVisibleLine +
-                  (widget.verticalScrollController.hasClients
-                      ? min(
-                          _core.lines.length,
-                          (widget.verticalScrollController.position
-                                      .viewportDimension ~/
-                                  _core.config.lineHeight) +
-                              _core.config.lineBuffer)
-                      : min(
-                          _core.lines.length,
-                          (MediaQuery.of(context).size.height ~/
-                                  _core.config.lineHeight) +
-                              _core.config.lineBuffer));
+                  final int lastVisibleLine = firstVisibleLine +
+                      (widget.verticalScrollController.hasClients
+                          ? min(
+                              _core.lines.length,
+                              (widget.verticalScrollController.position
+                                          .viewportDimension ~/
+                                      _core.config.lineHeight) +
+                                  _core.config.lineBuffer)
+                          : min(
+                              _core.lines.length,
+                              (MediaQuery.of(context).size.height ~/
+                                      _core.config.lineHeight) +
+                                  _core.config.lineBuffer));
 
-              return Scrollbar(
-                  controller: widget.verticalScrollController,
-                  interactive: true,
-                  child: Scrollbar(
-                      controller: widget.horizontalScrollController,
+                  return Scrollbar(
+                      controller: widget.verticalScrollController,
                       interactive: true,
-                      notificationPredicate: (notification) =>
-                          notification.depth == 1,
-                      child: Listener(
-                          onPointerDown: (event) {
-                            widget.focusNode.requestFocus();
-                            editorInputManager.handleMouseEvent(
-                                event.localPosition,
-                                Offset(widget.horizontalScrollController.offset,
-                                    widget.verticalScrollController.offset),
-                                event);
-                            _core.onSelectionChange?.call(
-                                _core.selectionManager.anchor,
-                                _core.selectionManager.startIndex,
-                                _core.selectionManager.endIndex,
-                                _core.selectionManager.startLine,
-                                _core.selectionManager.endLine);
-                          },
-                          onPointerMove: (event) {
-                            editorInputManager.handleMouseEvent(
-                                event.localPosition,
-                                Offset(widget.horizontalScrollController.offset,
-                                    widget.verticalScrollController.offset),
-                                event);
-                            _core.onSelectionChange?.call(
-                                _core.selectionManager.anchor,
-                                _core.selectionManager.startIndex,
-                                _core.selectionManager.endIndex,
-                                _core.selectionManager.startLine,
-                                _core.selectionManager.endLine);
-                          },
-                          onPointerUp: (event) =>
-                              editorInputManager.handleMouseEvent(
-                                  event.localPosition,
-                                  Offset(
-                                      widget.horizontalScrollController.offset,
-                                      widget.verticalScrollController.offset),
-                                  event),
-                          child: SingleChildScrollView(
-                              scrollDirection: Axis.vertical,
-                              controller: widget.verticalScrollController,
+                      child: Scrollbar(
+                          controller: widget.horizontalScrollController,
+                          interactive: true,
+                          notificationPredicate: (notification) =>
+                              notification.depth == 1,
+                          child: Listener(
+                              onPointerDown: (event) {
+                                widget.focusNode.requestFocus();
+                                editorInputManager.handleMouseEvent(
+                                    event.localPosition,
+                                    Offset(
+                                        widget
+                                            .horizontalScrollController.offset,
+                                        widget.verticalScrollController.offset),
+                                    event);
+                                _core.onSelectionChange?.call(
+                                    _core.selectionManager.anchor,
+                                    _core.selectionManager.startIndex,
+                                    _core.selectionManager.endIndex,
+                                    _core.selectionManager.startLine,
+                                    _core.selectionManager.endLine);
+                              },
+                              onPointerMove: (event) {
+                                editorInputManager.handleMouseEvent(
+                                    event.localPosition,
+                                    Offset(
+                                        widget
+                                            .horizontalScrollController.offset,
+                                        widget.verticalScrollController.offset),
+                                    event);
+                                _core.onSelectionChange?.call(
+                                    _core.selectionManager.anchor,
+                                    _core.selectionManager.startIndex,
+                                    _core.selectionManager.endIndex,
+                                    _core.selectionManager.startLine,
+                                    _core.selectionManager.endLine);
+                              },
+                              onPointerUp: (event) =>
+                                  editorInputManager.handleMouseEvent(
+                                      event.localPosition,
+                                      Offset(
+                                          widget.horizontalScrollController
+                                              .offset,
+                                          widget
+                                              .verticalScrollController.offset),
+                                      event),
                               child: SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  controller: widget.horizontalScrollController,
-                                  child: SizedBox(
-                                      width: _calculateWidgetWidth(),
-                                      height: _calculateWidgetHeight(),
-                                      child: Focus(
-                                          focusNode: widget.focusNode,
-                                          autofocus: true,
-                                          onKeyEvent: (node, keyEvent) =>
-                                              handleKeyEvent(node, keyEvent),
-                                          child: CustomPaint(
-                                              willChange: true,
-                                              isComplex: true,
-                                              painter: EditorPainter(
-                                                core: _core,
-                                                firstVisibleLine:
-                                                    firstVisibleLine,
-                                                lastVisibleLine:
-                                                    lastVisibleLine,
-                                                viewportHeight: MediaQuery.of(
-                                                            context)
-                                                        .size
-                                                        .height +
-                                                    _core.config.heightPadding +
-                                                    (widget.verticalScrollController
-                                                            .hasClients
-                                                        ? widget
-                                                            .verticalScrollController
-                                                            .offset
-                                                        : 0),
-                                                primaryColor: Theme.of(context)
-                                                    .primaryColor,
-                                              )))))))));
-            }));
+                                  scrollDirection: Axis.vertical,
+                                  controller: widget.verticalScrollController,
+                                  child: SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      controller:
+                                          widget.horizontalScrollController,
+                                      child: SizedBox(
+                                          width: _calculateWidgetWidth(),
+                                          height: _calculateWidgetHeight(),
+                                          child: Focus(
+                                              focusNode: widget.focusNode,
+                                              autofocus: true,
+                                              onKeyEvent: (node, keyEvent) =>
+                                                  handleKeyEvent(
+                                                      node, keyEvent),
+                                              child: CustomPaint(
+                                                  willChange: true,
+                                                  isComplex: true,
+                                                  painter: EditorPainter(
+                                                    core: _core,
+                                                    firstVisibleLine:
+                                                        firstVisibleLine,
+                                                    lastVisibleLine:
+                                                        lastVisibleLine,
+                                                    viewportHeight: MediaQuery
+                                                                .of(context)
+                                                            .size
+                                                            .height +
+                                                        _core.config
+                                                            .heightPadding +
+                                                        (widget.verticalScrollController
+                                                                .hasClients
+                                                            ? widget
+                                                                .verticalScrollController
+                                                                .offset
+                                                            : 0),
+                                                    primaryColor:
+                                                        Theme.of(context)
+                                                            .primaryColor,
+                                                  )))))))));
+                })));
   }
 }
