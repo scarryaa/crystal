@@ -179,54 +179,47 @@ class BufferManager {
     cursorManager.mergeCursorsIfNeeded();
   }
 
-  void deleteForwards(int length) {
-    for (var cursor in cursorManager.cursors) {
-      if (length <= 0) return;
-      // Check if we're at the end of the document
-      if (cursor.line == _lines.length - 1 &&
+  void deleteForwards(int remainingDeletions) {
+    final cursors = List.from(cursorManager.cursors);
+
+    for (var cursor in cursors) {
+      // Skip if at document end
+      if (cursor.line >= _lines.length - 1 &&
           cursor.index >= _lines[cursor.line].length) {
-        return;
+        continue;
       }
-      // Deletion within the same line
-      final int currentLineLength = _lines[cursor.line].length;
-      final int remainingInLine = currentLineLength - cursor.index;
-      if (length <= remainingInLine) {
+
+      // Delete within current line
+      if (cursor.index < _lines[cursor.line].length) {
         _lines[cursor.line] = _lines[cursor.line].substring(0, cursor.index) +
-            _lines[cursor.line].substring(cursor.index + length);
-        return;
-      }
-      // Multi-line deletion
-      int remainingCharsToDelete = length;
-      int currentLine = cursor.line;
-      while (remainingCharsToDelete > 0 && currentLine < _lines.length - 1) {
-        final String currentLineContent = _lines[currentLine];
-        final int currentLineRemainingChars =
-            currentLineContent.length - cursor.index;
-        if (remainingCharsToDelete <= currentLineRemainingChars) {
-          // Partial line deletion
-          _lines[currentLine] = currentLineContent.substring(0, cursor.index) +
-              currentLineContent
-                  .substring(cursor.index + remainingCharsToDelete);
-          break;
-        }
-        // Remove this line or part of it
-        remainingCharsToDelete -=
-            currentLineRemainingChars + 1; // +1 for newline
+            _lines[cursor.line].substring(cursor.index + 1);
 
-        if (currentLineRemainingChars == 0) {
-          // We are at the end of a non-empty line
-          // Combine current line with the next line
-          if (currentLine + 1 < _lines.length) {
-            _lines[currentLine] += _lines[currentLine + 1];
-            _lines.removeAt(currentLine + 1);
+        // Only adjust cursors after current position on same line
+        for (var otherCursor in cursorManager.cursors) {
+          if (otherCursor.line == cursor.line &&
+              otherCursor.index > cursor.index) {
+            otherCursor.index--;
           }
-        } else {
-          _lines[currentLine] = currentLineContent.substring(0, cursor.index);
         }
+      } else if (cursor.line < _lines.length - 1) {
+        // Handle line merging
+        final nextLine = _lines[cursor.line + 1];
+        _lines[cursor.line] += nextLine;
+        _lines.removeAt(cursor.line + 1);
 
-        currentLine++;
+        // Adjust cursors on subsequent lines
+        for (Cursor otherCursor in cursorManager.cursors) {
+          if (otherCursor.line > cursor.line) {
+            otherCursor.line--;
+            if (otherCursor.line == cursor.line) {
+              otherCursor.index += cursor.index as int;
+            }
+          }
+        }
       }
     }
+
+    cursorManager.mergeCursorsIfNeeded();
   }
 
   bool _validateCursorPositionBeforeDelete(Cursor cursor) {
