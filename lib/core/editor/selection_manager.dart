@@ -11,6 +11,10 @@ class SelectionManager {
   int get endIndex => selection.endIndex;
   int get anchor => selection.anchor;
 
+  void resetSelection() {
+    selection.reset();
+  }
+
   void startSelection(int line, int index) {
     selection.start(line, index);
   }

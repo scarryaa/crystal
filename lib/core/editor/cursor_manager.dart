@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 class CursorManager extends ChangeNotifier {
   final BufferManager _bufferManager;
   final Set<Cursor> uniqueCursors = {};
-  List<Cursor> cursors = [];
+  List<Cursor> cursors = [Cursor(line: 0, index: 0)];
 
   int targetCursorIndex = 0;
 
@@ -27,6 +27,7 @@ class CursorManager extends ChangeNotifier {
   void clearCursors() {
     cursors.clear();
     uniqueCursors.clear();
+
     notifyListeners();
   }
 

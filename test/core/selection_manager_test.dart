@@ -65,7 +65,8 @@ void main() {
     group('Word Selection Tests', () {
       test('selectWord should select a single word correctly', () {
         mockBufferManager.lines = ['Hello World'];
-        int newIndex = selectionManager.selectWord(mockBufferManager, 0, 2);
+        final int newIndex =
+            selectionManager.selectWord(mockBufferManager, 0, 2);
 
         expect(selectionManager.startIndex, equals(0));
         expect(selectionManager.endIndex, equals(5));
@@ -74,7 +75,8 @@ void main() {
 
       test('selectWord should handle word boundaries correctly', () {
         mockBufferManager.lines = ['Hello,World'];
-        int newIndex = selectionManager.selectWord(mockBufferManager, 0, 5);
+        final int newIndex =
+            selectionManager.selectWord(mockBufferManager, 0, 5);
         expect(newIndex, equals(5));
       });
     });
@@ -83,8 +85,8 @@ void main() {
       test('deleteSelection should handle single line selections', () {
         selectionManager.startSelection(0, 0);
         mockBufferManager.lines = ['Hello World'];
-        selectionManager.startIndex = 0;
-        selectionManager.endIndex = 5;
+        selectionManager.selection.startIndex = 0;
+        selectionManager.selection.endIndex = 5;
 
         selectionManager.deleteSelection(mockBufferManager, 0);
         verify(mockBufferManager.deleteRange(0, 0, 0, 5)).called(1);
@@ -92,10 +94,10 @@ void main() {
 
       test('deleteSelection should handle multi-line selections', () {
         mockBufferManager.lines = ['First line', 'Second line', 'Third line'];
-        selectionManager.startLine = 0;
-        selectionManager.endLine = 2;
-        selectionManager.startIndex = 2;
-        selectionManager.endIndex = 4;
+        selectionManager.selection.startLine = 0;
+        selectionManager.selection.endLine = 2;
+        selectionManager.selection.startIndex = 2;
+        selectionManager.selection.endIndex = 4;
 
         selectionManager.deleteSelection(mockBufferManager, 0);
         verify(mockBufferManager.deleteRange(0, 2, 2, 4)).called(1);
@@ -103,10 +105,10 @@ void main() {
 
       test('deleteSelection should normalize reversed selections', () {
         mockBufferManager.lines = ['Test line'];
-        selectionManager.startLine = 0;
-        selectionManager.endLine = 0;
-        selectionManager.startIndex = 5;
-        selectionManager.endIndex = 2;
+        selectionManager.selection.startLine = 0;
+        selectionManager.selection.endLine = 0;
+        selectionManager.selection.startIndex = 5;
+        selectionManager.selection.endIndex = 2;
 
         selectionManager.deleteSelection(mockBufferManager, 0);
         verify(mockBufferManager.deleteRange(0, 0, 2, 5)).called(1);
@@ -161,9 +163,10 @@ void main() {
     group('Get Selected Text Tests', () {
       test('getSelectedText should return correct single line selection', () {
         mockBufferManager.lines = ['Hello World'];
-        selectionManager.startLine = selectionManager.endLine = 0;
-        selectionManager.startIndex = 0;
-        selectionManager.endIndex = 5;
+        selectionManager.selection.startLine =
+            selectionManager.selection.endLine = 0;
+        selectionManager.selection.startIndex = 0;
+        selectionManager.selection.endIndex = 5;
 
         expect(selectionManager.getSelectedText(mockBufferManager),
             equals('Hello'));
@@ -171,10 +174,10 @@ void main() {
 
       test('getSelectedText should return correct multi-line selection', () {
         mockBufferManager.lines = ['First', 'Second', 'Third'];
-        selectionManager.startLine = 0;
-        selectionManager.endLine = 2;
-        selectionManager.startIndex = 2;
-        selectionManager.endIndex = 3;
+        selectionManager.selection.startLine = 0;
+        selectionManager.selection.endLine = 2;
+        selectionManager.selection.startIndex = 2;
+        selectionManager.selection.endIndex = 3;
 
         expect(selectionManager.getSelectedText(mockBufferManager),
             equals('rst\nSecond\nThi'));

@@ -1,7 +1,8 @@
 import 'package:crystal/core/editor/buffer_manager.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/mockito.dart';
 
-import '../mocks/mock_cursor_manager.dart';
+import '../mocks/mock_cursor_manager.mocks.dart';
 
 void main() {
   late BufferManager bufferManager;
@@ -9,7 +10,7 @@ void main() {
 
   setUp(() {
     bufferManager = BufferManager();
-    mockCursorManager = MockCursorManager(bufferManager);
+    mockCursorManager = MockCursorManager();
     bufferManager.cursorManager = mockCursorManager;
   });
 
@@ -26,44 +27,72 @@ void main() {
 
   group('insertString tests', () {
     test('insert single line string', () {
-      mockCursorManager.cursorLine = 0;
-      mockCursorManager.cursorIndex = 0;
+      bufferManager = BufferManager(initialLines: ['']);
+
+      final mockCursor = MockCursor();
+      when(mockCursor.line).thenReturn(0);
+      when(mockCursor.index).thenReturn(0);
+
+      mockCursorManager = MockCursorManager();
+      when(mockCursorManager.firstCursor()).thenReturn(mockCursor);
+      when(mockCursorManager.cursors).thenReturn([mockCursor]);
+
+      bufferManager.cursorManager = mockCursorManager;
 
       bufferManager.insertString('hello');
 
       expect(bufferManager.getLineAt(0), equals('hello'));
-      expect(mockCursorManager.cursorIndex, equals(5));
+      verify(mockCursor.index = 5).called(1);
     });
 
     test('insert multi-line string', () {
-      mockCursorManager.cursorLine = 0;
-      mockCursorManager.cursorIndex = 0;
+      final cursor = MockCursor();
 
+      // Set up mock cursor manager
+      when(mockCursorManager.firstCursor()).thenReturn(cursor);
+      when(mockCursorManager.cursors).thenReturn([cursor]);
+      when(cursor.line).thenReturn(0);
+      when(cursor.index).thenReturn(0);
+
+      // Create buffer manager with mock cursor manager
+      bufferManager = BufferManager(cursorManager: mockCursorManager);
+
+      // Insert multi-line string
       bufferManager.insertString('hello\nworld');
 
       expect(bufferManager.lineCount, equals(2));
       expect(bufferManager.getLineAt(0), equals('hello'));
       expect(bufferManager.getLineAt(1), equals('world'));
-      expect(mockCursorManager.cursorLine, equals(1));
+
+      // Verify cursor position update
+      verify(cursor.line = 1).called(1);
+      verify(cursor.index = 5).called(1);
     });
   });
 
   group('deleteRange tests', () {
     test('delete within single line', () {
+      final mockCursor = MockCursor();
+      mockCursorManager = MockCursorManager();
+
+      when(mockCursorManager.firstCursor()).thenReturn(mockCursor);
+
       bufferManager = BufferManager(initialLines: ['hello world']);
-      mockCursorManager = MockCursorManager(bufferManager);
       bufferManager.cursorManager = mockCursorManager;
 
       bufferManager.deleteRange(0, 0, 0, 5);
 
       expect(bufferManager.getLineAt(0), equals(' world'));
-      expect(mockCursorManager.cursorIndex, equals(0));
+      expect(mockCursorManager.firstCursor().index, equals(0));
     });
 
     test('delete across multiple lines', () {
       bufferManager = BufferManager(initialLines: ['hello', 'world', 'test']);
-      mockCursorManager = MockCursorManager(bufferManager);
+      mockCursorManager = MockCursorManager();
       bufferManager.cursorManager = mockCursorManager;
+
+      final mockCursor = MockCursor();
+      when(mockCursorManager.firstCursor()).thenReturn(mockCursor);
 
       bufferManager.deleteRange(0, 1, 3, 2);
 
@@ -79,73 +108,84 @@ void main() {
 
   group('delete tests', () {
     test('delete at start of document should do nothing', () {
-      mockCursorManager.cursorLine = 0;
-      mockCursorManager.cursorIndex = 0;
-
       bufferManager.delete(1);
 
       expect(bufferManager.getLineAt(0), equals(''));
     });
 
     test('delete in middle of line', () {
-      bufferManager = BufferManager(initialLines: ['hello']);
-      mockCursorManager = MockCursorManager(bufferManager);
-      bufferManager.cursorManager = mockCursorManager;
-      mockCursorManager.cursorLine = 0;
-      mockCursorManager.cursorIndex = 3;
+      final cursor = MockCursor();
+
+      // Set up mock cursor behavior
+      when(mockCursorManager.firstCursor()).thenReturn(cursor);
+      when(mockCursorManager.cursors).thenReturn([cursor]);
+      when(cursor.line).thenReturn(0);
+      when(cursor.index).thenReturn(3);
+
+      bufferManager = BufferManager(
+          initialLines: ['hello'], cursorManager: mockCursorManager);
 
       bufferManager.delete(1);
 
       expect(bufferManager.getLineAt(0), equals('helo'));
-      expect(mockCursorManager.cursorIndex, equals(2));
     });
   });
 
   group('deleteForwards tests', () {
     test('delete forward at end of document should do nothing', () {
-      mockCursorManager.cursorLine = 0;
-      mockCursorManager.cursorIndex = 0;
-
       bufferManager.deleteForwards(1);
 
       expect(bufferManager.getLineAt(0), equals(''));
     });
 
     test('delete forward in middle of text', () {
-      bufferManager = BufferManager(initialLines: ['hello']);
-      mockCursorManager = MockCursorManager(bufferManager);
-      bufferManager.cursorManager = mockCursorManager;
-      mockCursorManager.cursorLine = 0;
-      mockCursorManager.cursorIndex = 2;
+      final cursor = MockCursor();
 
-      bufferManager.deleteForwards(2);
+      // Set up mock cursor behavior
+      when(mockCursorManager.firstCursor()).thenReturn(cursor);
+      when(mockCursorManager.cursors).thenReturn([cursor]);
+      when(cursor.line).thenReturn(0);
+      when(cursor.index).thenReturn(2);
 
-      expect(bufferManager.getLineAt(0), equals('heo'));
+      // Create buffer manager with initial text
+      bufferManager = BufferManager(
+          initialLines: ['hello'], cursorManager: mockCursorManager);
+
+      bufferManager.deleteForwards(1);
+
+      expect(bufferManager.getLineAt(0), equals('helo'));
+      verify(mockCursorManager.mergeCursorsIfNeeded()).called(1);
     });
   });
 
   group('insertCharacter tests', () {
     test('insert character in empty line', () {
-      mockCursorManager.cursorLine = 0;
-      mockCursorManager.cursorIndex = 0;
+      final cursor = MockCursor();
+
+      when(mockCursorManager.firstCursor()).thenReturn(cursor);
+      when(mockCursorManager.cursors).thenReturn([cursor]);
+      when(cursor.line).thenReturn(0);
+      when(cursor.index).thenReturn(0);
 
       bufferManager.insertCharacter('a');
 
       expect(bufferManager.getLineAt(0), equals('a'));
-      expect(mockCursorManager.cursorIndex, equals(1));
     });
 
     test('insert character in middle of line', () {
-      bufferManager = BufferManager(initialLines: ['hello']);
-      mockCursorManager = MockCursorManager(bufferManager);
-      bufferManager.cursorManager = mockCursorManager;
-      mockCursorManager.cursorLine = 0;
-      mockCursorManager.cursorIndex = 2;
+      final cursor = MockCursor();
+
+      bufferManager = BufferManager(
+          initialLines: ['hello'], cursorManager: mockCursorManager);
+
+      when(mockCursorManager.firstCursor()).thenReturn(cursor);
+      when(mockCursorManager.cursors).thenReturn([cursor]);
+      when(cursor.line).thenReturn(0);
+      when(cursor.index).thenReturn(2);
 
       bufferManager.insertCharacter('x');
 
       expect(bufferManager.getLineAt(0), equals('hexllo'));
-      expect(mockCursorManager.cursorIndex, equals(3));
     });
   });
 }

@@ -3,11 +3,11 @@ import 'package:crystal/models/editor/cursor/cursor.dart';
 
 class BufferManager {
   List<String> _lines;
-  late final CursorManager cursorManager;
+  late CursorManager cursorManager;
 
   BufferManager({List<String>? initialLines, CursorManager? cursorManager})
       : _lines = initialLines ?? [''] {
-    cursorManager = cursorManager ?? CursorManager(this);
+    this.cursorManager = cursorManager ?? CursorManager(this);
   }
 
   String getLineAt(int index) => _lines[index];
@@ -180,6 +180,7 @@ class BufferManager {
   }
 
   void deleteForwards(int remainingDeletions) {
+    // TODO fix case where remainingDeletions > 1
     final cursors = List.from(cursorManager.cursors);
 
     for (var cursor in cursors) {

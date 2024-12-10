@@ -18,7 +18,7 @@ class MockBufferManager extends Mock implements BufferManager {
   int get lineCount => _lines.length;
 
   @override
-  String get currentLine => _lines[cursorManager.cursorLine];
+  String get currentLine => _lines[cursorManager.firstCursor().line];
 
   @override
   late CursorManager cursorManager;

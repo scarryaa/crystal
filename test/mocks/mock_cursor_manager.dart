@@ -1,15 +1,6 @@
-import 'package:crystal/core/editor/buffer_manager.dart';
 import 'package:crystal/core/editor/cursor_manager.dart';
-import 'package:mockito/mockito.dart';
+import 'package:crystal/models/editor/cursor/cursor.dart';
+import 'package:mockito/annotations.dart';
 
-class MockCursorManager extends Mock implements CursorManager {
-  @override
-  int cursorLine = 0;
-  @override
-  int cursorIndex = 0;
-  @override
-  int targetCursorIndex = 0;
-  final BufferManager bufferManager;
-
-  MockCursorManager(this.bufferManager) : super();
-}
+@GenerateNiceMocks([MockSpec<CursorManager>(), MockSpec<Cursor>()])
+void main() {}

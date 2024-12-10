@@ -3,9 +3,10 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'package:crystal/core/editor/buffer_manager.dart' as _i3;
-import 'package:crystal/core/editor/selection_manager.dart' as _i2;
-import 'package:crystal/models/selection/selection_direction.dart' as _i4;
+import 'package:crystal/core/editor/buffer_manager.dart' as _i4;
+import 'package:crystal/core/editor/selection_manager.dart' as _i3;
+import 'package:crystal/models/editor/selection/selection.dart' as _i2;
+import 'package:crystal/models/selection/selection_direction.dart' as _i6;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i5;
 
@@ -22,55 +23,38 @@ import 'package:mockito/src/dummies.dart' as _i5;
 // ignore_for_file: camel_case_types
 // ignore_for_file: subtype_of_sealed_class
 
+class _FakeSelection_0 extends _i1.SmartFake implements _i2.Selection {
+  _FakeSelection_0(
+    Object parent,
+    Invocation parentInvocation,
+  ) : super(
+          parent,
+          parentInvocation,
+        );
+}
+
 /// A class which mocks [SelectionManager].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockSelectionManager extends _i1.Mock implements _i2.SelectionManager {
+class MockSelectionManager extends _i1.Mock implements _i3.SelectionManager {
   MockSelectionManager() {
     _i1.throwOnMissingStub(this);
   }
 
   @override
-  int get anchor => (super.noSuchMethod(
-        Invocation.getter(#anchor),
-        returnValue: 0,
-      ) as int);
-
-  @override
-  set anchor(int? _anchor) => super.noSuchMethod(
-        Invocation.setter(
-          #anchor,
-          _anchor,
+  _i2.Selection get selection => (super.noSuchMethod(
+        Invocation.getter(#selection),
+        returnValue: _FakeSelection_0(
+          this,
+          Invocation.getter(#selection),
         ),
-        returnValueForMissingStub: null,
-      );
+      ) as _i2.Selection);
 
   @override
-  int get startIndex => (super.noSuchMethod(
-        Invocation.getter(#startIndex),
-        returnValue: 0,
-      ) as int);
-
-  @override
-  set startIndex(int? _startIndex) => super.noSuchMethod(
+  set selection(_i2.Selection? _selection) => super.noSuchMethod(
         Invocation.setter(
-          #startIndex,
-          _startIndex,
-        ),
-        returnValueForMissingStub: null,
-      );
-
-  @override
-  int get endIndex => (super.noSuchMethod(
-        Invocation.getter(#endIndex),
-        returnValue: 0,
-      ) as int);
-
-  @override
-  set endIndex(int? _endIndex) => super.noSuchMethod(
-        Invocation.setter(
-          #endIndex,
-          _endIndex,
+          #selection,
+          _selection,
         ),
         returnValueForMissingStub: null,
       );
@@ -82,25 +66,34 @@ class MockSelectionManager extends _i1.Mock implements _i2.SelectionManager {
       ) as int);
 
   @override
-  set startLine(int? _startLine) => super.noSuchMethod(
-        Invocation.setter(
-          #startLine,
-          _startLine,
-        ),
-        returnValueForMissingStub: null,
-      );
-
-  @override
   int get endLine => (super.noSuchMethod(
         Invocation.getter(#endLine),
         returnValue: 0,
       ) as int);
 
   @override
-  set endLine(int? _endLine) => super.noSuchMethod(
-        Invocation.setter(
-          #endLine,
-          _endLine,
+  int get startIndex => (super.noSuchMethod(
+        Invocation.getter(#startIndex),
+        returnValue: 0,
+      ) as int);
+
+  @override
+  int get endIndex => (super.noSuchMethod(
+        Invocation.getter(#endIndex),
+        returnValue: 0,
+      ) as int);
+
+  @override
+  int get anchor => (super.noSuchMethod(
+        Invocation.getter(#anchor),
+        returnValue: 0,
+      ) as int);
+
+  @override
+  void resetSelection() => super.noSuchMethod(
+        Invocation.method(
+          #resetSelection,
+          [],
         ),
         returnValueForMissingStub: null,
       );
@@ -122,23 +115,7 @@ class MockSelectionManager extends _i1.Mock implements _i2.SelectionManager {
       );
 
   @override
-  void deleteSelection(
-    _i3.BufferManager? bufferManager,
-    int? currentIndex,
-  ) =>
-      super.noSuchMethod(
-        Invocation.method(
-          #deleteSelection,
-          [
-            bufferManager,
-            currentIndex,
-          ],
-        ),
-        returnValueForMissingStub: null,
-      );
-
-  @override
-  void selectAll(_i3.BufferManager? bufferManager) => super.noSuchMethod(
+  void selectAll(_i4.BufferManager? bufferManager) => super.noSuchMethod(
         Invocation.method(
           #selectAll,
           [bufferManager],
@@ -147,8 +124,103 @@ class MockSelectionManager extends _i1.Mock implements _i2.SelectionManager {
       );
 
   @override
+  String getSelectedText(_i4.BufferManager? bufferManager) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #getSelectedText,
+          [bufferManager],
+        ),
+        returnValue: _i5.dummyValue<String>(
+          this,
+          Invocation.method(
+            #getSelectedText,
+            [bufferManager],
+          ),
+        ),
+      ) as String);
+
+  @override
+  void deleteSelection(
+    _i4.BufferManager? bufferManager,
+    int? cursorIndex,
+  ) =>
+      super.noSuchMethod(
+        Invocation.method(
+          #deleteSelection,
+          [
+            bufferManager,
+            cursorIndex,
+          ],
+        ),
+        returnValueForMissingStub: null,
+      );
+
+  @override
+  bool hasSelection() => (super.noSuchMethod(
+        Invocation.method(
+          #hasSelection,
+          [],
+        ),
+        returnValue: false,
+      ) as bool);
+
+  @override
+  void updateSelection(
+    _i4.BufferManager? bufferManager,
+    _i6.SelectionDirection? direction,
+    int? currentIndex,
+    int? targetIndex,
+  ) =>
+      super.noSuchMethod(
+        Invocation.method(
+          #updateSelection,
+          [
+            bufferManager,
+            direction,
+            currentIndex,
+            targetIndex,
+          ],
+        ),
+        returnValueForMissingStub: null,
+      );
+
+  @override
+  int selectWord(
+    _i4.BufferManager? bufferManager,
+    int? cursorLine,
+    int? cursorIndex,
+  ) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #selectWord,
+          [
+            bufferManager,
+            cursorLine,
+            cursorIndex,
+          ],
+        ),
+        returnValue: 0,
+      ) as int);
+
+  @override
+  void selectLine(
+    _i4.BufferManager? bufferManager,
+    int? cursorLine,
+  ) =>
+      super.noSuchMethod(
+        Invocation.method(
+          #selectLine,
+          [
+            bufferManager,
+            cursorLine,
+          ],
+        ),
+        returnValueForMissingStub: null,
+      );
+
+  @override
   void selectRange(
-    _i3.BufferManager? bufferManager,
+    _i4.BufferManager? bufferManager,
     int? startLine,
     int? startIndex,
     int? endLine,
@@ -167,101 +239,4 @@ class MockSelectionManager extends _i1.Mock implements _i2.SelectionManager {
         ),
         returnValueForMissingStub: null,
       );
-
-  @override
-  int selectWord(
-    _i3.BufferManager? bufferManager,
-    int? cursorLine,
-    int? cursorIndex,
-  ) =>
-      (super.noSuchMethod(
-        Invocation.method(
-          #selectWord,
-          [
-            bufferManager,
-            cursorLine,
-            cursorIndex,
-          ],
-        ),
-        returnValue: 0,
-      ) as int);
-
-  @override
-  bool isWordCharacter(String? char) => (super.noSuchMethod(
-        Invocation.method(
-          #isWordCharacter,
-          [char],
-        ),
-        returnValue: false,
-      ) as bool);
-
-  @override
-  void selectLine(
-    _i3.BufferManager? bufferManager,
-    int? cursorLine,
-  ) =>
-      super.noSuchMethod(
-        Invocation.method(
-          #selectLine,
-          [
-            bufferManager,
-            cursorLine,
-          ],
-        ),
-        returnValueForMissingStub: null,
-      );
-
-  @override
-  void updateSelection(
-    _i3.BufferManager? bufferManager,
-    _i4.SelectionDirection? direction,
-    int? currentIndex,
-    int? targetIndex,
-  ) =>
-      super.noSuchMethod(
-        Invocation.method(
-          #updateSelection,
-          [
-            bufferManager,
-            direction,
-            currentIndex,
-            targetIndex,
-          ],
-        ),
-        returnValueForMissingStub: null,
-      );
-
-  @override
-  void resetSelection() => super.noSuchMethod(
-        Invocation.method(
-          #resetSelection,
-          [],
-        ),
-        returnValueForMissingStub: null,
-      );
-
-  @override
-  bool hasSelection() => (super.noSuchMethod(
-        Invocation.method(
-          #hasSelection,
-          [],
-        ),
-        returnValue: false,
-      ) as bool);
-
-  @override
-  String getSelectedText(_i3.BufferManager? bufferManager) =>
-      (super.noSuchMethod(
-        Invocation.method(
-          #getSelectedText,
-          [bufferManager],
-        ),
-        returnValue: _i5.dummyValue<String>(
-          this,
-          Invocation.method(
-            #getSelectedText,
-            [bufferManager],
-          ),
-        ),
-      ) as String);
 }
