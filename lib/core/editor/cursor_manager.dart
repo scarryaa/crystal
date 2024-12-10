@@ -8,10 +8,15 @@ class CursorManager extends ChangeNotifier {
   final BufferManager _bufferManager;
   final Set<Cursor> uniqueCursors = {};
   List<Cursor> cursors = [Cursor(line: 0, index: 0)];
+  Cursor? _anchorCursor;
 
   int targetCursorIndex = 0;
 
-  CursorManager(this._bufferManager);
+  CursorManager(this._bufferManager) {
+    _anchorCursor = cursors.first;
+  }
+
+  Cursor get anchorCursor => _anchorCursor ?? cursors.first;
 
   Cursor firstCursor() {
     if (cursors.isEmpty) {
@@ -24,20 +29,36 @@ class CursorManager extends ChangeNotifier {
     return cursors[index];
   }
 
-  void clearCursors() {
-    cursors.clear();
-    uniqueCursors.clear();
+  void setAnchorCursor(Cursor cursor) {
+    _anchorCursor = cursor;
+    if (!cursors.contains(cursor)) {
+      addCursor(cursor);
+    }
+    notifyListeners();
+  }
 
+  void clearCursors() {
+    // Keep anchor cursor when clearing
+    cursors = [_anchorCursor ?? Cursor(line: 0, index: 0)];
+    uniqueCursors.clear();
     notifyListeners();
   }
 
   void addCursor(Cursor cursor) {
+    // Set as anchor if this is the first cursor
+    if (cursors.isEmpty) {
+      _anchorCursor = cursor;
+    }
     cursors.add(cursor);
     sortCursors();
     notifyListeners();
   }
 
   void removeCursor(Cursor cursor) {
+    // Don't remove if it's the anchor cursor
+    if (cursor == _anchorCursor) {
+      return;
+    }
     cursors.remove(cursor);
     notifyListeners();
   }
@@ -53,6 +74,7 @@ class CursorManager extends ChangeNotifier {
     cursors[index].line = line.clamp(0, _bufferManager.lines.length);
     cursors[index].index =
         column.clamp(0, _bufferManager.lines[cursors[index].line].length);
+    targetCursorIndex = column;
 
     mergeCursorsIfNeeded();
     notifyListeners();

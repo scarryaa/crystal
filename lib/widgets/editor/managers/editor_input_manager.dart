@@ -42,6 +42,8 @@ class EditorInputManager {
     }
 
     switch (keyEvent.logicalKey) {
+      case LogicalKeyboardKey.escape:
+        core.cursorManager.clearCursors();
       case LogicalKeyboardKey.enter:
         core.insertLine();
         break;

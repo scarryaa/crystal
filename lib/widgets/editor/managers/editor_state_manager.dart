@@ -34,7 +34,6 @@ class EditorStateManager extends ChangeNotifier {
     // TODO
     //cursorPositions[path] =
     //(core.cursorManager.cursorLine, core.cursorManager.cursorIndex);
-    core.cursorManager.targetCursorIndex = column;
     scrollManagers[path]?.jumpToCursor(
       core,
       scrollManagers[path]!

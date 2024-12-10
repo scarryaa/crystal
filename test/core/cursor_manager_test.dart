@@ -27,10 +27,14 @@ void main() {
       expect(cursorManager.cursors.length, 1);
     });
 
-    test('clearCursors should clear all cursors', () {
-      cursorManager.cursors = [];
+    test('clearCursors should clear all cursors besides the anchor cursor', () {
+      cursorManager.cursors = [
+        Cursor(line: 0, index: 0),
+        Cursor(line: 2, index: 5),
+        Cursor(line: 5, index: 2)
+      ];
       cursorManager.clearCursors();
-      expect(cursorManager.cursors.length, 0);
+      expect(cursorManager.cursors.length, 1);
     });
 
     test('addCursor should add a cursor', () {

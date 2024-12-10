@@ -98,7 +98,6 @@ class EditorMouseManager extends ChangeNotifier {
     if (_isDragging) {
       final currentPosition =
           _convertPositionToTextIndex(localPosition, scrollPosition);
-      core.cursorManager.targetCursorIndex = currentPosition.$2;
 
       if (_dragStartPosition != null) {
         // Select from drag start to current position
@@ -208,8 +207,6 @@ class EditorMouseManager extends ChangeNotifier {
     } else {
       // Single cursor mode
       core.cursorManager.clearCursors();
-      final newCursor = Cursor(line: cursorLine, index: cursorIndex);
-      core.cursorManager.addCursor(newCursor);
       core.moveCursorTo(0, cursorLine, cursorIndex);
       core.clearSelection();
     }
@@ -271,7 +268,8 @@ extension EditorCoreMouseExtensions on EditorCore {
 
     selectionManager.selectRange(
         bufferManager, startLine, startIndex, endLine, endIndex);
-    cursorManager.addCursor(Cursor(line: endLine, index: max(0, endIndex)));
+    cursorManager.moveTo(0, endLine, max(0, endIndex));
+    cursorManager.targetCursorIndex = endIndex;
     notifyListeners();
   }
 }
