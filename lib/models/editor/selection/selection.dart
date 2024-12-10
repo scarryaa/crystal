@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:crystal/core/editor/buffer_manager.dart';
 import 'package:crystal/models/selection/selection_direction.dart';
+import 'package:path/path.dart';
 
 class Selection {
   int anchor;
@@ -49,13 +50,18 @@ class Selection {
   }
 
   void normalize(BufferManager bufferManager) {
-    if (startLine > endLine) {
-      final int temp2 = startIndex;
+    final int temp2 = startIndex;
 
+    if (startLine > endLine) {
       final int temp = startLine;
       startLine = endLine;
       endLine = temp;
 
+      startIndex = endIndex;
+      endIndex = temp2;
+    }
+
+    if (startLine == endLine && startIndex > endIndex) {
       startIndex = endIndex;
       endIndex = temp2;
     }

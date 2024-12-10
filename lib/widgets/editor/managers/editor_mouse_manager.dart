@@ -267,7 +267,7 @@ extension EditorCoreMouseExtensions on EditorCore {
     cursorManager.clearCursors();
 
     selectionManager.selectRange(
-        bufferManager, 0, startLine, startIndex, endLine, endIndex);
+        bufferManager, startIndex, 0, startLine, startIndex, endLine, endIndex);
     cursorManager.moveTo(0, endLine, max(0, endIndex));
     cursorManager.targetCursorIndex = endIndex;
     notifyListeners();

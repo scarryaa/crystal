@@ -92,10 +92,10 @@ class SelectionManager extends ChangeNotifier {
     selections[index].selectLine(bufferManager, cursorLine);
   }
 
-  void selectRange(BufferManager bufferManager, int index, int startLine,
-      int startIndex, int endLine, int endIndex) {
+  void selectRange(BufferManager bufferManager, int anchor, int index,
+      int startLine, int startIndex, int endLine, int endIndex) {
     final Selection currentSelection =
-        getSelectionAt(startLine, startIndex, endLine, endIndex);
+        getSelectionAt(anchor, startLine, startIndex, endLine, endIndex);
     currentSelection.selectRange(
         bufferManager, startLine, startIndex, endLine, endIndex);
 
@@ -115,13 +115,17 @@ class SelectionManager extends ChangeNotifier {
     for (var selection in selections) {
       // If mergedSelections is empty or current selection doesn't overlap with last merged selection
       if (mergedSelections.isEmpty ||
-          selection.startLine >= mergedSelections.last.endLine ||
-          selection.endLine <= mergedSelections.last.startLine) {
+          ((selection.startLine > mergedSelections.last.endLine) ||
+              (selection.startLine == mergedSelections.last.endLine &&
+                  selection.startIndex > mergedSelections.last.endIndex) ||
+              selection.endLine <= mergedSelections.last.startLine &&
+                  selection.endIndex < mergedSelections.last.startIndex)) {
         mergedSelections.add(selection);
       } else {
         // Merge overlapping selections
         final lastMerged = mergedSelections.last;
-        if (lastMerged.endLine < selection.endLine) {
+
+        if (lastMerged.endLine <= selection.endLine) {
           lastMerged.endIndex = selection.endIndex;
         }
         if (lastMerged.startLine >= selection.startLine &&
@@ -140,14 +144,14 @@ class SelectionManager extends ChangeNotifier {
   }
 
   Selection getSelectionAt(
-      int startLine, int startIndex, int endLine, int endIndex) {
+      int anchor, int startLine, int startIndex, int endLine, int endIndex) {
     final Selection nullSelection = Selection(
         anchor: -1, startLine: -1, endLine: -1, startIndex: -1, endIndex: -1);
     final foundSelection = selections.firstWhere(
         (s) =>
-            s.startLine >= startLine &&
             ((s.startIndex == startIndex && s.startLine == startLine) ||
-                s.endIndex == endIndex && s.endLine == endLine),
+                s.endIndex == endIndex && s.endLine == endLine) &&
+            (s.anchor == anchor || s.endIndex == startIndex),
         orElse: () => nullSelection);
     return foundSelection;
   }
