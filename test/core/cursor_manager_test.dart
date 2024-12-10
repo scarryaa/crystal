@@ -2,7 +2,6 @@ import 'package:crystal/core/editor/buffer_manager.dart';
 import 'package:crystal/core/editor/cursor_manager.dart';
 import 'package:crystal/models/editor/cursor/cursor.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
 
 import '../mocks/mock_buffer_manager.dart';
 
@@ -32,6 +31,68 @@ void main() {
       cursorManager.cursors = [];
       cursorManager.clearCursors();
       expect(cursorManager.cursors.length, 0);
+    });
+
+    test('addCursor should add a cursor', () {
+      cursorManager.cursors = [];
+      cursorManager.addCursor(Cursor(line: 0, index: 1));
+
+      expect(cursorManager.cursors.length, 1);
+      expect(cursorManager.cursors.first, Cursor(line: 0, index: 1));
+    });
+
+    test('removeCursor should remove a cursor', () {
+      cursorManager.cursors = [Cursor(line: 0, index: 1)];
+      cursorManager.removeCursor(Cursor(line: 0, index: 1));
+
+      expect(cursorManager.cursors.length, 0);
+    });
+
+    test('removeCursorAt should remove a cursor by index', () {
+      cursorManager.cursors = [Cursor(line: 0, index: 1)];
+      cursorManager.removeCursorAt(0);
+
+      expect(cursorManager.cursors.length, 0);
+    });
+
+    test('moveTo should move a cursor to a new location', () {
+      cursorManager.cursors = [Cursor(line: 0, index: 1)];
+      cursorManager.moveTo(0, 2, 1);
+
+      expect(cursorManager.cursors.first, Cursor(line: 2, index: 1));
+    });
+
+    test('moveTo should merge overlapping cursors if needed', () {
+      cursorManager.cursors = [
+        Cursor(line: 0, index: 1),
+        Cursor(line: 2, index: 1)
+      ];
+      cursorManager.moveTo(0, 2, 1);
+
+      expect(cursorManager.cursors.first, Cursor(line: 2, index: 1));
+      expect(cursorManager.cursors.length, 1);
+    });
+
+    test('sortCursors should sort cursors', () {
+      cursorManager.cursors = [
+        Cursor(line: 3, index: 0),
+        Cursor(line: 0, index: 0),
+      ];
+
+      cursorManager.sortCursors();
+      expect(cursorManager.cursors.first, Cursor(line: 0, index: 0));
+      expect(cursorManager.cursors[1], Cursor(line: 3, index: 0));
+    });
+
+    test('sortCursors with reverse = true should sort cursors in reverse', () {
+      cursorManager.cursors = [
+        Cursor(line: 0, index: 0),
+        Cursor(line: 3, index: 0),
+      ];
+
+      cursorManager.sortCursors(reverse: true);
+      expect(cursorManager.cursors.first, Cursor(line: 3, index: 0));
+      expect(cursorManager.cursors[1], Cursor(line: 0, index: 0));
     });
 
     test('moveRight should increment all cursor indexes', () {
