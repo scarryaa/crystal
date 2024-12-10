@@ -98,6 +98,7 @@ class EditorMouseManager extends ChangeNotifier {
     if (_isDragging) {
       final currentPosition =
           _convertPositionToTextIndex(localPosition, scrollPosition);
+      core.cursorManager.targetCursorIndex = currentPosition.$2;
 
       if (_dragStartPosition != null) {
         // Select from drag start to current position
