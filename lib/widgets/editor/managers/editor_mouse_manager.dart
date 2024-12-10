@@ -199,14 +199,10 @@ class EditorMouseManager extends ChangeNotifier {
       if (existingCursorIndex != -1 && core.cursorManager.cursors.length > 1) {
         // Remove existing cursor if it's not the last one
         core.cursorManager.removeCursorAt(existingCursorIndex);
-      } else if (existingCursorIndex == -1) {
+      } else {
         // Add new cursor
         final newCursor = Cursor(line: cursorLine, index: cursorIndex);
         core.cursorManager.addCursor(newCursor);
-
-        // Move to the newly added cursor
-        final newCursorIndex = core.cursorManager.cursors.length - 1;
-        core.moveCursorTo(newCursorIndex, cursorLine, cursorIndex);
       }
     } else {
       // Single cursor mode
