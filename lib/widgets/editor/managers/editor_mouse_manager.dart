@@ -111,6 +111,18 @@ class EditorMouseManager extends ChangeNotifier {
     _isDragging = false;
     _dragStartPosition = null;
     core.selectionManager.mergeOverlappingSelections(core.bufferManager);
+    for (var selection in core.selectionManager.selections) {
+      final overlappingCursors = core.cursorManager.findCursorsWithinBounds(
+          selection.startLine,
+          selection.endLine,
+          selection.startIndex,
+          selection.endIndex);
+      for (var cursor in overlappingCursors) {
+        if (cursor.index != selection.anchor) {
+          core.cursorManager.removeCursor(cursor, keepAnchor: false);
+        }
+      }
+    }
   }
 
   MouseClickType _determineClickType(
@@ -195,9 +207,19 @@ class EditorMouseManager extends ChangeNotifier {
       // Check if we are in an existing selection -- clear it if so
       final (isWithinSelection, selection) = core.selectionManager
           .isWithinSelection(core.bufferManager, cursorLine, cursorIndex);
-      if (isWithinSelection) {
+      if (isWithinSelection && !selection.isNullSelection()) {
         core.selectionManager.removeSelection(selection);
-        core.cursorManager.clearCursors(keepAnchor: false);
+        final foundCursors = core.cursorManager.findCursorsWithinBounds(
+            selection.startLine,
+            selection.endLine,
+            selection.startIndex,
+            selection.endIndex);
+        if (core.cursorManager.cursors.length == 1) return;
+
+        for (var cursor in foundCursors) {
+          core.cursorManager.removeCursor(cursor, keepAnchor: false);
+        }
+        return;
       }
 
       // Check for existing cursor at clicked position

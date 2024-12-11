@@ -12,4 +12,7 @@ class Cursor {
 
   @override
   int get hashCode => Object.hash(line, index);
+
+  @override
+  String toString() => 'Cursor line: $line index $index';
 }

@@ -115,7 +115,6 @@ class Selection {
       SelectionDirection direction, int currentIndex, int targetIndex) {
     switch (direction) {
       case SelectionDirection.backward:
-        print(startIndex);
         if (startIndex == 0 && startLine > 0) {
           startLine--;
           startIndex = bufferManager.lines[startLine].length;
@@ -219,7 +218,6 @@ class Selection {
     if (normalizedStartLine == normalizedEndLine) {
       final int normalizedStartIndex = min(startIndex, endIndex);
       final int normalizedEndIndex = max(startIndex, endIndex);
-      print(normalizedEndIndex - normalizedStartIndex);
 
       bufferManager.deleteRange(normalizedStartLine, normalizedEndLine,
           normalizedStartIndex, normalizedEndIndex);

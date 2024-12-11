@@ -95,6 +95,26 @@ class CursorManager extends ChangeNotifier {
     });
   }
 
+  List<Cursor> findCursorsWithinBounds(
+      int startLine, int endLine, int startIndex, int endIndex) {
+    return cursors
+        .where((c) =>
+            // Single line selection
+            (c.line == startLine &&
+                c.line == endLine &&
+                c.index >= startIndex &&
+                c.index <= endIndex) ||
+            // First line of multi-line selection
+            (c.line == startLine &&
+                c.line < endLine &&
+                c.index >= startIndex) ||
+            // Last line of multi-line selection
+            (c.line == endLine && c.line > startLine && c.index <= endIndex) ||
+            // Lines in between start and end
+            (c.line > startLine && c.line < endLine))
+        .toList();
+  }
+
   void mergeCursorsIfNeeded() {
     uniqueCursors.addAll(cursors);
     cursors = uniqueCursors.toList();

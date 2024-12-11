@@ -110,19 +110,12 @@ class SelectionManager extends ChangeNotifier {
 
   (bool, Selection) isWithinSelection(
       BufferManager bufferManager, int line, int index) {
-    for (var selection in selections) {
-      selection.normalize(bufferManager);
-    }
     final Selection foundSelection = selections.firstWhere((s) {
       if (line < s.startLine || line > s.endLine) return false;
       if (line == s.startLine) return index >= s.startIndex;
       if (line == s.endLine) return index <= s.endIndex;
       return true;
     }, orElse: () => Selection());
-    print(!foundSelection.isNullSelection());
-    for (var selection in selections) {
-      print(selection);
-    }
     return (!foundSelection.isNullSelection(), foundSelection);
   }
 
