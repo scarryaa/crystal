@@ -6,6 +6,7 @@ import 'package:mockito/mockito.dart';
 import '../mocks/mock_buffer_manager.dart';
 import '../mocks/mock_cursor_manager.mocks.dart';
 import '../mocks/mock_editor_config.dart';
+import '../mocks/mock_selection.mocks.dart';
 import '../mocks/mock_selection_manager.mocks.dart';
 
 void main() {
@@ -151,6 +152,74 @@ void main() {
     test('getLines should return correct line range', () {
       final result = editorCore.getLines(0, 2);
       expect(result, ['first line', 'second line']);
+    });
+  });
+
+  group('Multi-Selection Tests', () {
+    setUp(() {
+      final cursor = Cursor(line: 0, index: 0);
+      when(mockCursorManager.firstCursor()).thenReturn(cursor);
+      when(mockCursorManager.cursors).thenReturn([cursor]);
+    });
+
+    test('addCursor should create new cursor and sort', () {
+      editorCore.addCursor(1, 5);
+
+      verify(mockCursorManager.addCursor(Cursor(line: 1, index: 5))).called(1);
+      verify(mockCursorManager.sortCursors()).called(1);
+    });
+
+    test('multiple selections should be deleted in correct order', () {
+      when(mockSelectionManager.hasSelection()).thenReturn(true);
+      final selection1 = MockSelection()
+        ..startLine = 0
+        ..startIndex = 0
+        ..endLine = 0
+        ..endIndex = 5;
+
+      final selection2 = MockSelection()
+        ..startLine = 1
+        ..startIndex = 0
+        ..endLine = 1
+        ..endIndex = 10;
+
+      when(mockSelectionManager.selections)
+          .thenReturn([selection1, selection2]);
+
+      editorCore.deleteSelectionsIfNeeded();
+
+      verifyInOrder([
+        mockSelectionManager.hasSelection(),
+        mockSelectionManager.selections,
+        mockSelectionManager.clearSelections()
+      ]);
+    });
+
+    test('handleSelection with multiple cursors should update all selections',
+        () {
+      final cursors = [Cursor(line: 0, index: 0), Cursor(line: 1, index: 5)];
+      when(mockCursorManager.cursors).thenReturn(cursors);
+      when(mockSelectionManager.hasSelection()).thenReturn(false);
+
+      editorCore.handleSelection(SelectionDirection.forward);
+
+      verify(mockSelectionManager.startSelection(0, 0)).called(1);
+      verify(mockSelectionManager.updateSelection(
+              mockBufferManager, 0, SelectionDirection.forward, 0, 0))
+          .called(1);
+      verify(mockSelectionManager.updateSelection(
+              mockBufferManager, 1, SelectionDirection.forward, 5, 0))
+          .called(1);
+    });
+
+    test('multiple cursors should merge when overlapping', () {
+      when(mockSelectionManager.hasSelection()).thenReturn(true);
+      final cursors = [Cursor(line: 0, index: 5), Cursor(line: 0, index: 5)];
+      when(mockCursorManager.cursors).thenReturn(cursors);
+
+      editorCore.deleteSelectionsIfNeeded();
+
+      verify(mockCursorManager.mergeCursorsIfNeeded()).called(1);
     });
   });
 }
