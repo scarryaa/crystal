@@ -233,23 +233,32 @@ class EditorCore extends ChangeNotifier {
     bool selectionDeleted = false;
 
     selectionManager.selections.sort((a, b) {
-      final int endComparison = a.endIndex.compareTo(b.endIndex);
+      final int endComparison = b.endIndex.compareTo(a.endIndex);
 
       return endComparison != 0
           ? endComparison
-          : a.startLine.compareTo(b.startLine);
+          : b.startLine.compareTo(a.startLine);
     });
 
     final Map<int, int> lineAdjustments = {};
     final Map<int, int> indexAdjustments = {};
     for (var selection in selectionManager.selections) {
       final beforeLines = bufferManager.lines.length;
-      selection.startIndex -= indexAdjustments[selection.startLine] ?? 0;
-      selection.endIndex -= indexAdjustments[selection.startLine] ?? 0;
 
       final (int, int) result =
           selection.deleteSelection(bufferManager, cursorPosition);
       lineAdjustments[selection.startLine] = result.$1;
+
+      for (var previousSelection in selectionManager.selections) {
+        if (previousSelection.endIndex < selection.endIndex &&
+            previousSelection.startLine == selection.endLine) {
+          selection.startIndex -=
+              (previousSelection.endIndex - previousSelection.startIndex);
+          selection.endIndex -=
+              (previousSelection.endIndex - previousSelection.startIndex);
+        }
+      }
+
       indexAdjustments.update(selection.startLine, (value) => value + result.$2,
           ifAbsent: () => result.$2);
 
@@ -269,9 +278,17 @@ class EditorCore extends ChangeNotifier {
       selectionDeleted = true;
     }
 
-    cursorManager.clearCursors();
     for (var selection in selectionManager.selections) {
       final int line = selection.startLine;
+      // Check for duplicate cursors
+      final Cursor duplicateCursor = cursorManager.cursors.firstWhere(
+          (c) =>
+              c.index == selection.anchor &&
+              (c.line == selection.startLine || c.line == selection.endLine),
+          orElse: () => Cursor(line: -1, index: -1));
+      if (duplicateCursor != Cursor(line: -1, index: -1)) {
+        cursorManager.removeCursor(duplicateCursor, keepAnchor: false);
+      }
 
       int totalAdjustment = 0;
       lineAdjustments.forEach((key, value) {

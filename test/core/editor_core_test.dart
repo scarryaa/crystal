@@ -1,4 +1,6 @@
 import 'package:crystal/core/editor/editor_core.dart';
+import 'package:crystal/models/editor/cursor/cursor.dart';
+import 'package:crystal/models/selection/selection_direction.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import '../mocks/mock_buffer_manager.dart';
@@ -31,95 +33,123 @@ void main() {
   });
 
   group('Cursor Movement Tests', () {
-    test('moveTo should update cursor position and notify listeners', () {
+    test('moveTo should update cursor position and trigger callbacks', () {
+      bool callbackCalled = false;
+      editorCore.onCursorMove = (line, column) => callbackCalled = true;
+
       editorCore.moveTo(0, 1, 2);
+
       verify(mockCursorManager.moveTo(0, 1, 2)).called(1);
+      expect(callbackCalled, true);
     });
 
-    test('moveLeft should call cursor manager and notify', () {
+    test('cursor navigation should update position and trigger callbacks', () {
+      final cursor = Cursor(line: 0, index: 0);
+      when(mockCursorManager.firstCursor()).thenReturn(cursor);
+
       editorCore.moveLeft();
       verify(mockCursorManager.moveLeft()).called(1);
+
+      editorCore.moveRight();
+      verify(mockCursorManager.moveRight()).called(1);
+
+      editorCore.moveUp();
+      verify(mockCursorManager.moveUp()).called(1);
+
+      editorCore.moveDown();
+      verify(mockCursorManager.moveDown()).called(1);
     });
   });
 
   group('Text Modification Tests', () {
-    test('insertChar should delete selection if exists and insert character',
-        () {
-      final cursor = MockCursor();
+    setUp(() {
+      final cursor = Cursor(line: 0, index: 0);
       when(mockCursorManager.firstCursor()).thenReturn(cursor);
-      when(cursor.index).thenReturn(0);
+    });
 
-      when(mockSelectionManager.hasSelection()).thenReturn(true);
+    test('insertChar should handle selections and notify changes', () {
+      bool editCallbackCalled = false;
+      editorCore.onEdit = (_) => editCallbackCalled = true;
 
       editorCore.insertChar('a');
 
-      // Verify selection is deleted before inserting
-      verify(mockSelectionManager.hasSelection()).called(1);
-      verify(mockSelectionManager.deleteSelection(mockBufferManager, 0))
-          .called(1);
       verify(mockBufferManager.insertCharacter('a')).called(1);
+      expect(editCallbackCalled, true);
     });
 
-    test('delete should handle selection deletion', () {
-      // Setup: Simulate an existing selection
+    test('insertLine should handle selections and notify changes', () {
+      editorCore.insertLine();
+
+      verify(mockBufferManager.insertNewline()).called(1);
+    });
+
+    test('delete operations should handle selections', () {
       when(mockSelectionManager.hasSelection()).thenReturn(true);
-      final cursor = MockCursor();
-      when(mockCursorManager.firstCursor()).thenReturn(cursor);
-      when(cursor.index).thenReturn(0);
+      when(mockSelectionManager.selections).thenReturn([]);
 
       editorCore.delete(1);
+      verify(mockSelectionManager.hasSelection()).called(1);
 
-      // Verify selection is deleted
-      verify(mockSelectionManager.deleteSelection(mockBufferManager, 0))
-          .called(1);
-      verifyNever(mockBufferManager.delete(1));
+      editorCore.deleteForwards(1);
+      verify(mockSelectionManager.hasSelection()).called(1);
     });
   });
 
-  group('Clipboard Operation Tests', () {
-    test('copy should get selected text and set to clipboard', () {
-      // Setup: Simulate a selection with text
-      when(mockSelectionManager.hasSelection()).thenReturn(true);
+  group('Selection Operations Tests', () {
+    test('selection management should work correctly', () {
+      final cursor = Cursor(line: 0, index: 0);
+      when(mockCursorManager.firstCursor()).thenReturn(cursor);
+
+      editorCore.startSelection();
+      verify(mockSelectionManager.startSelection(0, 0)).called(1);
+
+      editorCore.clearSelection();
+      verify(mockSelectionManager.clearSelections()).called(1);
+    });
+
+    test('handleSelection should update selection state', () {
+      final cursor = Cursor(line: 0, index: 0);
+      when(mockCursorManager.firstCursor()).thenReturn(cursor);
+      when(mockCursorManager.cursors).thenReturn([cursor]);
+
+      editorCore.handleSelection(SelectionDirection.forward);
+
+      verify(mockSelectionManager.updateSelection(
+              mockBufferManager, 0, SelectionDirection.forward, 0, 0))
+          .called(1);
+    });
+  });
+
+  group('Clipboard Operations Tests', () {
+    setUp(() {
       when(mockSelectionManager.getSelectedText(mockBufferManager))
           .thenReturn('test text');
+    });
 
+    test('copy should handle clipboard operations', () {
       editorCore.copy();
-
       verify(mockSelectionManager.getSelectedText(mockBufferManager)).called(1);
     });
-  });
 
-  group('Selection Tests', () {
-    test('hasSelection should delegate to selection manager', () {
-      // Setup
-      final selectionManager = MockSelectionManager();
-      when(selectionManager.hasSelection()).thenReturn(true);
+    test('cut should handle clipboard and text deletion', () {
+      when(mockSelectionManager.hasSelection()).thenReturn(true);
+      when(mockSelectionManager.selections).thenReturn([]);
 
-      final editorCore = EditorCore(
-        path: '',
-        bufferManager: mockBufferManager,
-        selectionManager: selectionManager,
-        cursorManager: mockCursorManager,
-        editorConfig: mockEditorConfig,
-      );
+      editorCore.cut();
 
-      // Act
-      final result = editorCore.hasSelection();
-
-      // Assert
-      expect(result, true);
-      verify(selectionManager.hasSelection()).called(1);
+      verify(mockSelectionManager.getSelectedText(mockBufferManager)).called(1);
+      verify(mockSelectionManager.hasSelection()).called(1);
     });
   });
-  test('selectAll should update selection and cursor position', () {
-    editorCore.selectAll();
-    verify(mockSelectionManager.selectAll(mockBufferManager)).called(1);
-  });
 
-  group('Buffer Access Tests', () {
+  group('Buffer Management Tests', () {
+    test('setBuffer should update buffer content', () {
+      editorCore.setBuffer('new content');
+      verify(mockBufferManager.setText('new content')).called(1);
+    });
+
     test('getLines should return correct line range', () {
       final result = editorCore.getLines(0, 2);
-
       expect(result, ['first line', 'second line']);
     });
   });

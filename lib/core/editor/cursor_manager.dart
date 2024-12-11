@@ -54,9 +54,9 @@ class CursorManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  void removeCursor(Cursor cursor) {
+  void removeCursor(Cursor cursor, {bool keepAnchor = true}) {
     // Don't remove if it's the anchor cursor
-    if (cursor == _anchorCursor) {
+    if (cursor == _anchorCursor && keepAnchor) {
       return;
     }
     cursors.remove(cursor);

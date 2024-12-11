@@ -51,6 +51,10 @@ class SelectionManager extends ChangeNotifier {
     return '';
   }
 
+  void addSelection(Selection selection) {
+    selections.add(selection);
+  }
+
   void deleteSelection(
       BufferManager bufferManager, int index, int cursorIndex) {
     selections[index].deleteSelection(bufferManager, cursorIndex);

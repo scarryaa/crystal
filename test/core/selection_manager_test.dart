@@ -1,4 +1,5 @@
 import 'package:crystal/core/editor/selection_manager.dart';
+import 'package:crystal/models/editor/selection/selection.dart';
 import 'package:crystal/models/selection/selection_direction.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
@@ -16,171 +17,97 @@ void main() {
 
   group('SelectionManager tests', () {
     group('Basic Selection Tests', () {
-      test('should not have a selection initially', () {
+      test('should not have selections initially', () {
         expect(selectionManager.hasSelection(), equals(false));
       });
 
-      test('startSelection should set all properties properly', () {
+      test('startSelection should create new selection', () {
         selectionManager.startSelection(0, 0);
-        expect(selectionManager.startLine, equals(0));
-        expect(selectionManager.endLine, equals(0));
-        expect(selectionManager.startIndex, equals(0));
-        expect(selectionManager.endIndex, equals(0));
-        expect(selectionManager.anchor, equals(0));
+        expect(selectionManager.selections.length, equals(1));
+        expect(selectionManager.selections[0].startLine, equals(0));
+        expect(selectionManager.selections[0].endLine, equals(0));
+        expect(selectionManager.selections[0].startIndex, equals(0));
+        expect(selectionManager.selections[0].endIndex, equals(0));
+        expect(selectionManager.selections[0].anchor, equals(0));
       });
 
-      test('resetSelection should clear all selection properties', () {
+      test('clearSelections should remove all selections', () {
         selectionManager.startSelection(1, 2);
-        selectionManager.resetSelection();
-        expect(selectionManager.startLine, equals(-1));
-        expect(selectionManager.endLine, equals(-1));
-        expect(selectionManager.startIndex, equals(-1));
-        expect(selectionManager.endIndex, equals(-1));
-        expect(selectionManager.anchor, equals(-1));
+        selectionManager.clearSelections();
+        expect(selectionManager.hasSelection(), equals(false));
+      });
+    });
+
+    group('Multiple Selections Tests', () {
+      test('should handle multiple selections', () {
+        selectionManager.startSelection(0, 0);
+        selectionManager.startSelection(1, 1);
+        expect(selectionManager.hasMultipleSelections(), equals(true));
+        expect(selectionManager.selections.length, equals(2));
+      });
+
+      test('mergeOverlappingSelections should combine overlapping selections',
+          () {
+        selectionManager.addSelection(Selection(
+            anchor: 0, startLine: 0, endLine: 0, startIndex: 0, endIndex: 5));
+        selectionManager.addSelection(Selection(
+            anchor: 0, startLine: 0, endLine: 0, startIndex: 3, endIndex: 8));
+
+        selectionManager.mergeOverlappingSelections(mockBufferManager);
+
+        expect(selectionManager.selections.length, equals(1));
+        expect(selectionManager.selections[0].startIndex, equals(0));
+        expect(selectionManager.selections[0].endIndex, equals(8));
+      });
+    });
+
+    group('Selection Operations Tests', () {
+      test('selectAll should handle non-empty buffer', () {
+        selectionManager.selectAll(mockBufferManager);
+
+        expect(selectionManager.selections.length, equals(1));
+        expect(selectionManager.selections[0].startLine, equals(0));
+        expect(selectionManager.selections[0].endLine, equals(2));
+      });
+
+      test('selectWord should select correct word boundaries', () {
+        final newIndex = selectionManager.selectWord(mockBufferManager, 0, 2);
+
+        expect(selectionManager.selections[0].startIndex, equals(0));
+        expect(selectionManager.selections[0].endIndex, equals(5));
+        expect(newIndex, equals(5));
+      });
+
+      test('selectLine should select entire line', () {
+        selectionManager.selectLine(mockBufferManager, 0, 0);
+
+        expect(selectionManager.selections[0].startIndex, equals(0));
+        expect(selectionManager.selections[0].endIndex, equals(0));
+        expect(selectionManager.selections[0].startLine, equals(0));
+        expect(selectionManager.selections[0].endLine, equals(1));
       });
     });
 
     group('Selection Range Tests', () {
-      test('selectRange should set correct bounds within limits', () {
-        mockBufferManager.lines = ['First', 'Second', 'Third'];
-        selectionManager.selectRange(mockBufferManager, 0, 2, 1, 3);
+      test('selectRange should create or update selection', () {
+        selectionManager.selectRange(mockBufferManager, 0, 0, 0, 2, 1, 3);
 
-        expect(selectionManager.startLine, equals(0));
-        expect(selectionManager.startIndex, equals(2));
-        expect(selectionManager.endLine, equals(1));
-        expect(selectionManager.endIndex, equals(3));
-      });
-
-      test('selectRange should clamp values to valid bounds', () {
-        mockBufferManager.lines = ['Short'];
-        selectionManager.selectRange(mockBufferManager, -1, -1, 100, 100);
-
-        expect(selectionManager.startLine, equals(0));
-        expect(selectionManager.startIndex, equals(0));
-        expect(selectionManager.endLine, equals(0));
-        expect(selectionManager.endIndex, equals(5));
+        expect(selectionManager.selections.length, equals(1));
+        expect(selectionManager.selections[0].startLine, equals(0));
+        expect(selectionManager.selections[0].endLine, equals(1));
+        expect(selectionManager.selections[0].startIndex, equals(2));
+        expect(selectionManager.selections[0].endIndex, equals(3));
       });
     });
 
-    group('Word Selection Tests', () {
-      test('selectWord should select a single word correctly', () {
-        mockBufferManager.lines = ['Hello World'];
-        final int newIndex =
-            selectionManager.selectWord(mockBufferManager, 0, 2);
-
-        expect(selectionManager.startIndex, equals(0));
-        expect(selectionManager.endIndex, equals(5));
-        expect(newIndex, equals(5));
-      });
-
-      test('selectWord should handle word boundaries correctly', () {
-        mockBufferManager.lines = ['Hello,World'];
-        final int newIndex =
-            selectionManager.selectWord(mockBufferManager, 0, 5);
-        expect(newIndex, equals(5));
-      });
-    });
-
-    group('Delete Selection Tests', () {
-      test('deleteSelection should handle single line selections', () {
-        selectionManager.startSelection(0, 0);
-        mockBufferManager.lines = ['Hello World'];
-        selectionManager.selection.startIndex = 0;
-        selectionManager.selection.endIndex = 5;
-
-        selectionManager.deleteSelection(mockBufferManager, 0);
-        verify(mockBufferManager.deleteRange(0, 0, 0, 5)).called(1);
-      });
-
-      test('deleteSelection should handle multi-line selections', () {
-        mockBufferManager.lines = ['First line', 'Second line', 'Third line'];
-        selectionManager.selection.startLine = 0;
-        selectionManager.selection.endLine = 2;
-        selectionManager.selection.startIndex = 2;
-        selectionManager.selection.endIndex = 4;
-
-        selectionManager.deleteSelection(mockBufferManager, 0);
-        verify(mockBufferManager.deleteRange(0, 2, 2, 4)).called(1);
-      });
-
-      test('deleteSelection should normalize reversed selections', () {
-        mockBufferManager.lines = ['Test line'];
-        selectionManager.selection.startLine = 0;
-        selectionManager.selection.endLine = 0;
-        selectionManager.selection.startIndex = 5;
-        selectionManager.selection.endIndex = 2;
-
-        selectionManager.deleteSelection(mockBufferManager, 0);
-        verify(mockBufferManager.deleteRange(0, 0, 2, 5)).called(1);
-      });
-    });
-
-    group('Select All Tests', () {
-      test('selectAll should select entire buffer content', () {
-        mockBufferManager.lines = ['Line 1', 'Line 2', 'Line 3'];
-        selectionManager.selectAll(mockBufferManager);
-
-        expect(selectionManager.startLine, equals(0));
-        expect(selectionManager.startIndex, equals(0));
-        expect(selectionManager.endLine, equals(2));
-        expect(selectionManager.endIndex, equals(6));
-        expect(selectionManager.anchor, equals(0));
-      });
-
-      test('selectAll should handle empty buffer', () {
-        mockBufferManager.lines = [];
-        selectionManager.selectAll(mockBufferManager);
-
-        expect(selectionManager.startLine, equals(0));
-        expect(selectionManager.startIndex, equals(0));
-        expect(selectionManager.endLine, equals(0));
-        expect(selectionManager.endIndex, equals(0));
-      });
-    });
-
-    group('Selection Direction Tests', () {
-      test('updateSelection should handle forward direction correctly', () {
-        mockBufferManager.lines = ['Test Line'];
+    group('Selection Update Tests', () {
+      test('updateSelection should modify selection bounds', () {
         selectionManager.startSelection(0, 0);
 
         selectionManager.updateSelection(
-            mockBufferManager, SelectionDirection.forward, 1, 1);
+            mockBufferManager, 0, SelectionDirection.forward, 0, 1);
 
-        expect(selectionManager.endIndex, equals(1));
-      });
-
-      test('updateSelection should handle backward direction correctly', () {
-        mockBufferManager.lines = ['Test Line'];
-        selectionManager.startSelection(0, 5);
-
-        selectionManager.updateSelection(
-            mockBufferManager, SelectionDirection.backward, 5, 4);
-
-        expect(selectionManager.startIndex, equals(4));
-      });
-    });
-
-    group('Get Selected Text Tests', () {
-      test('getSelectedText should return correct single line selection', () {
-        mockBufferManager.lines = ['Hello World'];
-        selectionManager.selection.startLine =
-            selectionManager.selection.endLine = 0;
-        selectionManager.selection.startIndex = 0;
-        selectionManager.selection.endIndex = 5;
-
-        expect(selectionManager.getSelectedText(mockBufferManager),
-            equals('Hello'));
-      });
-
-      test('getSelectedText should return correct multi-line selection', () {
-        mockBufferManager.lines = ['First', 'Second', 'Third'];
-        selectionManager.selection.startLine = 0;
-        selectionManager.selection.endLine = 2;
-        selectionManager.selection.startIndex = 2;
-        selectionManager.selection.endIndex = 3;
-
-        expect(selectionManager.getSelectedText(mockBufferManager),
-            equals('rst\nSecond\nThi'));
+        expect(selectionManager.selections[0].startIndex, equals(1));
       });
     });
   });

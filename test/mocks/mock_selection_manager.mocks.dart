@@ -3,6 +3,8 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+import 'dart:ui' as _i7;
+
 import 'package:crystal/core/editor/buffer_manager.dart' as _i4;
 import 'package:crystal/core/editor/selection_manager.dart' as _i3;
 import 'package:crystal/models/editor/selection/selection.dart' as _i2;
@@ -37,24 +39,27 @@ class _FakeSelection_0 extends _i1.SmartFake implements _i2.Selection {
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockSelectionManager extends _i1.Mock implements _i3.SelectionManager {
-  MockSelectionManager() {
-    _i1.throwOnMissingStub(this);
-  }
+  @override
+  List<_i2.Selection> get selections => (super.noSuchMethod(
+        Invocation.getter(#selections),
+        returnValue: <_i2.Selection>[],
+        returnValueForMissingStub: <_i2.Selection>[],
+      ) as List<_i2.Selection>);
 
   @override
-  _i2.Selection get selection => (super.noSuchMethod(
-        Invocation.getter(#selection),
-        returnValue: _FakeSelection_0(
-          this,
-          Invocation.getter(#selection),
-        ),
-      ) as _i2.Selection);
-
-  @override
-  set selection(_i2.Selection? _selection) => super.noSuchMethod(
+  set selections(List<_i2.Selection>? _selections) => super.noSuchMethod(
         Invocation.setter(
-          #selection,
-          _selection,
+          #selections,
+          _selections,
+        ),
+        returnValueForMissingStub: null,
+      );
+
+  @override
+  set anchorSelection(_i2.Selection? _anchorSelection) => super.noSuchMethod(
+        Invocation.setter(
+          #anchorSelection,
+          _anchorSelection,
         ),
         returnValueForMissingStub: null,
       );
@@ -63,36 +68,48 @@ class MockSelectionManager extends _i1.Mock implements _i3.SelectionManager {
   int get startLine => (super.noSuchMethod(
         Invocation.getter(#startLine),
         returnValue: 0,
+        returnValueForMissingStub: 0,
       ) as int);
 
   @override
   int get endLine => (super.noSuchMethod(
         Invocation.getter(#endLine),
         returnValue: 0,
+        returnValueForMissingStub: 0,
       ) as int);
 
   @override
   int get startIndex => (super.noSuchMethod(
         Invocation.getter(#startIndex),
         returnValue: 0,
+        returnValueForMissingStub: 0,
       ) as int);
 
   @override
   int get endIndex => (super.noSuchMethod(
         Invocation.getter(#endIndex),
         returnValue: 0,
+        returnValueForMissingStub: 0,
       ) as int);
 
   @override
   int get anchor => (super.noSuchMethod(
         Invocation.getter(#anchor),
         returnValue: 0,
+        returnValueForMissingStub: 0,
       ) as int);
 
   @override
-  void resetSelection() => super.noSuchMethod(
+  bool get hasListeners => (super.noSuchMethod(
+        Invocation.getter(#hasListeners),
+        returnValue: false,
+        returnValueForMissingStub: false,
+      ) as bool);
+
+  @override
+  void clearSelections() => super.noSuchMethod(
         Invocation.method(
-          #resetSelection,
+          #clearSelections,
           [],
         ),
         returnValueForMissingStub: null,
@@ -137,11 +154,28 @@ class MockSelectionManager extends _i1.Mock implements _i3.SelectionManager {
             [bufferManager],
           ),
         ),
+        returnValueForMissingStub: _i5.dummyValue<String>(
+          this,
+          Invocation.method(
+            #getSelectedText,
+            [bufferManager],
+          ),
+        ),
       ) as String);
+
+  @override
+  void addSelection(_i2.Selection? selection) => super.noSuchMethod(
+        Invocation.method(
+          #addSelection,
+          [selection],
+        ),
+        returnValueForMissingStub: null,
+      );
 
   @override
   void deleteSelection(
     _i4.BufferManager? bufferManager,
+    int? index,
     int? cursorIndex,
   ) =>
       super.noSuchMethod(
@@ -149,6 +183,7 @@ class MockSelectionManager extends _i1.Mock implements _i3.SelectionManager {
           #deleteSelection,
           [
             bufferManager,
+            index,
             cursorIndex,
           ],
         ),
@@ -162,11 +197,23 @@ class MockSelectionManager extends _i1.Mock implements _i3.SelectionManager {
           [],
         ),
         returnValue: false,
+        returnValueForMissingStub: false,
+      ) as bool);
+
+  @override
+  bool hasMultipleSelections() => (super.noSuchMethod(
+        Invocation.method(
+          #hasMultipleSelections,
+          [],
+        ),
+        returnValue: false,
+        returnValueForMissingStub: false,
       ) as bool);
 
   @override
   void updateSelection(
     _i4.BufferManager? bufferManager,
+    int? index,
     _i6.SelectionDirection? direction,
     int? currentIndex,
     int? targetIndex,
@@ -176,6 +223,7 @@ class MockSelectionManager extends _i1.Mock implements _i3.SelectionManager {
           #updateSelection,
           [
             bufferManager,
+            index,
             direction,
             currentIndex,
             targetIndex,
@@ -200,11 +248,13 @@ class MockSelectionManager extends _i1.Mock implements _i3.SelectionManager {
           ],
         ),
         returnValue: 0,
+        returnValueForMissingStub: 0,
       ) as int);
 
   @override
   void selectLine(
     _i4.BufferManager? bufferManager,
+    int? index,
     int? cursorLine,
   ) =>
       super.noSuchMethod(
@@ -212,6 +262,7 @@ class MockSelectionManager extends _i1.Mock implements _i3.SelectionManager {
           #selectLine,
           [
             bufferManager,
+            index,
             cursorLine,
           ],
         ),
@@ -221,6 +272,8 @@ class MockSelectionManager extends _i1.Mock implements _i3.SelectionManager {
   @override
   void selectRange(
     _i4.BufferManager? bufferManager,
+    int? anchor,
+    int? index,
     int? startLine,
     int? startIndex,
     int? endLine,
@@ -231,11 +284,106 @@ class MockSelectionManager extends _i1.Mock implements _i3.SelectionManager {
           #selectRange,
           [
             bufferManager,
+            anchor,
+            index,
             startLine,
             startIndex,
             endLine,
             endIndex,
           ],
+        ),
+        returnValueForMissingStub: null,
+      );
+
+  @override
+  void mergeOverlappingSelections(_i4.BufferManager? bufferManager) =>
+      super.noSuchMethod(
+        Invocation.method(
+          #mergeOverlappingSelections,
+          [bufferManager],
+        ),
+        returnValueForMissingStub: null,
+      );
+
+  @override
+  _i2.Selection getSelectionAt(
+    int? anchor,
+    int? startLine,
+    int? startIndex,
+    int? endLine,
+    int? endIndex,
+  ) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #getSelectionAt,
+          [
+            anchor,
+            startLine,
+            startIndex,
+            endLine,
+            endIndex,
+          ],
+        ),
+        returnValue: _FakeSelection_0(
+          this,
+          Invocation.method(
+            #getSelectionAt,
+            [
+              anchor,
+              startLine,
+              startIndex,
+              endLine,
+              endIndex,
+            ],
+          ),
+        ),
+        returnValueForMissingStub: _FakeSelection_0(
+          this,
+          Invocation.method(
+            #getSelectionAt,
+            [
+              anchor,
+              startLine,
+              startIndex,
+              endLine,
+              endIndex,
+            ],
+          ),
+        ),
+      ) as _i2.Selection);
+
+  @override
+  void addListener(_i7.VoidCallback? listener) => super.noSuchMethod(
+        Invocation.method(
+          #addListener,
+          [listener],
+        ),
+        returnValueForMissingStub: null,
+      );
+
+  @override
+  void removeListener(_i7.VoidCallback? listener) => super.noSuchMethod(
+        Invocation.method(
+          #removeListener,
+          [listener],
+        ),
+        returnValueForMissingStub: null,
+      );
+
+  @override
+  void dispose() => super.noSuchMethod(
+        Invocation.method(
+          #dispose,
+          [],
+        ),
+        returnValueForMissingStub: null,
+      );
+
+  @override
+  void notifyListeners() => super.noSuchMethod(
+        Invocation.method(
+          #notifyListeners,
+          [],
         ),
         returnValueForMissingStub: null,
       );

@@ -2,7 +2,6 @@ import 'dart:math';
 
 import 'package:crystal/core/editor/buffer_manager.dart';
 import 'package:crystal/models/selection/selection_direction.dart';
-import 'package:path/path.dart';
 
 class Selection {
   int anchor;
@@ -116,6 +115,7 @@ class Selection {
       SelectionDirection direction, int currentIndex, int targetIndex) {
     switch (direction) {
       case SelectionDirection.backward:
+        print(startIndex);
         if (startIndex == 0 && startLine > 0) {
           startLine--;
           startIndex = bufferManager.lines[startLine].length;
@@ -132,6 +132,7 @@ class Selection {
         if (currentIndex == startIndex) {
           if (startIndex == bufferManager.lines[startLine].length &&
               startLine + 1 < bufferManager.lines.length) {
+            // We're at the end of the line
             startLine++;
             startIndex = 0;
             targetIndex = startIndex;
@@ -218,6 +219,8 @@ class Selection {
     if (normalizedStartLine == normalizedEndLine) {
       final int normalizedStartIndex = min(startIndex, endIndex);
       final int normalizedEndIndex = max(startIndex, endIndex);
+      print(normalizedEndIndex - normalizedStartIndex);
+
       bufferManager.deleteRange(normalizedStartLine, normalizedEndLine,
           normalizedStartIndex, normalizedEndIndex);
       return (0, normalizedEndIndex - normalizedStartIndex);
@@ -226,6 +229,8 @@ class Selection {
           (normalizedStartLine == startLine) ? startIndex : endIndex;
       final int normalizedEndIndex =
           (normalizedEndLine == endLine) ? endIndex : startIndex;
+      print(normalizedEndIndex - normalizedStartIndex);
+
       bufferManager.deleteRange(normalizedStartLine, normalizedEndLine,
           normalizedStartIndex, normalizedEndIndex);
       return (

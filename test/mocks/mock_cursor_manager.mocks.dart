@@ -76,6 +76,19 @@ class MockCursorManager extends _i1.Mock implements _i3.CursorManager {
       );
 
   @override
+  _i2.Cursor get anchorCursor => (super.noSuchMethod(
+        Invocation.getter(#anchorCursor),
+        returnValue: _FakeCursor_0(
+          this,
+          Invocation.getter(#anchorCursor),
+        ),
+        returnValueForMissingStub: _FakeCursor_0(
+          this,
+          Invocation.getter(#anchorCursor),
+        ),
+      ) as _i2.Cursor);
+
+  @override
   bool get hasListeners => (super.noSuchMethod(
         Invocation.getter(#hasListeners),
         returnValue: false,
@@ -127,6 +140,15 @@ class MockCursorManager extends _i1.Mock implements _i3.CursorManager {
       ) as _i2.Cursor);
 
   @override
+  void setAnchorCursor(_i2.Cursor? cursor) => super.noSuchMethod(
+        Invocation.method(
+          #setAnchorCursor,
+          [cursor],
+        ),
+        returnValueForMissingStub: null,
+      );
+
+  @override
   void clearCursors() => super.noSuchMethod(
         Invocation.method(
           #clearCursors,
@@ -145,10 +167,15 @@ class MockCursorManager extends _i1.Mock implements _i3.CursorManager {
       );
 
   @override
-  void removeCursor(_i2.Cursor? cursor) => super.noSuchMethod(
+  void removeCursor(
+    _i2.Cursor? cursor, {
+    bool? keepAnchor = true,
+  }) =>
+      super.noSuchMethod(
         Invocation.method(
           #removeCursor,
           [cursor],
+          {#keepAnchor: keepAnchor},
         ),
         returnValueForMissingStub: null,
       );
