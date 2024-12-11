@@ -217,7 +217,9 @@ class EditorMouseManager extends ChangeNotifier {
         if (core.cursorManager.cursors.length == 1) return;
 
         for (var cursor in foundCursors) {
-          core.cursorManager.removeCursor(cursor, keepAnchor: false);
+          if (core.cursorManager.cursors.length > 1) {
+            core.cursorManager.removeCursor(cursor, keepAnchor: false);
+          }
         }
         return;
       }
