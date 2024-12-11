@@ -37,9 +37,12 @@ class CursorManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  void clearCursors() {
-    // Keep anchor cursor when clearing
-    cursors = [_anchorCursor ?? Cursor(line: 0, index: 0)];
+  void clearCursors({bool keepAnchor = true}) {
+    if (keepAnchor) {
+      cursors = [_anchorCursor ?? Cursor(line: 0, index: 0)];
+    } else {
+      cursors = [];
+    }
     uniqueCursors.clear();
     notifyListeners();
   }

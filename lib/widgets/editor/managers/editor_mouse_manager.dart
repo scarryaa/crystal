@@ -192,6 +192,14 @@ class EditorMouseManager extends ChangeNotifier {
     cursorIndex = max(0, cursorIndex);
 
     if (isAltPressed) {
+      // Check if we are in an existing selection -- clear it if so
+      final (isWithinSelection, selection) = core.selectionManager
+          .isWithinSelection(core.bufferManager, cursorLine, cursorIndex);
+      if (isWithinSelection) {
+        core.selectionManager.removeSelection(selection);
+        core.cursorManager.clearCursors(keepAnchor: false);
+      }
+
       // Check for existing cursor at clicked position
       final existingCursorIndex = core.cursorManager.cursors.indexWhere(
           (cursor) => cursor.line == cursorLine && cursor.index == cursorIndex);

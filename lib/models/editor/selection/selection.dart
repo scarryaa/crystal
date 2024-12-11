@@ -229,7 +229,6 @@ class Selection {
           (normalizedStartLine == startLine) ? startIndex : endIndex;
       final int normalizedEndIndex =
           (normalizedEndLine == endLine) ? endIndex : startIndex;
-      print(normalizedEndIndex - normalizedStartIndex);
 
       bufferManager.deleteRange(normalizedStartLine, normalizedEndLine,
           normalizedStartIndex, normalizedEndIndex);
@@ -253,4 +252,9 @@ class Selection {
   @override
   int get hashCode =>
       Object.hash(anchor, startLine, endLine, startIndex, endIndex);
+
+  @override
+  String toString() {
+    return ('Selection startLine: $startLine endLine: $endLine startIndex: $startIndex endIndex: $endIndex anchor: $anchor');
+  }
 }
