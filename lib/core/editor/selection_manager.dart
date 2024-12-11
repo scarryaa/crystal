@@ -109,43 +109,51 @@ class SelectionManager extends ChangeNotifier {
   }
 
   void mergeOverlappingSelections(BufferManager bufferManager) {
-    for (var selection in selections) {
+    if (selections.isEmpty) return;
+
+    // Normalize selections
+    for (final selection in selections) {
       selection.normalize(bufferManager);
     }
 
-    selections.sort((a, b) => a.startLine.compareTo(b.startLine));
-    final List<Selection> mergedSelections = [];
+    // Sort by start position
+    selections.sort((a, b) {
+      if (a.startLine != b.startLine) return a.startLine.compareTo(b.startLine);
+      return a.startIndex.compareTo(b.startIndex);
+    });
 
-    for (var selection in selections) {
-      // If mergedSelections is empty or current selection doesn't overlap with last merged selection
-      if (mergedSelections.isEmpty ||
-          ((selection.startLine > mergedSelections.last.endLine) ||
-              (selection.startLine == mergedSelections.last.endLine &&
-                  selection.startIndex > mergedSelections.last.endIndex) ||
-              selection.endLine <= mergedSelections.last.startLine &&
-                  selection.endIndex < mergedSelections.last.startIndex)) {
-        mergedSelections.add(selection);
+    final List<Selection> mergedSelections = [selections.first];
+
+    for (var i = 1; i < selections.length; i++) {
+      final current = selections[i];
+      final last = mergedSelections.last;
+
+      if (_selectionsOverlap(last, current)) {
+        // Keep the correct endIndex when merging
+        if (current.endLine > last.endLine) {
+          last.endLine = current.endLine;
+          last.endIndex = current.endIndex;
+        } else if (current.endLine == last.endLine) {
+          last.endIndex = max(last.endIndex, current.endIndex);
+        }
       } else {
-        // Merge overlapping selections
-        final lastMerged = mergedSelections.last;
-
-        if (lastMerged.endLine <= selection.endLine &&
-            lastMerged.endIndex < selection.endIndex) {
-          lastMerged.endIndex = selection.endIndex;
-        }
-        if (lastMerged.startLine >= selection.startLine &&
-            lastMerged.startIndex > selection.startIndex) {
-          lastMerged.startIndex = selection.startIndex;
-        }
-        lastMerged.endLine = max(lastMerged.endLine, selection.endLine);
-        lastMerged.startLine = min(lastMerged.startLine, selection.startLine);
+        mergedSelections.add(current);
       }
     }
 
-    selections.clear();
-    selections.addAll(mergedSelections);
-
+    selections
+      ..clear()
+      ..addAll(mergedSelections);
     notifyListeners();
+  }
+
+  bool _selectionsOverlap(Selection a, Selection b) {
+    if (a.endLine < b.startLine) return false;
+    if (a.startLine > b.endLine) return false;
+    if (a.endLine == b.startLine) {
+      return a.endIndex > b.startIndex;
+    }
+    return true;
   }
 
   Selection getSelectionAt(

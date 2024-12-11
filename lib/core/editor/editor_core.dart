@@ -3,6 +3,7 @@ import 'package:crystal/core/editor/cursor_manager.dart';
 import 'package:crystal/core/editor/editor_config.dart';
 import 'package:crystal/core/editor/selection_manager.dart';
 import 'package:crystal/models/editor/cursor/cursor.dart';
+import 'package:crystal/models/editor/selection/selection.dart';
 import 'package:crystal/models/selection/selection_direction.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -227,87 +228,136 @@ class EditorCore extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool deleteSelectionsIfNeeded() {
-    if (!selectionManager.hasSelection()) return false;
-
-    bool selectionDeleted = false;
-
+  void _sortSelections() {
     selectionManager.selections.sort((a, b) {
       final int endComparison = b.endIndex.compareTo(a.endIndex);
-
       return endComparison != 0
           ? endComparison
           : b.startLine.compareTo(a.startLine);
     });
+  }
 
+  void _adjustOverlappingSelections(Selection currentSelection) {
+    for (var previousSelection in selectionManager.selections) {
+      if (previousSelection.endIndex < currentSelection.endIndex &&
+          previousSelection.startLine == currentSelection.endLine) {
+        final adjustmentAmount =
+            previousSelection.endIndex - previousSelection.startIndex;
+
+        currentSelection.startIndex -= adjustmentAmount;
+        currentSelection.endIndex -= adjustmentAmount;
+      }
+    }
+  }
+
+  Map<int, int> _deleteSelections() {
     final Map<int, int> lineAdjustments = {};
     final Map<int, int> indexAdjustments = {};
+    bool selectionDeleted = false;
+
+    // Sort selections before deletion
+    _sortSelections();
+
     for (var selection in selectionManager.selections) {
       final beforeLines = bufferManager.lines.length;
 
+      // Delete the current selection
       final (int, int) result =
           selection.deleteSelection(bufferManager, cursorPosition);
+
+      // Track line adjustments
       lineAdjustments[selection.startLine] = result.$1;
 
-      for (var previousSelection in selectionManager.selections) {
-        if (previousSelection.endIndex < selection.endIndex &&
-            previousSelection.startLine == selection.endLine) {
-          selection.startIndex -=
-              (previousSelection.endIndex - previousSelection.startIndex);
-          selection.endIndex -=
-              (previousSelection.endIndex - previousSelection.startIndex);
-        }
-      }
+      // Handle overlapping selections
+      _adjustOverlappingSelections(selection);
 
+      // Update index adjustments
       indexAdjustments.update(selection.startLine, (value) => value + result.$2,
           ifAbsent: () => result.$2);
 
-      if (beforeLines != bufferManager.lines.length) {
-        forceRefresh?.call();
-      }
-
-      onCursorMove?.call(cursorLine, cursorPosition);
-      onEdit?.call(bufferManager.toString());
-      onSelectionChange?.call(
-          selectionManager.anchor,
-          selectionManager.startIndex,
-          selectionManager.endIndex,
-          selectionManager.startLine,
-          selectionManager.endLine);
+      // Trigger callbacks if lines changed
+      _triggerSelectionDeletionCallbacks(
+          selection, beforeLines, selectionDeleted);
 
       selectionDeleted = true;
     }
 
+    return lineAdjustments;
+  }
+
+  void _adjustCursors(Map<int, int> lineAdjustments) {
     for (var selection in selectionManager.selections) {
       final int line = selection.startLine;
-      // Check for duplicate cursors
-      final Cursor duplicateCursor = cursorManager.cursors.firstWhere(
-          (c) =>
-              c.index == selection.anchor &&
-              (c.line == selection.startLine || c.line == selection.endLine),
-          orElse: () => Cursor(line: -1, index: -1));
-      if (duplicateCursor != Cursor(line: -1, index: -1)) {
-        cursorManager.removeCursor(duplicateCursor, keepAnchor: false);
-      }
 
-      int totalAdjustment = 0;
-      lineAdjustments.forEach((key, value) {
-        if (key < line) {
-          totalAdjustment += value;
-        }
-      });
+      // Remove duplicate cursors
+      _removeDuplicateCursors(selection);
+
+      // Calculate total line adjustment
+      final int totalAdjustment =
+          _calculateTotalLineAdjustment(lineAdjustments, line);
+
+      // Add new cursor at adjusted position
       cursorManager.addCursor(Cursor(
           line: selection.startLine - totalAdjustment,
           index: selection.startIndex));
     }
-    cursorManager.mergeCursorsIfNeeded();
 
-    if (selectionDeleted) {
-      selectionManager.clearSelections();
-      notifyListeners();
-      return selectionDeleted;
+    // Merge cursors if needed
+    cursorManager.mergeCursorsIfNeeded();
+  }
+
+  void _removeDuplicateCursors(Selection selection) {
+    final duplicateCursor = cursorManager.cursors.firstWhere(
+        (c) =>
+            c.index == selection.anchor &&
+            (c.line == selection.startLine || c.line == selection.endLine),
+        orElse: () => Cursor(line: -1, index: -1));
+
+    if (duplicateCursor != Cursor(line: -1, index: -1)) {
+      cursorManager.removeCursor(duplicateCursor, keepAnchor: false);
     }
-    return false;
+  }
+
+  int _calculateTotalLineAdjustment(
+      Map<int, int> lineAdjustments, int currentLine) {
+    return lineAdjustments.entries
+        .where((entry) => entry.key < currentLine)
+        .map((entry) => entry.value)
+        .fold(0, (total, adjustment) => total + adjustment);
+  }
+
+  void _triggerSelectionDeletionCallbacks(
+      Selection selection, int beforeLines, bool selectionDeleted) {
+    // Trigger refresh if lines changed
+    if (beforeLines != bufferManager.lines.length) {
+      forceRefresh?.call();
+    }
+
+    // Cursor move callback
+    onCursorMove?.call(cursorLine, cursorPosition);
+
+    // Edit callback
+    onEdit?.call(bufferManager.toString());
+
+    // Selection change callback
+    onSelectionChange?.call(
+        selectionManager.anchor,
+        selectionManager.startIndex,
+        selectionManager.endIndex,
+        selectionManager.startLine,
+        selectionManager.endLine);
+  }
+
+  bool deleteSelectionsIfNeeded() {
+    // Check if there are any selections
+    if (!selectionManager.hasSelection()) return false;
+
+    final lineAdjustments = _deleteSelections();
+    _adjustCursors(lineAdjustments);
+    selectionManager.clearSelections();
+    notifyListeners.call();
+
+    return true;
   }
 
   void handleSelection(SelectionDirection direction) {
