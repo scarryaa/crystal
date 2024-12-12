@@ -112,7 +112,9 @@ class SelectionManager extends ChangeNotifier {
       BufferManager bufferManager, int line, int index) {
     final Selection foundSelection = selections.firstWhere((s) {
       if (line < s.startLine || line > s.endLine) return false;
-      if (line == s.startLine) return index >= s.startIndex;
+      if (line == s.startLine) {
+        return index >= s.startIndex && index <= s.endIndex;
+      }
       if (line == s.endLine) return index <= s.endIndex;
       return true;
     }, orElse: () => Selection());
