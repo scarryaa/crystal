@@ -127,8 +127,6 @@ class BufferManager {
       _lines[startLine] = currentLine.substring(0, startIndex) +
           currentLine.substring(endIndex);
 
-      cursorManager.firstCursor().line = startLine;
-      cursorManager.firstCursor().index = startIndex;
       return;
     }
 
@@ -144,9 +142,6 @@ class BufferManager {
 
     // Combine first and last line parts
     _lines[startLine] = firstLinePart + lastLinePart;
-
-    cursorManager.firstCursor().line = startLine;
-    cursorManager.firstCursor().index = startIndex;
   }
 
   void delete(int length) {
