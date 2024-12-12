@@ -16,6 +16,17 @@ class BufferManager {
   String get currentLine => _lines[cursorManager.firstCursor().line];
   List<String> get lines => List<String>.from(_lines);
 
+  int getLineLength(int line) {
+    return lines[line].length;
+  }
+
+  bool isWithinBounds(int line, int index) {
+    return line < lines.length &&
+        line >= 0 &&
+        index <= lines[line].length &&
+        index >= 0;
+  }
+
   void insertString(String string) {
     final List<String> linesToAdd = string.split('\n');
     final int numberOfLinesAdded = linesToAdd.length - 1;

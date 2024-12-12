@@ -5,6 +5,7 @@ import 'package:crystal/core/editor/editor_core.dart';
 import 'package:crystal/models/editor/cursor/cursor.dart';
 import 'package:crystal/models/editor/mouse/mouse_button_type.dart';
 import 'package:crystal/models/editor/mouse/mouse_click_type.dart';
+import 'package:crystal/models/selection/selection_direction.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -18,6 +19,7 @@ class EditorMouseManager extends ChangeNotifier {
   DateTime? _firstClickTime;
   DateTime? _secondClickTime;
   Offset? _lastClickPosition;
+  Cursor? _lastClickCursor;
 
   EditorMouseManager(this.core);
 
@@ -70,7 +72,12 @@ class EditorMouseManager extends ChangeNotifier {
         }
 
         _isDragging = true;
-        _dragStartPosition = textPosition;
+        final clampedLine =
+            textPosition.$1.clamp(0, core.bufferManager.lineCount - 1);
+        final clampedIndex = textPosition.$2
+            .clamp(0, core.bufferManager.getLineLength(clampedLine));
+
+        _dragStartPosition = (clampedLine, clampedIndex);
         break;
 
       case MouseButtonType.middle:
@@ -102,6 +109,50 @@ class EditorMouseManager extends ChangeNotifier {
       if (_dragStartPosition != null) {
         core.selectRange(_dragStartPosition!.$1, _dragStartPosition!.$2,
             currentPosition.$1, currentPosition.$2);
+
+        if (_lastClickCursor!.line < core.bufferManager.lines.length &&
+            _lastClickCursor!.line >= 0) {
+          core.cursorManager.moveTo(
+              core.cursorManager.cursors.indexOf(_lastClickCursor!),
+              currentPosition.$1,
+              currentPosition.$2);
+        }
+
+        if (_dragStartPosition!.$1 != currentPosition.$1 ||
+            _dragStartPosition!.$2 != currentPosition.$2) {
+          if (currentPosition.$1 < core.bufferManager.lines.length &&
+              currentPosition.$1 >= 0) {
+            final int currentLineLength =
+                core.bufferManager.getLineAt(currentPosition.$1).length;
+            if (currentPosition.$2 <= currentLineLength &&
+                currentPosition.$2 >= 0) {
+              _lastClickCursor =
+                  Cursor(line: currentPosition.$1, index: currentPosition.$2);
+            } else if (currentPosition.$2 <= 0) {
+              _lastClickCursor = Cursor(line: currentPosition.$1, index: 0);
+            } else {
+              _lastClickCursor =
+                  Cursor(line: currentPosition.$1, index: currentLineLength);
+            }
+          } else if (currentPosition.$1 >= 0) {
+            final int lastLineLength = core.bufferManager
+                .getLineAt(core.bufferManager.lines.length - 1)
+                .length;
+            _lastClickCursor = Cursor(
+                line: core.bufferManager.lines.length - 1,
+                index: lastLineLength);
+          } else {
+            final int firstLineLength = core.bufferManager.getLineLength(0);
+            _lastClickCursor = Cursor(
+                line: 0,
+                index:
+                    max(0, min(max(0, currentPosition.$2), firstLineLength)));
+          }
+        } else {
+          _lastClickCursor = Cursor(
+              line: _dragStartPosition!.$1, index: _dragStartPosition!.$2);
+        }
+        notifyListeners();
       }
     }
   }
@@ -117,10 +168,18 @@ class EditorMouseManager extends ChangeNotifier {
           selection.endLine,
           selection.startIndex,
           selection.endIndex);
-      for (var cursor in overlappingCursors) {
-        if (cursor.index != selection.anchor) {
+      if (selection.originalDirection == SelectionDirection.forward) {
+        for (var cursor in overlappingCursors) {
           core.cursorManager.removeCursor(cursor, keepAnchor: false);
         }
+        core.cursorManager.addCursor(
+            Cursor(line: selection.endLine, index: selection.endIndex));
+      } else if (selection.originalDirection == SelectionDirection.backward) {
+        for (var cursor in overlappingCursors) {
+          core.cursorManager.removeCursor(cursor, keepAnchor: false);
+        }
+        core.cursorManager.addCursor(
+            Cursor(line: selection.startLine, index: selection.startIndex));
       }
     }
   }
@@ -141,6 +200,11 @@ class EditorMouseManager extends ChangeNotifier {
     if (_firstClickTime == null) {
       _firstClickTime = now;
       _lastClickPosition = localPosition;
+      final clampedLine =
+          textPosition.$1.clamp(0, core.bufferManager.lineCount - 1);
+      final clampedIndex = textPosition.$2
+          .clamp(0, core.bufferManager.getLineLength(clampedLine));
+      _lastClickCursor = Cursor(line: clampedLine, index: clampedIndex);
       return MouseClickType.single;
     }
 

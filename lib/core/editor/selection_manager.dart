@@ -132,6 +132,9 @@ class SelectionManager extends ChangeNotifier {
       selection.normalize(bufferManager);
     }
 
+    // Get the last (current) selection
+    final activeSelection = selections.last;
+
     // Sort by start position
     selections.sort((a, b) {
       if (a.startLine != b.startLine) return a.startLine.compareTo(b.startLine);
@@ -145,7 +148,8 @@ class SelectionManager extends ChangeNotifier {
       final last = mergedSelections.last;
 
       if (_selectionsOverlap(last, current)) {
-        // Keep the correct endIndex when merging
+        last.originalDirection = activeSelection.originalDirection;
+
         if (current.endLine > last.endLine) {
           last.endLine = current.endLine;
           last.endIndex = current.endIndex;

@@ -9,6 +9,7 @@ class Selection {
   int endIndex;
   int startLine;
   int endLine;
+  SelectionDirection originalDirection;
 
   Selection({
     this.anchor = -1,
@@ -16,6 +17,7 @@ class Selection {
     this.endIndex = -1,
     this.startLine = -1,
     this.endLine = -1,
+    this.originalDirection = SelectionDirection.forward,
   });
 
   void start(int line, int index) {
@@ -37,6 +39,16 @@ class Selection {
 
   void selectRange(BufferManager bufferManager, int startLine, int startIndex,
       int endLine, int endIndex) {
+    if (startLine > endLine) {
+      originalDirection = SelectionDirection.backward;
+    } else if (startLine == endLine) {
+      if (startIndex > endIndex) {
+        originalDirection = SelectionDirection.backward;
+      } else {
+        originalDirection = SelectionDirection.forward;
+      }
+    }
+
     this.startLine = max(0, startLine);
     this.endLine = max(0, min(bufferManager.lines.length - 1, endLine));
 

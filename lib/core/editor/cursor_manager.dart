@@ -74,7 +74,7 @@ class CursorManager extends ChangeNotifier {
   }
 
   void moveTo(int index, int line, int column) {
-    cursors[index].line = line.clamp(0, _bufferManager.lines.length);
+    cursors[index].line = line.clamp(0, _bufferManager.lines.length - 1);
     cursors[index].index =
         column.clamp(0, _bufferManager.lines[cursors[index].line].length);
     targetCursorIndex = column;
