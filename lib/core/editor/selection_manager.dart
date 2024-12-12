@@ -176,7 +176,7 @@ class SelectionManager extends ChangeNotifier {
     if (a.endLine < b.startLine) return false;
     if (a.startLine > b.endLine) return false;
     if (a.endLine == b.startLine) {
-      return a.endIndex > b.startIndex;
+      return a.endIndex >= b.startIndex;
     }
     return true;
   }
