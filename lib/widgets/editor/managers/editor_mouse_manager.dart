@@ -5,6 +5,7 @@ import 'package:crystal/core/editor/editor_core.dart';
 import 'package:crystal/models/editor/cursor/cursor.dart';
 import 'package:crystal/models/editor/mouse/mouse_button_type.dart';
 import 'package:crystal/models/editor/mouse/mouse_click_type.dart';
+import 'package:crystal/models/editor/selection/selection.dart';
 import 'package:crystal/models/selection/selection_direction.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -20,6 +21,8 @@ class EditorMouseManager extends ChangeNotifier {
   DateTime? _secondClickTime;
   Offset? _lastClickPosition;
   Cursor? _lastClickCursor;
+  MouseClickType? _lastClickType;
+  Selection? _lastSelectedWord;
 
   EditorMouseManager(this.core);
 
@@ -58,6 +61,7 @@ class EditorMouseManager extends ChangeNotifier {
     switch (mouseButton) {
       case MouseButtonType.left:
         final clickType = _determineClickType(textPosition, localPosition);
+        _lastClickType = clickType;
 
         switch (clickType) {
           case MouseClickType.single:
@@ -105,13 +109,79 @@ class EditorMouseManager extends ChangeNotifier {
     if (_isDragging) {
       final currentPosition =
           _convertPositionToTextIndex(localPosition, scrollPosition);
+      final boundedCurrentPosition = (
+        max(min(currentPosition.$1, core.bufferManager.lineCount - 1), 0),
+        max(
+            0,
+            min(
+                currentPosition.$2,
+                core.bufferManager.getLineLength(max(
+                    min(currentPosition.$1, core.bufferManager.lineCount - 1),
+                    0))))
+      );
 
       if (_dragStartPosition != null) {
+        if (_lastClickType == MouseClickType.double) {
+          if (_lastSelectedWord != null &&
+              boundedCurrentPosition.$2 >= _lastSelectedWord!.startIndex &&
+              boundedCurrentPosition.$2 <= _lastSelectedWord!.endIndex &&
+              boundedCurrentPosition.$1 >= _lastSelectedWord!.startLine &&
+              boundedCurrentPosition.$1 <= _lastSelectedWord!.endLine) {
+            core.selectWord(
+                _lastSelectedWord!.startLine, _lastSelectedWord!.startIndex);
+            core.cursorManager.clearCursors(keepAnchor: false);
+            core.cursorManager.addCursor(Cursor(
+                line: _lastSelectedWord!.endLine,
+                index: _lastSelectedWord!.endIndex));
+            _lastClickCursor = Cursor(
+                line: _lastSelectedWord!.endLine,
+                index: _lastSelectedWord!.endIndex);
+            return;
+          } else {
+            core.cursorManager.removeCursor(
+                Cursor(
+                    line: _lastSelectedWord!.endLine,
+                    index: _lastSelectedWord!.endIndex),
+                keepAnchor: false);
+          }
+
+          if (boundedCurrentPosition.$1 < _lastSelectedWord!.startLine ||
+              (boundedCurrentPosition.$1 >= _lastSelectedWord!.startLine &&
+                  boundedCurrentPosition.$1 <= _lastSelectedWord!.endLine &&
+                  boundedCurrentPosition.$2 <= _lastSelectedWord!.startIndex)) {
+            core.clearSelection();
+            core.selectWord(
+                _lastSelectedWord!.startLine, _lastSelectedWord!.startIndex);
+            core.cursorManager.addCursor(Cursor(
+                line: _lastSelectedWord!.endLine,
+                index: _lastSelectedWord!.endIndex));
+
+            _dragStartPosition =
+                (_lastSelectedWord!.startLine, _lastSelectedWord!.startIndex);
+          } else if (boundedCurrentPosition.$1 >= _lastSelectedWord!.endLine ||
+              (boundedCurrentPosition.$1 >= _lastSelectedWord!.startLine &&
+                  boundedCurrentPosition.$1 <= _lastSelectedWord!.endLine &&
+                  boundedCurrentPosition.$2 >= _lastSelectedWord!.endIndex)) {
+            core.clearSelection();
+            core.selectWord(
+                _lastSelectedWord!.startLine, _lastSelectedWord!.startIndex);
+            core.cursorManager.addCursor(Cursor(
+                line: _lastSelectedWord!.endLine,
+                index: _lastSelectedWord!.endIndex));
+
+            _dragStartPosition =
+                (_lastSelectedWord!.endLine, _lastSelectedWord!.endIndex);
+          }
+        }
+
         core.selectRange(_dragStartPosition!.$1, _dragStartPosition!.$2,
             currentPosition.$1, currentPosition.$2);
 
         if (_lastClickCursor!.line < core.bufferManager.lines.length &&
             _lastClickCursor!.line >= 0) {
+          core.cursorManager.removeCursor(Cursor(
+              line: _lastSelectedWord!.endLine,
+              index: _lastSelectedWord!.endIndex));
           core.cursorManager.moveTo(
               core.cursorManager.cursors.indexOf(_lastClickCursor!),
               currentPosition.$1,
@@ -310,6 +380,11 @@ class EditorMouseManager extends ChangeNotifier {
 
   void _handleDoubleClick(int cursorLine, int cursorIndex) {
     core.selectWord(cursorLine, cursorIndex);
+    _lastSelectedWord = core.selectionManager
+        .isWithinSelection(core.bufferManager, cursorLine, cursorIndex)
+        .$2;
+    core.cursorManager.addCursor(Cursor(
+        line: _lastSelectedWord!.endLine, index: _lastSelectedWord!.endIndex));
   }
 
   void _handleTripleClick(int cursorLine, int cursorIndex) {
@@ -331,12 +406,7 @@ extension EditorCoreMouseExtensions on EditorCore {
     cursorLine = min(cursorLine, bufferManager.lines.length - 1);
     cursorIndex = min(cursorIndex, bufferManager.lines[cursorLine].length);
 
-    final int wordEnd =
-        selectionManager.selectWord(bufferManager, cursorLine, cursorIndex);
-    if (wordEnd <= bufferManager.lines[cursorLine].length) {
-      cursorManager.clearCursors();
-      cursorManager.addCursor(Cursor(line: cursorLine, index: wordEnd));
-    }
+    selectionManager.selectWord(bufferManager, cursorLine, cursorIndex);
     notifyListeners();
   }
 
