@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:crystal/core/editor/editor_core.dart';
 import 'package:crystal/models/editor/mouse/mouse_button_type.dart';
 import 'package:crystal/widgets/editor/managers/editor_mouse_manager.dart';
@@ -37,13 +39,13 @@ class GutterMouseManager {
       default:
       // Do nothing
     }
-
-    core.onCursorMove!(textPosition.$1, textPosition.$2);
   }
 
   void _handleSingleClick(int cursorLine, int cursorIndex) {
-    core.moveCursorTo(0, cursorLine, cursorIndex);
+    core.cursorManager.clearCursors(keepAnchor: false);
+    core.clearSelection();
     core.selectLine(cursorLine, cursorIndex);
+    core.addCursor(min(cursorLine + 1, core.bufferManager.lineCount - 1), 0);
   }
 
   (int, int) _convertPositionToTextIndex(
@@ -57,11 +59,21 @@ class GutterMouseManager {
   void _handlePointerMove(
       PointerMoveEvent event, Offset localPosition, Offset scrollPosition) {
     if (_isDragging) {
+      core.cursorManager.clearCursors(keepAnchor: false);
       final currentPosition =
           _convertPositionToTextIndex(localPosition, scrollPosition);
 
       if (_dragStartPosition != null) {
+        core.selectionManager.clearSelections();
         core.selectRange(_dragStartPosition!.$1, 0, currentPosition.$1 + 1, 0);
+        if (_dragStartPosition!.$1 > currentPosition.$1) {
+          core.selectLine(_dragStartPosition!.$1, 0);
+        }
+
+        core.addCursor(
+            min(max(currentPosition.$1 + 1, 0),
+                core.bufferManager.lineCount - 1),
+            0);
       }
     }
   }

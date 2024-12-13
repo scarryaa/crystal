@@ -314,6 +314,7 @@ class EditorMouseManager extends ChangeNotifier {
 
   void _handleTripleClick(int cursorLine, int cursorIndex) {
     core.selectLine(cursorLine, cursorIndex);
+    core.moveCursorTo(0, cursorLine + 1, 0);
   }
 }
 
@@ -344,14 +345,6 @@ extension EditorCoreMouseExtensions on EditorCore {
     cursorIndex = min(cursorIndex, bufferManager.lines[cursorLine].length);
 
     selectionManager.selectLine(bufferManager, 0, cursorLine);
-    cursorManager.clearCursors();
-    cursorManager.addCursor(Cursor(line: cursorLine, index: cursorIndex));
-
-    cursorManager.firstCursor().line++;
-    cursorManager.firstCursor().line =
-        min(cursorManager.firstCursor().line, bufferManager.lines.length - 1);
-
-    cursorManager.firstCursor().index = 0;
     notifyListeners();
   }
 

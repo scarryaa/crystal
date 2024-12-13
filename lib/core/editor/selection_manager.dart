@@ -106,14 +106,12 @@ class SelectionManager extends ChangeNotifier {
   }
 
   void selectLine(BufferManager bufferManager, int index, int cursorLine) {
-    selections.clear();
     selections.add(Selection(
         anchor: 0,
         startLine: cursorLine,
         endLine: cursorLine,
         startIndex: 0,
-        endIndex: 0));
-    selections[index].selectLine(bufferManager, cursorLine);
+        endIndex: bufferManager.getLineLength(cursorLine)));
   }
 
   void selectRange(BufferManager bufferManager, int anchor, int index,
