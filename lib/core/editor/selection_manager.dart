@@ -69,7 +69,9 @@ class SelectionManager extends ChangeNotifier {
 
   bool hasSelectionAtLine(int lineNumber) {
     return selections
-        .where((s) => s.startLine == lineNumber || s.endLine == lineNumber)
+        .where((s) =>
+            (s.startLine == lineNumber || s.endLine == lineNumber) &&
+            s.startIndex != s.endIndex)
         .isNotEmpty;
   }
 
