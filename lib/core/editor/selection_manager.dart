@@ -47,8 +47,15 @@ class SelectionManager extends ChangeNotifier {
   }
 
   String getSelectedText(BufferManager bufferManager) {
-    // TODO
-    return '';
+    final StringBuffer buffer = StringBuffer();
+    for (var selection in selections) {
+      if (selection.getSelectedText(bufferManager).isEmpty) {
+        buffer.writeln('');
+      } else {
+        buffer.write(selection.getSelectedText(bufferManager));
+      }
+    }
+    return buffer.toString();
   }
 
   void addSelection(Selection selection) {
