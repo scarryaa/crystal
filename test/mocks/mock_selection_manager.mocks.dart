@@ -296,6 +296,60 @@ class MockSelectionManager extends _i1.Mock implements _i3.SelectionManager {
       );
 
   @override
+  (bool, _i2.Selection) isWithinSelection(
+    _i4.BufferManager? bufferManager,
+    int? line,
+    int? index,
+  ) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #isWithinSelection,
+          [
+            bufferManager,
+            line,
+            index,
+          ],
+        ),
+        returnValue: (
+          false,
+          _FakeSelection_0(
+            this,
+            Invocation.method(
+              #isWithinSelection,
+              [
+                bufferManager,
+                line,
+                index,
+              ],
+            ),
+          )
+        ),
+        returnValueForMissingStub: (
+          false,
+          _FakeSelection_0(
+            this,
+            Invocation.method(
+              #isWithinSelection,
+              [
+                bufferManager,
+                line,
+                index,
+              ],
+            ),
+          )
+        ),
+      ) as (bool, _i2.Selection));
+
+  @override
+  void removeSelection(_i2.Selection? selection) => super.noSuchMethod(
+        Invocation.method(
+          #removeSelection,
+          [selection],
+        ),
+        returnValueForMissingStub: null,
+      );
+
+  @override
   void mergeOverlappingSelections(_i4.BufferManager? bufferManager) =>
       super.noSuchMethod(
         Invocation.method(

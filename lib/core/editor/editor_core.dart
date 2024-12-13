@@ -350,7 +350,7 @@ class EditorCore extends ChangeNotifier {
           final adjustment = selection.endIndex - selection.startIndex;
           cursor.index -= adjustment;
         } else {
-          final adjustment = selection.endIndex;
+          final adjustment = selection.endIndex - selection.startIndex;
           cursor.index -= adjustment;
         }
       }
@@ -373,23 +373,6 @@ class EditorCore extends ChangeNotifier {
         cursor.line -= adjustment;
       }
     }
-    //for (var selection in selectionManager.selections) {
-    //  final int line = selection.startLine;
-    //
-    //  // Remove duplicate cursors
-    //  //_removeDuplicateCursors(selection);
-    //
-    //  // Calculate total line adjustment
-    //  final int totalAdjustment =
-    //      _calculateTotalLineAdjustment(lineAndIndexAdjustments.$1, line);
-    //
-    //  // Add new cursor at adjusted position
-    //  print(
-    //      'adding cursor ${Cursor(line: selection.startLine - totalAdjustment, index: selection.startIndex)}');
-    //  cursorManager.addCursor(Cursor(
-    //      line: selection.startLine - totalAdjustment,
-    //      index: selection.startIndex));
-    //}
 
     // Merge cursors if needed
     cursorManager.mergeCursorsIfNeeded();

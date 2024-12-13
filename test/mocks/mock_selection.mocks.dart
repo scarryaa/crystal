@@ -3,9 +3,9 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'package:crystal/core/editor/buffer_manager.dart' as _i3;
+import 'package:crystal/core/editor/buffer_manager.dart' as _i4;
 import 'package:crystal/models/editor/selection/selection.dart' as _i2;
-import 'package:crystal/models/selection/selection_direction.dart' as _i4;
+import 'package:crystal/models/selection/selection_direction.dart' as _i3;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i5;
 
@@ -107,6 +107,23 @@ class MockSelection extends _i1.Mock implements _i2.Selection {
       );
 
   @override
+  _i3.SelectionDirection get originalDirection => (super.noSuchMethod(
+        Invocation.getter(#originalDirection),
+        returnValue: _i3.SelectionDirection.backward,
+        returnValueForMissingStub: _i3.SelectionDirection.backward,
+      ) as _i3.SelectionDirection);
+
+  @override
+  set originalDirection(_i3.SelectionDirection? _originalDirection) =>
+      super.noSuchMethod(
+        Invocation.setter(
+          #originalDirection,
+          _originalDirection,
+        ),
+        returnValueForMissingStub: null,
+      );
+
+  @override
   void start(
     int? line,
     int? index,
@@ -143,7 +160,7 @@ class MockSelection extends _i1.Mock implements _i2.Selection {
 
   @override
   void selectRange(
-    _i3.BufferManager? bufferManager,
+    _i4.BufferManager? bufferManager,
     int? startLine,
     int? startIndex,
     int? endLine,
@@ -164,7 +181,7 @@ class MockSelection extends _i1.Mock implements _i2.Selection {
       );
 
   @override
-  void normalize(_i3.BufferManager? bufferManager) => super.noSuchMethod(
+  void normalize(_i4.BufferManager? bufferManager) => super.noSuchMethod(
         Invocation.method(
           #normalize,
           [bufferManager],
@@ -174,7 +191,7 @@ class MockSelection extends _i1.Mock implements _i2.Selection {
 
   @override
   int selectWord(
-    _i3.BufferManager? bufferManager,
+    _i4.BufferManager? bufferManager,
     int? cursorLine,
     int? cursorIndex,
   ) =>
@@ -203,7 +220,7 @@ class MockSelection extends _i1.Mock implements _i2.Selection {
 
   @override
   void selectLine(
-    _i3.BufferManager? bufferManager,
+    _i4.BufferManager? bufferManager,
     int? cursorLine,
   ) =>
       super.noSuchMethod(
@@ -219,8 +236,8 @@ class MockSelection extends _i1.Mock implements _i2.Selection {
 
   @override
   void updateSelection(
-    _i3.BufferManager? bufferManager,
-    _i4.SelectionDirection? direction,
+    _i4.BufferManager? bufferManager,
+    _i3.SelectionDirection? direction,
     int? currentIndex,
     int? targetIndex,
   ) =>
@@ -248,7 +265,7 @@ class MockSelection extends _i1.Mock implements _i2.Selection {
       ) as bool);
 
   @override
-  String getSelectedText(_i3.BufferManager? bufferManager) =>
+  String getSelectedText(_i4.BufferManager? bufferManager) =>
       (super.noSuchMethod(
         Invocation.method(
           #getSelectedText,
@@ -272,7 +289,7 @@ class MockSelection extends _i1.Mock implements _i2.Selection {
 
   @override
   (int, int) deleteSelection(
-    _i3.BufferManager? bufferManager,
+    _i4.BufferManager? bufferManager,
     int? currentIndex,
   ) =>
       (super.noSuchMethod(

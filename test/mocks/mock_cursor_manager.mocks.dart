@@ -149,10 +149,11 @@ class MockCursorManager extends _i1.Mock implements _i3.CursorManager {
       );
 
   @override
-  void clearCursors() => super.noSuchMethod(
+  void clearCursors({bool? keepAnchor = true}) => super.noSuchMethod(
         Invocation.method(
           #clearCursors,
           [],
+          {#keepAnchor: keepAnchor},
         ),
         returnValueForMissingStub: null,
       );
@@ -216,6 +217,27 @@ class MockCursorManager extends _i1.Mock implements _i3.CursorManager {
         ),
         returnValueForMissingStub: null,
       );
+
+  @override
+  List<_i2.Cursor> findCursorsWithinBounds(
+    int? startLine,
+    int? endLine,
+    int? startIndex,
+    int? endIndex,
+  ) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #findCursorsWithinBounds,
+          [
+            startLine,
+            endLine,
+            startIndex,
+            endIndex,
+          ],
+        ),
+        returnValue: <_i2.Cursor>[],
+        returnValueForMissingStub: <_i2.Cursor>[],
+      ) as List<_i2.Cursor>);
 
   @override
   void mergeCursorsIfNeeded() => super.noSuchMethod(
