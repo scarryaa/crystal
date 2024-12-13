@@ -37,7 +37,7 @@ class EditorConfig {
   }) {
     lineHeight = _measureLineHeight();
     characterWidth = _measureCharacterWidth();
-    selectionColor = Colors.blue.withOpacity(0.3);
+    selectionColor = Colors.blue.withOpacity(0.25);
 
     widthPadding = characterWidth * 12;
     heightPadding = lineHeight * 6;

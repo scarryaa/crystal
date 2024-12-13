@@ -202,8 +202,16 @@ class EditorCore extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool hasSelectionAtLine(int lineNumber) {
+    return selectionManager.hasSelectionAtLine(lineNumber);
+  }
+
   bool hasSelection() {
     return selectionManager.hasSelection();
+  }
+
+  bool hasValidSelection() {
+    return selectionManager.hasValidSelection();
   }
 
   void startSelection() {

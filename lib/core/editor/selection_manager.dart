@@ -67,8 +67,19 @@ class SelectionManager extends ChangeNotifier {
     selections[index].deleteSelection(bufferManager, cursorIndex);
   }
 
+  bool hasSelectionAtLine(int lineNumber) {
+    return selections
+        .where((s) => s.startLine == lineNumber || s.endLine == lineNumber)
+        .isNotEmpty;
+  }
+
   bool hasSelection() {
     return selections.isNotEmpty;
+  }
+
+  bool hasValidSelection() {
+    return selections.isNotEmpty &&
+        selections.every((s) => s.startIndex != s.endIndex);
   }
 
   bool hasMultipleSelections() {

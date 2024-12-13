@@ -70,14 +70,13 @@ class EditorPainter extends CustomPainter {
   }
 
   void drawCurrentLineHighlight(Canvas canvas, Size size) {
-    if (core.hasSelection()) return;
-
     for (var cursor in core.cursorManager.cursors) {
-      if (!highlightedLines.contains(cursor.line)) {
+      if (!highlightedLines.contains(cursor.line) &&
+          !core.hasSelectionAtLine(cursor.line)) {
         canvas.drawRect(
             Rect.fromLTWH(0, cursor.line * core.config.lineHeight, size.width,
                 core.config.lineHeight),
-            Paint()..color = Colors.blue.withOpacity(0.3));
+            Paint()..color = Colors.blue.withOpacity(0.1));
         highlightedLines.add(cursor.line);
       }
     }

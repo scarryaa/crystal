@@ -72,7 +72,8 @@ class GutterPainter extends CustomPainter {
         ..text = TextSpan(
           text: '$lineNumber',
           style: TextStyle(
-            color: _isLineSelected(start + i) ? Colors.black : Colors.grey,
+            color:
+                _isLineWithinSelection(start + i) ? Colors.black : Colors.grey,
             fontSize: core.config.fontSize,
             fontFamily: core.config.fontFamily,
             fontFeatures: const [FontFeature.enable('kern')],
@@ -88,25 +89,21 @@ class GutterPainter extends CustomPainter {
     }
   }
 
-  bool _isLineSelected(int line) {
+  bool _isLineWithinSelection(int line) {
     return core.cursorManager.cursors.any((cursor) => cursor.line == line) ||
-        (line >=
-                min(core.selectionManager.startLine,
-                    core.selectionManager.endLine) &&
-            line <=
-                max(core.selectionManager.endLine,
-                    core.selectionManager.startLine));
+        core.selectionManager.selections.any((s) =>
+            (line >= min(s.startLine, s.endLine) &&
+                line <= max(s.endLine, s.startLine)));
   }
 
   void drawCurrentLineHighlight(Canvas canvas, Size size) {
-    if (core.hasSelection()) return;
-
     for (var cursor in core.cursorManager.cursors) {
-      if (!highlightedLines.contains(cursor.line)) {
+      if (!highlightedLines.contains(cursor.line) &&
+          !core.hasSelectionAtLine(cursor.line)) {
         canvas.drawRect(
             Rect.fromLTWH(0, cursor.line * core.config.lineHeight, size.width,
                 core.config.lineHeight),
-            Paint()..color = Colors.blue.withOpacity(0.3));
+            Paint()..color = Colors.blue.withOpacity(0.1));
         highlightedLines.add(cursor.line);
       }
     }
