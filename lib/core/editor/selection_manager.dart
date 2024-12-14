@@ -6,7 +6,7 @@ import 'package:crystal/models/selection/selection_direction.dart';
 import 'package:flutter/material.dart';
 
 class SelectionManager extends ChangeNotifier {
-  List<Selection> selections = [];
+  final List<List<Selection>> layers = [[]]; // Initialize with one empty layer
   Selection? anchorSelection;
 
   int get startLine => anchorSelection?.startLine ?? -1;
@@ -15,40 +15,48 @@ class SelectionManager extends ChangeNotifier {
   int get endIndex => anchorSelection?.endIndex ?? -1;
   int get anchor => anchorSelection?.anchor ?? -1;
 
-  void clearSelections() {
-    selections.clear();
-    notifyListeners();
+  void clearSelections(int layerNumber) {
+    if (layerNumber < layers.length) {
+      layers[layerNumber].clear();
+      notifyListeners();
+    }
   }
 
-  void startSelection(int line, int index) {
-    selections.add(Selection(
+  void startSelection(int line, int index, {int layerIndex = 0}) {
+    while (layers.length <= layerIndex) {
+      layers.add([]);
+    }
+
+    layers[layerIndex].add(Selection(
         anchor: index,
         startLine: line,
         endLine: line,
         startIndex: index,
         endIndex: index));
+    notifyListeners();
   }
 
   void selectAll(BufferManager bufferManager) {
-    selections.clear();
+    layers[0].clear();
 
     if (bufferManager.lines.isEmpty) {
-      selections.add(Selection(
+      layers[0].add(Selection(
           anchor: 0, startLine: 0, endLine: 0, startIndex: 0, endIndex: 0));
       return;
     }
 
-    selections.add(Selection(
+    layers[0].add(Selection(
         anchor: 0,
         startLine: 0,
         endLine: bufferManager.lines.length - 1,
         startIndex: 0,
         endIndex: bufferManager.lines[bufferManager.lines.length - 1].length));
+    notifyListeners();
   }
 
   String getSelectedText(BufferManager bufferManager) {
     final StringBuffer buffer = StringBuffer();
-    for (var selection in selections) {
+    for (var selection in layers[0]) {
       if (selection.getSelectedText(bufferManager).isEmpty) {
         buffer.writeln('');
       } else {
@@ -58,17 +66,24 @@ class SelectionManager extends ChangeNotifier {
     return buffer.toString();
   }
 
-  void addSelection(Selection selection) {
-    selections.add(selection);
+  void addSelection(Selection selection, {int layerIndex = 0}) {
+    while (layers.length <= layerIndex) {
+      layers.add([]);
+    }
+    layers[layerIndex].add(selection);
+    notifyListeners();
   }
 
   void deleteSelection(
       BufferManager bufferManager, int index, int cursorIndex) {
-    selections[index].deleteSelection(bufferManager, cursorIndex);
+    if (layers[0].isNotEmpty && index < layers[0].length) {
+      layers[0][index].deleteSelection(bufferManager, cursorIndex);
+      notifyListeners();
+    }
   }
 
   bool hasSelectionAtLine(int lineNumber) {
-    return selections
+    return layers[0]
         .where((s) =>
             (s.startLine == lineNumber || s.endLine == lineNumber) &&
             s.startIndex != s.endIndex)
@@ -76,103 +91,64 @@ class SelectionManager extends ChangeNotifier {
   }
 
   bool hasSelection() {
-    return selections.isNotEmpty;
+    return layers[0].isNotEmpty;
   }
 
   bool hasValidSelection() {
-    return selections.isNotEmpty &&
-        selections.every((s) => s.startIndex != s.endIndex);
+    return layers[0].isNotEmpty &&
+        layers[0].every((s) => s.startIndex != s.endIndex);
   }
 
   bool hasMultipleSelections() {
-    return selections.length > 1;
+    return layers[0].length > 1;
   }
 
   void updateSelection(BufferManager bufferManager, int index,
       SelectionDirection direction, int currentIndex, int targetIndex) {
-    selections[index]
-        .updateSelection(bufferManager, direction, currentIndex, targetIndex);
-  }
-
-  int selectWord(BufferManager bufferManager, int cursorLine, int cursorIndex) {
-    selections.clear();
-    selections.add(Selection(
-        anchor: 0,
-        startLine: cursorLine,
-        endLine: cursorLine,
-        startIndex: 0,
-        endIndex: 0));
-    return selections[0].selectWord(bufferManager, cursorLine, cursorIndex);
-  }
-
-  void selectLine(BufferManager bufferManager, int index, int cursorLine) {
-    selections.add(Selection(
-        anchor: 0,
-        startLine: cursorLine,
-        endLine: cursorLine,
-        startIndex: 0,
-        endIndex: bufferManager.getLineLength(cursorLine)));
-  }
-
-  void selectRange(BufferManager bufferManager, int anchor, int index,
-      int startLine, int startIndex, int endLine, int endIndex) {
-    final Selection currentSelection =
-        getSelectionAt(anchor, startLine, startIndex, endLine, endIndex);
-    currentSelection.selectRange(
-        bufferManager, startLine, startIndex, endLine, endIndex);
-
-    if (!selections.contains(currentSelection)) {
-      selections.add(currentSelection);
+    if (layers[0].isNotEmpty && index < layers[0].length) {
+      layers[0][index]
+          .updateSelection(bufferManager, direction, currentIndex, targetIndex);
+      notifyListeners();
     }
   }
 
-  (bool, Selection) isWithinSelection(
-      BufferManager bufferManager, int line, int index) {
-    final Selection foundSelection = selections.firstWhere((s) {
-      if (line < s.startLine || line > s.endLine) return false;
-      if (line == s.startLine && line == s.endLine) {
-        return index >= s.startIndex && index <= s.endIndex;
-      }
-      if (line == s.startLine) {
-        return index >= s.startIndex;
-      }
-      if (line == s.endLine) return index <= s.endIndex;
-      return true;
-    }, orElse: () => Selection());
-    return (!foundSelection.isNullSelection(), foundSelection);
-  }
+  void mergeAllLayersToFirst(BufferManager bufferManager) {
+    if (layers.length <= 1) return;
 
-  void removeSelection(Selection selection) {
-    selections.remove(selection);
+    for (int i = 1; i < layers.length; i++) {
+      layers[0].addAll(layers[i]);
+    }
+
+    // Keep only the first layer
+    layers.removeRange(1, layers.length);
+
+    // Merge overlapping selections within the first layer
+    mergeOverlappingSelections(bufferManager);
     notifyListeners();
   }
 
   void mergeOverlappingSelections(BufferManager bufferManager) {
-    if (selections.isEmpty) return;
+    if (layers[0].isEmpty) return;
 
     // Normalize selections
-    for (final selection in selections) {
+    for (final selection in layers[0]) {
       selection.normalize(bufferManager);
     }
 
-    // Get the last (current) selection
-    final activeSelection = selections.last;
-
-    // Sort by start position
-    selections.sort((a, b) {
+    final activeSelection = layers[0].last;
+    layers[0].sort((a, b) {
       if (a.startLine != b.startLine) return a.startLine.compareTo(b.startLine);
       return a.startIndex.compareTo(b.startIndex);
     });
 
-    final List<Selection> mergedSelections = [selections.first];
+    final List<Selection> mergedSelections = [layers[0].first];
 
-    for (var i = 1; i < selections.length; i++) {
-      final current = selections[i];
+    for (var i = 1; i < layers[0].length; i++) {
+      final current = layers[0][i];
       final last = mergedSelections.last;
 
       if (_selectionsOverlap(last, current)) {
         last.originalDirection = activeSelection.originalDirection;
-
         if (current.endLine > last.endLine) {
           last.endLine = current.endLine;
           last.endIndex = current.endIndex;
@@ -184,7 +160,7 @@ class SelectionManager extends ChangeNotifier {
       }
     }
 
-    selections
+    layers[0]
       ..clear()
       ..addAll(mergedSelections);
     notifyListeners();
@@ -199,16 +175,87 @@ class SelectionManager extends ChangeNotifier {
     return true;
   }
 
+  Selection getSelectionAtLineAndIndex(int line, int index) {
+    final Selection nullSelection = Selection(
+        anchor: -1, startLine: -1, endLine: -1, startIndex: -1, endIndex: -1);
+
+    return layers[0].firstWhere(
+        (s) => s.startLine <= line && s.startIndex <= index,
+        orElse: () => nullSelection);
+  }
+
   Selection getSelectionAt(
       int anchor, int startLine, int startIndex, int endLine, int endIndex) {
     final Selection nullSelection = Selection(
         anchor: -1, startLine: -1, endLine: -1, startIndex: -1, endIndex: -1);
-    final foundSelection = selections.firstWhere(
+
+    return layers[0].firstWhere(
         (s) =>
             ((s.startIndex == startIndex && s.startLine == startLine) ||
                 s.endIndex == endIndex && s.endLine == endLine) &&
             (s.anchor == anchor || s.endIndex == startIndex),
         orElse: () => nullSelection);
-    return foundSelection;
+  }
+
+  void removeSelection(Selection selection) {
+    layers[0].remove(selection);
+    notifyListeners();
+  }
+
+  (bool, Selection) isWithinSelection(
+      BufferManager bufferManager, int line, int index) {
+    final Selection foundSelection = layers[0].firstWhere((s) {
+      if (line < s.startLine || line > s.endLine) return false;
+      if (line == s.startLine && line == s.endLine) {
+        return index >= s.startIndex && index <= s.endIndex;
+      }
+      if (line == s.startLine) {
+        return index >= s.startIndex;
+      }
+      if (line == s.endLine) return index <= s.endIndex;
+      return true;
+    }, orElse: () => Selection());
+    return (!foundSelection.isNullSelection(), foundSelection);
+  }
+
+  int selectWord(BufferManager bufferManager, int cursorLine, int cursorIndex,
+      {bool clearSelections = false}) {
+    if (clearSelections) {
+      layers[0].clear();
+    }
+
+    layers[0].add(Selection(
+        anchor: 0,
+        startLine: cursorLine,
+        endLine: cursorLine,
+        startIndex: 0,
+        endIndex: 0));
+    return layers[0][0].selectWord(bufferManager, cursorLine, cursorIndex);
+  }
+
+  void selectLine(BufferManager bufferManager, int index, int cursorLine,
+      {bool clearSelections = false}) {
+    if (clearSelections) {
+      layers[0].clear();
+    }
+
+    layers[0].add(Selection(
+        anchor: 0,
+        startLine: cursorLine,
+        endLine: cursorLine,
+        startIndex: 0,
+        endIndex: bufferManager.getLineLength(cursorLine)));
+  }
+
+  void selectRange(BufferManager bufferManager, int anchor, int index,
+      int startLine, int startIndex, int endLine, int endIndex) {
+    final Selection currentSelection =
+        getSelectionAt(anchor, startLine, startIndex, endLine, endIndex);
+    currentSelection.selectRange(
+        bufferManager, startLine, startIndex, endLine, endIndex);
+
+    if (!layers[0].contains(currentSelection)) {
+      layers[0].add(currentSelection);
+    }
   }
 }

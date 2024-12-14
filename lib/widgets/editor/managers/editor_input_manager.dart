@@ -51,7 +51,7 @@ class EditorInputManager {
           core.cursorManager.clearCursors();
         } else {
           // Clear selection if there is no multi-cursor
-          core.selectionManager.clearSelections();
+          core.selectionManager.clearSelections(0);
         }
       case LogicalKeyboardKey.enter:
         core.insertLine();

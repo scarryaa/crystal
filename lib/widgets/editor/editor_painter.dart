@@ -86,11 +86,13 @@ class EditorPainter extends CustomPainter {
 
   void drawSelections(Canvas canvas) {
     final lines = core.getLines(firstVisibleLine, lastVisibleLine + 5);
-    for (var selection in core.selectionManager.selections) {
-      for (var i = 0; i < lines.length; i++) {
-        final line = lines[i];
-        drawSelectionForSingleLine(
-            canvas, selection, i + firstVisibleLine, line);
+    for (var layer in core.selectionManager.layers) {
+      for (var selection in layer) {
+        for (var i = 0; i < lines.length; i++) {
+          final line = lines[i];
+          drawSelectionForSingleLine(
+              canvas, selection, i + firstVisibleLine, line);
+        }
       }
     }
   }

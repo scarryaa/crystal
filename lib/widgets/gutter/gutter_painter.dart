@@ -91,9 +91,9 @@ class GutterPainter extends CustomPainter {
 
   bool _isLineWithinSelection(int line) {
     return core.cursorManager.cursors.any((cursor) => cursor.line == line) ||
-        core.selectionManager.selections.any((s) =>
+        core.selectionManager.layers.any((layer) => layer.any((s) =>
             (line >= min(s.startLine, s.endLine) &&
-                line <= max(s.endLine, s.startLine)));
+                line <= max(s.endLine, s.startLine))));
   }
 
   void drawCurrentLineHighlight(Canvas canvas, Size size) {

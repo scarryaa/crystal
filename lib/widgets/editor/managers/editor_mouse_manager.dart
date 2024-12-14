@@ -1,12 +1,14 @@
 // ignore_for_file: invalid_use_of_visible_for_testing_member, invalid_use_of_protected_member
 import 'dart:math';
 
+import 'package:crystal/core/editor/buffer_manager.dart';
 import 'package:crystal/core/editor/editor_core.dart';
 import 'package:crystal/models/editor/cursor/cursor.dart';
 import 'package:crystal/models/editor/mouse/mouse_button_type.dart';
 import 'package:crystal/models/editor/mouse/mouse_click_type.dart';
 import 'package:crystal/models/editor/selection/selection.dart';
 import 'package:crystal/models/selection/selection_direction.dart';
+import 'package:crystal/util/utils.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,12 +19,14 @@ class EditorMouseManager extends ChangeNotifier {
   bool _isDragging = false;
   (int, int)? _dragStartPosition;
 
+  int _currentLayer = 0;
   DateTime? _firstClickTime;
   DateTime? _secondClickTime;
   Offset? _lastClickPosition;
   Cursor? _lastClickCursor;
   MouseClickType? _lastClickType;
   Selection? _lastSelectedWord;
+  Selection? _lastSelectedLine;
 
   EditorMouseManager(this.core);
 
@@ -57,9 +61,15 @@ class EditorMouseManager extends ChangeNotifier {
       Offset scrollPosition, MouseButtonType mouseButton) {
     final textPosition =
         _convertPositionToTextIndex(localPosition, scrollPosition);
+    final isAltPressed = HardwareKeyboard.instance.isAltPressed;
 
     switch (mouseButton) {
       case MouseButtonType.left:
+        if (isAltPressed) {
+          _currentLayer = core.selectionManager.layers.length;
+          core.selectionManager.layers.add([]);
+        }
+
         final clickType = _determineClickType(textPosition, localPosition);
         _lastClickType = clickType;
 
@@ -106,133 +116,232 @@ class EditorMouseManager extends ChangeNotifier {
 
   void _handlePointerMove(
       PointerMoveEvent event, Offset localPosition, Offset scrollPosition) {
-    if (_isDragging) {
-      final currentPosition =
-          _convertPositionToTextIndex(localPosition, scrollPosition);
-      final boundedCurrentPosition = (
-        max(min(currentPosition.$1, core.bufferManager.lineCount - 1), 0),
-        max(
+    if (_dragStartPosition == null || _isDragging == false) return;
+
+    final currentPosition =
+        _convertPositionToTextIndex(localPosition, scrollPosition);
+
+    final clampedLine =
+        currentPosition.$1.clamp(0, core.bufferManager.lineCount - 1);
+    final clampedCurrentPosition = (
+      clampedLine,
+      currentPosition.$2
+          .clamp(0, core.bufferManager.getLineLength(clampedLine)),
+    );
+
+    switch (_lastClickType) {
+      case MouseClickType.single:
+        _handleSingleClickPointerMove(clampedCurrentPosition);
+        break;
+      case MouseClickType.double:
+        _handleDoubleClickPointerMove(clampedCurrentPosition);
+        break;
+      case MouseClickType.triple:
+        _handleTripleClickPointerMove(clampedCurrentPosition);
+        break;
+      default:
+        break;
+    }
+
+    notifyListeners();
+  }
+
+  void _handleSingleClickPointerMove((int, int) currentPosition) {
+    core.selectRange(_dragStartPosition!.$1, _dragStartPosition!.$2,
+        currentPosition.$1, currentPosition.$2);
+
+    // Adjust cursor
+    if (_lastClickCursor != null) {
+      final index = core.cursorManager.cursors.indexOf(_lastClickCursor!);
+      core.cursorManager.moveTo(index, currentPosition.$1, currentPosition.$2);
+
+      _lastClickCursor =
+          Cursor(line: currentPosition.$1, index: currentPosition.$2);
+    }
+  }
+
+  void _handleDoubleClickPointerMove((int, int) currentPosition) {
+    if (_lastSelectedWord == null) return;
+
+    if (_currentPositionIsWithinWord(currentPosition,
+        _lastSelectedWord!.startIndex, _lastSelectedWord!.endIndex)) {
+      final firstLineSelection = core.selectionManager
+          .getSelectionAtLineAndIndex(
+              _lastSelectedWord!.startLine, _lastSelectedWord!.startIndex);
+      firstLineSelection.selectRange(
+          core.bufferManager,
+          _lastSelectedWord!.startLine,
+          _lastSelectedWord!.startIndex,
+          _lastSelectedWord!.endLine,
+          _lastSelectedWord!.endIndex);
+
+      core.selectionManager.notifyListeners();
+      notifyListeners();
+      return;
+    }
+
+    if (_currentPositionIsWithinLine(currentPosition)) {
+      if (currentPosition.$2 < _lastSelectedWord!.startIndex) {
+        _dragStartPosition =
+            (_lastSelectedWord!.startLine, _lastSelectedWord!.startIndex);
+        final currentLineContent =
+            core.bufferManager.getLineAt(currentPosition.$2);
+        final currentWord = core.findCurrentWord(
+            core.bufferManager, currentPosition.$1, currentPosition.$2);
+        final previousWord =
+            core.getPreviousWord(currentLineContent, currentPosition.$2);
+
+        final firstLineSelection = core.selectionManager
+            .getSelectionAtLineAndIndex(
+                _lastSelectedWord!.startLine, _lastSelectedWord!.startIndex);
+        firstLineSelection.selectRange(
+            core.bufferManager,
+            _lastSelectedWord!.startLine,
+            _lastSelectedWord!.startIndex,
+            currentPosition.$1,
+            currentWord.$2 == previousWord.$1
+                ? previousWord.$1
+                : currentPosition.$2 == currentWord.$2
+                    ? currentPosition.$2
+                    : currentWord.$1);
+      } else {
+        _dragStartPosition =
+            (_lastSelectedWord!.startLine, _lastSelectedWord!.endIndex);
+        core.selectRange(
+            _lastSelectedWord!.startLine,
+            _lastSelectedWord!.endIndex,
+            _lastSelectedWord!.startLine,
+            _lastSelectedWord!.startIndex);
+      }
+    } else {
+      if (currentPosition.$1 < _lastSelectedWord!.startLine) {
+        _dragStartPosition = (
+          _lastSelectedWord!.startLine - 1,
+          core.bufferManager.getLineAt(_lastSelectedWord!.startLine - 1).length
+        );
+        final currentLineContent =
+            core.bufferManager.getLineAt(currentPosition.$2);
+        final currentWord = core.findCurrentWord(
+            core.bufferManager, currentPosition.$1, currentPosition.$2);
+        final previousWord =
+            core.getPreviousWord(currentLineContent, currentPosition.$2);
+        core.selectRange(
+            _dragStartPosition!.$1,
+            _dragStartPosition!.$2,
+            currentPosition.$1,
+            currentWord.$2 == previousWord.$1
+                ? previousWord.$1
+                : currentPosition.$2 == currentWord.$2
+                    ? currentPosition.$2
+                    : currentWord.$1);
+        final firstLineSelection = core.selectionManager
+            .getSelectionAtLineAndIndex(
+                _lastSelectedWord!.startLine, _lastSelectedWord!.startIndex);
+        firstLineSelection.selectRange(
+            core.bufferManager,
+            _lastSelectedWord!.startLine,
             0,
-            min(
-                currentPosition.$2,
-                core.bufferManager.getLineLength(max(
-                    min(currentPosition.$1, core.bufferManager.lineCount - 1),
-                    0))))
-      );
-
-      if (_dragStartPosition != null) {
-        if (_lastClickType == MouseClickType.double) {
-          if (_lastSelectedWord != null &&
-              boundedCurrentPosition.$2 >= _lastSelectedWord!.startIndex &&
-              boundedCurrentPosition.$2 <= _lastSelectedWord!.endIndex &&
-              boundedCurrentPosition.$1 >= _lastSelectedWord!.startLine &&
-              boundedCurrentPosition.$1 <= _lastSelectedWord!.endLine) {
-            core.selectWord(
-                _lastSelectedWord!.startLine, _lastSelectedWord!.startIndex);
-            core.cursorManager.clearCursors(keepAnchor: false);
-            core.cursorManager.addCursor(Cursor(
-                line: _lastSelectedWord!.endLine,
-                index: _lastSelectedWord!.endIndex));
-            _lastClickCursor = Cursor(
-                line: _lastSelectedWord!.endLine,
-                index: _lastSelectedWord!.endIndex);
-            return;
-          } else {
-            core.cursorManager.removeCursor(
-                Cursor(
-                    line: _lastSelectedWord!.endLine,
-                    index: _lastSelectedWord!.endIndex),
-                keepAnchor: false);
-          }
-
-          if (boundedCurrentPosition.$1 < _lastSelectedWord!.startLine ||
-              (boundedCurrentPosition.$1 >= _lastSelectedWord!.startLine &&
-                  boundedCurrentPosition.$1 <= _lastSelectedWord!.endLine &&
-                  boundedCurrentPosition.$2 <= _lastSelectedWord!.startIndex)) {
-            core.clearSelection();
-            core.selectWord(
-                _lastSelectedWord!.startLine, _lastSelectedWord!.startIndex);
-            core.cursorManager.addCursor(Cursor(
-                line: _lastSelectedWord!.endLine,
-                index: _lastSelectedWord!.endIndex));
-
-            _dragStartPosition =
-                (_lastSelectedWord!.startLine, _lastSelectedWord!.startIndex);
-          } else if (boundedCurrentPosition.$1 >= _lastSelectedWord!.endLine ||
-              (boundedCurrentPosition.$1 >= _lastSelectedWord!.startLine &&
-                  boundedCurrentPosition.$1 <= _lastSelectedWord!.endLine &&
-                  boundedCurrentPosition.$2 >= _lastSelectedWord!.endIndex)) {
-            core.clearSelection();
-            core.selectWord(
-                _lastSelectedWord!.startLine, _lastSelectedWord!.startIndex);
-            core.cursorManager.addCursor(Cursor(
-                line: _lastSelectedWord!.endLine,
-                index: _lastSelectedWord!.endIndex));
-
-            _dragStartPosition =
-                (_lastSelectedWord!.endLine, _lastSelectedWord!.endIndex);
-          }
-        }
-
-        core.selectRange(_dragStartPosition!.$1, _dragStartPosition!.$2,
-            currentPosition.$1, currentPosition.$2);
-
-        if (_lastClickCursor!.line < core.bufferManager.lines.length &&
-            _lastClickCursor!.line >= 0) {
-          core.cursorManager.removeCursor(Cursor(
-              line: _lastSelectedWord!.endLine,
-              index: _lastSelectedWord!.endIndex));
-          core.cursorManager.moveTo(
-              core.cursorManager.cursors.indexOf(_lastClickCursor!),
-              currentPosition.$1,
-              currentPosition.$2);
-        }
-
-        if (_dragStartPosition!.$1 != currentPosition.$1 ||
-            _dragStartPosition!.$2 != currentPosition.$2) {
-          if (currentPosition.$1 < core.bufferManager.lines.length &&
-              currentPosition.$1 >= 0) {
-            final int currentLineLength =
-                core.bufferManager.getLineAt(currentPosition.$1).length;
-            if (currentPosition.$2 <= currentLineLength &&
-                currentPosition.$2 >= 0) {
-              _lastClickCursor =
-                  Cursor(line: currentPosition.$1, index: currentPosition.$2);
-            } else if (currentPosition.$2 <= 0) {
-              _lastClickCursor = Cursor(line: currentPosition.$1, index: 0);
-            } else {
-              _lastClickCursor =
-                  Cursor(line: currentPosition.$1, index: currentLineLength);
-            }
-          } else if (currentPosition.$1 >= 0) {
-            final int lastLineLength = core.bufferManager
-                .getLineAt(core.bufferManager.lines.length - 1)
-                .length;
-            _lastClickCursor = Cursor(
-                line: core.bufferManager.lines.length - 1,
-                index: lastLineLength);
-          } else {
-            final int firstLineLength = core.bufferManager.getLineLength(0);
-            _lastClickCursor = Cursor(
-                line: 0,
-                index:
-                    max(0, min(max(0, currentPosition.$2), firstLineLength)));
-          }
-        } else {
-          _lastClickCursor = Cursor(
-              line: _dragStartPosition!.$1, index: _dragStartPosition!.$2);
-        }
-        notifyListeners();
+            _lastSelectedWord!.startLine,
+            core.bufferManager.getLineAt(_lastSelectedWord!.startLine).length);
+      } else {
+        _dragStartPosition =
+            (_lastSelectedWord!.startLine, _lastSelectedWord!.endIndex);
+        final currentLineContent =
+            core.bufferManager.getLineAt(currentPosition.$2);
+        final currentWord = core.findCurrentWord(
+            core.bufferManager, currentPosition.$1, currentPosition.$2);
+        final nextWord =
+            core.getNextWord(currentLineContent, currentPosition.$2);
+        core.selectRange(
+            _lastSelectedWord!.startLine,
+            _lastSelectedWord!.endIndex,
+            currentPosition.$1,
+            currentWord.$2 == nextWord.$2
+                ? nextWord.$2
+                : currentPosition.$2 == currentWord.$1
+                    ? currentPosition.$2
+                    : currentWord.$2);
       }
     }
+  }
+
+  void _handleTripleClickPointerMove((int, int) currentPosition) {
+    if (_lastSelectedLine != null &&
+        currentPosition.$2 >= 0 &&
+        currentPosition.$2 <=
+            core.bufferManager.getLineLength(_lastSelectedLine!.startLine) &&
+        currentPosition.$1 >= _lastSelectedLine!.startLine &&
+        currentPosition.$1 <= _lastSelectedLine!.endLine) {
+      core.selectLine(_lastSelectedLine!.endLine, _lastSelectedLine!.endIndex,
+          clearSelections: true);
+      core.cursorManager.clearCursors(keepAnchor: false);
+      core.cursorManager
+          .addCursor(Cursor(line: _lastSelectedLine!.endLine + 1, index: 0));
+      _lastClickCursor = Cursor(line: _lastSelectedLine!.endLine + 1, index: 0);
+      return;
+    }
+
+    if (currentPosition.$1 < _lastSelectedLine!.startLine) {
+      core.clearSelection();
+      core.selectLine(
+          _lastSelectedLine!.startLine, _lastSelectedLine!.startIndex,
+          clearSelections: true);
+      core.cursorManager.addCursor(Cursor(
+          line: _lastSelectedLine!.endLine,
+          index: _lastSelectedLine!.endIndex));
+
+      _dragStartPosition = (
+        _lastSelectedLine!.startLine - 1,
+        core.bufferManager.getLineLength(_lastSelectedLine!.startLine - 1)
+      );
+    } else if (currentPosition.$1 >= _lastSelectedLine!.endLine) {
+      core.clearSelection();
+      core.selectLine(
+          _lastSelectedLine!.startLine, _lastSelectedLine!.startIndex,
+          clearSelections: true);
+      core.cursorManager.addCursor(Cursor(
+          line: _lastSelectedLine!.endLine,
+          index: _lastSelectedLine!.endIndex));
+
+      _dragStartPosition = (_lastSelectedLine!.endLine + 1, 0);
+    }
+
+    core.selectRange(
+        _dragStartPosition!.$1,
+        _dragStartPosition!.$2,
+        currentPosition.$1 >= _dragStartPosition!.$1
+            ? currentPosition.$1 + 1
+            : currentPosition.$1,
+        0);
+  }
+
+  bool _currentPositionIsWithinDocument((int, int) currentPosition) {
+    return _lastClickCursor!.line < core.bufferManager.lineCount &&
+        _lastClickCursor!.line >= 0;
+  }
+
+  bool _currentPositionIsWithinWord(
+      (int, int) currentPosition, int wordStartIndex, int wordEndIndex) {
+    return currentPosition.$2 >= wordStartIndex &&
+        currentPosition.$2 <= wordEndIndex &&
+        currentPosition.$1 >= _lastSelectedWord!.startLine &&
+        currentPosition.$1 <= _lastSelectedWord!.endLine;
+  }
+
+  bool _currentPositionIsWithinLine((int, int) currentPosition) {
+    return (currentPosition.$1 >= _lastSelectedWord!.startLine &&
+        currentPosition.$1 <= _lastSelectedWord!.endLine);
   }
 
   void _handlePointerUp(
       PointerUpEvent event, Offset localPosition, Offset scrollPosition) {
     _isDragging = false;
     _dragStartPosition = null;
+
+    core.selectionManager.mergeAllLayersToFirst(core.bufferManager);
+    _currentLayer = 0;
     core.selectionManager.mergeOverlappingSelections(core.bufferManager);
-    for (var selection in core.selectionManager.selections) {
+    for (var selection in core.selectionManager.layers[0]) {
       final overlappingCursors = core.cursorManager.findCursorsWithinBounds(
           selection.startLine,
           selection.endLine,
@@ -380,16 +489,22 @@ class EditorMouseManager extends ChangeNotifier {
 
   void _handleDoubleClick(int cursorLine, int cursorIndex) {
     core.selectWord(cursorLine, cursorIndex);
-    _lastSelectedWord = core.selectionManager
-        .isWithinSelection(core.bufferManager, cursorLine, cursorIndex)
-        .$2;
-    core.cursorManager.addCursor(Cursor(
-        line: _lastSelectedWord!.endLine, index: _lastSelectedWord!.endIndex));
+    final (isWithin, selection) = core.selectionManager
+        .isWithinSelection(core.bufferManager, cursorLine, cursorIndex);
+    _lastSelectedWord = Selection(
+        startLine: selection.startLine,
+        startIndex: selection.startIndex,
+        endLine: selection.endLine,
+        endIndex: selection.endIndex);
   }
 
   void _handleTripleClick(int cursorLine, int cursorIndex) {
+    core.clearSelection();
     core.selectLine(cursorLine, cursorIndex);
     core.moveCursorTo(0, cursorLine + 1, 0);
+    _lastSelectedLine = core.selectionManager
+        .isWithinSelection(core.bufferManager, cursorLine, cursorIndex)
+        .$2;
   }
 }
 
@@ -402,19 +517,221 @@ extension EditorCoreMouseExtensions on EditorCore {
     notifyListeners();
   }
 
-  void selectWord(int cursorLine, int cursorIndex) {
+  void selectWord(int cursorLine, int cursorIndex,
+      {bool clearSelections = false}) {
     cursorLine = min(cursorLine, bufferManager.lines.length - 1);
     cursorIndex = min(cursorIndex, bufferManager.lines[cursorLine].length);
 
-    selectionManager.selectWord(bufferManager, cursorLine, cursorIndex);
+    selectionManager.selectWord(bufferManager, cursorLine, cursorIndex,
+        clearSelections: clearSelections);
     notifyListeners();
   }
 
-  void selectLine(int cursorLine, int cursorIndex) {
+  (int, int) findPreviousWord(
+      BufferManager bufferManager, int cursorLine, int cursorIndex) {
+    cursorLine = min(cursorLine, bufferManager.lineCount - 1);
+    final lineContent = bufferManager.getLineAt(cursorLine);
+
+    if (lineContent.isEmpty) {
+      return (0, 0);
+    }
+
+    cursorIndex = min(cursorIndex, lineContent.length);
+
+    int start = cursorIndex;
+    int end = cursorIndex;
+
+    while (start > 0) {
+      start--;
+      if (!Utils().isWordCharacter(lineContent[start])) {
+        start++;
+        break;
+      }
+    }
+
+    if (start == 0) {
+      return (start, cursorIndex);
+    }
+
+    end = start;
+    while (end > 0) {
+      if (!Utils().isWordCharacter(lineContent[end - 1])) {
+        break;
+      }
+      end--;
+    }
+
+    return (start, end);
+  }
+
+  (int, int) findNextWord(
+      BufferManager bufferManager, int cursorLine, int cursorIndex) {
+    cursorLine = min(cursorLine, bufferManager.lineCount - 1);
+    final lineContent = bufferManager.getLineAt(cursorLine);
+
+    if (lineContent.isEmpty) {
+      return (0, 0);
+    }
+
+    cursorIndex = min(cursorIndex, lineContent.length);
+
+    int start = cursorIndex;
+    int end = cursorIndex;
+
+    while (start < lineContent.length) {
+      start++;
+      if (!Utils().isWordCharacter(lineContent[start])) {
+        start--;
+        break;
+      }
+    }
+
+    if (start == lineContent.length) {
+      return (lineContent.length, cursorIndex);
+    }
+
+    end = start;
+    while (end < lineContent.length) {
+      if (!Utils().isWordCharacter(lineContent[end - 1])) {
+        break;
+      }
+      end++;
+    }
+
+    return (start, end);
+  }
+
+  (int, int) findCurrentWord(
+      BufferManager bufferManager, int cursorLine, int cursorIndex) {
+    cursorLine = min(cursorLine, bufferManager.lineCount - 1);
+    final lineContent = bufferManager.getLineAt(cursorLine);
+
+    if (lineContent.isEmpty) {
+      return (0, 0);
+    }
+
+    cursorIndex = min(cursorIndex, lineContent.length);
+
+    int start = cursorIndex;
+    int end = cursorIndex;
+
+    // find the start by going backwards until non-word character or start of line
+    if (start > 0 && Utils().isWordCharacter(lineContent[start - 1])) {
+      while (start > 0 && Utils().isWordCharacter(lineContent[start - 1])) {
+        start--;
+      }
+    }
+
+    // find the end by going forward until non-word character or end of line
+    if (end < lineContent.length && Utils().isWordCharacter(lineContent[end])) {
+      while (end < lineContent.length &&
+          Utils().isWordCharacter(lineContent[end])) {
+        end++;
+      }
+    }
+
+    return (start, end);
+  }
+
+  (int, int) findCurrentNonWord(
+      BufferManager bufferManager, int cursorLine, int cursorIndex) {
+    cursorLine = min(cursorLine, bufferManager.lineCount - 1);
+    final lineContent = bufferManager.getLineAt(cursorLine);
+
+    if (lineContent.isEmpty) {
+      return (0, 0);
+    }
+
+    cursorIndex = min(cursorIndex, lineContent.length);
+
+    int start = cursorIndex;
+    int end = cursorIndex;
+
+    // Find the start by going backwards until a word character or start of line
+    if (start > 0 && !Utils().isWordCharacter(lineContent[start - 1])) {
+      while (start > 0 && !Utils().isWordCharacter(lineContent[start - 1])) {
+        start--;
+      }
+    }
+
+    // Find the end by going forward until a word character or end of line
+    if (end < lineContent.length &&
+        !Utils().isWordCharacter(lineContent[end])) {
+      while (end < lineContent.length &&
+          !Utils().isWordCharacter(lineContent[end])) {
+        end++;
+      }
+    }
+
+    return (start, end);
+  }
+
+  (int, int) findPreviousNonWord(
+      BufferManager bufferManager, int cursorLine, int cursorIndex) {
+    cursorLine = min(cursorLine, bufferManager.lineCount - 1);
+    final lineContent = bufferManager.getLineAt(cursorLine);
+
+    // Handle empty line case
+    if (lineContent.isEmpty) {
+      return (0, 0);
+    }
+
+    cursorIndex = min(cursorIndex, lineContent.length);
+
+    int start = cursorIndex;
+    int end = cursorIndex;
+
+    // Start looking from the cursor index for non-word
+    while (start > 0) {
+      if (!Utils().isWordCharacter(lineContent[start])) {
+        end = start + 1;
+        while (end > 0 && !(Utils().isWordCharacter(lineContent[end]))) {
+          end--;
+        }
+        return (start, end);
+      }
+      start--;
+    }
+    return (lineContent.length, lineContent.length);
+  }
+
+  (int, int) findNextNonWord(
+      BufferManager bufferManager, int cursorLine, int cursorIndex) {
+    cursorLine = min(cursorLine, bufferManager.lines.length - 1);
+    final lineContent = bufferManager.getLineAt(cursorLine);
+
+    // Handle empty line case
+    if (lineContent.isEmpty) {
+      return (0, 0);
+    }
+
+    cursorIndex = min(cursorIndex, lineContent.length);
+
+    int start = cursorIndex;
+    int end = cursorIndex;
+
+    // Start looking from the cursor index for non-word
+    while (start < lineContent.length) {
+      if (!Utils().isWordCharacter(lineContent[start])) {
+        end = start + 1;
+        while (end < lineContent.length &&
+            !(Utils().isWordCharacter(lineContent[end]))) {
+          end++;
+        }
+        return (start, end);
+      }
+      start++;
+    }
+    return (lineContent.length, lineContent.length);
+  }
+
+  void selectLine(int cursorLine, int cursorIndex,
+      {bool clearSelections = false}) {
     cursorLine = min(cursorLine, bufferManager.lines.length - 1);
     cursorIndex = min(cursorIndex, bufferManager.lines[cursorLine].length);
 
-    selectionManager.selectLine(bufferManager, 0, cursorLine);
+    selectionManager.selectLine(bufferManager, 0, cursorLine,
+        clearSelections: clearSelections);
     notifyListeners();
   }
 

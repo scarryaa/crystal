@@ -64,7 +64,7 @@ class GutterMouseManager {
           _convertPositionToTextIndex(localPosition, scrollPosition);
 
       if (_dragStartPosition != null) {
-        core.selectionManager.clearSelections();
+        core.selectionManager.clearSelections(0);
         core.selectRange(_dragStartPosition!.$1, 0, currentPosition.$1 + 1, 0);
         if (_dragStartPosition!.$1 > currentPosition.$1) {
           core.selectLine(_dragStartPosition!.$1, 0);

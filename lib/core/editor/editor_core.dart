@@ -5,6 +5,7 @@ import 'package:crystal/core/editor/selection_manager.dart';
 import 'package:crystal/models/editor/cursor/cursor.dart';
 import 'package:crystal/models/editor/selection/selection.dart';
 import 'package:crystal/models/selection/selection_direction.dart';
+import 'package:crystal/util/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -20,6 +21,7 @@ class EditorCore extends ChangeNotifier {
   void Function(String)? onEdit;
   void Function(int, int, int, int, int)? onSelectionChange;
 
+  // Select by word
   EditorCore({
     required this.bufferManager,
     required this.selectionManager,
@@ -202,6 +204,61 @@ class EditorCore extends ChangeNotifier {
     notifyListeners();
   }
 
+  (int, int, String) getNextWord(String text, int cursorPosition) {
+    final characters = text.characters;
+    int start = cursorPosition;
+    int end = cursorPosition;
+
+    // Skip non-word characters
+    while (end < characters.length &&
+        !Utils().isWordCharacter(characters.elementAt(end))) {
+      end++;
+    }
+    start = end;
+
+    // Find the end of the next word
+    while (end < characters.length &&
+        Utils().isWordCharacter(characters.elementAt(end))) {
+      end++;
+    }
+
+    if (start == end) return (cursorPosition, cursorPosition, '');
+    return (start, end, text.substring(start, end));
+  }
+
+  (int, int, String) getPreviousWord(String text, int cursorPosition) {
+    if (text.isEmpty || cursorPosition <= 0) {
+      return (cursorPosition, cursorPosition, '');
+    }
+
+    final characters = text.characters;
+    final length = characters.length;
+
+    // Ensure cursor position is within bounds
+    int start = cursorPosition.clamp(0, length);
+    int end = start;
+
+    // Skip non-word characters
+    while (start > 0 &&
+        start <= length &&
+        !Utils().isWordCharacter(characters.elementAt(start - 1))) {
+      start--;
+    }
+    end = start;
+
+    // Find the start of the previous word
+    while (
+        start > 0 && Utils().isWordCharacter(characters.elementAt(start - 1))) {
+      start--;
+    }
+
+    if (start == end || start >= length) {
+      return (cursorPosition, cursorPosition, '');
+    }
+
+    return (start, end, text.substring(start, end));
+  }
+
   bool hasSelectionAtLine(int lineNumber) {
     return selectionManager.hasSelectionAtLine(lineNumber);
   }
@@ -226,7 +283,7 @@ class EditorCore extends ChangeNotifier {
   }
 
   void clearSelection() {
-    selectionManager.clearSelections();
+    selectionManager.clearSelections(0);
     onSelectionChange?.call(
         selectionManager.anchor,
         selectionManager.startIndex,
@@ -237,99 +294,100 @@ class EditorCore extends ChangeNotifier {
   }
 
   void _sortSelections() {
-    selectionManager.selections.sort((a, b) {
-      if (b.endLine > a.endLine) return b.endLine.compareTo(a.endLine);
+    for (var layer in selectionManager.layers) {
+      layer.sort((a, b) {
+        if (b.endLine > a.endLine) return b.endLine.compareTo(a.endLine);
 
-      final int endComparison = a.endIndex.compareTo(b.endIndex);
-      return endComparison != 0
-          ? endComparison
-          : b.startLine.compareTo(a.startLine);
-    });
+        final int endComparison = a.endIndex.compareTo(b.endIndex);
+        return endComparison != 0
+            ? endComparison
+            : b.startLine.compareTo(a.startLine);
+      });
+    }
   }
 
   List<Selection> _deleteSelections() {
     bool selectionDeleted = false;
-
-    // Sort selections before deletion
     _sortSelections();
 
-    for (var selection in selectionManager.selections) {
-      selection.normalize(bufferManager);
+    // Normalize all selections in all layers
+    for (var layer in selectionManager.layers) {
+      for (var selection in layer) {
+        selection.normalize(bufferManager);
+      }
     }
 
-    final List<Selection> selectionsBeforeDeletion = selectionManager.selections
-        .map((selection) => Selection(
-              startIndex: selection.startIndex,
-              endIndex: selection.endIndex,
-              startLine: selection.startLine,
-              endLine: selection.endLine,
-              anchor: selection.anchor,
-              originalDirection: selection.originalDirection,
-            ))
-        .toList();
+    // Create copies of all selections from all layers
+    final List<Selection> selectionsBeforeDeletion = [];
+    for (var layer in selectionManager.layers) {
+      selectionsBeforeDeletion.addAll(layer.map((selection) => Selection(
+            startIndex: selection.startIndex,
+            endIndex: selection.endIndex,
+            startLine: selection.startLine,
+            endLine: selection.endLine,
+            anchor: selection.anchor,
+            originalDirection: selection.originalDirection,
+          )));
+    }
 
-    for (var selection in selectionManager.selections) {
-      final beforeLines = bufferManager.lines.length;
+    // Process deletions layer by layer
+    for (var layer in selectionManager.layers) {
+      for (var selection in layer) {
+        final beforeLines = bufferManager.lines.length;
+        selection.deleteSelection(bufferManager, cursorPosition);
 
-      selection.deleteSelection(bufferManager, cursorPosition);
-      _adjustSelectionsAfterDeletion(selection);
+        // Adjust selections in all layers after this deletion
+        _adjustSelectionsAfterDeletion(selection);
 
-      // Trigger callbacks if lines changed
-      _triggerSelectionDeletionCallbacks(
-          selection, beforeLines, selectionDeleted);
-
-      selectionDeleted = true;
+        _triggerSelectionDeletionCallbacks(
+            selection, beforeLines, selectionDeleted);
+        selectionDeleted = true;
+      }
     }
 
     return selectionsBeforeDeletion;
   }
 
   void _adjustSelectionsAfterDeletion(Selection deletedSelection) {
-    final List<Selection> selectionsAfterDeleted =
-        selectionManager.selections.where((s) {
-      if (deletedSelection.endLine <= s.startLine) {
-        // Deleted selection is before current selection
-        return true;
-      }
-      return false;
-    }).toList();
+    // Adjust selections in all layers
+    for (var layer in selectionManager.layers) {
+      final List<Selection> selectionsAfterDeleted = layer.where((s) {
+        return deletedSelection.endLine <= s.startLine;
+      }).toList();
 
-    // Index adjustment
-    for (var selection in selectionsAfterDeleted) {
-      if (deletedSelection.endLine == selection.startLine) {
-        // Deleted selection is single line
-        if (deletedSelection.endLine == deletedSelection.startLine) {
-          final int adjustment =
-              deletedSelection.endIndex - deletedSelection.startIndex;
-          if (selection.startLine == selection.endLine) {
-            // Selection is single line -- adjust both indices
-            selection.startIndex -= adjustment;
-            selection.endIndex -= adjustment;
+      // Index adjustment
+      for (var selection in selectionsAfterDeleted) {
+        if (deletedSelection.endLine == selection.startLine) {
+          if (deletedSelection.endLine == deletedSelection.startLine) {
+            // Single line deletion
+            final int adjustment =
+                deletedSelection.endIndex - deletedSelection.startIndex;
+            if (selection.startLine == selection.endLine) {
+              selection.startIndex -= adjustment;
+              selection.endIndex -= adjustment;
+            } else {
+              selection.startIndex -= adjustment;
+            }
           } else {
-            // Selection is multi-line -- adjust startIndex only
-            selection.startIndex -= adjustment;
-          }
-        } else {
-          // Deleted selection is multi-line
-          final int adjustment = deletedSelection.endIndex;
-          if (selection.startLine == selection.endLine) {
-            // Selection is single line -- adjust both indices
-            selection.startIndex -= adjustment;
-            selection.endIndex -= adjustment;
-          } else {
-            // Selection is multi-line -- adjust startIndex only
-            selection.startIndex -= adjustment;
+            // Multi-line deletion
+            final int adjustment = deletedSelection.endIndex;
+            if (selection.startLine == selection.endLine) {
+              selection.startIndex -= adjustment;
+              selection.endIndex -= adjustment;
+            } else {
+              selection.startIndex -= adjustment;
+            }
           }
         }
       }
-    }
 
-    // Line adjustment
-    for (var selection in selectionsAfterDeleted) {
-      final int adjustment =
-          deletedSelection.endLine - deletedSelection.startLine;
-      selection.startLine -= adjustment;
-      selection.endLine -= adjustment;
+      // Line adjustment
+      for (var selection in selectionsAfterDeleted) {
+        final int adjustment =
+            deletedSelection.endLine - deletedSelection.startLine;
+        selection.startLine -= adjustment;
+        selection.endLine -= adjustment;
+      }
     }
   }
 
@@ -416,7 +474,7 @@ class EditorCore extends ChangeNotifier {
 
     cursorManager.sortCursors();
     _adjustCursors(selectionsBeforeDeletion);
-    selectionManager.clearSelections();
+    selectionManager.clearSelections(0);
     notifyListeners.call();
 
     return true;

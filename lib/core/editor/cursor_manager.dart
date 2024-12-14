@@ -95,6 +95,45 @@ class CursorManager extends ChangeNotifier {
     });
   }
 
+  Cursor? findClosestCursor(int line, int index, int numberOfLines) {
+    sortCursors();
+
+    int low = 0;
+    int high = cursors.length - 1;
+    final Cursor target = Cursor(line: line, index: index);
+    Cursor? closest;
+
+    while (low <= high) {
+      final int mid = low + (high - low) ~/ 2;
+
+      if (cursors[mid] == target) {
+        return cursors[mid];
+      }
+
+      if (closest == null || isCursorCloser(cursors[mid], closest, target)) {
+        closest = cursors[mid];
+      }
+
+      if (cursors[mid].line < target.line ||
+          (cursors[mid].line == target.line &&
+              cursors[mid].index < target.index)) {
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+
+    return closest;
+  }
+
+  bool isCursorCloser(Cursor a, Cursor b, Cursor target) {
+    final int distA =
+        (a.line - target.line).abs() * 1000 + (a.index - target.index).abs();
+    final int distB =
+        (b.line - target.line).abs() * 1000 + (b.index - target.index).abs();
+    return distA < distB;
+  }
+
   List<Cursor> findCursorsWithinBounds(
       int startLine, int endLine, int startIndex, int endIndex) {
     return cursors

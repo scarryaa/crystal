@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:crystal/core/editor/buffer_manager.dart';
 import 'package:crystal/models/selection/selection_direction.dart';
+import 'package:crystal/util/utils.dart';
 
 class Selection {
   int anchor;
@@ -89,12 +90,13 @@ class Selection {
     int end = cursorIndex;
 
     // Move start backwards to find the beginning of the word
-    while (start > 0 && isWordCharacter(lineContent[start - 1])) {
+    while (start > 0 && Utils().isWordCharacter(lineContent[start - 1])) {
       start--;
     }
 
     // Move end forwards to find the end of the word
-    while (end < lineContent.length && isWordCharacter(lineContent[end])) {
+    while (
+        end < lineContent.length && Utils().isWordCharacter(lineContent[end])) {
       end++;
     }
 
@@ -104,10 +106,6 @@ class Selection {
     startLine = endLine = cursorLine;
 
     return end;
-  }
-
-  bool isWordCharacter(String char) {
-    return RegExp(r'[a-zA-Z0-9_]').hasMatch(char);
   }
 
   void selectLine(BufferManager bufferManager, int cursorLine) {
