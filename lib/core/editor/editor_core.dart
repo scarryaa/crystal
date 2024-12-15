@@ -252,8 +252,13 @@ class EditorCore extends ChangeNotifier {
       start--;
     }
 
-    if (start == end || start >= length) {
-      return (cursorPosition, cursorPosition, '');
+    // If no word is found, return the non-word selection
+    if (start == end) {
+      end = cursorPosition;
+      while (
+          end < length && !Utils().isWordCharacter(characters.elementAt(end))) {
+        end++;
+      }
     }
 
     return (start, end, text.substring(start, end));

@@ -123,28 +123,29 @@ class SelectionManager extends ChangeNotifier {
     layers.removeRange(1, layers.length);
 
     // Merge overlapping selections within the first layer
-    mergeOverlappingSelections(bufferManager);
+    mergeOverlappingSelections(bufferManager, layer: 0);
     notifyListeners();
   }
 
-  void mergeOverlappingSelections(BufferManager bufferManager) {
-    if (layers[0].isEmpty) return;
+  void mergeOverlappingSelections(BufferManager bufferManager,
+      {required int layer}) {
+    if (layers[layer].isEmpty) return;
 
     // Normalize selections
-    for (final selection in layers[0]) {
+    for (final selection in layers[layer]) {
       selection.normalize(bufferManager);
     }
 
-    final activeSelection = layers[0].last;
-    layers[0].sort((a, b) {
+    final activeSelection = layers[layer].last;
+    layers[layer].sort((a, b) {
       if (a.startLine != b.startLine) return a.startLine.compareTo(b.startLine);
       return a.startIndex.compareTo(b.startIndex);
     });
 
     final List<Selection> mergedSelections = [layers[0].first];
 
-    for (var i = 1; i < layers[0].length; i++) {
-      final current = layers[0][i];
+    for (var i = 1; i < layers[layer].length; i++) {
+      final current = layers[layer][i];
       final last = mergedSelections.last;
 
       if (_selectionsOverlap(last, current)) {
@@ -160,7 +161,7 @@ class SelectionManager extends ChangeNotifier {
       }
     }
 
-    layers[0]
+    layers[layer]
       ..clear()
       ..addAll(mergedSelections);
     notifyListeners();

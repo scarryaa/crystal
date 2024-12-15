@@ -171,6 +171,13 @@ class EditorMouseManager extends ChangeNotifier {
           _lastSelectedWord!.endIndex,
           layer: _currentLayer);
 
+      final indexOfLastClickCursor =
+          core.cursorManager.cursors.indexOf(_lastClickCursor!);
+      core.cursorManager.moveTo(indexOfLastClickCursor, currentPosition.$1,
+          _lastSelectedWord!.endIndex);
+      _lastClickCursor =
+          Cursor(line: currentPosition.$1, index: _lastSelectedWord!.endIndex);
+
       core.selectionManager.notifyListeners();
       notifyListeners();
       return;
@@ -180,9 +187,9 @@ class EditorMouseManager extends ChangeNotifier {
       if (currentPosition.$2 < _lastSelectedWord!.startIndex) {
         core.clearSelection(layer: _currentLayer);
         _dragStartPosition =
-            (_lastSelectedWord!.startLine, _lastSelectedWord!.startIndex);
+            (_lastSelectedWord!.startLine, _lastSelectedWord!.endIndex);
         final currentLineContent =
-            core.bufferManager.getLineAt(currentPosition.$2);
+            core.bufferManager.getLineAt(currentPosition.$1);
         final currentWord = core.findCurrentWord(
             core.bufferManager, currentPosition.$1, currentPosition.$2);
         final previousWord =
@@ -201,20 +208,40 @@ class EditorMouseManager extends ChangeNotifier {
             _lastSelectedWord!.startIndex,
             0,
             _lastSelectedWord!.startLine,
-            _lastSelectedWord!.startIndex,
-            currentPosition.$1,
             currentWord.$2 == previousWord.$1
                 ? previousWord.$1
                 : currentPosition.$2 == currentWord.$2
                     ? currentPosition.$2
                     : currentWord.$1,
+            currentPosition.$1,
+            _lastSelectedWord!.endIndex,
             layer: _currentLayer);
+
+        final indexOfLastClickCursor =
+            core.cursorManager.cursors.indexOf(_lastClickCursor!);
+        core.cursorManager.moveTo(
+          indexOfLastClickCursor,
+          currentPosition.$1,
+          currentWord.$2 == previousWord.$1
+              ? previousWord.$1
+              : currentPosition.$2 == currentWord.$2
+                  ? currentPosition.$2
+                  : currentWord.$1,
+        );
+        _lastClickCursor = Cursor(
+          line: currentPosition.$1,
+          index: currentWord.$2 == previousWord.$1
+              ? previousWord.$1
+              : currentPosition.$2 == currentWord.$2
+                  ? currentPosition.$2
+                  : currentWord.$1,
+        );
       } else {
         core.clearSelection(layer: _currentLayer);
         _dragStartPosition =
             (_lastSelectedWord!.startLine, _lastSelectedWord!.startIndex);
         final currentLineContent =
-            core.bufferManager.getLineAt(currentPosition.$2);
+            core.bufferManager.getLineAt(currentPosition.$1);
         final currentWord = core.findCurrentWord(
             core.bufferManager, currentPosition.$1, currentPosition.$2);
         final nextWord =
@@ -229,6 +256,26 @@ class EditorMouseManager extends ChangeNotifier {
                     ? currentPosition.$2
                     : currentWord.$2,
             layer: _currentLayer);
+
+        final indexOfLastClickCursor =
+            core.cursorManager.cursors.indexOf(_lastClickCursor!);
+        core.cursorManager.moveTo(
+          indexOfLastClickCursor,
+          currentPosition.$1,
+          currentWord.$2 == nextWord.$2
+              ? nextWord.$2
+              : currentPosition.$2 == currentWord.$1
+                  ? currentPosition.$2
+                  : currentWord.$2,
+        );
+        _lastClickCursor = Cursor(
+          line: currentPosition.$1,
+          index: currentWord.$2 == nextWord.$2
+              ? nextWord.$2
+              : currentPosition.$2 == currentWord.$1
+                  ? currentPosition.$2
+                  : currentWord.$2,
+        );
       }
     } else {
       if (currentPosition.$1 < _lastSelectedWord!.startLine) {
@@ -239,7 +286,7 @@ class EditorMouseManager extends ChangeNotifier {
           _lastSelectedWord!.endIndex,
         );
         final currentLineContent =
-            core.bufferManager.getLineAt(currentPosition.$2);
+            core.bufferManager.getLineAt(currentPosition.$1);
         final currentWord = core.findCurrentWord(
             core.bufferManager, currentPosition.$1, currentPosition.$2);
         final previousWord =
@@ -254,16 +301,26 @@ class EditorMouseManager extends ChangeNotifier {
                     ? currentPosition.$2
                     : currentWord.$1,
             layer: _currentLayer);
-        final firstLineSelection = core.selectionManager
-            .getSelectionAtLineAndIndex(
-                _lastSelectedWord!.startLine, _lastSelectedWord!.startIndex,
-                layer: _currentLayer);
-        firstLineSelection.selectRange(
-            core.bufferManager,
-            _lastSelectedWord!.startLine,
-            0,
-            _lastSelectedWord!.startLine,
-            core.bufferManager.getLineAt(_lastSelectedWord!.startLine).length);
+
+        final indexOfLastClickCursor =
+            core.cursorManager.cursors.indexOf(_lastClickCursor!);
+        core.cursorManager.moveTo(
+          indexOfLastClickCursor,
+          currentPosition.$1,
+          currentWord.$2 == previousWord.$1
+              ? previousWord.$1
+              : currentPosition.$2 == currentWord.$2
+                  ? currentPosition.$2
+                  : currentWord.$1,
+        );
+        _lastClickCursor = Cursor(
+          line: currentPosition.$1,
+          index: currentWord.$2 == previousWord.$1
+              ? previousWord.$1
+              : currentPosition.$2 == currentWord.$2
+                  ? currentPosition.$2
+                  : currentWord.$1,
+        );
       } else {
         core.clearSelection(layer: _currentLayer);
         _dragStartPosition =
@@ -284,6 +341,26 @@ class EditorMouseManager extends ChangeNotifier {
                     ? currentPosition.$2
                     : currentWord.$2,
             layer: _currentLayer);
+
+        final indexOfLastClickCursor =
+            core.cursorManager.cursors.indexOf(_lastClickCursor!);
+        core.cursorManager.moveTo(
+          indexOfLastClickCursor,
+          currentPosition.$1,
+          currentWord.$2 == nextWord.$2
+              ? nextWord.$2
+              : currentPosition.$2 == currentWord.$1
+                  ? currentPosition.$2
+                  : currentWord.$2,
+        );
+        _lastClickCursor = Cursor(
+          line: currentPosition.$1,
+          index: currentWord.$2 == nextWord.$2
+              ? nextWord.$2
+              : currentPosition.$2 == currentWord.$1
+                  ? currentPosition.$2
+                  : currentWord.$2,
+        );
       }
     }
   }
@@ -297,10 +374,12 @@ class EditorMouseManager extends ChangeNotifier {
         currentPosition.$1 <= _lastSelectedLine!.endLine) {
       core.selectLine(_lastSelectedLine!.endLine, _lastSelectedLine!.endIndex,
           clearSelections: true, layer: _currentLayer);
-      core.cursorManager.clearCursors(keepAnchor: false);
+      final indexOfLastClickCursor =
+          core.cursorManager.cursors.indexOf(_lastClickCursor!);
       core.cursorManager
-          .addCursor(Cursor(line: _lastSelectedLine!.endLine + 1, index: 0));
-      _lastClickCursor = Cursor(line: _lastSelectedLine!.endLine + 1, index: 0);
+          .moveTo(indexOfLastClickCursor, currentPosition.$1 + 1, 0);
+      _lastClickCursor = Cursor(line: currentPosition.$1 + 1, index: 0);
+      notifyListeners();
       return;
     }
 
@@ -309,39 +388,48 @@ class EditorMouseManager extends ChangeNotifier {
       core.selectLine(
           _lastSelectedLine!.startLine, _lastSelectedLine!.startIndex,
           clearSelections: true, layer: _currentLayer);
-      core.cursorManager.addCursor(Cursor(
-          line: _lastSelectedLine!.endLine,
-          index: _lastSelectedLine!.endIndex));
-
       _dragStartPosition = (
         _lastSelectedLine!.startLine - 1,
         core.bufferManager.getLineLength(_lastSelectedLine!.startLine - 1)
       );
+
+      if (_lastClickCursor != null) {
+        final indexOfLastClickCursor =
+            core.cursorManager.cursors.indexOf(_lastClickCursor!);
+        core.cursorManager
+            .moveTo(indexOfLastClickCursor, currentPosition.$1, 0);
+        _lastClickCursor = Cursor(line: currentPosition.$1, index: 0);
+      }
+      if (currentPosition.$1 == _dragStartPosition!.$1) {
+        core.selectLine(currentPosition.$1, 0, layer: _currentLayer);
+      }
     } else if (currentPosition.$1 >= _lastSelectedLine!.endLine) {
       core.clearSelection(layer: _currentLayer);
       core.selectLine(
           _lastSelectedLine!.startLine, _lastSelectedLine!.startIndex,
           clearSelections: true, layer: _currentLayer);
-      core.cursorManager.addCursor(Cursor(
-          line: _lastSelectedLine!.endLine,
-          index: _lastSelectedLine!.endIndex));
 
       _dragStartPosition = (_lastSelectedLine!.endLine + 1, 0);
+      if (_lastClickCursor != null) {
+        final indexOfLastClickCursor =
+            core.cursorManager.cursors.indexOf(_lastClickCursor!);
+        final boundedLine = max(
+            min(currentPosition.$1 + 1, core.bufferManager.lineCount - 1), 0);
+        core.cursorManager.moveTo(indexOfLastClickCursor, boundedLine, 0);
+        _lastClickCursor = Cursor(line: boundedLine, index: 0);
+      }
     }
 
     core.selectRange(
         _dragStartPosition!.$1,
         _dragStartPosition!.$2,
-        currentPosition.$1 >= _dragStartPosition!.$1
-            ? currentPosition.$1 + 1
-            : currentPosition.$1,
+        currentPosition.$1 < _dragStartPosition!.$1
+            ? currentPosition.$1
+            : currentPosition.$1 == _dragStartPosition!.$1
+                ? currentPosition.$1 + 1
+                : currentPosition.$1 + 1,
         0,
         layer: _currentLayer);
-  }
-
-  bool _currentPositionIsWithinDocument((int, int) currentPosition) {
-    return _lastClickCursor!.line < core.bufferManager.lineCount &&
-        _lastClickCursor!.line >= 0;
   }
 
   bool _currentPositionIsWithinWord(
@@ -365,7 +453,8 @@ class EditorMouseManager extends ChangeNotifier {
     core.selectionManager.mergeAllLayersToFirst(core.bufferManager);
     _currentLayer = 0;
 
-    core.selectionManager.mergeOverlappingSelections(core.bufferManager);
+    core.selectionManager
+        .mergeOverlappingSelections(core.bufferManager, layer: 0);
     for (var selection in core.selectionManager.layers[0]) {
       final overlappingCursors = core.cursorManager.findCursorsWithinBounds(
           selection.startLine,
@@ -520,6 +609,11 @@ class EditorMouseManager extends ChangeNotifier {
       core.selectionManager.layers.add([]);
     }
 
+    cursorLine = max(0, min(cursorLine, core.bufferManager.lineCount - 1));
+
+    final lineLength = core.bufferManager.getLineLength(cursorLine);
+    cursorIndex = max(min(cursorIndex, lineLength), 0);
+
     final (wordStartIndex, wordEndIndex) =
         core.findCurrentWord(core.bufferManager, cursorLine, cursorIndex);
     core.selectRange(cursorLine, wordStartIndex, cursorLine, wordEndIndex,
@@ -528,22 +622,45 @@ class EditorMouseManager extends ChangeNotifier {
         core.bufferManager, cursorLine, cursorIndex,
         layer: _currentLayer);
     _lastSelectedWord = Selection(
+        anchor: selection.startIndex,
         startLine: selection.startLine,
         startIndex: selection.startIndex,
         endLine: selection.endLine,
         endIndex: selection.endIndex);
+
+    final indexOfLastClickCursor =
+        core.cursorManager.cursors.indexOf(_lastClickCursor!);
+    core.cursorManager.moveTo(indexOfLastClickCursor,
+        _lastSelectedWord!.startLine, _lastSelectedWord!.endIndex);
+    _lastClickCursor = Cursor(
+        line: _lastSelectedWord!.startLine, index: _lastSelectedWord!.endIndex);
   }
 
   void _handleTripleClick(int cursorLine, int cursorIndex) {
+    cursorLine = max(0, min(cursorLine, core.bufferManager.lineCount - 1));
+
+    final lineLength = core.bufferManager.getLineLength(cursorLine);
+    cursorIndex = max(min(cursorIndex, lineLength), 0);
+
     final bool isAltPressed = HardwareKeyboard.instance.isAltPressed;
+
     if (isAltPressed) {
       _currentLayer = core.selectionManager.layers.length;
       core.selectionManager.layers.add([]);
+
+      // Only clear word selections from double clicks
+      if (_lastSelectedWord != null) {
+        core.selectionManager.removeSelection(_lastSelectedWord!);
+      }
+
+      core.selectLine(cursorLine, cursorIndex, layer: _currentLayer);
+    } else {
+      core.clearSelection(layer: _currentLayer);
+      core.selectLine(cursorLine, cursorIndex, layer: _currentLayer);
     }
 
-    core.clearSelection(layer: _currentLayer);
-    core.selectLine(cursorLine, cursorIndex, layer: _currentLayer);
     core.moveCursorTo(0, cursorLine + 1, 0);
+    _lastClickCursor = Cursor(line: cursorLine + 1, index: 0);
     _lastSelectedLine = core.selectionManager
         .isWithinSelection(core.bufferManager, cursorLine, cursorIndex,
             layer: _currentLayer)
