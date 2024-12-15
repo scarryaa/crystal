@@ -72,7 +72,8 @@ class EditorStateManager extends ChangeNotifier {
     if (selections[path] != null && selections[path]!.hasSelection()) {
       final selection = selections[path]!;
       core.selectRange(selection.startLine, selection.startIndex,
-          selection.endLine, selection.endIndex);
+          selection.endLine, selection.endIndex,
+          layer: 0);
     }
 
     if (cursorPositions[path] != null) {

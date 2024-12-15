@@ -66,11 +66,11 @@ class SelectionManager extends ChangeNotifier {
     return buffer.toString();
   }
 
-  void addSelection(Selection selection, {int layerIndex = 0}) {
-    while (layers.length <= layerIndex) {
+  void addSelection(Selection selection, {required int layer}) {
+    while (layers.length <= layer) {
       layers.add([]);
     }
-    layers[layerIndex].add(selection);
+    layers[layer].add(selection);
     notifyListeners();
   }
 
@@ -175,21 +175,23 @@ class SelectionManager extends ChangeNotifier {
     return true;
   }
 
-  Selection getSelectionAtLineAndIndex(int line, int index) {
+  Selection getSelectionAtLineAndIndex(int line, int index,
+      {required int layer}) {
     final Selection nullSelection = Selection(
         anchor: -1, startLine: -1, endLine: -1, startIndex: -1, endIndex: -1);
 
-    return layers[0].firstWhere(
+    return layers[layer].firstWhere(
         (s) => s.startLine <= line && s.startIndex <= index,
         orElse: () => nullSelection);
   }
 
   Selection getSelectionAt(
-      int anchor, int startLine, int startIndex, int endLine, int endIndex) {
+      int anchor, int startLine, int startIndex, int endLine, int endIndex,
+      {required int layer}) {
     final Selection nullSelection = Selection(
         anchor: -1, startLine: -1, endLine: -1, startIndex: -1, endIndex: -1);
 
-    return layers[0].firstWhere(
+    return layers[layer].firstWhere(
         (s) =>
             ((s.startIndex == startIndex && s.startLine == startLine) ||
                 s.endIndex == endIndex && s.endLine == endLine) &&
@@ -203,8 +205,9 @@ class SelectionManager extends ChangeNotifier {
   }
 
   (bool, Selection) isWithinSelection(
-      BufferManager bufferManager, int line, int index) {
-    final Selection foundSelection = layers[0].firstWhere((s) {
+      BufferManager bufferManager, int line, int index,
+      {required int layer}) {
+    final Selection foundSelection = layers[layer].firstWhere((s) {
       if (line < s.startLine || line > s.endLine) return false;
       if (line == s.startLine && line == s.endLine) {
         return index >= s.startIndex && index <= s.endIndex;
@@ -219,27 +222,27 @@ class SelectionManager extends ChangeNotifier {
   }
 
   int selectWord(BufferManager bufferManager, int cursorLine, int cursorIndex,
-      {bool clearSelections = false}) {
+      {bool clearSelections = false, required int layer}) {
     if (clearSelections) {
-      layers[0].clear();
+      layers[layer].clear();
     }
 
-    layers[0].add(Selection(
-        anchor: 0,
+    layers[layer].add(Selection(
+        anchor: cursorIndex,
         startLine: cursorLine,
         endLine: cursorLine,
-        startIndex: 0,
-        endIndex: 0));
-    return layers[0][0].selectWord(bufferManager, cursorLine, cursorIndex);
+        startIndex: cursorIndex,
+        endIndex: cursorIndex));
+    return layers[layer][0].selectWord(bufferManager, cursorLine, cursorIndex);
   }
 
   void selectLine(BufferManager bufferManager, int index, int cursorLine,
-      {bool clearSelections = false}) {
+      {bool clearSelections = false, required int layer}) {
     if (clearSelections) {
-      layers[0].clear();
+      layers[layer].clear();
     }
 
-    layers[0].add(Selection(
+    layers[layer].add(Selection(
         anchor: 0,
         startLine: cursorLine,
         endLine: cursorLine,
@@ -248,14 +251,16 @@ class SelectionManager extends ChangeNotifier {
   }
 
   void selectRange(BufferManager bufferManager, int anchor, int index,
-      int startLine, int startIndex, int endLine, int endIndex) {
-    final Selection currentSelection =
-        getSelectionAt(anchor, startLine, startIndex, endLine, endIndex);
+      int startLine, int startIndex, int endLine, int endIndex,
+      {required int layer}) {
+    final Selection currentSelection = getSelectionAt(
+        anchor, startLine, startIndex, endLine, endIndex,
+        layer: layer);
     currentSelection.selectRange(
         bufferManager, startLine, startIndex, endLine, endIndex);
 
-    if (!layers[0].contains(currentSelection)) {
-      layers[0].add(currentSelection);
+    if (!layers[layer].contains(currentSelection)) {
+      layers[layer].add(currentSelection);
     }
   }
 }

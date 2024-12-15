@@ -282,8 +282,8 @@ class EditorCore extends ChangeNotifier {
     notifyListeners();
   }
 
-  void clearSelection() {
-    selectionManager.clearSelections(0);
+  void clearSelection({int layer = 0}) {
+    selectionManager.clearSelections(layer);
     onSelectionChange?.call(
         selectionManager.anchor,
         selectionManager.startIndex,

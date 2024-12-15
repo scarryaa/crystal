@@ -44,7 +44,7 @@ class GutterMouseManager {
   void _handleSingleClick(int cursorLine, int cursorIndex) {
     core.cursorManager.clearCursors(keepAnchor: false);
     core.clearSelection();
-    core.selectLine(cursorLine, cursorIndex);
+    core.selectLine(cursorLine, cursorIndex, layer: 0);
     core.addCursor(min(cursorLine + 1, core.bufferManager.lineCount - 1), 0);
   }
 
@@ -65,9 +65,10 @@ class GutterMouseManager {
 
       if (_dragStartPosition != null) {
         core.selectionManager.clearSelections(0);
-        core.selectRange(_dragStartPosition!.$1, 0, currentPosition.$1 + 1, 0);
+        core.selectRange(_dragStartPosition!.$1, 0, currentPosition.$1 + 1, 0,
+            layer: 0);
         if (_dragStartPosition!.$1 > currentPosition.$1) {
-          core.selectLine(_dragStartPosition!.$1, 0);
+          core.selectLine(_dragStartPosition!.$1, 0, layer: 0);
         }
 
         core.addCursor(
