@@ -9,4 +9,12 @@ class Utils {
   bool isWordCharacter(String char) {
     return RegExp(r'[a-zA-Z0-9_]').hasMatch(char);
   }
+
+  bool isNonWordCharacter(String char) {
+    return RegExp(r'[^\w\s]').hasMatch(char);
+  }
+
+  bool isWhitespace(String char) {
+    return char == ' ';
+  }
 }

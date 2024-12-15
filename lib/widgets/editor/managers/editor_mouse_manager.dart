@@ -598,6 +598,7 @@ class EditorMouseManager extends ChangeNotifier {
       // Single cursor mode
       core.cursorManager.clearCursors();
       core.moveCursorTo(0, cursorLine, cursorIndex);
+      _lastClickCursor = Cursor(line: cursorLine, index: cursorIndex);
       core.clearSelection(layer: _currentLayer);
     }
   }
@@ -614,8 +615,17 @@ class EditorMouseManager extends ChangeNotifier {
     final lineLength = core.bufferManager.getLineLength(cursorLine);
     cursorIndex = max(min(cursorIndex, lineLength), 0);
 
-    final (wordStartIndex, wordEndIndex) =
+    var (wordStartIndex, wordEndIndex) =
         core.findCurrentWord(core.bufferManager, cursorLine, cursorIndex);
+    if (wordStartIndex == wordEndIndex) {
+      (wordStartIndex, wordEndIndex) =
+          core.findCurrentNonWord(core.bufferManager, cursorLine, cursorIndex);
+      if (wordStartIndex == wordEndIndex) {
+        (wordStartIndex, wordEndIndex) = core.findCurrentWhitespace(
+            core.bufferManager, cursorLine, cursorIndex);
+      }
+    }
+
     core.selectRange(cursorLine, wordStartIndex, cursorLine, wordEndIndex,
         layer: _currentLayer);
     final (isWithin, selection) = core.selectionManager.isWithinSelection(
@@ -793,6 +803,38 @@ extension EditorCoreMouseExtensions on EditorCore {
     return (start, end);
   }
 
+  (int, int) findCurrentWhitespace(
+      BufferManager bufferManager, int cursorLine, int cursorIndex) {
+    cursorLine = min(cursorLine, bufferManager.lineCount - 1);
+    final lineContent = bufferManager.getLineAt(cursorLine);
+
+    if (lineContent.isEmpty) {
+      return (0, 0);
+    }
+
+    cursorIndex = min(cursorIndex, lineContent.length);
+
+    int start = cursorIndex;
+    int end = cursorIndex;
+
+    // Find the start by going backwards until a word character or start of line
+    if (start > 0 && Utils().isWhitespace(lineContent[start - 1])) {
+      while (start > 0 && Utils().isWhitespace(lineContent[start - 1])) {
+        start--;
+      }
+    }
+
+    // Find the end by going forward until a word character or end of line
+    if (end < lineContent.length && Utils().isWhitespace(lineContent[end])) {
+      while (
+          end < lineContent.length && Utils().isWhitespace(lineContent[end])) {
+        end++;
+      }
+    }
+
+    return (start, end);
+  }
+
   (int, int) findCurrentNonWord(
       BufferManager bufferManager, int cursorLine, int cursorIndex) {
     cursorLine = min(cursorLine, bufferManager.lineCount - 1);
@@ -808,17 +850,17 @@ extension EditorCoreMouseExtensions on EditorCore {
     int end = cursorIndex;
 
     // Find the start by going backwards until a word character or start of line
-    if (start > 0 && !Utils().isWordCharacter(lineContent[start - 1])) {
-      while (start > 0 && !Utils().isWordCharacter(lineContent[start - 1])) {
+    if (start > 0 && Utils().isNonWordCharacter(lineContent[start - 1])) {
+      while (start > 0 && Utils().isNonWordCharacter(lineContent[start - 1])) {
         start--;
       }
     }
 
     // Find the end by going forward until a word character or end of line
     if (end < lineContent.length &&
-        !Utils().isWordCharacter(lineContent[end])) {
+        Utils().isNonWordCharacter(lineContent[end])) {
       while (end < lineContent.length &&
-          !Utils().isWordCharacter(lineContent[end])) {
+          Utils().isNonWordCharacter(lineContent[end])) {
         end++;
       }
     }
