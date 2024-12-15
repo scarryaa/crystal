@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:crystal/core/editor/buffer_manager.dart';
+import 'package:crystal/models/editor/cursor/cursor.dart';
 import 'package:crystal/models/selection/selection_direction.dart';
 import 'package:crystal/util/utils.dart';
 
@@ -11,6 +12,7 @@ class Selection {
   int startLine;
   int endLine;
   SelectionDirection originalDirection;
+  Cursor? originalCursor;
 
   Selection({
     this.anchor = -1,
@@ -19,6 +21,7 @@ class Selection {
     this.startLine = -1,
     this.endLine = -1,
     this.originalDirection = SelectionDirection.forward,
+    this.originalCursor,
   });
 
   void start(int line, int index) {
@@ -263,6 +266,6 @@ class Selection {
 
   @override
   String toString() {
-    return ('Selection startLine: $startLine endLine: $endLine startIndex: $startIndex endIndex: $endIndex anchor: $anchor');
+    return ('Selection startLine: $startLine endLine: $endLine startIndex: $startIndex endIndex: $endIndex anchor: $anchor originalDirection: $originalDirection originalCursor $originalCursor');
   }
 }

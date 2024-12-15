@@ -215,6 +215,14 @@ class EditorMouseManager extends ChangeNotifier {
                     : currentWord.$1,
             currentPosition.$1,
             _lastSelectedWord!.endIndex,
+            direction: currentPosition.$1 == currentWord.$1 &&
+                    currentPosition.$2 == currentWord.$2
+                ? SelectionDirection.forward
+                : currentPosition.$2 < currentWord.$2 ||
+                        (currentPosition.$2 == currentWord.$2 &&
+                            currentPosition.$1 > currentWord.$1)
+                    ? SelectionDirection.backward
+                    : SelectionDirection.forward,
             layer: _currentLayer);
 
         final indexOfLastClickCursor =
@@ -408,6 +416,10 @@ class EditorMouseManager extends ChangeNotifier {
       core.selectLine(
           _lastSelectedLine!.startLine, _lastSelectedLine!.startIndex,
           clearSelections: true, layer: _currentLayer);
+      final selection = core.selectionManager.getSelectionAtLineAndIndex(
+          _lastSelectedLine!.endLine, _lastSelectedLine!.endIndex,
+          layer: _currentLayer);
+      selection.originalCursor = Cursor(line: currentPosition.$1 + 1, index: 0);
 
       _dragStartPosition = (_lastSelectedLine!.endLine + 1, 0);
       if (_lastClickCursor != null) {
@@ -461,12 +473,32 @@ class EditorMouseManager extends ChangeNotifier {
           selection.endLine,
           selection.startIndex,
           selection.endIndex);
+
       if (selection.originalDirection == SelectionDirection.forward) {
+        Cursor? oldCursor;
         for (var cursor in overlappingCursors) {
+          if (oldCursor == null || cursor.line > oldCursor.line) {
+            oldCursor = cursor;
+          }
           core.cursorManager.removeCursor(cursor, keepAnchor: false);
         }
-        core.cursorManager.addCursor(
-            Cursor(line: selection.endLine, index: selection.endIndex));
+
+        final bool isTripleClickSelection = selection.startIndex == 0 &&
+            selection.endIndex ==
+                core.bufferManager.getLineLength(selection.endLine) &&
+            _lastClickType == MouseClickType.triple;
+
+        if (oldCursor != null && oldCursor.line > selection.endLine) {
+          // Preserve the cursor if it's beyond the merged selection
+          core.cursorManager.addCursor(oldCursor);
+        } else if (isTripleClickSelection) {
+          // For triple-click, place cursor at next line
+          core.cursorManager
+              .addCursor(Cursor(line: selection.endLine + 1, index: 0));
+        } else {
+          core.cursorManager.addCursor(
+              Cursor(line: selection.endLine, index: selection.endIndex));
+        }
       } else if (selection.originalDirection == SelectionDirection.backward) {
         for (var cursor in overlappingCursors) {
           core.cursorManager.removeCursor(cursor, keepAnchor: false);

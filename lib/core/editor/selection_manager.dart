@@ -6,7 +6,7 @@ import 'package:crystal/models/selection/selection_direction.dart';
 import 'package:flutter/material.dart';
 
 class SelectionManager extends ChangeNotifier {
-  final List<List<Selection>> layers = [[]]; // Initialize with one empty layer
+  final List<List<Selection>> layers = [[]];
   Selection? anchorSelection;
 
   int get startLine => anchorSelection?.startLine ?? -1;
@@ -142,7 +142,7 @@ class SelectionManager extends ChangeNotifier {
       return a.startIndex.compareTo(b.startIndex);
     });
 
-    final List<Selection> mergedSelections = [layers[0].first];
+    final List<Selection> mergedSelections = [layers[layer].first];
 
     for (var i = 1; i < layers[layer].length; i++) {
       final current = layers[layer][i];
@@ -156,6 +156,10 @@ class SelectionManager extends ChangeNotifier {
         } else if (current.endLine == last.endLine) {
           last.endIndex = max(last.endIndex, current.endIndex);
         }
+
+        if (current.originalCursor != null) {
+          last.originalCursor = current.originalCursor;
+        }
       } else {
         mergedSelections.add(current);
       }
@@ -168,8 +172,11 @@ class SelectionManager extends ChangeNotifier {
   }
 
   bool _selectionsOverlap(Selection a, Selection b) {
-    if (a.endLine < b.startLine) return false;
-    if (a.startLine > b.endLine) return false;
+    if (a.endLine < b.startLine - 1) return false;
+    if (a.startLine > b.endLine + 1) return false;
+    if (a.endLine == b.startLine - 1 || a.startLine == b.endLine + 1) {
+      return true;
+    }
     if (a.endLine == b.startLine) {
       return a.endIndex >= b.startIndex;
     }
@@ -244,21 +251,25 @@ class SelectionManager extends ChangeNotifier {
     }
 
     layers[layer].add(Selection(
-        anchor: 0,
-        startLine: cursorLine,
-        endLine: cursorLine,
-        startIndex: 0,
-        endIndex: bufferManager.getLineLength(cursorLine)));
+      anchor: 0,
+      startLine: cursorLine,
+      endLine: cursorLine,
+      startIndex: 0,
+      endIndex: bufferManager.getLineLength(cursorLine),
+    ));
   }
 
   void selectRange(BufferManager bufferManager, int anchor, int index,
       int startLine, int startIndex, int endLine, int endIndex,
-      {required int layer}) {
+      {SelectionDirection? direction, required int layer}) {
     final Selection currentSelection = getSelectionAt(
         anchor, startLine, startIndex, endLine, endIndex,
         layer: layer);
     currentSelection.selectRange(
         bufferManager, startLine, startIndex, endLine, endIndex);
+    if (direction != null) {
+      currentSelection.originalDirection = direction;
+    }
 
     if (!layers[layer].contains(currentSelection)) {
       layers[layer].add(currentSelection);
