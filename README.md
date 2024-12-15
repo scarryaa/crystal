@@ -6,9 +6,9 @@ crystal aims to be a modern, fast, lightweight code cross-platform code editor (
 - Basic text editing (basic selections, cursor movement, text entry)
 - Basic gutter (line numbers)
 - Multiple cursors
+- Multiple selections
 
 ## Planned Features 
-- Multiple selections
 - Syntax highlighting
 - File management
   - Open/Save/Save As
