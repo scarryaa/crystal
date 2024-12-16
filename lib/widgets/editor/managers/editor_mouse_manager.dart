@@ -714,12 +714,6 @@ class EditorMouseManager extends ChangeNotifier {
       }
     }
 
-    final cursor = Cursor(line: cursorLine, index: wordEndIndex);
-    final index =
-        core.cursorManager.layers[_currentCursorLayer].indexOf(cursor);
-    if (index == -1) {
-      core.cursorManager.addCursor(cursor, layer: _currentCursorLayer);
-    }
     core.selectRange(cursorLine, wordStartIndex, cursorLine, wordEndIndex,
         layer: _currentLayer);
     final (isWithin, selection) = core.selectionManager.isWithinSelection(
@@ -741,6 +735,14 @@ class EditorMouseManager extends ChangeNotifier {
       _lastClickCursor = Cursor(
           line: _lastSelectedWord!.startLine,
           index: _lastSelectedWord!.endIndex);
+    }
+
+    final cursor = Cursor(line: cursorLine, index: wordEndIndex);
+    final index =
+        core.cursorManager.layers[_currentCursorLayer].indexOf(cursor);
+    if (index == -1) {
+      core.cursorManager.addCursor(cursor, layer: _currentCursorLayer);
+      _lastClickCursor = cursor;
     }
   }
 
