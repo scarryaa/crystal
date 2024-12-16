@@ -13,7 +13,9 @@ class BufferManager {
   String getLineAt(int index) => _lines[index];
   set lines(List<String> lines) => lines = lines;
   int get lineCount => _lines.length;
-  String get currentLine => _lines[cursorManager.firstCursor().line];
+  String? get currentLine => cursorManager.firstCursor() != null
+      ? _lines[cursorManager.firstCursor()!.line]
+      : null;
   List<String> get lines => List<String>.from(_lines);
 
   int getLineLength(int line) {
@@ -31,19 +33,21 @@ class BufferManager {
     final List<String> linesToAdd = string.split('\n');
     final int numberOfLinesAdded = linesToAdd.length - 1;
 
-    for (var cursor in cursorManager.cursors) {
-      if (numberOfLinesAdded == 0) {
-        _lines[cursor.line] = _lines[cursor.line].substring(0, cursor.index) +
-            string +
-            _lines[cursor.line].substring(cursor.index);
-        cursor.index += linesToAdd.first.length;
-        cursorManager.targetCursorIndex = cursor.index;
-      } else {
-        _lines.removeAt(cursor.line);
-        _lines.insertAll(cursor.line, linesToAdd);
-        cursor.line += numberOfLinesAdded;
-        cursor.index = linesToAdd.last.length;
-        cursorManager.targetCursorIndex = cursor.index;
+    for (var layer in cursorManager.layers) {
+      for (var cursor in layer) {
+        if (numberOfLinesAdded == 0) {
+          _lines[cursor.line] = _lines[cursor.line].substring(0, cursor.index) +
+              string +
+              _lines[cursor.line].substring(cursor.index);
+          cursor.index += linesToAdd.first.length;
+          cursorManager.targetCursorIndex = cursor.index;
+        } else {
+          _lines.removeAt(cursor.line);
+          _lines.insertAll(cursor.line, linesToAdd);
+          cursor.line += numberOfLinesAdded;
+          cursor.index = linesToAdd.last.length;
+          cursorManager.targetCursorIndex = cursor.index;
+        }
       }
     }
   }
@@ -57,24 +61,26 @@ class BufferManager {
 
     // Track cumulative offset per line
     final Map<int, int> lineOffsets = {};
-    for (var cursor in cursorManager.cursors) {
-      final currentOffset = lineOffsets[cursor.line] ?? 0;
+    for (var layer in cursorManager.layers) {
+      for (var cursor in layer) {
+        final currentOffset = lineOffsets[cursor.line] ?? 0;
 
-      _lines[cursor.line] =
-          _lines[cursor.line].substring(0, cursor.index + currentOffset) +
-              char +
-              _lines[cursor.line].substring(cursor.index + currentOffset);
+        _lines[cursor.line] =
+            _lines[cursor.line].substring(0, cursor.index + currentOffset) +
+                char +
+                _lines[cursor.line].substring(cursor.index + currentOffset);
 
-      cursor.index++;
-      cursor.index += currentOffset;
+        cursor.index++;
+        cursor.index += currentOffset;
 
-      lineOffsets.update(
-        cursor.line,
-        (value) => value + 1,
-        ifAbsent: () => 1,
-      );
+        lineOffsets.update(
+          cursor.line,
+          (value) => value + 1,
+          ifAbsent: () => 1,
+        );
 
-      cursorManager.targetCursorIndex = cursor.index;
+        cursorManager.targetCursorIndex = cursor.index;
+      }
     }
     cursorManager.mergeCursorsIfNeeded();
   }
@@ -85,30 +91,32 @@ class BufferManager {
     int indexAdjustment = 0;
     int currentLine = 0;
 
-    for (var cursor in cursorManager.cursors) {
-      cursor.line += addedLines;
+    for (var layer in cursorManager.layers) {
+      for (var cursor in layer) {
+        cursor.line += addedLines;
 
-      if (currentLine != cursor.line) {
-        indexAdjustment = 0;
-        currentLine = cursor.line;
+        if (currentLine != cursor.line) {
+          indexAdjustment = 0;
+          currentLine = cursor.line;
+        }
+
+        cursor.index -= indexAdjustment;
+
+        final String rightPart = _lines[cursor.line].substring(cursor.index);
+        final String leftPart = _lines[cursor.line].substring(0, cursor.index);
+
+        _lines[cursor.line] = leftPart;
+        _lines.insert(cursor.line + 1, '');
+        _lines[cursor.line + 1] = rightPart;
+
+        cursor.line++;
+        addedLines++;
+        currentLine++;
+        indexAdjustment += leftPart.length;
+
+        cursor.index = 0;
+        cursorManager.targetCursorIndex = cursor.index;
       }
-
-      cursor.index -= indexAdjustment;
-
-      final String rightPart = _lines[cursor.line].substring(cursor.index);
-      final String leftPart = _lines[cursor.line].substring(0, cursor.index);
-
-      _lines[cursor.line] = leftPart;
-      _lines.insert(cursor.line + 1, '');
-      _lines[cursor.line + 1] = rightPart;
-
-      cursor.line++;
-      addedLines++;
-      currentLine++;
-      indexAdjustment += leftPart.length;
-
-      cursor.index = 0;
-      cursorManager.targetCursorIndex = cursor.index;
     }
   }
 
@@ -150,79 +158,87 @@ class BufferManager {
     final Map<int, int> lineAdjustments = {};
     final Map<int, int> indexAdjustments = {};
 
-    for (var cursor in cursorManager.cursors) {
-      if (!_validateCursorPositionBeforeDelete(cursor)) return;
+    for (var layer in cursorManager.layers) {
+      for (var cursor in layer) {
+        if (!_validateCursorPositionBeforeDelete(cursor)) return;
 
-      if (cursor.index == 0 && cursor.line > 0) {
-        // Cursor is at line start (not first line)
-        final int indexAdjustment = indexAdjustments[cursor.line] ?? 0;
-        cursor.line -= deletedLines;
-        final String currentLineContent = _lines[cursor.line];
-        final String previousLineContent = _lines[cursor.line - 1];
-        _lines.removeAt(cursor.line);
-        // Move cursor to end of previous line
-        cursor.line--;
-        cursor.index = _lines[cursor.line].length;
-        cursor.index += indexAdjustment;
-        indexAdjustments[cursor.line + 1] = previousLineContent.length;
-        deletedLines++;
+        if (cursor.index == 0 && cursor.line > 0) {
+          // Cursor is at line start (not first line)
+          final int indexAdjustment = indexAdjustments[cursor.line] ?? 0;
+          cursor.line -= deletedLines;
+          final String currentLineContent = _lines[cursor.line];
+          final String previousLineContent = _lines[cursor.line - 1];
+          _lines.removeAt(cursor.line);
+          // Move cursor to end of previous line
+          cursor.line--;
+          cursor.index = _lines[cursor.line].length;
+          cursor.index += indexAdjustment;
+          indexAdjustments[cursor.line + 1] = previousLineContent.length;
+          deletedLines++;
 
-        // Append current line content to previous line
-        _lines[cursor.line] += currentLineContent;
-      } else if (cursor.index > 0) {
-        // When cursor is in the middle or end of a line
-        final int adjustment = -(indexAdjustments[cursor.line] ??
-            -(lineAdjustments[cursor.line] ?? 0));
-        cursor.line -= deletedLines;
-        cursor.index -= adjustment;
-        lineAdjustments.update(cursor.line, (value) => value + length,
-            ifAbsent: () => length);
-        _lines[cursor.line] =
-            _lines[cursor.line].substring(0, cursor.index - length) +
-                _lines[cursor.line].substring(cursor.index);
-        cursor.index -= length;
+          // Append current line content to previous line
+          _lines[cursor.line] += currentLineContent;
+        } else if (cursor.index > 0) {
+          // When cursor is in the middle or end of a line
+          final int adjustment = -(indexAdjustments[cursor.line] ??
+              -(lineAdjustments[cursor.line] ?? 0));
+          cursor.line -= deletedLines;
+          cursor.index -= adjustment;
+          lineAdjustments.update(cursor.line, (value) => value + length,
+              ifAbsent: () => length);
+          _lines[cursor.line] =
+              _lines[cursor.line].substring(0, cursor.index - length) +
+                  _lines[cursor.line].substring(cursor.index);
+          cursor.index -= length;
+        }
+
+        cursorManager.targetCursorIndex = cursor.index;
       }
-
-      cursorManager.targetCursorIndex = cursor.index;
     }
     cursorManager.mergeCursorsIfNeeded();
   }
 
   void deleteForwards(int remainingDeletions) {
-    // TODO fix case where remainingDeletions > 1
-    final cursors = List.from(cursorManager.cursors);
+    // Process each layer
+    for (var layer in cursorManager.layers) {
+      final cursors = List.from(layer);
 
-    for (var cursor in cursors) {
-      // Skip if at document end
-      if (cursor.line >= _lines.length - 1 &&
-          cursor.index >= _lines[cursor.line].length) {
-        continue;
-      }
-
-      // Delete within current line
-      if (cursor.index < _lines[cursor.line].length) {
-        _lines[cursor.line] = _lines[cursor.line].substring(0, cursor.index) +
-            _lines[cursor.line].substring(cursor.index + 1);
-
-        // Only adjust cursors after current position on same line
-        for (var otherCursor in cursorManager.cursors) {
-          if (otherCursor.line == cursor.line &&
-              otherCursor.index > cursor.index) {
-            otherCursor.index--;
-          }
+      for (var cursor in cursors) {
+        // Skip if at document end
+        if (cursor.line >= _lines.length - 1 &&
+            cursor.index >= _lines[cursor.line].length) {
+          continue;
         }
-      } else if (cursor.line < _lines.length - 1) {
-        // Handle line merging
-        final nextLine = _lines[cursor.line + 1];
-        _lines[cursor.line] += nextLine;
-        _lines.removeAt(cursor.line + 1);
 
-        // Adjust cursors on subsequent lines
-        for (Cursor otherCursor in cursorManager.cursors) {
-          if (otherCursor.line > cursor.line) {
-            otherCursor.line--;
-            if (otherCursor.line == cursor.line) {
-              otherCursor.index += cursor.index as int;
+        // Delete within current line
+        if (cursor.index < _lines[cursor.line].length) {
+          _lines[cursor.line] = _lines[cursor.line].substring(0, cursor.index) +
+              _lines[cursor.line].substring(cursor.index + 1);
+
+          // Adjust cursors in all layers after current position
+          for (var cursorLayer in cursorManager.layers) {
+            for (var otherCursor in cursorLayer) {
+              if (otherCursor.line == cursor.line &&
+                  otherCursor.index > cursor.index) {
+                otherCursor.index--;
+              }
+            }
+          }
+        } else if (cursor.line < _lines.length - 1) {
+          // Handle line merging
+          final nextLine = _lines[cursor.line + 1];
+          _lines[cursor.line] += nextLine;
+          _lines.removeAt(cursor.line + 1);
+
+          // Adjust cursors in all layers on subsequent lines
+          for (var cursorLayer in cursorManager.layers) {
+            for (Cursor otherCursor in cursorLayer) {
+              if (otherCursor.line > cursor.line) {
+                otherCursor.line--;
+                if (otherCursor.line == cursor.line) {
+                  otherCursor.index += cursor.index as int;
+                }
+              }
             }
           }
         }

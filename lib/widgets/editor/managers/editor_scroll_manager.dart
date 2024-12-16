@@ -48,8 +48,10 @@ class EditorScrollManager {
     double screenHeight,
     double screenWidth,
   ) {
+    if (core.cursorLine == null) return;
+
     final double verticalOffsetTarget =
-        core.cursorLine * core.config.lineHeight;
+        core.cursorLine! * core.config.lineHeight;
     final double currentOffset = editorVerticalScrollController.offset;
     final double bufferSpace =
         core.config.lineHeight * (core.config.lineBuffer + 2);
@@ -66,8 +68,9 @@ class EditorScrollManager {
     }
 
     // Horizontal scrolling
+    if (core.cursorPosition == null) return;
     final double horizontalOffsetTarget =
-        core.cursorPosition * core.config.characterWidth;
+        core.cursorPosition! * core.config.characterWidth;
     final double currentHorizontalOffset =
         editorHorizontalScrollController.offset;
     final double horizontalBufferSpace = core.config.widthPadding;

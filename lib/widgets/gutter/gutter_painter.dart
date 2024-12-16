@@ -90,21 +90,28 @@ class GutterPainter extends CustomPainter {
   }
 
   bool _isLineWithinSelection(int line) {
-    return core.cursorManager.cursors.any((cursor) => cursor.line == line) ||
+    return core.cursorManager.layers
+            .any((layer) => layer.any((cursor) => cursor.line == line)) ||
         core.selectionManager.layers.any((layer) => layer.any((s) =>
-            (line >= min(s.startLine, s.endLine) &&
-                line <= max(s.endLine, s.startLine))));
+            line >= min(s.startLine, s.endLine) &&
+            line <= max(s.endLine, s.startLine)));
   }
 
   void drawCurrentLineHighlight(Canvas canvas, Size size) {
-    for (var cursor in core.cursorManager.cursors) {
-      if (!highlightedLines.contains(cursor.line) &&
-          !core.hasSelectionAtLine(cursor.line)) {
-        canvas.drawRect(
-            Rect.fromLTWH(0, cursor.line * core.config.lineHeight, size.width,
-                core.config.lineHeight),
-            Paint()..color = Colors.blue.withOpacity(0.1));
-        highlightedLines.add(cursor.line);
+    for (var layer in core.cursorManager.layers) {
+      if (layer.isEmpty) {
+        continue;
+      }
+
+      for (var cursor in layer) {
+        if (!highlightedLines.contains(cursor.line) &&
+            !core.hasSelectionAtLine(cursor.line)) {
+          canvas.drawRect(
+              Rect.fromLTWH(0, cursor.line * core.config.lineHeight, size.width,
+                  core.config.lineHeight),
+              Paint()..color = Colors.blue.withOpacity(0.1));
+          highlightedLines.add(cursor.line);
+        }
       }
     }
 

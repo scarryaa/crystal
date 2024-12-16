@@ -49,8 +49,11 @@ class EditorStateManager extends ChangeNotifier {
 
   void registerCore(String path, EditorCore core) {
     cores[path] = core;
-    core.onCursorMove =
-        (line, column) => updateCursorPosition(path, line, column);
+    core.onCursorMove = (line, column) {
+      if (line == null || column == null) return;
+
+      updateCursorPosition(path, line, column);
+    };
     core.forceRefresh = () => _forceRefresh(path);
     core.onEdit = (content) => contentManager.updateFileContent(path, content);
     core.onSelectionChange =

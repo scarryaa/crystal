@@ -148,7 +148,8 @@ class SelectionManager extends ChangeNotifier {
       final current = layers[layer][i];
       final last = mergedSelections.last;
 
-      if (_selectionsOverlap(last, current)) {
+      if (_selectionsOverlap(
+          bufferManager.getLineLength(last.endLine), last, current)) {
         last.originalDirection = activeSelection.originalDirection;
         if (current.endLine > last.endLine) {
           last.endLine = current.endLine;
@@ -171,11 +172,15 @@ class SelectionManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool _selectionsOverlap(Selection a, Selection b) {
+  bool _selectionsOverlap(int aLineLength, Selection a, Selection b) {
     if (a.endLine < b.startLine - 1) return false;
     if (a.startLine > b.endLine + 1) return false;
+
     if (a.endLine == b.startLine - 1 || a.startLine == b.endLine + 1) {
-      return true;
+      if (aLineLength == a.endIndex && b.startIndex == 0) {
+        return true;
+      }
+      return false;
     }
     if (a.endLine == b.startLine) {
       return a.endIndex >= b.startIndex;

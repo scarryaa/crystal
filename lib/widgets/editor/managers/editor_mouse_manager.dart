@@ -20,6 +20,7 @@ class EditorMouseManager extends ChangeNotifier {
   (int, int)? _dragStartPosition;
 
   int _currentLayer = 0;
+  int _currentCursorLayer = 0;
   DateTime? _firstClickTime;
   DateTime? _secondClickTime;
   Offset? _lastClickPosition;
@@ -147,8 +148,12 @@ class EditorMouseManager extends ChangeNotifier {
 
     // Adjust cursor
     if (_lastClickCursor != null) {
-      final index = core.cursorManager.cursors.indexOf(_lastClickCursor!);
-      core.cursorManager.moveTo(index, currentPosition.$1, currentPosition.$2);
+      final index = core.cursorManager.layers[_currentCursorLayer]
+          .indexOf(_lastClickCursor!);
+      if (index != -1) {
+        core.cursorManager.moveTo(index, currentPosition.$1, currentPosition.$2,
+            layer: _currentCursorLayer);
+      }
 
       _lastClickCursor =
           Cursor(line: currentPosition.$1, index: currentPosition.$2);
@@ -171,8 +176,9 @@ class EditorMouseManager extends ChangeNotifier {
           _lastSelectedWord!.endIndex,
           layer: _currentLayer);
 
-      final indexOfLastClickCursor =
-          core.cursorManager.cursors.indexOf(_lastClickCursor!);
+      final indexOfLastClickCursor = core
+          .cursorManager.layers[_currentCursorLayer]
+          .indexOf(_lastClickCursor!);
       core.cursorManager.moveTo(indexOfLastClickCursor, currentPosition.$1,
           _lastSelectedWord!.endIndex);
       _lastClickCursor =
@@ -225,8 +231,9 @@ class EditorMouseManager extends ChangeNotifier {
                     : SelectionDirection.forward,
             layer: _currentLayer);
 
-        final indexOfLastClickCursor =
-            core.cursorManager.cursors.indexOf(_lastClickCursor!);
+        final indexOfLastClickCursor = core
+            .cursorManager.layers[_currentCursorLayer]
+            .indexOf(_lastClickCursor!);
         core.cursorManager.moveTo(
           indexOfLastClickCursor,
           currentPosition.$1,
@@ -265,8 +272,9 @@ class EditorMouseManager extends ChangeNotifier {
                     : currentWord.$2,
             layer: _currentLayer);
 
-        final indexOfLastClickCursor =
-            core.cursorManager.cursors.indexOf(_lastClickCursor!);
+        final indexOfLastClickCursor = core
+            .cursorManager.layers[_currentCursorLayer]
+            .indexOf(_lastClickCursor!);
         core.cursorManager.moveTo(
           indexOfLastClickCursor,
           currentPosition.$1,
@@ -310,8 +318,9 @@ class EditorMouseManager extends ChangeNotifier {
                     : currentWord.$1,
             layer: _currentLayer);
 
-        final indexOfLastClickCursor =
-            core.cursorManager.cursors.indexOf(_lastClickCursor!);
+        final indexOfLastClickCursor = core
+            .cursorManager.layers[_currentCursorLayer]
+            .indexOf(_lastClickCursor!);
         core.cursorManager.moveTo(
           indexOfLastClickCursor,
           currentPosition.$1,
@@ -350,8 +359,9 @@ class EditorMouseManager extends ChangeNotifier {
                     : currentWord.$2,
             layer: _currentLayer);
 
-        final indexOfLastClickCursor =
-            core.cursorManager.cursors.indexOf(_lastClickCursor!);
+        final indexOfLastClickCursor = core
+            .cursorManager.layers[_currentCursorLayer]
+            .indexOf(_lastClickCursor!);
         core.cursorManager.moveTo(
           indexOfLastClickCursor,
           currentPosition.$1,
@@ -382,8 +392,9 @@ class EditorMouseManager extends ChangeNotifier {
         currentPosition.$1 <= _lastSelectedLine!.endLine) {
       core.selectLine(_lastSelectedLine!.endLine, _lastSelectedLine!.endIndex,
           clearSelections: true, layer: _currentLayer);
-      final indexOfLastClickCursor =
-          core.cursorManager.cursors.indexOf(_lastClickCursor!);
+      final indexOfLastClickCursor = core
+          .cursorManager.layers[_currentCursorLayer]
+          .indexOf(_lastClickCursor!);
       core.cursorManager
           .moveTo(indexOfLastClickCursor, currentPosition.$1 + 1, 0);
       _lastClickCursor = Cursor(line: currentPosition.$1 + 1, index: 0);
@@ -402,8 +413,9 @@ class EditorMouseManager extends ChangeNotifier {
       );
 
       if (_lastClickCursor != null) {
-        final indexOfLastClickCursor =
-            core.cursorManager.cursors.indexOf(_lastClickCursor!);
+        final indexOfLastClickCursor = core
+            .cursorManager.layers[_currentCursorLayer]
+            .indexOf(_lastClickCursor!);
         core.cursorManager
             .moveTo(indexOfLastClickCursor, currentPosition.$1, 0);
         _lastClickCursor = Cursor(line: currentPosition.$1, index: 0);
@@ -423,8 +435,9 @@ class EditorMouseManager extends ChangeNotifier {
 
       _dragStartPosition = (_lastSelectedLine!.endLine + 1, 0);
       if (_lastClickCursor != null) {
-        final indexOfLastClickCursor =
-            core.cursorManager.cursors.indexOf(_lastClickCursor!);
+        final indexOfLastClickCursor = core
+            .cursorManager.layers[_currentCursorLayer]
+            .indexOf(_lastClickCursor!);
         final boundedLine = max(
             min(currentPosition.$1 + 1, core.bufferManager.lineCount - 1), 0);
         core.cursorManager.moveTo(indexOfLastClickCursor, boundedLine, 0);
@@ -463,7 +476,9 @@ class EditorMouseManager extends ChangeNotifier {
     _dragStartPosition = null;
 
     core.selectionManager.mergeAllLayersToFirst(core.bufferManager);
+    core.cursorManager.mergeAllLayersToFirst();
     _currentLayer = 0;
+    _currentCursorLayer = 0;
 
     core.selectionManager
         .mergeOverlappingSelections(core.bufferManager, layer: 0);
@@ -490,21 +505,24 @@ class EditorMouseManager extends ChangeNotifier {
 
         if (oldCursor != null && oldCursor.line > selection.endLine) {
           // Preserve the cursor if it's beyond the merged selection
-          core.cursorManager.addCursor(oldCursor);
+          core.cursorManager.addCursor(oldCursor, layer: _currentCursorLayer);
         } else if (isTripleClickSelection) {
           // For triple-click, place cursor at next line
-          core.cursorManager
-              .addCursor(Cursor(line: selection.endLine + 1, index: 0));
+          core.cursorManager.addCursor(
+              Cursor(line: selection.endLine + 1, index: 0),
+              layer: _currentCursorLayer);
         } else {
           core.cursorManager.addCursor(
-              Cursor(line: selection.endLine, index: selection.endIndex));
+              Cursor(line: selection.endLine, index: selection.endIndex),
+              layer: _currentCursorLayer);
         }
       } else if (selection.originalDirection == SelectionDirection.backward) {
         for (var cursor in overlappingCursors) {
           core.cursorManager.removeCursor(cursor, keepAnchor: false);
         }
         core.cursorManager.addCursor(
-            Cursor(line: selection.startLine, index: selection.startIndex));
+            Cursor(line: selection.startLine, index: selection.startIndex),
+            layer: _currentCursorLayer);
       }
     }
   }
@@ -582,6 +600,10 @@ class EditorMouseManager extends ChangeNotifier {
 
   void _handleSingleClick(int cursorLine, int cursorIndex) {
     final isAltPressed = HardwareKeyboard.instance.isAltPressed;
+    if (isAltPressed) {
+      core.cursorManager.layers.add([]);
+      _currentCursorLayer++;
+    }
 
     // Ensure cursorLine is within bounds
     cursorLine = min(cursorLine, core.bufferManager.lines.length - 1);
@@ -608,23 +630,41 @@ class EditorMouseManager extends ChangeNotifier {
         for (var cursor in foundCursors) {
           core.cursorManager.removeCursor(cursor, keepAnchor: false);
         }
-        core.cursorManager
-            .addCursor(Cursor(line: cursorLine, index: cursorIndex));
 
+        final int totalCursorCount = core.cursorManager.layers
+            .fold(0, (sum, layer) => sum + layer.length);
+
+        if (totalCursorCount == 0) {
+          core.cursorManager.addCursor(
+              Cursor(line: cursorLine, index: cursorIndex),
+              layer: _currentCursorLayer);
+        }
         return;
       }
 
       // Check for existing cursor at clicked position
-      final existingCursorIndex = core.cursorManager.cursors.indexWhere(
-          (cursor) => cursor.line == cursorLine && cursor.index == cursorIndex);
+      bool cursorFound = false;
+      final int totalCursorCount =
+          core.cursorManager.layers.fold(0, (sum, layer) => sum + layer.length);
+      for (int i = 0; i < core.cursorManager.layers.length; i++) {
+        final existingCursorIndex = core.cursorManager.layers[i].indexWhere(
+            (cursor) =>
+                cursor.line == cursorLine && cursor.index == cursorIndex);
 
-      if (existingCursorIndex != -1 && core.cursorManager.cursors.length > 1) {
-        // Remove existing cursor if it's not the last one
-        core.cursorManager.removeCursorAt(existingCursorIndex);
-      } else {
-        // Add new cursor
+        if (existingCursorIndex != -1) {
+          cursorFound = true;
+          if (totalCursorCount > 1) {
+            // Remove existing cursor if it's not the last one
+            core.cursorManager.removeCursorAt(existingCursorIndex, layer: i);
+          }
+          break;
+        }
+      }
+
+      if (!cursorFound) {
+        // Add new cursor only if no existing cursor was found
         final newCursor = Cursor(line: cursorLine, index: cursorIndex);
-        core.cursorManager.addCursor(newCursor);
+        core.cursorManager.addCursor(newCursor, layer: _currentCursorLayer);
       }
     } else {
       // Single cursor mode
@@ -670,8 +710,9 @@ class EditorMouseManager extends ChangeNotifier {
         endLine: selection.endLine,
         endIndex: selection.endIndex);
 
-    final indexOfLastClickCursor =
-        core.cursorManager.cursors.indexOf(_lastClickCursor!);
+    final indexOfLastClickCursor = core
+        .cursorManager.layers[_currentCursorLayer]
+        .indexOf(_lastClickCursor!);
     core.cursorManager.moveTo(indexOfLastClickCursor,
         _lastSelectedWord!.startLine, _lastSelectedWord!.endIndex);
     _lastClickCursor = Cursor(
@@ -701,7 +742,9 @@ class EditorMouseManager extends ChangeNotifier {
       core.selectLine(cursorLine, cursorIndex, layer: _currentLayer);
     }
 
-    core.moveCursorTo(0, cursorLine + 1, 0);
+    final foundCursorIndex = core.cursorManager.layers[0].indexOf(Cursor(
+        line: _lastSelectedWord!.endLine, index: _lastSelectedWord!.endIndex));
+    core.moveCursorTo(foundCursorIndex, cursorLine + 1, 0);
     _lastClickCursor = Cursor(line: cursorLine + 1, index: 0);
     _lastSelectedLine = core.selectionManager
         .isWithinSelection(core.bufferManager, cursorLine, cursorIndex,

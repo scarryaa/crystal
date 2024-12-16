@@ -70,14 +70,16 @@ class EditorPainter extends CustomPainter {
   }
 
   void drawCurrentLineHighlight(Canvas canvas, Size size) {
-    for (var cursor in core.cursorManager.cursors) {
-      if (!highlightedLines.contains(cursor.line) &&
-          !core.hasSelectionAtLine(cursor.line)) {
-        canvas.drawRect(
-            Rect.fromLTWH(0, cursor.line * core.config.lineHeight, size.width,
-                core.config.lineHeight),
-            Paint()..color = Colors.blue.withOpacity(0.1));
-        highlightedLines.add(cursor.line);
+    for (var layer in core.cursorManager.layers) {
+      for (var cursor in layer) {
+        if (!highlightedLines.contains(cursor.line) &&
+            !core.hasSelectionAtLine(cursor.line)) {
+          canvas.drawRect(
+              Rect.fromLTWH(0, cursor.line * core.config.lineHeight, size.width,
+                  core.config.lineHeight),
+              Paint()..color = Colors.blue.withOpacity(0.1));
+          highlightedLines.add(cursor.line);
+        }
       }
     }
 
@@ -157,18 +159,26 @@ class EditorPainter extends CustomPainter {
   }
 
   void drawCursor(Canvas canvas) {
-    for (var cursor in core.cursorManager.cursors) {
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-            Rect.fromLTWH(
-              _measureLineWidth(cursor),
-              cursor.line * core.config.lineHeight,
-              core.config.caretWidth,
-              core.config.lineHeight,
-            ),
-            Radius.circular(core.config.caretRadius)),
-        Paint()..color = core.config.caretColor,
-      );
+    if (core.cursorManager.layers.isEmpty) return;
+
+    for (var layer in core.cursorManager.layers) {
+      if (layer.isEmpty) {
+        continue;
+      }
+
+      for (var cursor in layer) {
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+              Rect.fromLTWH(
+                _measureLineWidth(cursor),
+                cursor.line * core.config.lineHeight,
+                core.config.caretWidth,
+                core.config.lineHeight,
+              ),
+              Radius.circular(core.config.caretRadius)),
+          Paint()..color = core.config.caretColor,
+        );
+      }
     }
   }
 
@@ -193,8 +203,23 @@ class EditorPainter extends CustomPainter {
         oldDelegate.lastVisibleLine != lastVisibleLine ||
         oldDelegate.core.config != core.config ||
         oldDelegate.core.cursorPosition != core.cursorPosition ||
-        oldDelegate.core.cursorManager.cursors.length !=
-            core.cursorManager.cursors.length ||
+        !_areCursorLayersEqual(
+            oldDelegate.core.cursorManager.layers, core.cursorManager.layers) ||
         oldDelegate.textStyle != textStyle;
+  }
+
+  bool _areCursorLayersEqual(
+      List<List<Cursor>> oldLayers, List<List<Cursor>> newLayers) {
+    if (oldLayers.length != newLayers.length) return false;
+
+    for (int i = 0; i < oldLayers.length; i++) {
+      if (oldLayers[i].length != newLayers[i].length) return false;
+
+      for (int j = 0; j < oldLayers[i].length; j++) {
+        if (oldLayers[i][j] != newLayers[i][j]) return false;
+      }
+    }
+
+    return true;
   }
 }

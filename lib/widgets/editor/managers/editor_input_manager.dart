@@ -46,7 +46,7 @@ class EditorInputManager {
         // Zed and VSCode: If selections came first, and then multi-cursor after, clear multi-cursor first
         // If multi-cursor came first, and then selections after, clear both
         // TODO track order of interactions and implement this
-        if (core.cursorManager.cursors.length > 1) {
+        if (core.cursorManager.layers[0].length > 1) {
           // Clear multi-cursor
           core.cursorManager.clearCursors();
         } else {
@@ -68,9 +68,9 @@ class EditorInputManager {
         }
 
         core.insertChar('    ');
-        for (int i = 0; i < core.cursorManager.cursors.length; i++) {
-          core.moveCursorTo(i, core.cursorManager.cursors[i].line,
-              core.cursorManager.cursors[i].index + 3);
+        for (int i = 0; i < core.cursorManager.layers[0].length; i++) {
+          core.moveCursorTo(i, core.cursorManager.layers[0][i].line,
+              core.cursorManager.layers[0][i].index + 3);
         }
       default:
         if (keyEvent.character == null) return KeyEventResult.ignored;
@@ -96,9 +96,11 @@ class EditorInputManager {
       case LogicalKeyboardKey.arrowUp:
       case LogicalKeyboardKey.arrowDown:
         final isUpArrow = keyEvent.logicalKey == LogicalKeyboardKey.arrowUp;
+        if (core.cursorLine == null) return true;
+
         final targetLine = isUpArrow
-            ? core.cursorLine - 1
-            : core.cursorManager.cursors.last.line + 1;
+            ? core.cursorLine! - 1
+            : core.cursorManager.layers[0].last.line + 1;
 
         if (isAltPressed && isMetaOrCtrlPressed) {
           // TODO add config option to toggle between Zed behavior (use starting cursor as anchor and

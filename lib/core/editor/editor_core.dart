@@ -17,11 +17,10 @@ class EditorCore extends ChangeNotifier {
   final String path;
 
   void Function()? forceRefresh;
-  void Function(int line, int column)? onCursorMove;
+  void Function(int? line, int? column)? onCursorMove;
   void Function(String)? onEdit;
   void Function(int, int, int, int, int)? onSelectionChange;
 
-  // Select by word
   EditorCore({
     required this.bufferManager,
     required this.selectionManager,
@@ -277,7 +276,9 @@ class EditorCore extends ChangeNotifier {
   }
 
   void startSelection() {
-    selectionManager.startSelection(cursorLine, cursorPosition);
+    if (cursorLine == null || cursorPosition == null) return;
+
+    selectionManager.startSelection(cursorLine!, cursorPosition!);
     onSelectionChange?.call(
         selectionManager.anchor,
         selectionManager.startIndex,
@@ -339,7 +340,8 @@ class EditorCore extends ChangeNotifier {
     for (var layer in selectionManager.layers) {
       for (var selection in layer) {
         final beforeLines = bufferManager.lines.length;
-        selection.deleteSelection(bufferManager, cursorPosition);
+        if (cursorPosition == null) return [];
+        selection.deleteSelection(bufferManager, cursorPosition!);
 
         // Adjust selections in all layers after this deletion
         _adjustSelectionsAfterDeletion(selection);
@@ -398,50 +400,54 @@ class EditorCore extends ChangeNotifier {
 
   void _adjustCursors(List<Selection> selectionsBeforeDeletion) {
     // Index adjustment
-    for (var cursor in cursorManager.cursors) {
-      final List<Selection> selectionsOnTheSameLineAndBeforeCursor =
-          selectionsBeforeDeletion.where((s) {
-        // On the same line
-        if (s.startLine == s.endLine && cursor.line == s.startLine) {
-          if (s.endIndex <= cursor.index) {
-            return true;
+    for (var layer in cursorManager.layers) {
+      for (var cursor in layer) {
+        final List<Selection> selectionsOnTheSameLineAndBeforeCursor =
+            selectionsBeforeDeletion.where((s) {
+          // On the same line
+          if (s.startLine == s.endLine && cursor.line == s.startLine) {
+            if (s.endIndex <= cursor.index) {
+              return true;
+            }
+          } else {
+            // Multi-line
+            if (s.endLine == cursor.line) {
+              return true;
+            }
           }
-        } else {
-          // Multi-line
-          if (s.endLine == cursor.line) {
-            return true;
-          }
-        }
-        return false;
-      }).toList();
+          return false;
+        }).toList();
 
-      for (var selection in selectionsOnTheSameLineAndBeforeCursor) {
-        if (selection.startLine == selection.endLine) {
-          // Need to shift cursor index to account for deleted selections
-          final adjustment = selection.endIndex - selection.startIndex;
-          cursor.index -= adjustment;
-        } else {
-          final adjustment = selection.endIndex - selection.startIndex;
-          cursor.index -= adjustment;
+        for (var selection in selectionsOnTheSameLineAndBeforeCursor) {
+          if (selection.startLine == selection.endLine) {
+            // Need to shift cursor index to account for deleted selections
+            final adjustment = selection.endIndex - selection.startIndex;
+            cursor.index -= adjustment;
+          } else {
+            final adjustment = selection.endIndex - selection.startIndex;
+            cursor.index -= adjustment;
+          }
         }
       }
     }
 
     // Line adjustment
-    for (var cursor in cursorManager.cursors) {
-      final List<Selection> multiLineSelectionsOnSameLineOrBeforeCursor =
-          selectionsBeforeDeletion.where((s) {
-        if (s.startLine == s.endLine) return false;
+    for (var layer in cursorManager.layers) {
+      for (var cursor in layer) {
+        final List<Selection> multiLineSelectionsOnSameLineOrBeforeCursor =
+            selectionsBeforeDeletion.where((s) {
+          if (s.startLine == s.endLine) return false;
 
-        if (s.endLine <= cursor.line) {
-          return true;
+          if (s.endLine <= cursor.line) {
+            return true;
+          }
+          return false;
+        }).toList();
+
+        for (var selection in multiLineSelectionsOnSameLineOrBeforeCursor) {
+          final adjustment = selection.endLine - selection.startLine;
+          cursor.line -= adjustment;
         }
-        return false;
-      }).toList();
-
-      for (var selection in multiLineSelectionsOnSameLineOrBeforeCursor) {
-        final adjustment = selection.endLine - selection.startLine;
-        cursor.line -= adjustment;
       }
     }
 
@@ -488,9 +494,11 @@ class EditorCore extends ChangeNotifier {
   void handleSelection(SelectionDirection direction) {
     if (!hasSelection()) startSelection();
 
-    for (int i = 0; i < cursorManager.cursors.length; i++) {
-      selectionManager.updateSelection(bufferManager, i, direction,
-          cursorManager.cursors[i].index, cursorManager.targetCursorIndex);
+    for (int i = 0; i < cursorManager.layers.length; i++) {
+      for (int j = 0; j < cursorManager.layers[i].length; j++) {
+        selectionManager.updateSelection(bufferManager, j, direction,
+            cursorManager.layers[i][j].index, cursorManager.targetCursorIndex);
+      }
     }
 
     onSelectionChange?.call(
@@ -502,8 +510,8 @@ class EditorCore extends ChangeNotifier {
     notifyListeners();
   }
 
-  int get cursorLine => cursorManager.firstCursor().line;
-  int get cursorPosition => cursorManager.firstCursor().index;
+  int? get cursorLine => cursorManager.firstCursor()?.line;
+  int? get cursorPosition => cursorManager.firstCursor()?.index;
   List<String> get lines => bufferManager.lines;
   EditorConfig get config => _editorConfig;
 

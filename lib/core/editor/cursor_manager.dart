@@ -7,76 +7,76 @@ import 'package:flutter/material.dart';
 class CursorManager extends ChangeNotifier {
   final BufferManager _bufferManager;
   final Set<Cursor> uniqueCursors = {};
-  List<Cursor> cursors = [Cursor(line: 0, index: 0)];
+  List<List<Cursor>> layers = [
+    [Cursor(line: 0, index: 0)]
+  ];
   Cursor? _anchorCursor;
 
   int targetCursorIndex = 0;
 
   CursorManager(this._bufferManager) {
-    _anchorCursor = cursors.first;
+    _anchorCursor = layers[0].first;
   }
 
-  Cursor get anchorCursor => _anchorCursor ?? cursors.first;
+  Cursor get anchorCursor => _anchorCursor ?? layers[0].first;
 
-  Cursor firstCursor() {
-    if (cursors.isEmpty) {
-      addCursor(Cursor(line: 0, index: 0));
-    }
-    return cursors.first;
+  Cursor? firstCursor() {
+    if (layers[0].isEmpty) return null;
+    return layers[0].first;
   }
 
-  Cursor getCursor(int index) {
-    return cursors[index];
+  Cursor getCursor(int index, {int layer = 0}) {
+    return layers[layer][index];
   }
 
   void setAnchorCursor(Cursor cursor) {
     _anchorCursor = cursor;
-    if (!cursors.contains(cursor)) {
+    if (!layers[0].contains(cursor)) {
       addCursor(cursor);
     }
     notifyListeners();
   }
 
-  void clearCursors({bool keepAnchor = true}) {
+  void clearCursors({bool keepAnchor = true, int layer = 0}) {
     if (keepAnchor) {
-      cursors = [_anchorCursor ?? Cursor(line: 0, index: 0)];
+      layers[layer] = [_anchorCursor ?? Cursor(line: 0, index: 0)];
     } else {
-      cursors = [];
+      layers[layer] = [];
     }
     uniqueCursors.clear();
     notifyListeners();
   }
 
-  void addCursor(Cursor cursor) {
+  void addCursor(Cursor cursor, {int layer = 0}) {
     // Set as anchor if this is the first cursor
-    if (cursors.isEmpty) {
+    if (layers[layer].isEmpty) {
       _anchorCursor = cursor;
     }
-    cursors.add(cursor);
+    layers[layer].add(cursor);
     sortCursors();
     notifyListeners();
   }
 
-  void removeCursor(Cursor cursor, {bool keepAnchor = true}) {
+  void removeCursor(Cursor cursor, {bool keepAnchor = true, int layer = 0}) {
     // Don't remove if it's the anchor cursor
     if (cursor == _anchorCursor && keepAnchor) {
       return;
     }
-    cursors.remove(cursor);
+    layers[layer].remove(cursor);
     notifyListeners();
   }
 
-  void removeCursorAt(int index) {
-    if (index >= 0 && index < cursors.length) {
-      cursors.removeAt(index);
+  void removeCursorAt(int index, {int layer = 0}) {
+    if (index >= 0 && index < layers[layer].length) {
+      layers[layer].removeAt(index);
       notifyListeners();
     }
   }
 
-  void moveTo(int index, int line, int column) {
-    cursors[index].line = line.clamp(0, _bufferManager.lines.length - 1);
-    cursors[index].index =
-        column.clamp(0, _bufferManager.lines[cursors[index].line].length);
+  void moveTo(int index, int line, int column, {int layer = 0}) {
+    layers[layer][index].line = line.clamp(0, _bufferManager.lines.length - 1);
+    layers[layer][index].index =
+        column.clamp(0, _bufferManager.lines[layers[layer][index].line].length);
     targetCursorIndex = column;
 
     mergeCursorsIfNeeded();
@@ -85,38 +85,42 @@ class CursorManager extends ChangeNotifier {
 
   void sortCursors({bool reverse = false}) {
     // Sort cursors by line and index
-    cursors.sort((c1, c2) {
-      if (c1.line != c2.line) {
-        if (reverse) return c1.line > c2.line ? -1 : 1;
-        return c1.line > c2.line ? 1 : -1;
-      }
-      if (reverse) return c1.index > c2.index ? -1 : 1;
-      return c1.index > c2.index ? 1 : -1;
-    });
+    for (var layer in layers) {
+      layer.sort((c1, c2) {
+        if (c1.line != c2.line) {
+          if (reverse) return c1.line > c2.line ? -1 : 1;
+          return c1.line > c2.line ? 1 : -1;
+        }
+        if (reverse) return c1.index > c2.index ? -1 : 1;
+        return c1.index > c2.index ? 1 : -1;
+      });
+    }
   }
 
-  Cursor? findClosestCursor(int line, int index, int numberOfLines) {
+  Cursor? findClosestCursor(int line, int index, int numberOfLines,
+      {int layer = 0}) {
     sortCursors();
 
     int low = 0;
-    int high = cursors.length - 1;
+    int high = layers[layer].length - 1;
     final Cursor target = Cursor(line: line, index: index);
     Cursor? closest;
 
     while (low <= high) {
       final int mid = low + (high - low) ~/ 2;
 
-      if (cursors[mid] == target) {
-        return cursors[mid];
+      if (layers[layer][mid] == target) {
+        return layers[layer][mid];
       }
 
-      if (closest == null || isCursorCloser(cursors[mid], closest, target)) {
-        closest = cursors[mid];
+      if (closest == null ||
+          isCursorCloser(layers[layer][mid], closest, target)) {
+        closest = layers[layer][mid];
       }
 
-      if (cursors[mid].line < target.line ||
-          (cursors[mid].line == target.line &&
-              cursors[mid].index < target.index)) {
+      if (layers[layer][mid].line < target.line ||
+          (layers[layer][mid].line == target.line &&
+              layers[layer][mid].index < target.index)) {
         low = mid + 1;
       } else {
         high = mid - 1;
@@ -135,8 +139,9 @@ class CursorManager extends ChangeNotifier {
   }
 
   List<Cursor> findCursorsWithinBounds(
-      int startLine, int endLine, int startIndex, int endIndex) {
-    return cursors
+      int startLine, int endLine, int startIndex, int endIndex,
+      {int layer = 0}) {
+    return layers[layer]
         .where((c) =>
             // Single line selection
             (c.line == startLine &&
@@ -155,13 +160,15 @@ class CursorManager extends ChangeNotifier {
   }
 
   void mergeCursorsIfNeeded() {
-    uniqueCursors.addAll(cursors);
-    cursors = uniqueCursors.toList();
-    uniqueCursors.clear();
+    for (var layer in layers) {
+      uniqueCursors.addAll(layer);
+      layer = uniqueCursors.toList();
+      uniqueCursors.clear();
+    }
   }
 
-  void moveLeft() {
-    for (var cursor in cursors) {
+  void moveLeft({int layer = 0}) {
+    for (var cursor in layers[layer]) {
       if (cursor.index > 0) {
         cursor.index--;
         targetCursorIndex = cursor.index;
@@ -174,8 +181,8 @@ class CursorManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  void moveRight() {
-    for (var cursor in cursors) {
+  void moveRight({int layer = 0}) {
+    for (var cursor in layers[layer]) {
       if (cursor.index + 1 > _bufferManager.lines[cursor.line].length &&
           cursor.line + 1 < _bufferManager.lines.length) {
         cursor.line++;
@@ -196,8 +203,8 @@ class CursorManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  void moveUp() {
-    for (var cursor in cursors) {
+  void moveUp({int layer = 0}) {
+    for (var cursor in layers[layer]) {
       if (cursor.line - 1 < 0) {
         moveToLineStart();
         return;
@@ -210,8 +217,8 @@ class CursorManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  void moveDown() {
-    for (var cursor in cursors) {
+  void moveDown({int layer = 0}) {
+    for (var cursor in layers[layer]) {
       if (cursor.line + 1 >= _bufferManager.lines.length) {
         moveToLineEnd();
         return;
@@ -224,19 +231,32 @@ class CursorManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  void moveToLineStart() {
-    for (var cursor in cursors) {
+  void moveToLineStart({int layer = 0}) {
+    for (var cursor in layers[layer]) {
       cursor.index = 0;
       targetCursorIndex = cursor.index;
     }
     notifyListeners();
   }
 
-  void moveToLineEnd() {
-    for (var cursor in cursors) {
+  void moveToLineEnd({int layer = 0}) {
+    for (var cursor in layers[layer]) {
       cursor.index = _bufferManager.lines[cursor.line].length;
       targetCursorIndex = cursor.index;
     }
+    notifyListeners();
+  }
+
+  void mergeAllLayersToFirst() {
+    if (layers.length <= 1) return;
+
+    for (int i = 1; i < layers.length; i++) {
+      layers[0].addAll(layers[i]);
+    }
+
+    // Keep only the first layer
+    layers.removeRange(1, layers.length);
+
     notifyListeners();
   }
 }
