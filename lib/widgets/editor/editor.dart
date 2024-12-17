@@ -6,7 +6,6 @@ import 'package:crystal/core/editor/cursor_manager.dart';
 import 'package:crystal/core/editor/editor_config.dart';
 import 'package:crystal/core/editor/editor_core.dart';
 import 'package:crystal/core/editor/selection_manager.dart';
-import 'package:crystal/models/editor/cursor/cursor.dart';
 import 'package:crystal/widgets/editor/editor_painter.dart';
 import 'package:crystal/widgets/editor/managers/editor_input_manager.dart';
 import 'package:crystal/widgets/editor/managers/editor_state_manager.dart';

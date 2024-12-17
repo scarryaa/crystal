@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:crystal/core/editor/editor_core.dart';
+import 'package:crystal/models/editor/cursor/cursor.dart';
 import 'package:crystal/models/editor/selection/selection.dart';
 import 'package:crystal/widgets/editor/managers/editor_content_manager.dart';
 import 'package:crystal/widgets/editor/managers/editor_mouse_manager.dart';
@@ -13,7 +14,7 @@ class EditorStateManager extends ChangeNotifier {
   late final EditorTabController tabController;
 
   final Map<String, EditorCore> cores = {};
-  final Map<String, (int, int)> cursorPositions = {};
+  final Map<String, List<(int, int)>> cursorPositions = {};
   final Map<String, Selection> selections = {};
   final Map<String, FocusNode> focusNodes = {};
   final Map<String, EditorScrollManager> scrollManagers = {};
@@ -31,9 +32,19 @@ class EditorStateManager extends ChangeNotifier {
     final core = cores[path];
     if (core == null) return;
 
-    // TODO
-    //cursorPositions[path] =
-    //(core.cursorManager.cursorLine, core.cursorManager.cursorIndex);
+    final layerLength = core.cursorManager.layers[0].length;
+
+    if (layerLength > 0) {
+      cursorPositions[path] = List<(int, int)>.filled(layerLength, (0, 0));
+
+      for (int i = 0; i < layerLength; i++) {
+        cursorPositions[path]?[i] = (
+          core.cursorManager.layers[0][i].line,
+          core.cursorManager.layers[0][i].index
+        );
+      }
+    }
+
     scrollManagers[path]?.jumpToCursor(
       core,
       scrollManagers[path]!
@@ -49,9 +60,19 @@ class EditorStateManager extends ChangeNotifier {
 
   void registerCore(String path, EditorCore core) {
     cores[path] = core;
+
+    if (cursorPositions[path] != null) {
+      core.cursorManager.clearCursors(keepAnchor: false);
+      for (var position in cursorPositions[path]!) {
+        if (position.$1 >= 0 && position.$2 >= 0) {
+          core.cursorManager
+              .addCursor(Cursor(line: position.$1, index: position.$2));
+        }
+      }
+    }
+
     core.onCursorMove = (line, column) {
       if (line == null || column == null) return;
-
       updateCursorPosition(path, line, column);
     };
     core.forceRefresh = () => _forceRefresh(path);
@@ -77,11 +98,6 @@ class EditorStateManager extends ChangeNotifier {
       core.selectRange(selection.startLine, selection.startIndex,
           selection.endLine, selection.endIndex,
           layer: 0);
-    }
-
-    if (cursorPositions[path] != null) {
-      core.moveCursorTo(
-          0, cursorPositions[path]!.$1, cursorPositions[path]!.$2);
     }
   }
 

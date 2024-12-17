@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:crystal/models/editor/cursor/cursor.dart';
 import 'package:crystal/widgets/editor/managers/editor_content_manager.dart';
 import 'package:crystal/widgets/editor/managers/editor_scroll_manager.dart';
 import 'package:crystal/widgets/editor/managers/editor_state_manager.dart';
@@ -24,21 +25,34 @@ class EditorTabController extends ChangeNotifier {
 
   void _handleTabChange() {
     if (!controller.indexIsChanging) {
+      // Save cursor state of previous tab
+      final previousPath = tabs[controller.previousIndex];
+      final previousCore = stateManager.cores[previousPath];
+      if (previousCore != null) {
+        stateManager.updateCursorPosition(previousPath,
+            previousCore.cursorLine ?? 0, previousCore.cursorPosition ?? 0);
+      }
+
+      // Restore state of new tab
       final currentPath = getCurrentPath();
       if (currentPath == null) return;
-      final scrollManager = stateManager.scrollManagers[currentPath];
-      if (scrollManager == null) return;
 
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (stateManager.scrollPositions[currentPath] != null) {
-          scrollManager.jumpToOffset(Offset(
-              stateManager.scrollPositions[currentPath]!.dx,
-              stateManager.scrollPositions[currentPath]!.dy));
+      final core = stateManager.cores[currentPath];
+      final cursorPositions = stateManager.cursorPositions[currentPath];
+      if (core != null &&
+          cursorPositions != null &&
+          cursorPositions.isNotEmpty) {
+        core.cursorManager.clearCursors(keepAnchor: false);
+        for (var pos in cursorPositions) {
+          if (pos.$1 >= 0 && pos.$2 >= 0) {
+            core.cursorManager.addCursor(Cursor(line: pos.$1, index: pos.$2));
+          }
         }
-      });
+      }
+
+      stateManager.focusNodes[currentPath]?.requestFocus();
+
       notifyListeners();
-      WidgetsBinding.instance.addPostFrameCallback(
-          (_) => stateManager.focusNodes[currentPath]?.requestFocus());
     }
   }
 
