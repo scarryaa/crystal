@@ -28,7 +28,8 @@ class EditorStateManager extends ChangeNotifier {
     this.tabController = tabController;
   }
 
-  void updateCursorPosition(String path, int line, int column) {
+  void updateCursorPosition(String path, int line, int column,
+      {bool jumpToCursor = true}) {
     final core = cores[path];
     if (core == null) return;
 
@@ -45,17 +46,19 @@ class EditorStateManager extends ChangeNotifier {
       }
     }
 
-    scrollManagers[path]?.jumpToCursor(
-      core,
-      scrollManagers[path]!
-          .editorVerticalScrollController
-          .position
-          .viewportDimension,
-      scrollManagers[path]!
-          .editorHorizontalScrollController
-          .position
-          .viewportDimension,
-    );
+    if (jumpToCursor) {
+      scrollManagers[path]?.jumpToCursor(
+        core,
+        scrollManagers[path]!
+            .editorVerticalScrollController
+            .position
+            .viewportDimension,
+        scrollManagers[path]!
+            .editorHorizontalScrollController
+            .position
+            .viewportDimension,
+      );
+    }
   }
 
   void registerCore(String path, EditorCore core) {

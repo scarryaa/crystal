@@ -25,12 +25,20 @@ class EditorTabController extends ChangeNotifier {
 
   void _handleTabChange() {
     if (!controller.indexIsChanging) {
-      // Save cursor state of previous tab
+      // Save cursor and scroll state of previous tab
       final previousPath = tabs[controller.previousIndex];
       final previousCore = stateManager.cores[previousPath];
       if (previousCore != null) {
         stateManager.updateCursorPosition(previousPath,
-            previousCore.cursorLine ?? 0, previousCore.cursorPosition ?? 0);
+            previousCore.cursorLine ?? 0, previousCore.cursorPosition ?? 0,
+            jumpToCursor: false);
+
+        final scrollManager = stateManager.scrollManagers[previousPath];
+        if (scrollManager != null) {
+          stateManager.scrollPositions[previousPath] = Offset(
+              scrollManager.editorHorizontalScrollController.offset,
+              scrollManager.editorVerticalScrollController.offset);
+        }
       }
 
       // Restore state of new tab
@@ -50,8 +58,16 @@ class EditorTabController extends ChangeNotifier {
         }
       }
 
-      stateManager.focusNodes[currentPath]?.requestFocus();
+      // Restore scroll position
+      final scrollManager = stateManager.scrollManagers[currentPath];
+      final scrollPosition = stateManager.scrollPositions[currentPath];
+      if (scrollManager != null && scrollPosition != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          scrollManager.jumpToOffset(scrollPosition);
+        });
+      }
 
+      stateManager.focusNodes[currentPath]?.requestFocus();
       notifyListeners();
     }
   }
