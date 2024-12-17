@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math';
 
 import 'package:crystal/core/editor/buffer_manager.dart';
@@ -10,12 +11,16 @@ import 'package:crystal/widgets/editor/editor_painter.dart';
 import 'package:crystal/widgets/editor/managers/editor_input_manager.dart';
 import 'package:crystal/widgets/editor/managers/editor_state_manager.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class Editor extends StatefulWidget {
   final ScrollController horizontalScrollController;
   final ScrollController verticalScrollController;
   final EditorStateManager stateManager;
   final void Function(EditorCore)? onCoreInitialized;
+  final void Function(String)? openFile;
+  final void Function()? openConfigFile;
+  final void Function()? openDefaultConfigFile;
   final FocusNode focusNode;
   final String path;
   final double tabBarHeight;
@@ -25,6 +30,9 @@ class Editor extends StatefulWidget {
   const Editor({
     super.key,
     this.onCoreInitialized,
+    this.openFile,
+    this.openConfigFile,
+    this.openDefaultConfigFile,
     required this.horizontalScrollController,
     required this.verticalScrollController,
     required this.stateManager,
@@ -59,6 +67,8 @@ class _EditorState extends State<Editor> with AutomaticKeepAliveClientMixin {
       path: widget.path,
     );
 
+    _core.config.loadFromJSON();
+
     editorInputManager = EditorInputManager(_core);
 
     _core.bufferManager.cursorManager = _core.cursorManager;
@@ -66,7 +76,6 @@ class _EditorState extends State<Editor> with AutomaticKeepAliveClientMixin {
 
     widget.verticalScrollController.addListener(_onScroll);
     widget.horizontalScrollController.addListener(_onScroll);
-    _core.cursorManager.addCursor(Cursor(line: 0, index: 0));
   }
 
   @override
@@ -112,8 +121,45 @@ class _EditorState extends State<Editor> with AutomaticKeepAliveClientMixin {
   }
 
   KeyEventResult handleKeyEvent(FocusNode node, KeyEvent keyEvent) {
-    handleKeyEventAsync(node, keyEvent);
+    if (keyEvent is KeyDownEvent) {
+      // Control/Command + <
+      if ((Platform.isMacOS
+              ? HardwareKeyboard.instance.isMetaPressed
+              : HardwareKeyboard.instance.isControlPressed) &&
+          keyEvent.logicalKey == LogicalKeyboardKey.less) {
+        widget.openDefaultConfigFile?.call();
+        return KeyEventResult.handled;
+      }
 
+      // Control/Command + ,
+      if ((Platform.isMacOS
+              ? HardwareKeyboard.instance.isMetaPressed
+              : HardwareKeyboard.instance.isControlPressed) &&
+          keyEvent.logicalKey == LogicalKeyboardKey.comma) {
+        widget.openConfigFile?.call();
+        return KeyEventResult.handled;
+      }
+
+      // Control/Command + S
+      if ((Platform.isMacOS
+              ? HardwareKeyboard.instance.isMetaPressed
+              : HardwareKeyboard.instance.isControlPressed) &&
+          keyEvent.logicalKey == LogicalKeyboardKey.keyS) {
+        // Handle save action
+        return KeyEventResult.handled;
+      }
+
+      // Control/Command + Z
+      if ((Platform.isMacOS
+              ? HardwareKeyboard.instance.isMetaPressed
+              : HardwareKeyboard.instance.isControlPressed) &&
+          keyEvent.logicalKey == LogicalKeyboardKey.keyZ) {
+        // Handle undo action
+        return KeyEventResult.handled;
+      }
+    }
+
+    handleKeyEventAsync(node, keyEvent);
     return KeyEventResult.handled;
   }
 

@@ -37,6 +37,8 @@ class EditorTabController extends ChangeNotifier {
         }
       });
       notifyListeners();
+      WidgetsBinding.instance.addPostFrameCallback(
+          (_) => stateManager.focusNodes[currentPath]?.requestFocus());
     }
   }
 
@@ -52,12 +54,12 @@ class EditorTabController extends ChangeNotifier {
       oldController.removeListener(_handleTabChange);
       initController();
       oldController.dispose();
-
-      WidgetsBinding.instance.addPostFrameCallback(
-          (_) => stateManager.focusNodes[path]?.requestFocus());
     } else {
       controller.animateTo(tabs.indexOf(path));
     }
+
+    WidgetsBinding.instance.addPostFrameCallback(
+        (_) => stateManager.focusNodes[path]?.requestFocus());
   }
 
   void closeTab(EditorScrollManager scrollManager, String path) {
