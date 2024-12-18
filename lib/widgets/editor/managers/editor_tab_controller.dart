@@ -138,6 +138,8 @@ class EditorTabController extends ChangeNotifier {
 
       tabs.removeAt(index);
       contentManager.fileContents.remove(path);
+      stateManager.selections.clear();
+      stateManager.cursorPositions.clear();
       stateManager.scrollManagers[path]?.dispose();
       stateManager.scrollManagers.remove(path);
       oldController.dispose();
