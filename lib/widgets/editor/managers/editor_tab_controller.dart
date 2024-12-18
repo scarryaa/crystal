@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:crystal/models/editor/cursor/cursor.dart';
+import 'package:crystal/models/editor/selection/selection.dart';
 import 'package:crystal/widgets/editor/managers/editor_content_manager.dart';
 import 'package:crystal/widgets/editor/managers/editor_scroll_manager.dart';
 import 'package:crystal/widgets/editor/managers/editor_state_manager.dart';
@@ -25,19 +26,41 @@ class EditorTabController extends ChangeNotifier {
 
   void _handleTabChange() {
     if (!controller.indexIsChanging) {
-      // Save cursor and scroll state of previous tab
+      // Save state of previous tab
       final previousPath = tabs[controller.previousIndex];
       final previousCore = stateManager.cores[previousPath];
       if (previousCore != null) {
+        // Save cursor positions
         stateManager.updateCursorPosition(previousPath,
             previousCore.cursorLine ?? 0, previousCore.cursorPosition ?? 0,
             jumpToCursor: false);
 
+        // Save scroll position
         final scrollManager = stateManager.scrollManagers[previousPath];
         if (scrollManager != null) {
           stateManager.scrollPositions[previousPath] = Offset(
               scrollManager.editorHorizontalScrollController.offset,
               scrollManager.editorVerticalScrollController.offset);
+        }
+
+        // Save selections
+        if (previousCore.selectionManager.layers[0].isNotEmpty) {
+          stateManager.selections[previousPath] =
+              stateManager.selections[previousPath] ?? [];
+          stateManager.selections[previousPath]!.clear();
+
+          final selections = previousCore.selectionManager.layers[0]
+              .map((s) => Selection(
+                  startIndex: s.startIndex,
+                  endIndex: s.endIndex,
+                  startLine: s.startLine,
+                  endLine: s.endLine,
+                  anchor: s.anchor,
+                  originalDirection: s.originalDirection,
+                  originalCursor: s.originalCursor))
+              .toList();
+
+          stateManager.selections[previousPath]!.addAll(selections);
         }
       }
 
@@ -46,14 +69,25 @@ class EditorTabController extends ChangeNotifier {
       if (currentPath == null) return;
 
       final core = stateManager.cores[currentPath];
-      final cursorPositions = stateManager.cursorPositions[currentPath];
-      if (core != null &&
-          cursorPositions != null &&
-          cursorPositions.isNotEmpty) {
-        core.cursorManager.clearCursors(keepAnchor: false);
-        for (var pos in cursorPositions) {
-          if (pos.$1 >= 0 && pos.$2 >= 0) {
-            core.cursorManager.addCursor(Cursor(line: pos.$1, index: pos.$2));
+      if (core != null) {
+        // Restore cursor positions
+        final cursorPositions = stateManager.cursorPositions[currentPath];
+        if (cursorPositions != null && cursorPositions.isNotEmpty) {
+          core.cursorManager.clearCursors(keepAnchor: true);
+          for (var pos in cursorPositions) {
+            if (pos.$1 >= 0 && pos.$2 >= 0) {
+              core.cursorManager.addCursor(Cursor(line: pos.$1, index: pos.$2));
+            }
+          }
+        }
+
+        // Restore selections
+        final selections = stateManager.selections[currentPath];
+        if (selections != null && selections.isNotEmpty) {
+          core.selectionManager.clearSelections(0);
+          core.selectionManager.layers[0] = [];
+          for (var selection in selections) {
+            core.selectionManager.addSelection(selection, layer: 0);
           }
         }
       }
