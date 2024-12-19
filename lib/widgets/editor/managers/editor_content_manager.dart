@@ -23,4 +23,9 @@ class EditorContentManager extends ChangeNotifier {
     fileContents[path] = content;
     notifyListeners();
   }
+
+  void updateOriginalContent(String path, String content) {
+    originalContents[path] = content;
+    notifyListeners();
+  }
 }

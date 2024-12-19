@@ -76,6 +76,10 @@ class EditorScreenState extends State<EditorScreen>
     });
   }
 
+  void updatePath(String oldPath, String newPath) {
+    tabController.updatePath(oldPath, newPath);
+  }
+
   @override
   void dispose() {
     scrollManager.dispose();
@@ -209,6 +213,8 @@ class EditorScreenState extends State<EditorScreen>
                                                                 _openConfigFile,
                                                             openDefaultConfigFile:
                                                                 _openDefaultConfigFile,
+                                                            updatePath:
+                                                                updatePath,
                                                           );
                                                         }).toList(),
                                                       ),

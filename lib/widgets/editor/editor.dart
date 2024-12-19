@@ -9,6 +9,7 @@ import 'package:crystal/core/editor/selection_manager.dart';
 import 'package:crystal/widgets/editor/editor_painter.dart';
 import 'package:crystal/widgets/editor/managers/editor_input_manager.dart';
 import 'package:crystal/widgets/editor/managers/editor_state_manager.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -20,6 +21,7 @@ class Editor extends StatefulWidget {
   final void Function(String)? openFile;
   final void Function()? openConfigFile;
   final void Function()? openDefaultConfigFile;
+  final void Function(String, String)? updatePath;
   final FocusNode focusNode;
   final String path;
   final double tabBarHeight;
@@ -32,6 +34,7 @@ class Editor extends StatefulWidget {
     this.openFile,
     this.openConfigFile,
     this.openDefaultConfigFile,
+    this.updatePath,
     required this.horizontalScrollController,
     required this.verticalScrollController,
     required this.stateManager,
@@ -114,6 +117,30 @@ class _EditorState extends State<Editor> with AutomaticKeepAliveClientMixin {
             max(maxWidth, element.length * _core.config.characterWidth));
   }
 
+  Future<File> saveStringToFile(String content, String path) async {
+    final file = File(path);
+    return file.writeAsString(content);
+  }
+
+  Future<void> saveFile() async {
+    final String? outputFile = await FilePicker.platform.saveFile(
+        dialogTitle: 'Save As',
+        fileName: widget.path.split(Platform.pathSeparator).last);
+
+    if (outputFile != null) {
+      try {
+        final File file = File(outputFile);
+        await file.writeAsString(_core.bufferManager.toString());
+
+        widget.stateManager.tabController.contentManager
+            .updateOriginalContent(outputFile, _core.bufferManager.toString());
+        widget.updatePath?.call(widget.path, outputFile);
+      } catch (e) {
+        debugPrint('Error saving file: $e');
+      }
+    }
+  }
+
   Future<KeyEventResult> handleKeyEventAsync(
       FocusNode node, KeyEvent keyEvent) {
     return editorInputManager.handleKeyEvent(_core, keyEvent);
@@ -139,12 +166,24 @@ class _EditorState extends State<Editor> with AutomaticKeepAliveClientMixin {
         return KeyEventResult.handled;
       }
 
+      // Control/Command + Shift + S
+      if ((Platform.isMacOS
+              ? HardwareKeyboard.instance.isMetaPressed
+              : HardwareKeyboard.instance.isControlPressed) &&
+          HardwareKeyboard.instance.isShiftPressed &&
+          keyEvent.logicalKey == LogicalKeyboardKey.keyS) {
+        saveFile();
+        return KeyEventResult.handled;
+      }
+
       // Control/Command + S
       if ((Platform.isMacOS
               ? HardwareKeyboard.instance.isMetaPressed
               : HardwareKeyboard.instance.isControlPressed) &&
           keyEvent.logicalKey == LogicalKeyboardKey.keyS) {
-        // Handle save action
+        saveStringToFile(_core.bufferManager.toString(), widget.path);
+        widget.stateManager.tabController.contentManager
+            .updateOriginalContent(widget.path, _core.bufferManager.toString());
         return KeyEventResult.handled;
       }
 

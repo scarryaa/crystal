@@ -24,43 +24,58 @@ class EditorTabController extends ChangeNotifier {
     controller.addListener(_handleTabChange);
   }
 
-  void _handleTabChange() {
+  void _handleTabChange({bool saveState = true}) {
     if (!controller.indexIsChanging) {
-      // Save state of previous tab
-      final previousPath = tabs[controller.previousIndex];
-      final previousCore = stateManager.cores[previousPath];
-      if (previousCore != null) {
-        // Save cursor positions
-        stateManager.updateCursorPosition(previousPath,
-            previousCore.cursorLine ?? 0, previousCore.cursorPosition ?? 0,
-            jumpToCursor: false);
+      if (tabs.isEmpty) {
+        stateManager.cores.clear();
+        stateManager.selections.clear();
+        stateManager.cursorPositions.clear();
+        stateManager.scrollPositions.clear();
+        notifyListeners();
+        return;
+      }
 
-        // Save scroll position
-        final scrollManager = stateManager.scrollManagers[previousPath];
-        if (scrollManager != null) {
-          stateManager.scrollPositions[previousPath] = Offset(
-              scrollManager.editorHorizontalScrollController.offset,
-              scrollManager.editorVerticalScrollController.offset);
-        }
+      if (saveState &&
+          controller.previousIndex >= 0 &&
+          controller.previousIndex < tabs.length) {
+        // Save state of previous tab
+        final previousPath = tabs[controller.previousIndex];
+        final previousCore = stateManager.cores[previousPath];
+        if (previousCore != null) {
+          // Save cursor positions
+          stateManager.updateCursorPosition(previousPath,
+              previousCore.cursorLine ?? 0, previousCore.cursorPosition ?? 0,
+              jumpToCursor: false);
 
-        // Save selections
-        if (previousCore.selectionManager.layers[0].isNotEmpty) {
-          stateManager.selections[previousPath] =
-              stateManager.selections[previousPath] ?? [];
-          stateManager.selections[previousPath]!.clear();
+          // Save scroll position
+          final scrollManager = stateManager.scrollManagers[previousPath];
+          if (scrollManager != null &&
+              scrollManager.editorHorizontalScrollController.hasClients &&
+              scrollManager.editorVerticalScrollController.hasClients) {
+            stateManager.scrollPositions[previousPath] = Offset(
+                scrollManager.editorHorizontalScrollController.offset,
+                scrollManager.editorVerticalScrollController.offset);
+          }
 
-          final selections = previousCore.selectionManager.layers[0]
-              .map((s) => Selection(
-                  startIndex: s.startIndex,
-                  endIndex: s.endIndex,
-                  startLine: s.startLine,
-                  endLine: s.endLine,
-                  anchor: s.anchor,
-                  originalDirection: s.originalDirection,
-                  originalCursor: s.originalCursor))
-              .toList();
+          // Save selections
+          if (previousCore.selectionManager.layers[0].isNotEmpty) {
+            stateManager.selections[previousPath] =
+                stateManager.selections[previousPath] ?? [];
+            stateManager.selections[previousPath]!.clear();
 
-          stateManager.selections[previousPath]!.addAll(selections);
+            final selections = previousCore.selectionManager.layers[0]
+                .map((s) => Selection(
+                    startIndex: s.startIndex,
+                    endIndex: s.endIndex,
+                    startLine: s.startLine,
+                    endLine: s.endLine,
+                    anchor: s.anchor,
+                    originalDirection: s.originalDirection,
+                    originalCursor: s.originalCursor))
+                .toList();
+
+            stateManager.selections[previousPath]!.addAll(selections);
+          }
         }
       }
 
@@ -106,19 +121,56 @@ class EditorTabController extends ChangeNotifier {
     }
   }
 
+  void updatePath(String oldPath, String newPath) {
+    final index = tabs.indexOf(oldPath);
+    if (index != -1) {
+      tabs[index] = newPath;
+
+      // Update related state
+      final content = contentManager.fileContents[oldPath];
+      final originalContent = contentManager.originalContents[oldPath];
+      final scrollManager = stateManager.scrollManagers[oldPath];
+      final focusNode = stateManager.focusNodes[oldPath];
+
+      // Remove old path entries
+      contentManager.fileContents.remove(oldPath);
+      contentManager.originalContents.remove(oldPath);
+      stateManager.scrollManagers.remove(oldPath);
+      stateManager.focusNodes.remove(oldPath);
+
+      // Add new path entries
+      if (content != null) contentManager.fileContents[newPath] = content;
+      if (originalContent != null) {
+        contentManager.originalContents[newPath] = originalContent;
+      }
+      if (scrollManager != null) {
+        stateManager.scrollManagers[newPath] = scrollManager;
+      }
+      if (focusNode != null) stateManager.focusNodes[newPath] = focusNode;
+
+      notifyListeners();
+    }
+  }
+
   void openTab(EditorScrollManager scrollManager, String path, String content) {
     if (!tabs.contains(path)) {
+      _handleTabChange(saveState: true);
+
       tabs.add(path);
       contentManager.fileContents[path] = content;
       contentManager.originalContents[path] = content;
       stateManager.scrollManagers[path] = scrollManager;
       stateManager.focusNodes[path] = FocusNode();
 
-      final oldController = controller;
-      oldController.removeListener(_handleTabChange);
-      initController();
-      oldController.dispose();
+      controller.removeListener(_handleTabChange);
+      controller = TabController(
+          length: tabs.length,
+          vsync: vsync,
+          initialIndex: tabs.length - 1,
+          animationDuration: Duration.zero);
+      controller.addListener(_handleTabChange);
     } else {
+      _handleTabChange(saveState: true);
       controller.animateTo(tabs.indexOf(path));
     }
 
